@@ -11,12 +11,14 @@ export function KarmaRules({ open, onClose }: { open: boolean; onClose: () => vo
         </li>
         <li>
           <b className="text-neon">Swap first:</b> before play starts, swap cards from your hand
-          with your face-up cards (tap one of each) to build a strong table, then press Ready.
+          with your face-up cards (tap one of each) to build a strong table. When you are happy, tap
+          a card and then tap that same card again: that means you are ready.
         </li>
         <li>
-          <b className="text-neon">Your turn:</b> play one card, or several of the same rank, that
-          is equal to or higher than the top card of the pile. Can&apos;t or don&apos;t want to?
-          Pick up the whole pile.
+          <b className="text-neon">Your turn:</b> tap a card to select it, then tap it again to play
+          it. You can play several cards of the same rank at once: select them one by one, then tap
+          one of them again. The card must be equal to or higher than the top card of the pile.
+          Can&apos;t or don&apos;t want to? Tap <b>Pick up</b> to take the whole pile.
         </li>
         <li>
           <b className="text-neon">2</b> goes on anything, and anything goes on a 2.{' '}

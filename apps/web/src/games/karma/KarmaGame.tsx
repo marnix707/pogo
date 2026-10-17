@@ -26,12 +26,13 @@ function useCardScale(): number {
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
-  return h < 640 ? 0.8 : h < 720 ? 0.9 : h < 820 ? 1 : 1.08;
+  // Fit the table, hand and opponents into the screen: ~238px of chrome plus ~442px per unit of scale.
+  return Math.max(0.72, Math.min(1.12, (h - 238) / 442));
 }
 
 /** Em-size of an opponent's cards: fewer opponents, bigger cards (4 seats must fit in a row). */
 const seatFont = (opponents: number) =>
-  opponents <= 1 ? 9 : opponents === 2 ? 8 : opponents === 3 ? 6.2 : 4.5;
+  opponents <= 1 ? 11 : opponents === 2 ? 9.6 : opponents === 3 ? 8.2 : 5.7;
 
 const boxOf = (el: Element | null | undefined) => {
   if (!el) return null;
@@ -44,6 +45,7 @@ function TableSlots({
   faceUp,
   faceDown,
   font,
+  overlap = false,
   idPrefix,
   upState,
   downState,
@@ -51,6 +53,8 @@ function TableSlots({
   faceUp: (Card | null)[];
   faceDown: boolean[];
   font: number;
+  /** Tuck neighbouring columns under each other so bigger cards fit a narrow seat. */
+  overlap?: boolean;
   idPrefix?: string;
   upState?: (
     card: Card,
@@ -58,9 +62,10 @@ function TableSlots({
   ) => { onClick?: () => void; selected?: boolean; dimmed?: boolean; playable?: boolean };
   downState?: (slot: number) => { onClick?: () => void; selected?: boolean };
 }) {
-  const offset = font * 2.4;
+  const offset = font * 2.2;
+  const columnGap = overlap ? -font * 1.1 : font * 0.6;
   return (
-    <div className="flex" style={{ gap: `${font * 0.6}px` }}>
+    <div className="flex">
       {[0, 1, 2].map((slot) => {
         const up = faceUp[slot] ?? null;
         const down = faceDown[slot] ?? false;
@@ -70,7 +75,11 @@ function TableSlots({
           <div
             key={slot}
             className="relative"
-            style={{ width: `${font * 5}px`, height: `${font * 7 + offset}px` }}
+            style={{
+              width: `${font * 5}px`,
+              height: `${font * 7 + offset}px`,
+              marginLeft: slot === 0 ? 0 : `${columnGap}px`,
+            }}
           >
             {down && (
               <PlayingCard
@@ -110,6 +119,7 @@ function Seat({
   finishRank,
   phase,
   font,
+  overlap,
   seatRef,
 }: {
   player: karma.KarmaPlayerView;
@@ -118,6 +128,7 @@ function Seat({
   finishRank: number;
   phase: karma.KarmaPhase;
   font: number;
+  overlap: boolean;
   seatRef: (el: HTMLDivElement | null) => void;
 }) {
   const status = player.out
@@ -142,7 +153,7 @@ function Seat({
         </span>
         <span className="label truncate text-[9px]">{member?.nickname ?? '?'}</span>
       </div>
-      <TableSlots faceUp={player.faceUp} faceDown={player.faceDown} font={font} />
+      <TableSlots faceUp={player.faceUp} faceDown={player.faceDown} font={font} overlap={overlap} />
       <div
         className={`label text-[9px] ${current ? 'text-accent' : 'text-muted'}`}
         data-testid={`seat-status-${player.id}`}
@@ -193,9 +204,9 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   // Sizes (px per em; a card is 5em x 7em).
   const scale = useCardScale();
   const opponentCount = view.players.length - 1;
-  const myFont = 11.5 * scale;
-  const pileFont = 14.5 * scale;
-  const stockFont = 11 * scale;
+  const myFont = 14 * scale;
+  const pileFont = 17.5 * scale;
+  const stockFont = 13.4 * scale;
   const oppFont = seatFont(opponentCount) * Math.min(scale, 1);
 
   // Animations are off for the first paint (the table just appears) and with reduced motion.
@@ -246,11 +257,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   // A new move happened: forget selections and narrate it (sound, buzz, burn flash).
   const lastSeq = useRef(view.lastEvent?.seq ?? 0);
   useEffect(() => {
-    setSel([]);
-    setSelDown(null);
     const ev = view.lastEvent;
     if (!ev || ev.seq === lastSeq.current) return;
     lastSeq.current = ev.seq;
+    setSel([]);
+    setSelDown(null);
     play(ev.burned ? 'score' : ev.pickedUp > 0 ? 'error' : 'tap');
     if (ev.playerId === me) haptic(ev.burned ? 'success' : ev.pickedUp > 0 ? 'error' : 'tap');
     if (ev.burned) {
@@ -279,13 +290,23 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     return res;
   }
 
+  /** Swap phase: a second tap on the card you selected means "I'm done swapping". */
+  async function getReady() {
+    setSwapHand(null);
+    setSwapUp(null);
+    await send({ type: 'ready' });
+  }
+
   function tapSwapHand(card: Card) {
     if (swapUp !== null) {
       void send({ type: 'swap', hand: card, up: swapUp });
       setSwapUp(null);
       setSwapHand(null);
+    } else if (swapHand === card) {
+      void getReady();
     } else {
-      setSwapHand(swapHand === card ? null : card);
+      haptic('tap');
+      setSwapHand(card);
     }
   }
 
@@ -294,19 +315,43 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
       void send({ type: 'swap', hand: swapHand, up: slot });
       setSwapUp(null);
       setSwapHand(null);
+    } else if (swapUp === slot) {
+      void getReady();
     } else {
-      setSwapUp(swapUp === slot ? null : slot);
+      haptic('tap');
+      setSwapUp(slot);
     }
   }
 
+  /** Play phase: tap selects; tapping a selected card again plays the whole selection. */
   function tapCard(card: Card) {
     if (!playing || !canPlayRank(pile, rankOf(card))) return;
+    if (sel.includes(card)) {
+      void playSelected();
+      return;
+    }
     haptic('tap');
     setSelDown(null);
-    setSel((prev) => {
-      if (prev.includes(card)) return prev.filter((c) => c !== card);
-      return prev.length > 0 && rankOf(prev[0] as Card) === rankOf(card) ? [...prev, card] : [card];
-    });
+    setSel((prev) =>
+      prev.length > 0 && rankOf(prev[0] as Card) === rankOf(card) ? [...prev, card] : [card],
+    );
+  }
+
+  function tapDown(slot: number) {
+    if (selDown === slot) {
+      void playSelected();
+      return;
+    }
+    haptic('tap');
+    setSel([]);
+    setSelDown(slot);
+  }
+
+  function clearSelection() {
+    setSel([]);
+    setSelDown(null);
+    setSwapHand(null);
+    setSwapUp(null);
   }
 
   async function playSelected() {
@@ -324,9 +369,17 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
 
   let hint = '';
   if (finished) hint = 'Game over';
-  else if (swapping) hint = 'Tap a hand card and a face-up card to swap them, then press Ready';
-  else if (view.phase === 'swap') hint = 'Waiting for the others to get ready…';
-  else if (myTurn) {
+  else if (swapping) {
+    if (swapHand !== null)
+      hint = 'Tap a face-up card to swap, or tap this card again when you are ready';
+    else if (swapUp !== null)
+      hint = 'Tap a hand card to swap, or tap this card again when you are ready';
+    else
+      hint = 'Swap hand and face-up cards (tap one of each). Double-tap a card when you are done';
+  } else if (view.phase === 'swap') hint = 'Waiting for the others to get ready…';
+  else if (myTurn && (sel.length > 0 || selDown !== null)) {
+    hint = 'Tap the card again to play it';
+  } else if (myTurn) {
     if (zone === 'down') hint = 'Pick a face-down card… blind!';
     else if (top === undefined) hint = 'The pile is empty: lead with anything';
     else if (rankOf(top) === 2) hint = 'A 2 is on top: play anything';
@@ -368,6 +421,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
               finishRank={finishRank(p.id)}
               phase={view.phase}
               font={oppFont}
+              overlap={opponentCount >= 3}
               seatRef={(el) => {
                 if (el) seatEls.current.set(p.id, el);
                 else seatEls.current.delete(p.id);
@@ -376,16 +430,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
           ))}
         </div>
 
-        <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-4">
-          <button
-            onClick={() => setRulesOpen(true)}
-            aria-label="Rules"
-            className="label absolute right-4 top-0 rounded-md border-2 border-onbg/40 px-2 py-1 text-[10px] text-onbg"
-          >
-            Rules ?
-          </button>
-
-          <div className="flex items-center gap-6">
+        <div
+          className="relative flex min-h-0 flex-1 items-center justify-center gap-4 px-4"
+          onClick={clearSelection}
+        >
+          <div className="flex shrink-0 items-center gap-5 pb-5">
             <div
               ref={stockEl}
               className="relative"
@@ -410,7 +459,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
               className="relative"
               data-testid="pile"
               data-count={pile.length}
-              style={{ width: `${pileFont * 7}px`, height: `${pileFont * 7}px` }}
+              style={{ width: `${pileFont * 6.2}px`, height: `${pileFont * 7}px` }}
             >
               {pile.length === 0 ? (
                 <div
@@ -427,7 +476,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                       size={pileFont}
                       tilt={fromTop === 0 ? 0 : fromTop % 2 ? -7 : 6}
                       className="absolute top-0"
-                      style={{ left: `${pileFont * (1 - fromTop * 0.55)}px` }}
+                      style={{ left: `${pileFont * (1.1 - fromTop * 0.6)}px` }}
                       testId={fromTop === 0 ? 'pile-top' : undefined}
                       flip={{ id: c, origin: () => pileOrigin(c) }}
                     />
@@ -450,21 +499,31 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
             </div>
           </div>
 
-          <div className="mt-4 text-center">
+          <div className="min-w-0 flex-1">
             <p
-              className="label min-h-4 text-[10px] text-onbg/80"
+              className="label min-h-4 text-[10px] leading-snug text-onbg/80"
               data-testid="karma-event"
               aria-live="polite"
             >
-              {view.lastEvent ? describeEvent(view.lastEvent, nameOf) : ' '}
+              {view.lastEvent ? describeEvent(view.lastEvent, nameOf) : ' '}
             </p>
             <p
-              className={`mt-1 text-sm font-semibold ${myTurn ? 'text-onbg' : 'text-onbg/80'}`}
+              className={`mt-1.5 text-sm font-semibold leading-snug ${myTurn ? 'text-onbg' : 'text-onbg/80'}`}
               data-testid="karma-hint"
               data-my-turn={myTurn}
             >
               {hint}
             </p>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setRulesOpen(true);
+              }}
+              aria-label="Rules"
+              className="label mt-2 rounded-md border-2 border-onbg/40 px-2 py-1 text-[10px] text-onbg"
+            >
+              Rules ?
+            </button>
           </div>
         </div>
 
@@ -491,13 +550,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                 }}
                 downState={(slot) =>
                   playing && zone === 'down'
-                    ? {
-                        onClick: () => {
-                          haptic('tap');
-                          setSelDown(selDown === slot ? null : slot);
-                        },
-                        selected: selDown === slot,
-                      }
+                    ? { onClick: () => tapDown(slot), selected: selDown === slot }
                     : {}
                 }
               />
@@ -505,10 +558,10 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
               {/* overflow-x: clip (not auto) keeps cards free to fly up out of the row while animating */}
               <div
                 ref={handEl}
-                className="flex w-full justify-center px-1 pb-1 pt-5"
+                className="flex w-full justify-center px-1 pb-1 pt-4"
                 data-testid="my-hand"
                 style={{
-                  minHeight: `${myFont * 7 + 28}px`,
+                  minHeight: `${myFont * 7 + 22}px`,
                   overflowX: overflowing ? 'auto' : 'clip',
                 }}
               >
@@ -534,14 +587,9 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
               </div>
 
               {swapping && (
-                <Button
-                  data-testid="karma-ready"
-                  className="min-h-11 w-full"
-                  disabled={busy}
-                  onClick={() => void send({ type: 'ready' })}
-                >
-                  Ready
-                </Button>
+                <p className="label flex min-h-11 items-center text-center text-[11px] text-muted">
+                  Tap a card, then tap it again when you are ready
+                </p>
               )}
               {view.phase === 'swap' && mine.ready && (
                 <p className="label flex min-h-11 items-center text-[11px] text-muted">

@@ -16,6 +16,14 @@ async function newPlayer(browser: Browser, nickname: string, avatar: string) {
 // Cards in the fanned hand overlap, so tap the visible left strip, like a thumb would.
 const STRIP = { position: { x: 6, y: 14 } };
 
+/** Getting ready (and playing) is a double tap: select a card, then tap the same card again. */
+async function doubleTapFirstCard(page: Page) {
+  const card = page.locator('[data-testid^=hand-card-]').first();
+  await card.click(STRIP);
+  await expect(card).toHaveAttribute('aria-pressed', 'true');
+  await card.click(STRIP);
+}
+
 interface Snapshot {
   myTurn: boolean;
   event: string;
@@ -61,15 +69,17 @@ async function takeTurn(page: Page, s: Snapshot) {
   if (s.handCount > 0) {
     const card = lowest(s.playableHand);
     if (!card) return page.getByTestId('karma-pickup').click();
-    await page.getByTestId(card.id).click(STRIP);
+    await page.getByTestId(card.id).click(STRIP); // select
+    await page.getByTestId(card.id).click(STRIP); // tap again: play
   } else if (s.hasUp) {
     const card = lowest(s.playableUp);
     if (!card) return page.getByTestId('karma-pickup').click();
     await page.getByTestId(card.id).click();
+    await page.getByTestId(card.id).click();
   } else {
     await page.getByTestId(s.downs[0]!).click();
+    await page.getByTestId(s.downs[0]!).click();
   }
-  await page.getByTestId('karma-play').click();
 }
 
 test('three players play a complete Karma game through the UI', async ({ browser }) => {
@@ -96,7 +106,7 @@ test('three players play a complete Karma game through the UI', async ({ browser
   await alice.page.locator('[data-testid^=hand-card-]').first().click(STRIP);
   await alice.page.getByTestId('my-up-0').click();
   await expect(alice.page.getByTestId('my-up-0')).not.toHaveAttribute('aria-label', upBefore!);
-  for (const p of pages) await p.getByTestId('karma-ready').click();
+  for (const p of pages) await doubleTapFirstCard(p);
   for (const p of pages)
     await expect(p.getByTestId('karma-game')).toHaveAttribute('data-phase', 'play');
 
@@ -226,7 +236,7 @@ test('cards slide when swapped and when played to the pile (unless motion is red
   await calm.page.getByTestId('my-up-0').click();
   expect(await animatesSoon(calm.page, '[data-testid=my-up-0]')).toBe(false);
 
-  for (const p of pages) await p.getByTestId('karma-ready').click();
+  for (const p of pages) await doubleTapFirstCard(p);
   for (const p of pages)
     await expect(p.getByTestId('karma-game')).toHaveAttribute('data-phase', 'play');
   await alice.page.waitForTimeout(300);
@@ -239,7 +249,7 @@ test('cards slide when swapped and when played to the pile (unless motion is red
   const snap = await snapshot(mover);
   const card = snap.playableHand[0]!;
   await mover.getByTestId(card.id).click(STRIP);
-  await mover.getByTestId('karma-play').click();
+  await mover.getByTestId(card.id).click(STRIP);
 
   const watchers = [alice.page, bob.page].filter((p) => p !== mover);
   const [moverAnimates, ...watcherAnimates] = await Promise.all([
@@ -253,4 +263,70 @@ test('cards slide when swapped and when played to the pile (unless motion is red
   }
 
   for (const c of [alice, bob, calm]) await c.context.close();
+});
+
+test('tap selects a card, tapping the same card again plays it; there is no Ready button', async ({
+  browser,
+}) => {
+  const alice = await newPlayer(browser, 'Alice', 'fox');
+  const bob = await newPlayer(browser, 'Bob', 'cat');
+  const [a, b] = [alice.page, bob.page];
+
+  await a.getByTestId('home-new-karma').click();
+  const code = (await a.getByTestId('room-code').textContent())!.trim();
+  await b.getByTestId('home-join-code').fill(code);
+  await b.getByTestId('home-join-submit').click();
+  await a.getByTestId('lobby-start').click();
+  for (const p of [a, b])
+    await expect(p.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
+
+  // No Ready button anywhere.
+  for (const p of [a, b]) await expect(p.getByTestId('karma-ready')).toHaveCount(0);
+
+  // Swap phase: one tap only selects (you can change your mind); the second tap is "ready".
+  const hand = (p: Page) => p.locator('[data-testid^=hand-card-]');
+  await hand(a).nth(0).click(STRIP);
+  await expect(hand(a).nth(0)).toHaveAttribute('aria-pressed', 'true');
+  await hand(a).nth(1).click(STRIP); // a different card: the selection moves
+  await expect(hand(a).nth(0)).toHaveAttribute('aria-pressed', 'false');
+  await expect(hand(a).nth(1)).toHaveAttribute('aria-pressed', 'true');
+  await expect(a.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
+  await hand(a).nth(1).click(STRIP); // same card again: ready
+  await expect(b.getByText('Ready ✓')).toBeVisible(); // Bob sees Alice is ready
+
+  await doubleTapFirstCard(b);
+  for (const p of [a, b])
+    await expect(p.getByTestId('karma-game')).toHaveAttribute('data-phase', 'play');
+
+  // Play phase: find whoever starts.
+  const mover = (await a.getByTestId('karma-hint').getAttribute('data-my-turn')) === 'true' ? a : b;
+  const snap = await snapshot(mover);
+  const [first, second] = snap.playableHand;
+  expect(first && second).toBeTruthy();
+  const pile = mover.getByTestId('pile');
+
+  // One tap selects: nothing is played yet.
+  await mover.getByTestId(first!.id).click(STRIP);
+  await expect(mover.getByTestId(first!.id)).toHaveAttribute('aria-pressed', 'true');
+  await expect(mover.getByTestId('karma-hint')).toContainText('again to play');
+  await expect(pile).toHaveAttribute('data-count', '0');
+
+  // Tapping the table (outside the cards) clears the selection.
+  await mover.getByTestId('karma-hint').click();
+  await expect(mover.getByTestId(first!.id)).toHaveAttribute('aria-pressed', 'false');
+  await expect(pile).toHaveAttribute('data-count', '0');
+
+  // Select, switch to another card of a different rank, then tap that one again to play it.
+  await mover.getByTestId(first!.id).click(STRIP);
+  if (second!.rank !== first!.rank) {
+    await mover.getByTestId(second!.id).click(STRIP);
+    await expect(mover.getByTestId(first!.id)).toHaveAttribute('aria-pressed', 'false');
+    await expect(mover.getByTestId(second!.id)).toHaveAttribute('aria-pressed', 'true');
+    await mover.getByTestId(second!.id).click(STRIP);
+  } else {
+    await mover.getByTestId(first!.id).click(STRIP);
+  }
+  await expect(pile).toHaveAttribute('data-count', /^[1-9]/);
+
+  for (const c of [alice, bob]) await c.context.close();
 });
