@@ -187,7 +187,7 @@ test('cards slide when swapped and when played to the pile (unless motion is red
   for (const c of [alice, bob, calm]) await c.context.close();
 });
 
-test('tap selects a card, tapping the same card again plays it; there is no Ready button', async ({
+test('tap selects a card, tapping the same card again plays it; Ready button works in the swap phase', async ({
   browser,
 }) => {
   const alice = await newPlayer(browser, 'Alice', 'fox');
@@ -202,8 +202,8 @@ test('tap selects a card, tapping the same card again plays it; there is no Read
   for (const p of [a, b])
     await expect(p.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
 
-  // No Ready button anywhere.
-  for (const p of [a, b]) await expect(p.getByTestId('karma-ready')).toHaveCount(0);
+  // The Ready button is there, and the three face-up cards float to say "change these".
+  for (const p of [a, b]) await expect(p.getByTestId('karma-ready')).toBeVisible();
 
   // Swap phase: one tap only selects (you can change your mind); the second tap is "ready".
   const hand = (p: Page) => p.locator('[data-testid^=hand-card-]');
@@ -216,7 +216,8 @@ test('tap selects a card, tapping the same card again plays it; there is no Read
   await hand(a).nth(1).click(STRIP); // same card again: ready
   await expect(b.getByText('Ready ✓')).toBeVisible(); // Bob sees Alice is ready
 
-  await doubleTapFirstCard(b);
+  await b.getByTestId('karma-ready').click();
+  await expect(b.getByTestId('karma-ready')).toHaveCount(0);
   for (const p of [a, b])
     await expect(p.getByTestId('karma-game')).toHaveAttribute('data-phase', 'play');
 

@@ -43,6 +43,7 @@ export function PlayingCard({
   selected = false,
   dimmed = false,
   tilt = 0,
+  float = false,
   onClick,
   className = '',
   style,
@@ -59,6 +60,8 @@ export function PlayingCard({
   dimmed?: boolean;
   /** Rotation in degrees (a casually tossed card on the pile). */
   tilt?: number;
+  /** Gently float and glow ("these are the cards to change"). */
+  float?: boolean;
   onClick?: () => void;
   className?: string;
   style?: CSSProperties;
@@ -190,6 +193,8 @@ export function PlayingCard({
     </span>
   );
 
+  const body = float ? <span className="card-float absolute inset-0 block">{inner}</span> : inner;
+
   const common = {
     'data-testid': testId,
     'aria-label': label ?? (showFace ? karma.cardLabel(card) : 'Face-down card'),
@@ -207,11 +212,11 @@ export function PlayingCard({
       {...common}
       ref={ref as React.RefObject<HTMLButtonElement>}
     >
-      {inner}
+      {body}
     </button>
   ) : (
     <span {...common} role="img" ref={ref as React.RefObject<HTMLSpanElement>}>
-      {inner}
+      {body}
     </span>
   );
 }

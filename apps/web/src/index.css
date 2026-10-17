@@ -125,7 +125,25 @@ button {
   }
 }
 
+@keyframes card-float {
+  0%,
+  100% {
+    transform: translateY(0);
+    filter: drop-shadow(0 0 0 rgb(var(--c-neon) / 0));
+  }
+  50% {
+    transform: translateY(-0.6em);
+    filter: drop-shadow(0 0 0.5em rgb(var(--c-neon) / 0.95));
+  }
+}
+.card-float {
+  animation: card-float 1.8s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .card-float {
+    animation: none;
+  }
   .animate-dice-roll,
   .animate-pop,
   .animate-slide-up {

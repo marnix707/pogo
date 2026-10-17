@@ -63,7 +63,13 @@ function TableSlots({
   upState?: (
     card: Card,
     slot: number,
-  ) => { onClick?: () => void; selected?: boolean; dimmed?: boolean; playable?: boolean };
+  ) => {
+    onClick?: () => void;
+    selected?: boolean;
+    dimmed?: boolean;
+    playable?: boolean;
+    float?: boolean;
+  };
   downState?: (slot: number) => { onClick?: () => void; selected?: boolean };
 }) {
   const offset = font * 2.2;
@@ -104,6 +110,7 @@ function TableSlots({
                 testId={idPrefix ? `${idPrefix}-up-${slot}` : undefined}
                 onClick={upProps?.onClick}
                 selected={upProps?.selected}
+                float={upProps?.float}
                 dimmed={upProps?.dimmed}
                 data={
                   upProps?.playable === undefined
@@ -432,12 +439,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   let hint = '';
   if (finished) hint = 'Game over';
   else if (swapping) {
-    if (swapHand !== null)
-      hint = 'Tap a face-up card to swap, or tap this card again when you are ready';
-    else if (swapUp !== null)
-      hint = 'Tap a hand card to swap, or tap this card again when you are ready';
+    if (swapHand !== null) hint = 'Tap a face-up card to swap, or press Ready';
+    else if (swapUp !== null) hint = 'Tap a hand card to swap, or press Ready';
     else
-      hint = 'Swap hand and face-up cards (tap one of each). Double-tap a card when you are done';
+      hint =
+        'Time to swap! Tap a floating face-up card and a hand card to switch them, then press Ready';
   } else if (view.phase === 'swap') hint = 'Waiting for the others to get ready…';
   else if (myTurn && (sel.length > 0 || selDown !== null)) {
     hint = 'Tap the card again to play it';
@@ -617,7 +623,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                   idPrefix="my"
                   upState={(card, slot) => {
                     if (swapping)
-                      return { onClick: () => tapSwapUp(slot), selected: swapUp === slot };
+                      return {
+                        onClick: () => tapSwapUp(slot),
+                        selected: swapUp === slot,
+                        float: true,
+                      };
                     if (playing && zone === 'up') {
                       return {
                         onClick: () => tapCard(card),
@@ -673,7 +683,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
 
                 {swapping && (
                   <p className="label text-center text-[11px] text-muted">
-                    Tap a card, then tap it again when you are ready
+                    Swap with the floating cards, then press Ready
                   </p>
                 )}
                 {view.phase === 'swap' && mine.ready && (
@@ -698,10 +708,18 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                     <p className="label text-[9px] leading-none text-muted">
                       {myTurn ? 'Your turn' : `${nameOf(currentId ?? '')}`.slice(0, 10)}
                     </p>
-                    <p className="text-xl font-bold leading-tight tabular-nums">
-                      {secondsLeft}s
-                    </p>
+                    <p className="text-xl font-bold leading-tight tabular-nums">{secondsLeft}s</p>
                   </div>
+                )}
+                {swapping && (
+                  <Button
+                    data-testid="karma-ready"
+                    className="min-h-11 !px-2 !text-xs"
+                    disabled={busy}
+                    onClick={() => void getReady()}
+                  >
+                    Ready
+                  </Button>
                 )}
                 {playing && (
                   <>
