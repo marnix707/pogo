@@ -258,28 +258,27 @@ function Seat({
   );
 }
 
-/** One short line for the latest move: "Bob played 7♥ · drew 2", "You picked up 5 cards", ... */
+/** One short line for the latest move: "Bob played 7♥", "You picked up all the cards!", ... */
 function describeEvent(
   ev: karma.KarmaEvent,
   nameOf: (id: string) => string,
-  extra: { drawn: number; timedOut: boolean; again: boolean },
+  extra: { timedOut: boolean; again: boolean },
 ): string {
   const who = nameOf(ev.playerId);
   const parts: string[] = [];
   if (ev.kind === 'pickup') {
-    parts.push(`${who} picked up ${ev.pickedUp} card${ev.pickedUp === 1 ? '' : 's'}`);
+    parts.push(`${who} picked up all the cards!`);
   } else if (ev.kind === 'blind') {
     const c = cardLabel(ev.cards[0] as Card);
     parts.push(
       ev.pickedUp > 0
-        ? `${who} flipped ${c}, too low: picked up ${ev.pickedUp}`
+        ? `${who} flipped ${c}, too low: picked up all the cards!`
         : `${who} flipped ${c}`,
     );
   } else {
     parts.push(`${who} played ${ev.cards.map(cardLabel).join(' ')}`);
   }
   if (ev.burned) parts.push('burned 🔥');
-  if (extra.drawn > 0) parts.push(`drew ${extra.drawn} card${extra.drawn === 1 ? '' : 's'}`);
   if (extra.again) parts.push(who === 'You' ? 'go again' : 'plays again');
   else if (ev.skipped.length > 0) parts.push(`${ev.skipped.map(nameOf).join(', ')} skipped`);
   if (ev.out) parts.push('out!');
@@ -386,28 +385,23 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const latest = useRef({
     nameOf,
     finishOrder: view.finishOrder,
-    stock: 0,
     now: 0,
     currentId,
   });
   latest.current = {
     nameOf,
     finishOrder: view.finishOrder,
-    stock: view.stockCount,
     now: room.serverTime,
     currentId,
   };
   // The one-line narration of the latest move, with what the event itself does not say:
-  // how many cards were drawn (the deck shrank) and whether the turn clock ran out.
+  // whether the turn clock ran out.
   const [note, setNote] = useState<{
     ev: karma.KarmaEvent;
-    drawn: number;
     timedOut: boolean;
     again: boolean;
-  } | null>(() =>
-    view.lastEvent ? { ev: view.lastEvent, drawn: 0, timedOut: false, again: false } : null,
-  );
-  const before = useRef({ stock: view.stockCount, deadline: game.deadline });
+  } | null>(() => (view.lastEvent ? { ev: view.lastEvent, timedOut: false, again: false } : null));
+  const before = useRef({ deadline: game.deadline });
   const lastSeq = useRef(view.lastEvent?.seq ?? 0);
   useEffect(() => {
     const ev = view.lastEvent;
@@ -423,7 +417,6 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     setNote({
       again,
       ev,
-      drawn: Math.max(0, before.current.stock - latest.current.stock),
       timedOut:
         before.current.deadline !== null && latest.current.now >= before.current.deadline - 300,
     });
@@ -451,7 +444,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   }, [view.lastEvent, me]);
   // (declared after the effect above, so it still sees the previous values when a move arrives)
   useEffect(() => {
-    before.current = { stock: view.stockCount, deadline: game.deadline };
+    before.current = { deadline: game.deadline };
   });
 
   // A gentle buzz when ten seconds are left on my turn.

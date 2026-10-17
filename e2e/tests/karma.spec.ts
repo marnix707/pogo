@@ -313,9 +313,6 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
   const snap = await snapshot(mover);
   await takeTurn(mover, snap);
   await expect(mover.getByTestId('karma-event')).toContainText('played');
-  // One short line: what was played and how many cards were drawn to refill the hand.
-  await expect(mover.getByTestId('karma-event')).toContainText(/drew \d+ cards?/);
-  await expect(other.getByTestId('karma-event')).toContainText(/played .* · drew/);
   // The action column keeps its place between turns (no bump when the turn passes).
   await expect(mover.getByTestId('karma-play')).toBeDisabled();
   const playAfter = await mover.getByTestId('karma-play').boundingBox();
@@ -329,7 +326,7 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
     await expect(pile).toHaveAttribute('data-armed', 'true');
     await expect(other.getByTestId('karma-hint')).toContainText('pile again');
     await pile.click();
-    await expect(other.getByTestId('karma-event')).toContainText('picked up');
+    await expect(other.getByTestId('karma-event')).toContainText('picked up all the cards');
   }
 
   for (const c of [alice, bob]) await c.context.close();
