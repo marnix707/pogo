@@ -16,10 +16,10 @@ export function KarmaRules({ open, onClose }: { open: boolean; onClose: () => vo
         </li>
         <li>
           <b className="text-neon">Your turn:</b> tap a card to select it (tap it again to
-          deselect), then press <b>Play</b>. You can play several cards of the same rank at once:
-          select them one by one, then press Play. The card must be equal to or higher than the top
-          card of the pile. Can&apos;t or don&apos;t want to? Tap <b>Pick up</b> to take the whole
-          pile.
+          deselect), then press <b>Play</b>, or double-tap a card to play it quickly. If you hold
+          several cards of the same rank, tapping one selects them all (you can play them together;
+          no double-tap then). The card must be equal to or higher than the top card of the pile.
+          Can&apos;t or don&apos;t want to? Tap <b>Pick up</b> to take the whole pile.
         </li>
         <li>
           <b className="text-neon">2</b> goes on anything, and anything goes on a 2.{' '}

@@ -226,34 +226,51 @@ test('tap selects, tapping again deselects, the Play button plays; Ready button 
   // Play phase: find whoever starts.
   const mover = (await a.getByTestId('karma-hint').getAttribute('data-my-turn')) === 'true' ? a : b;
   const snap = await snapshot(mover);
-  const [first, second] = snap.playableHand;
-  expect(first && second).toBeTruthy();
+  const [first] = snap.playableHand;
+  expect(first).toBeTruthy();
   const pile = mover.getByTestId('pile');
+  const group = (rank: number) => snap.playableHand.filter((c) => c.rank === rank);
+  const pressed = (id: string, value: boolean) =>
+    expect(mover.getByTestId(id)).toHaveAttribute('aria-pressed', String(value));
 
-  // One tap selects: nothing is played yet.
+  // One tap selects (all cards of that rank, if you hold several): nothing is played yet.
   await mover.getByTestId(first!.id).click(STRIP);
-  await expect(mover.getByTestId(first!.id)).toHaveAttribute('aria-pressed', 'true');
+  for (const c of group(first!.rank)) await pressed(c.id, true);
   await expect(mover.getByTestId('karma-hint')).toContainText('Press Play');
   await expect(pile).toHaveAttribute('data-count', '0');
 
   // Tapping the table (outside the cards) clears the selection.
   await mover.getByTestId('karma-hint').click();
-  await expect(mover.getByTestId(first!.id)).toHaveAttribute('aria-pressed', 'false');
-  await expect(pile).toHaveAttribute('data-count', '0');
+  for (const c of group(first!.rank)) await pressed(c.id, false);
 
-  // Select, switch to another card of a different rank, deselect it, select again and press Play.
+  // Tapping again deselects. With duplicates even a fast double tap only deselects (no play).
+  await mover.waitForTimeout(450);
   await mover.getByTestId(first!.id).click(STRIP);
-  if (second!.rank !== first!.rank) {
-    await mover.getByTestId(second!.id).click(STRIP);
-    await expect(mover.getByTestId(first!.id)).toHaveAttribute('aria-pressed', 'false');
-    await expect(mover.getByTestId(second!.id)).toHaveAttribute('aria-pressed', 'true');
-    await mover.getByTestId(second!.id).click(STRIP);
-    await expect(mover.getByTestId(second!.id)).toHaveAttribute('aria-pressed', 'false');
-    await expect(mover.getByTestId('karma-play')).toBeDisabled();
-    await expect(pile).toHaveAttribute('data-count', '0');
-    await mover.getByTestId(second!.id).click(STRIP);
+  if (group(first!.rank).length > 1) {
+    await mover.getByTestId(first!.id).click(STRIP); // quickly again: deselects, does not play
+  } else {
+    await pressed(first!.id, true);
+    await mover.waitForTimeout(450); // a slow second tap deselects
+    await mover.getByTestId(first!.id).click(STRIP);
   }
-  await mover.getByTestId('karma-play').click();
+  for (const c of group(first!.rank)) await pressed(c.id, false);
+  await expect(pile).toHaveAttribute('data-count', '0');
+  await expect(mover.getByTestId('karma-play')).toBeDisabled();
+
+  // Tapping a card of another rank selects that rank instead.
+  const other = snap.playableHand.find((c) => c.rank !== first!.rank) ?? first!;
+  await mover.waitForTimeout(450);
+  await mover.getByTestId(other.id).click(STRIP);
+  for (const c of group(other.rank)) await pressed(c.id, true);
+
+  if (group(other.rank).length === 1) {
+    // A card held once: a quick double tap plays it.
+    await mover.waitForTimeout(450);
+    await mover.getByTestId(other.id).click(STRIP); // deselect
+    await mover.getByTestId(other.id).click(STRIP); // quickly again: plays
+  } else {
+    await mover.getByTestId('karma-play').click();
+  }
   // (A 10 would burn the pile, leaving it empty, so check the narration rather than the pile size.)
   await expect(mover.getByTestId('karma-event')).toContainText('played');
 

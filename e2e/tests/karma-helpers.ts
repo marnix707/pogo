@@ -21,13 +21,16 @@ export async function readyUp(page: Page) {
   await page.getByTestId('karma-ready').click();
 }
 
-/** Select a set of same-rank cards one by one, then press Play. */
+/**
+ * Select a set of same-rank cards and press Play. Tapping one card of a rank selects all the
+ * cards of that rank you hold, so one tap is enough for a set as well as for a single card.
+ */
 async function playSet(
   page: Page,
   ids: string[],
   tap: { position: { x: number; y: number } } | undefined,
 ) {
-  for (const id of ids) await page.getByTestId(id).click(tap);
+  await page.getByTestId(ids[0]!).click(tap);
   await page.getByTestId('karma-play').click();
 }
 

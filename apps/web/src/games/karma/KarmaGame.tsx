@@ -8,6 +8,7 @@ import { play } from '../../lib/sound';
 import { useCountdown } from '../../lib/useCountdown';
 import type { GameUiProps } from '../types';
 import { KarmaRules } from './KarmaRules';
+import { DOUBLE_TAP_MS, planTap } from './selection';
 import { WinReveal } from './WinReveal';
 import { CardFlipContext, PlayingCard } from './PlayingCard';
 import type { FlipOrigin } from './PlayingCard';
@@ -508,22 +509,43 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     }
   }
 
-  /** Play phase: tap selects (same-rank cards add up), tap a selected card again to deselect it. */
+  /** True when this is the second tap on the same thing within DOUBLE_TAP_MS. */
+  const lastTap = useRef({ key: '', at: 0 });
+  function isDoubleTap(key: string): boolean {
+    const now = Date.now();
+    const fast = lastTap.current.key === key && now - lastTap.current.at < DOUBLE_TAP_MS;
+    lastTap.current = { key, at: fast ? 0 : now };
+    return fast;
+  }
+
+  /**
+   * Play phase, see `planTap`: a rank held several times is selected as a whole set (then press
+   * Play); a card held once is tap-to-select, tap-again-to-deselect, quick double tap to play.
+   */
   function tapCard(card: Card) {
     if (!playing || !canPlayRank(pile, rankOf(card))) return;
+    const zoneCards = zone === 'hand' ? hand : (mine?.faceUp ?? []).filter((c) => c !== null);
+    const plan = planTap({
+      zoneCards,
+      selected: sel,
+      card,
+      fast: isDoubleTap(`c${card}`),
+    });
+    if (plan.type === 'play') {
+      void playSelected(plan.cards, null);
+      return;
+    }
     haptic('tap');
     setSelDown(null);
     setPileArmed(false);
-    setSel((prev) =>
-      prev.includes(card)
-        ? prev.filter((c) => c !== card)
-        : prev.length > 0 && rankOf(prev[0] as Card) === rankOf(card)
-          ? [...prev, card]
-          : [card],
-    );
+    setSel(plan.type === 'select' ? plan.cards : []);
   }
 
   function tapDown(slot: number) {
+    if (isDoubleTap(`d${slot}`)) {
+      void playSelected([], slot);
+      return;
+    }
     haptic('tap');
     setSel([]);
     setPileArmed(false);
@@ -560,11 +582,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     flashHint('Cards are drawn for you after you play');
   }
 
-  async function playSelected() {
+  async function playSelected(cards: Card[] = sel, down: number | null = selDown) {
     const res =
-      selDown !== null
-        ? await send({ type: 'playDown', index: selDown })
-        : await send({ type: 'play', cards: sel });
+      down !== null
+        ? await send({ type: 'playDown', index: down })
+        : await send({ type: 'play', cards });
     if (res?.ok) {
       setSel([]);
       setSelDown(null);
@@ -583,7 +605,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         'Time to swap! Tap a floating face-up card and a hand card to switch them, then press Ready';
   } else if (view.phase === 'swap') hint = 'Waiting for the others to get ready…';
   else if (myTurn && (sel.length > 0 || selDown !== null)) {
-    hint = 'Press Play · tap a selected card again to deselect';
+    hint = 'Press Play · tap again to deselect (a single card: double-tap plays)';
   }
 
   const shownHint = flash ?? (pileArmed ? 'Tap the pile again to pick it up' : hint);
