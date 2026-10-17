@@ -11,6 +11,8 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     strictPort: true,
+    // Dev server only: reachable by LAN IP from phones and by service name from the e2e container.
+    allowedHosts: true,
     watch: usePolling ? { usePolling: true, interval: 300 } : undefined,
     // One origin for the phone: the dev server proxies API + realtime to the server container.
     proxy: {

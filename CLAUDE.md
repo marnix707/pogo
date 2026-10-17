@@ -29,7 +29,7 @@ Moves: `{type:'roll', held:boolean[5]}` (holds are sent with the roll; ignored o
 - Protocol (`packages/shared/src/protocol`): client emits `room:create|join|leave|kick|settings|start|rematch` and `game:move` with Zod-validated payloads and an ack `Result`; server pushes `room:state` (per-player filtered `RoomView`, or `null` + reason when you are no longer in a room) on every change and on (re)connect.
 - Presence: a user is connected while ≥1 socket is open. Lobby: disconnected members are dropped after `DISCONNECT_GRACE_SEC`. In game: seat is kept; if every current player is absent for the grace period, or the turn timer (`TURN_TIME_SEC`, per-room `turnTimeSec`, 0 = off) runs out, the server auto-plays via `autoMove` (multi-step turns are paced ~1.2s apart). Rooms nobody is connected to are deleted after `ROOM_TTL_SEC`.
 - Rate limiting: REST via `@fastify/rate-limit`; sockets via a per-socket token bucket (20 burst, 10/s).
-- `apps/web/src/Playground.tsx` is a temporary dev UI (create/join/start/play Yatzy, share link `/?join=CODE`); the real UI replaces it in M4.
+- Share links look like `/?join=CODE` (handled by the web shell after sign-in).
 
 ## Deployment (Render free tier + Neon, Frankfurt)
 
@@ -39,6 +39,18 @@ Moves: `{type:'roll', held:boolean[5]}` (holds are sent with the roll; ignored o
 - Production runs with `trustProxy` so rate limits use the real client IP; only `/api` is rate limited.
 - Free-tier caveats: spins down after 15 min without traffic (~1 min cold start); in-memory rooms are lost on restart/redeploy; single instance only.
 - Test the prod image locally: `docker build -t pogo-prod .` then run it on the compose network with `DATABASE_URL` pointing at a scratch database.
+
+## Web app (apps/web)
+
+- Screens are driven by the server's `room:state`: `Shell.tsx` owns the socket (`lib/socket.ts`) and renders `Home` (no room), `Lobby` (status `lobby`) or `GameScreen` (`playing`/`finished`, includes the generic results panel). Screens call the server only through the `RoomApi` object (`lib/api.ts`), and failures are toasted centrally in the shell.
+- Game UI plug-in: add a `GameUi` (`games/types.ts`: id, name, emoji, tagline, `Component({room, me, sendMove})`) and register it in `games/registry.ts`. Yatzy lives in `games/yatzy/` (`YatzyGame` = turn banner + `Scorecard` + dice dock with `Die`).
+- Yatzy UX: holds are local until you roll; tap a category chip then "Score"; the roll animation is cosmetic (faces flicker with `Math.random`, real values come from the server). `prefers-reduced-motion` skips animations (the e2e tests rely on this).
+- Settings (sound, vibration, theme auto/light/dark) are in `lib/settings.ts` (localStorage `pogo.settings`); sounds are synthesized with WebAudio (`lib/sound.ts`, no audio files); haptics use `navigator.vibrate` (`lib/haptics.ts`).
+- Stable `data-testid`s (e.g. `roll-button`, `pick-<category>`, `score-button`, `turn-banner`, `results-panel`) are used by the e2e tests; keep them when refactoring.
+
+## End-to-end tests (e2e/)
+
+Standalone Playwright project (own `package.json`/lockfile, not part of the pnpm workspace) running in the official Playwright image against the compose stack: `make e2e` (= `docker compose --profile e2e run --rm e2e`, needs the stack up). It plays a full two-player Yatzy game with a mid-turn reload, plus a share-link join and kick test. Playwright version in `e2e/package.json`, `e2e/Dockerfile` must match.
 
 ## Conventions
 
@@ -63,5 +75,5 @@ Moves: `{type:'roll', held:boolean[5]}` (holds are sent with the roll; ignored o
 
 ## Milestones
 
-1 Scaffold + Docker (done) · 2 Shared types/plug-in interface/Yatzy logic + tests (done) · 3 Realtime server (guests, rooms, reconnect) (done) · 4 Mobile Yatzy UI + e2e · 5 Public lobby + chat · 6 Accounts, stats, PWA · 7 Production Docker + deploy guide.
+1 Scaffold + Docker (done) · 2 Shared types/plug-in interface/Yatzy logic + tests (done) · 3 Realtime server (guests, rooms, reconnect) (done) · 4 Mobile Yatzy UI + e2e (done) · 5 Public lobby + chat · 6 Accounts, stats, PWA · 7 Production Docker + deploy guide.
 Work one milestone at a time; at the end run tests, verify in Docker, commit, summarize, explain phone testing, wait for go-ahead.

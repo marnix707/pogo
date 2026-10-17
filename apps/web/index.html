@@ -8,6 +8,16 @@
     />
     <meta name="theme-color" content="#7c3aed" />
     <title>Pogo</title>
+    <script>
+      // Apply the saved theme before first paint to avoid a light flash in dark mode.
+      try {
+        var s = JSON.parse(localStorage.getItem('pogo.settings') || '{}');
+        var dark =
+          s.theme === 'dark' ||
+          (s.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', dark);
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

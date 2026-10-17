@@ -3,7 +3,7 @@ export HOST_LAN_IPS := $(shell ./scripts/lan-ips.sh)
 RUN := docker compose run --rm --no-deps -w /app server
 
 .DEFAULT_GOAL := help
-.PHONY: help env up down logs ps urls test lint typecheck format migrate db-reset db-shell shell lock clean
+.PHONY: help env up down logs ps urls test e2e lint typecheck format migrate db-reset db-shell shell lock clean
 
 help: ## Show this help
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
@@ -33,6 +33,9 @@ urls: ## Print the URLs to open (including the one for your phone)
 
 test: ## Run all unit tests inside the container
 	$(RUN) pnpm test
+
+e2e: ## Run the Playwright two-player test (needs `make up`)
+	docker compose --profile e2e run --rm e2e
 
 lint: ## ESLint + Prettier check
 	$(RUN) sh -c "pnpm lint && pnpm format:check"

@@ -84,5 +84,19 @@ services:
       retries: 20
       start_period: 10s
 
+  # End-to-end tests (Playwright + Chromium): `make e2e` or `docker compose --profile e2e run --rm e2e`
+  e2e:
+    profiles: ['e2e']
+    build: ./e2e
+    environment:
+      BASE_URL: http://web:5173
+    volumes:
+      - ./e2e/tests:/e2e/tests
+      - ./e2e/playwright.config.ts:/e2e/playwright.config.ts
+      - ./e2e/test-results:/e2e/test-results
+    depends_on:
+      web:
+        condition: service_healthy
+
 volumes:
   pgdata:

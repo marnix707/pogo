@@ -17,7 +17,9 @@ export function useRealtime(token: string) {
   const socketRef = useRef<PogoSocket | null>(null);
   const [connection, setConnection] = useState<Connection>('connecting');
   const [room, setRoom] = useState<RoomView | null>(null);
-  const [leftReason, setLeftReason] = useState<LeaveReason>();
+  /** True once the server has told us where we are (a room or none) since connecting. */
+  const [synced, setSynced] = useState(false);
+  const [leftReason, setLeftReason] = useState<{ reason: LeaveReason; at: number }>();
 
   useEffect(() => {
     const socket: PogoSocket = io({ auth: { token } });
@@ -27,7 +29,8 @@ export function useRealtime(token: string) {
     socket.io.on('reconnect_attempt', () => setConnection('connecting'));
     socket.on('room:state', (next, reason) => {
       setRoom(next);
-      setLeftReason(next ? undefined : reason);
+      setSynced(true);
+      if (!next && reason) setLeftReason({ reason, at: Date.now() });
     });
     return () => {
       socket.disconnect();
@@ -42,12 +45,12 @@ export function useRealtime(token: string) {
     ) =>
       new Promise<Result<unknown>>((resolve) => {
         const socket = socketRef.current;
-        if (!socket?.connected) return resolve({ ok: false, error: 'Not connected' });
+        if (!socket?.connected) return resolve({ ok: false, error: 'You are offline' });
         const emit = socket.emit.bind(socket) as (e: string, p: unknown, ack: unknown) => void;
         emit(event, payload, resolve);
       }),
     [],
   );
 
-  return { connection, room, leftReason, request };
+  return { connection, room, synced, leftReason, request };
 }
