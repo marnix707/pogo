@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import type { Socket } from 'socket.io-client';
 import type {
+  ChatMessage,
   ClientToServerEvents,
   LeaveReason,
+  PublicRoomSummary,
   Result,
   RoomView,
   ServerToClientEvents,
@@ -11,6 +13,8 @@ import type {
 
 type PogoSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 export type Connection = 'connecting' | 'online' | 'offline';
+
+const CHAT_KEEP = 100;
 
 /** One authenticated socket for the session; mirrors the server's view of "my room". */
 export function useRealtime(token: string) {
@@ -20,18 +24,50 @@ export function useRealtime(token: string) {
   /** True once the server has told us where we are (a room or none) since connecting. */
   const [synced, setSynced] = useState(false);
   const [leftReason, setLeftReason] = useState<{ reason: LeaveReason; at: number }>();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [readUpTo, setReadUpTo] = useState(0);
+  const [lobby, setLobby] = useState<PublicRoomSummary[] | null>(null);
+  const roomCodeRef = useRef<string>();
+  const lobbyWatchers = useRef(0);
 
   useEffect(() => {
     const socket: PogoSocket = io({ auth: { token } });
     socketRef.current = socket;
-    socket.on('connect', () => setConnection('online'));
+
+    const subscribeLobby = () => {
+      if (lobbyWatchers.current === 0) return;
+      socket.emit('lobby:subscribe', {}, (res) => {
+        if (res.ok) setLobby(res.data);
+      });
+    };
+
+    socket.on('connect', () => {
+      setConnection('online');
+      subscribeLobby(); // socket.io rooms do not survive a reconnect
+    });
     socket.on('disconnect', () => setConnection('offline'));
     socket.io.on('reconnect_attempt', () => setConnection('connecting'));
     socket.on('room:state', (next, reason) => {
+      const previous = roomCodeRef.current;
+      roomCodeRef.current = next?.code;
+      // New room (or none): start with an empty chat. History for a room we are (re)entering
+      // can arrive just before this event, so only clear when we are really switching away.
+      if (!next || (previous && next.code !== previous)) {
+        setMessages([]);
+        setReadUpTo(0);
+      }
       setRoom(next);
       setSynced(true);
       if (!next && reason) setLeftReason({ reason, at: Date.now() });
     });
+    socket.on('chat:history', (history) => setMessages(history.slice(-CHAT_KEEP)));
+    socket.on('chat:message', (message) =>
+      setMessages((all) =>
+        all.some((m) => m.id === message.id) ? all : [...all, message].slice(-CHAT_KEEP),
+      ),
+    );
+    socket.on('lobby:list', setLobby);
+
     return () => {
       socket.disconnect();
       socketRef.current = null;
@@ -52,5 +88,37 @@ export function useRealtime(token: string) {
     [],
   );
 
-  return { connection, room, synced, leftReason, request };
+  /** Subscribe to live public-room updates while a screen needs them. Returns the cleanup. */
+  const watchLobby = useCallback(() => {
+    lobbyWatchers.current++;
+    const socket = socketRef.current;
+    if (socket?.connected) {
+      socket.emit('lobby:subscribe', {}, (res) => {
+        if (res.ok) setLobby(res.data);
+      });
+    }
+    return () => {
+      lobbyWatchers.current--;
+      if (lobbyWatchers.current === 0) {
+        socketRef.current?.emit('lobby:unsubscribe', {}, () => {});
+      }
+    };
+  }, []);
+
+  const markRead = useCallback(() => {
+    setReadUpTo((current) => Math.max(current, ...messages.map((m) => m.id)));
+  }, [messages]);
+
+  return {
+    connection,
+    room,
+    synced,
+    leftReason,
+    messages,
+    readUpTo,
+    markRead,
+    lobby,
+    watchLobby,
+    request,
+  };
 }

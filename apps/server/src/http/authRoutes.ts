@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { profileSchema } from '@pogo/shared';
+import { containsProfanity, profileSchema } from '@pogo/shared';
 import type { AuthResponse, PublicUser } from '@pogo/shared';
 import type { TokenService } from '../auth/tokens';
 import type { UserStore } from '../auth/userStore';
@@ -30,6 +30,9 @@ export function registerAuthRoutes(
       if (!parsed.success) {
         return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? 'Invalid input' });
       }
+      if (containsProfanity(parsed.data.nickname)) {
+        return reply.code(400).send({ error: 'Please pick a different nickname' });
+      }
       const user = await users.createGuest(parsed.data);
       const body: AuthResponse = { token: await tokens.sign(user.id), user };
       return reply.code(201).send(body);
@@ -48,6 +51,9 @@ export function registerAuthRoutes(
     const parsed = profileSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? 'Invalid input' });
+    }
+    if (containsProfanity(parsed.data.nickname)) {
+      return reply.code(400).send({ error: 'Please pick a different nickname' });
     }
     const updated = await users.updateProfile(user.id, parsed.data);
     return { user: updated };

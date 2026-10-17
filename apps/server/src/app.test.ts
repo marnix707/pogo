@@ -5,6 +5,8 @@ import type { Socket } from 'socket.io-client';
 import { createSeededRng } from '@pogo/shared';
 import type {
   Ack,
+  ChatMessage,
+  PublicRoomSummary,
   AuthResponse,
   ClientToServerEvents,
   RoomView,
@@ -192,5 +194,156 @@ describe('sockets', () => {
       Array.from({ length: 60 }, () => call((ack) => D.client.emit('room:leave', {}, ack))),
     );
     expect(results.some((r) => !r.ok && r.error === 'Slow down a little')).toBe(true);
+  });
+});
+
+/** Resolve with the next `event` payload that satisfies `pred`. */
+function nextEvent<T>(
+  client: Client,
+  event: 'lobby:list' | 'chat:message',
+  pred: (v: T) => boolean,
+) {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`timed out waiting for ${event}`)), 2000);
+    const handler = (value: unknown) => {
+      if (!pred(value as T)) return;
+      clearTimeout(timer);
+      (client as Socket).off(event, handler);
+      resolve(value as T);
+    };
+    (client as Socket).on(event, handler);
+  });
+}
+
+describe('public lobby over sockets', () => {
+  it('pushes live updates to subscribers as public rooms appear, fill and vanish', async () => {
+    const [ua, ub] = [await signup('Lobbyist'), await signup('Host')];
+    const watcher = await login(ua.token);
+    const host = await login(ub.token);
+
+    const initial = await call<PublicRoomSummary[]>((ack) =>
+      watcher.client.emit('lobby:subscribe', {}, ack),
+    );
+    expect(initial.ok && initial.data.filter((r) => r.hostNickname === 'Host')).toEqual([]);
+
+    const appeared = nextEvent<PublicRoomSummary[]>(watcher.client, 'lobby:list', (l) =>
+      l.some((r) => r.hostNickname === 'Host'),
+    );
+    const created = await call<RoomView>((ack) =>
+      host.client.emit('room:create', { gameId: 'yatzy', visibility: 'public' }, ack),
+    );
+    if (!created.ok) throw new Error(created.error);
+    const listed = (await appeared).find((r) => r.code === created.data.code);
+    expect(listed).toMatchObject({ gameId: 'yatzy', players: 1, maxPlayers: 6, hostAvatar: 'fox' });
+
+    // Going private removes it from the list.
+    const vanished = nextEvent<PublicRoomSummary[]>(
+      watcher.client,
+      'lobby:list',
+      (l) => !l.some((r) => r.code === created.data.code),
+    );
+    await call((ack) => host.client.emit('room:settings', { visibility: 'private' }, ack));
+    await vanished;
+
+    // After unsubscribing nothing more arrives.
+    await call((ack) => watcher.client.emit('lobby:unsubscribe', {}, ack));
+    let extra = 0;
+    watcher.client.on('lobby:list', () => extra++);
+    await call((ack) => host.client.emit('room:settings', { visibility: 'public' }, ack));
+    await new Promise((r) => setTimeout(r, 400));
+    expect(extra).toBe(0);
+  });
+
+  it('quick match pairs two players in the same public room', async () => {
+    const [ua, ub] = [await signup('QuickA'), await signup('QuickB')];
+    const [a, b] = [await login(ua.token), await login(ub.token)];
+    const first = await call<RoomView>((ack) =>
+      a.client.emit('room:quickplay', { gameId: 'yatzy' }, ack),
+    );
+    const second = await call<RoomView>((ack) =>
+      b.client.emit('room:quickplay', { gameId: 'yatzy' }, ack),
+    );
+    if (!first.ok || !second.ok) throw new Error('quick match failed');
+    // (Other tests may have left public rooms open; quick match joins the longest-waiting one.)
+    expect(second.data.code).toBe(first.data.code);
+    const ids = second.data.members.map((m) => m.id);
+    expect(ids).toContain(ua.user.id);
+    expect(ids).toContain(ub.user.id);
+  });
+});
+
+describe('chat over sockets', () => {
+  it('delivers messages to the room, masks profanity, and replays history on reconnect', async () => {
+    const [ua, ub] = [await signup('Chatty'), await signup('Listener')];
+    const [a, b] = [await login(ua.token), await login(ub.token)];
+    const created = await call<RoomView>((ack) =>
+      a.client.emit('room:create', { gameId: 'yatzy' }, ack),
+    );
+    if (!created.ok) throw new Error(created.error);
+    await call((ack) => b.client.emit('room:join', { code: created.data.code }, ack));
+
+    const received = nextEvent<ChatMessage>(b.client, 'chat:message', (m) => m.text.includes('so'));
+    const sent = await call<null>((ack) =>
+      a.client.emit('chat:send', { text: '  well shit, so close  ' }, ack),
+    );
+    expect(sent.ok).toBe(true);
+    expect(await received).toMatchObject({
+      userId: ua.user.id,
+      nickname: 'Chatty',
+      text: 'well ****, so close',
+    });
+
+    // Bob refreshes: he gets the history back.
+    b.client.disconnect();
+    const history = new Promise<ChatMessage[]>((resolve) => {
+      const b2 = connect(base, {
+        auth: { token: ub.token },
+        transports: ['websocket'],
+        forceNew: true,
+      });
+      open.push(b2);
+      b2.on('chat:history', resolve);
+    });
+    expect((await history).map((m) => m.text)).toEqual(['well ****, so close']);
+  });
+
+  it('rejects empty, oversized and out-of-room messages', async () => {
+    const { token } = await signup('Lonely');
+    const c = await login(token);
+    expect(await call((ack) => c.client.emit('chat:send', { text: 'hi' }, ack))).toEqual({
+      ok: false,
+      error: 'You are not in a room',
+    });
+    await call((ack) => c.client.emit('room:create', { gameId: 'yatzy' }, ack));
+    expect((await call((ack) => c.client.emit('chat:send', { text: '   ' }, ack))).ok).toBe(false);
+    expect(
+      (await call((ack) => c.client.emit('chat:send', { text: 'x'.repeat(301) }, ack))).ok,
+    ).toBe(false);
+  });
+
+  it('rate limits chat floods per user', async () => {
+    const { token } = await signup('Spammer');
+    const s = await login(token);
+    await call((ack) => s.client.emit('room:create', { gameId: 'yatzy' }, ack));
+    const results: Awaited<ReturnType<typeof call>>[] = [];
+    for (let i = 0; i < 10; i++) {
+      results.push(await call((ack) => s.client.emit('chat:send', { text: `spam ${i}` }, ack)));
+    }
+    expect(results.filter((r) => r.ok)).toHaveLength(5); // the burst
+    expect(results.at(-1)).toEqual({ ok: false, error: 'You are sending messages too fast' });
+  });
+});
+
+describe('nickname moderation', () => {
+  it('refuses profane nicknames', async () => {
+    const res = await fetch(`${base}/api/auth/guest`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ nickname: 'Big Sh1t', avatar: 'fox' }),
+    });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toBe(
+      'Please pick a different nickname',
+    );
   });
 });

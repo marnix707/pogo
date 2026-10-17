@@ -1,7 +1,9 @@
 import { randomInt } from 'node:crypto';
 import type {
   AnyGameDefinition,
+  ChatMessage,
   LeaveReason,
+  PublicRoomSummary,
   PublicUser,
   Result,
   Rng,
@@ -27,8 +29,14 @@ export interface RoomManagerDeps {
   emit(userId: string, room: RoomView | null, reason?: LeaveReason): void;
   limits: RoomLimits;
   defaultTurnTimeSec: number;
+  emitChat(userId: string, message: ChatMessage): void;
+  emitHistory(userId: string, messages: ChatMessage[]): void;
+  /** The set of public rooms (or their contents) may have changed. */
+  onLobbyChanged(): void;
   now?: () => number;
 }
+
+const LOBBY_LIST_LIMIT = 50;
 
 export function generateRoomCode(): string {
   let code = '';
@@ -67,12 +75,16 @@ export class RoomManager {
         now: this.now,
         limits: this.deps.limits,
         emit: this.deps.emit,
+        emitChat: this.deps.emitChat,
+        emitHistory: this.deps.emitHistory,
+        onChange: () => this.deps.onLobbyChanged(),
         onMemberGone: (room, userId, reason) => {
           if (this.roomOfUser.get(userId) === room.code) this.roomOfUser.delete(userId);
           this.deps.emit(userId, null, reason);
         },
         onEmpty: (room) => {
           this.rooms.delete(room.code);
+          this.deps.onLobbyChanged();
           for (const [userId, code] of this.roomOfUser) {
             if (code === room.code) {
               this.roomOfUser.delete(userId);
@@ -115,6 +127,7 @@ export class RoomManager {
     while (this.rooms.has(code)) code = generateRoomCode();
 
     const room = this.makeRoom(code, {
+      createdAt: this.now(),
       game,
       host: user,
       visibility,
@@ -125,6 +138,8 @@ export class RoomManager {
     this.rooms.set(code, room);
     this.roomOfUser.set(user.id, code);
     room.broadcast();
+    room.sendHistory(user.id);
+    this.deps.onLobbyChanged();
     return ok(room.view(user.id));
   }
 
@@ -138,7 +153,34 @@ export class RoomManager {
     const joined = room.join(user);
     if (!joined.ok) return joined;
     this.roomOfUser.set(user.id, code);
+    room.sendHistory(user.id);
     return ok(room.view(user.id));
+  }
+
+  /** Open public rooms that someone can join right now, longest-waiting first. */
+  listPublic(): PublicRoomSummary[] {
+    return [...this.rooms.values()]
+      .map((room) => room.summary())
+      .filter((s): s is PublicRoomSummary => s !== null)
+      .sort((a, b) => a.createdAt - b.createdAt)
+      .slice(0, LOBBY_LIST_LIMIT);
+  }
+
+  /** Join the longest-waiting open public room for this game, or open a new public one. */
+  quickPlay(user: PublicUser, gameId: string): Result<RoomView> {
+    const own = this.roomFor(user.id);
+    if (own && own.game.id === gameId && own.status === 'lobby') return ok(own.view(user.id));
+    for (const candidate of this.listPublic()) {
+      if (candidate.gameId !== gameId) continue;
+      const joined = this.join(user, candidate.code);
+      if (joined.ok) return joined;
+    }
+    return this.create(user, { gameId, visibility: 'public' });
+  }
+
+  chat(userId: string, text: string): Result<null> {
+    const room = this.roomFor(userId);
+    return room ? room.chat(userId, text) : fail('You are not in a room');
   }
 
   leave(userId: string): Result<null> {
@@ -181,7 +223,10 @@ export class RoomManager {
 
   /** The user's first socket connected: mark present and send their room (reconnect). */
   userConnected(userId: string): void {
-    this.roomFor(userId)?.setPresence(userId, true);
+    const room = this.roomFor(userId);
+    if (!room) return;
+    room.setPresence(userId, true);
+    room.sendHistory(userId);
   }
 
   /** The user's last socket went away. */

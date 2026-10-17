@@ -3,11 +3,13 @@ import type { Server, Socket } from 'socket.io';
 import type { z } from 'zod';
 import {
   APP_NAME,
+  chatSendSchema,
   emptyPayloadSchema,
   gameMoveEnvelopeSchema,
   roomCreateSchema,
   roomJoinSchema,
   roomKickSchema,
+  roomQuickplaySchema,
   roomSettingsSchema,
 } from '@pogo/shared';
 import type { ClientToServerEvents, PublicUser, Result, ServerToClientEvents } from '@pogo/shared';
@@ -23,6 +25,12 @@ export interface SocketData {
 export type PogoServer = Server<ClientToServerEvents, ServerToClientEvents, object, SocketData>;
 
 export const userChannel = (userId: string) => `user:${userId}`;
+/** Sockets subscribed to live updates of the public room list. */
+export const LOBBY_CHANNEL = 'lobby';
+
+/** Chat flood protection per user (across all their tabs): a burst of 5, then one per 2s. */
+const CHAT_BURST = 5;
+const CHAT_REFILL_PER_SEC = 0.5;
 
 interface Deps {
   io: PogoServer;
@@ -43,6 +51,20 @@ export function registerSocketHandlers({ io, manager, users, tokens, log }: Deps
   });
 
   const socketCount = new Map<string, number>();
+  const chatLimiters = new Map<string, { allow: () => boolean; lastUsed: number }>();
+  const chatAllowed = (userId: string) => {
+    let entry = chatLimiters.get(userId);
+    if (!entry) {
+      if (chatLimiters.size > 5000) {
+        const cutoff = Date.now() - 10 * 60_000;
+        for (const [id, e] of chatLimiters) if (e.lastUsed < cutoff) chatLimiters.delete(id);
+      }
+      entry = { allow: createRateLimiter(CHAT_BURST, CHAT_REFILL_PER_SEC), lastUsed: 0 };
+      chatLimiters.set(userId, entry);
+    }
+    entry.lastUsed = Date.now();
+    return entry.allow();
+  };
 
   io.on('connection', (socket) => {
     const user = socket.data.user;
@@ -93,6 +115,20 @@ export function registerSocketHandlers({ io, manager, users, tokens, log }: Deps
     route('room:settings', roomSettingsSchema, (p) => manager.updateSettings(user.id, p));
     route('room:start', emptyPayloadSchema, () => manager.start(user.id));
     route('room:rematch', emptyPayloadSchema, () => manager.rematch(user.id));
+    route('room:quickplay', roomQuickplaySchema, (p) => manager.quickPlay(user, p.gameId));
+    route('chat:send', chatSendSchema, (p) =>
+      chatAllowed(user.id)
+        ? manager.chat(user.id, p.text)
+        : ({ ok: false, error: 'You are sending messages too fast' } as const),
+    );
+    route('lobby:subscribe', emptyPayloadSchema, () => {
+      void socket.join(LOBBY_CHANNEL);
+      return { ok: true, data: manager.listPublic() } as const;
+    });
+    route('lobby:unsubscribe', emptyPayloadSchema, () => {
+      void socket.leave(LOBBY_CHANNEL);
+      return { ok: true, data: null } as const;
+    });
     route('game:move', gameMoveEnvelopeSchema, (p) => manager.move(user.id, p.move));
 
     socket.on('disconnect', (reason) => {

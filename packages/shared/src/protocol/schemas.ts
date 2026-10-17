@@ -85,5 +85,28 @@ export type RoomSettingsInput = z.input<typeof roomSettingsSchema>;
 export const gameMoveEnvelopeSchema = z.object({ move: z.unknown() });
 export type GameMoveInput = z.input<typeof gameMoveEnvelopeSchema>;
 
+export const roomQuickplaySchema = z.object({ gameId: z.string().min(1).max(32) });
+export type RoomQuickplayInput = z.input<typeof roomQuickplaySchema>;
+
+export const CHAT_MAX_LENGTH = 300;
+
+/** Chat text: one line, no control characters, trimmed. */
+export function sanitizeChatText(raw: string): string {
+  return raw
+    .normalize('NFKC')
+    .replace(/\s+/g, ' ')
+    .replace(/\p{Cc}/gu, '')
+    .trim();
+}
+
+export const chatSendSchema = z.object({
+  text: z
+    .string()
+    .max(1000)
+    .transform(sanitizeChatText)
+    .pipe(z.string().min(1).max(CHAT_MAX_LENGTH)),
+});
+export type ChatSendInput = z.input<typeof chatSendSchema>;
+
 export const emptyPayloadSchema = z.object({}).passthrough();
 export type EmptyPayload = Record<string, never>;

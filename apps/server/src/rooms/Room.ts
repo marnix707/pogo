@@ -1,7 +1,10 @@
+import { maskProfanity } from '@pogo/shared';
 import type {
   AnyGameDefinition,
+  ChatMessage,
   GameResults,
   LeaveReason,
+  PublicRoomSummary,
   PublicUser,
   Result,
   Rng,
@@ -28,7 +31,15 @@ export interface RoomDeps {
   onMemberGone(room: Room, userId: string, reason: LeaveReason): void;
   /** Nobody is left, or the room timed out. */
   onEmpty(room: Room): void;
+  /** Deliver one chat message to a user. */
+  emitChat(userId: string, message: ChatMessage): void;
+  /** Deliver the recent chat history to a user (on join / reconnect). */
+  emitHistory(userId: string, messages: ChatMessage[]): void;
+  /** Something about the room changed (the public lobby list may need refreshing). */
+  onChange(room: Room): void;
 }
+
+const CHAT_HISTORY_LIMIT = 100;
 
 interface Member {
   user: PublicUser;
@@ -40,6 +51,7 @@ interface Member {
 
 export interface RoomInit {
   code: string;
+  createdAt: number;
   game: AnyGameDefinition;
   host: PublicUser;
   visibility: Visibility;
@@ -57,6 +69,7 @@ const ok = <T>(data: T): Result<T> => ({ ok: true, data });
  */
 export class Room {
   readonly code: string;
+  readonly createdAt: number;
   readonly game: AnyGameDefinition;
   hostId: string;
   visibility: Visibility;
@@ -66,6 +79,8 @@ export class Room {
   status: RoomStatus = 'lobby';
 
   private members: Member[] = [];
+  private messages: ChatMessage[] = [];
+  private nextMessageId = 1;
   private readonly banned = new Set<string>();
   private state: unknown;
   private results: GameResults | undefined;
@@ -80,6 +95,7 @@ export class Room {
     private readonly deps: RoomDeps,
   ) {
     this.code = init.code;
+    this.createdAt = init.createdAt;
     this.game = init.game;
     this.hostId = init.host.id;
     this.visibility = init.visibility;
@@ -162,6 +178,51 @@ export class Room {
       if (next) this.hostId = next.user.id;
     }
     this.changed();
+  }
+
+  // ---- chat -------------------------------------------------------------------------------
+
+  /** Post a message from a member (text is already sanitized by the caller's schema). */
+  chat(userId: string, text: string): Result<null> {
+    const member = this.members.find((m) => m.user.id === userId && !m.left);
+    if (!member) return fail('You are not in this room');
+    const message: ChatMessage = {
+      id: this.nextMessageId++,
+      userId,
+      nickname: member.user.nickname,
+      avatar: member.user.avatar,
+      text: maskProfanity(text),
+      at: this.deps.now(),
+    };
+    this.messages.push(message);
+    if (this.messages.length > CHAT_HISTORY_LIMIT) this.messages.shift();
+    for (const m of this.members) {
+      if (!m.left) this.deps.emitChat(m.user.id, message);
+    }
+    return ok(null);
+  }
+
+  sendHistory(userId: string): void {
+    this.deps.emitHistory(userId, [...this.messages]);
+  }
+
+  // ---- public lobby -----------------------------------------------------------------------
+
+  /** How this room appears in the public lobby list, or null if it should not be listed. */
+  summary(): PublicRoomSummary | null {
+    if (this.visibility !== 'public' || this.status !== 'lobby') return null;
+    if (this.memberCount >= this.maxPlayers) return null;
+    const host = this.members.find((m) => m.user.id === this.hostId);
+    return {
+      code: this.code,
+      gameId: this.game.id,
+      gameName: this.game.name,
+      hostNickname: host?.user.nickname ?? '',
+      hostAvatar: host?.user.avatar ?? '',
+      players: this.memberCount,
+      maxPlayers: this.maxPlayers,
+      createdAt: this.createdAt,
+    };
   }
 
   // ---- settings & lifecycle ----------------------------------------------------------------
@@ -410,6 +471,7 @@ export class Room {
   private changed(): void {
     this.broadcast();
     this.schedule();
+    this.deps.onChange(this);
   }
 
   broadcast(): void {

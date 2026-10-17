@@ -1,7 +1,9 @@
 import type { GameResults } from '../game/types';
 import type {
   EmptyPayload,
+  ChatSendInput,
   GameMoveInput,
+  RoomQuickplayInput,
   RoomCreateInput,
   RoomJoinInput,
   RoomKickInput,
@@ -61,10 +63,38 @@ export interface RoomView {
   serverTime: number;
 }
 
+export interface ChatMessage {
+  /** Increases per room; lets clients de-duplicate history and live messages. */
+  id: number;
+  userId: string;
+  nickname: string;
+  avatar: string;
+  text: string;
+  /** Epoch ms (server clock). */
+  at: number;
+}
+
+/** A joinable public room as shown in the lobby list. */
+export interface PublicRoomSummary {
+  code: string;
+  gameId: string;
+  gameName: string;
+  hostNickname: string;
+  hostAvatar: string;
+  players: number;
+  maxPlayers: number;
+  createdAt: number;
+}
+
 export interface ServerToClientEvents {
   hello: (msg: HelloMessage) => void;
   /** The caller's current room (null when they are in none), plus why it went null. */
   'room:state': (room: RoomView | null, reason?: LeaveReason) => void;
+  /** Open public rooms, pushed to lobby subscribers whenever the list changes. */
+  'lobby:list': (rooms: PublicRoomSummary[]) => void;
+  'chat:message': (message: ChatMessage) => void;
+  /** The room's recent messages, sent when you join or reconnect. */
+  'chat:history': (messages: ChatMessage[]) => void;
 }
 
 export interface ClientToServerEvents {
@@ -75,7 +105,11 @@ export interface ClientToServerEvents {
   'room:settings': (payload: RoomSettingsInput, ack: Ack<RoomView>) => void;
   'room:start': (payload: EmptyPayload, ack: Ack<RoomView>) => void;
   'room:rematch': (payload: EmptyPayload, ack: Ack<RoomView>) => void;
+  'room:quickplay': (payload: RoomQuickplayInput, ack: Ack<RoomView>) => void;
   'game:move': (payload: GameMoveInput, ack: Ack<null>) => void;
+  'lobby:subscribe': (payload: EmptyPayload, ack: Ack<PublicRoomSummary[]>) => void;
+  'lobby:unsubscribe': (payload: EmptyPayload, ack: Ack<null>) => void;
+  'chat:send': (payload: ChatSendInput, ack: Ack<null>) => void;
 }
 
 export interface AuthResponse {

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import type { RoomView } from '@pogo/shared';
+import type { ChatMessage, RoomView } from '@pogo/shared';
 import { Button, Sheet } from '../components/ui';
-import { ArrowLeftIcon } from '../components/icons';
+import { ChatPanel } from '../components/ChatPanel';
+import { ArrowLeftIcon, ChatIcon } from '../components/icons';
 import { TileButton, TopBar } from '../components/TopBar';
 import { getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
@@ -69,15 +70,28 @@ export function GameScreen({
   room,
   me,
   api,
+  messages,
+  readUpTo,
+  markRead,
   onSettings,
 }: {
   room: RoomView;
   me: string;
   api: RoomApi;
+  messages: ChatMessage[];
+  readUpTo: number;
+  markRead: () => void;
   onSettings: () => void;
 }) {
   const ui = getGameUi(room.gameId);
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const unread = messages.filter((m) => m.id > readUpTo && m.userId !== me).length;
+
+  // While the chat sheet is open, new messages are read immediately.
+  useEffect(() => {
+    if (chatOpen) markRead();
+  }, [chatOpen, markRead, messages.length]);
   const finished = room.status === 'finished';
 
   // Fanfare once when the game ends.
@@ -106,6 +120,26 @@ export function GameScreen({
         title={`${ui.emoji} ${ui.name}`}
         subtitle={`Room ${room.code}`}
         onSettings={onSettings}
+        actions={
+          <TileButton
+            small
+            onClick={() => setChatOpen(true)}
+            aria-label={unread > 0 ? `Chat, ${unread} unread` : 'Chat'}
+            data-testid="chat-open"
+          >
+            <span className="relative">
+              <ChatIcon className="h-5 w-5" />
+              {unread > 0 && (
+                <span
+                  data-testid="chat-badge"
+                  className="absolute -right-2.5 -top-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-accentink"
+                >
+                  {unread > 9 ? '9+' : unread}
+                </span>
+              )}
+            </span>
+          </TileButton>
+        }
         compact
         left={
           <TileButton
@@ -122,6 +156,16 @@ export function GameScreen({
         <ui.Component room={room} me={me} sendMove={api.move} />
       </div>
       {finished && <ResultsPanel room={room} me={me} api={api} />}
+
+      <Sheet open={chatOpen} onClose={() => setChatOpen(false)} title="Chat">
+        <ChatPanel
+          messages={messages}
+          me={me}
+          online={api.online}
+          onSend={api.sendChat}
+          heightClass="h-[40dvh]"
+        />
+      </Sheet>
 
       <Sheet open={confirmLeave} onClose={() => setConfirmLeave(false)} title="Leave this game?">
         <p className="mb-4 text-muted">

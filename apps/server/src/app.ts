@@ -10,7 +10,7 @@ import type { UserStore } from './auth/userStore';
 import { registerAuthRoutes } from './http/authRoutes';
 import { registerStatic } from './http/static';
 import { RoomManager } from './rooms/RoomManager';
-import { registerSocketHandlers, userChannel } from './socket/handlers';
+import { LOBBY_CHANNEL, registerSocketHandlers, userChannel } from './socket/handlers';
 import type { PogoServer } from './socket/handlers';
 
 export interface AppDeps {
@@ -57,6 +57,21 @@ export async function buildApp(deps: AppDeps) {
   // Socket.IO shares Fastify's HTTP server (must be attached before listen).
   const io: PogoServer = new Server(app.server, { cors: { origin: config.corsOrigins } });
 
+  // Push the public room list to subscribers when it changes (debounced, and only if it differs).
+  let lobbyTimer: ReturnType<typeof setTimeout> | undefined;
+  let lastLobbyJson = '';
+  const scheduleLobbyBroadcast = () => {
+    if (lobbyTimer) return;
+    lobbyTimer = setTimeout(() => {
+      lobbyTimer = undefined;
+      const list = manager.listPublic();
+      const json = JSON.stringify(list);
+      if (json === lastLobbyJson) return;
+      lastLobbyJson = json;
+      io.to(LOBBY_CHANNEL).emit('lobby:list', list);
+    }, 150);
+  };
+
   const manager = new RoomManager({
     getGame: deps.getGame ?? getGame,
     rng: deps.rng,
@@ -69,6 +84,13 @@ export async function buildApp(deps: AppDeps) {
       autoStepMs: deps.autoStepMs ?? 1200,
     },
     defaultTurnTimeSec: config.turnTimeSec,
+    emitChat: (userId, message) => {
+      io.to(userChannel(userId)).emit('chat:message', message);
+    },
+    emitHistory: (userId, messages) => {
+      io.to(userChannel(userId)).emit('chat:history', messages);
+    },
+    onLobbyChanged: scheduleLobbyBroadcast,
   });
 
   registerSocketHandlers({ io, manager, users: deps.users, tokens, log: app.log });
@@ -78,6 +100,7 @@ export async function buildApp(deps: AppDeps) {
     io,
     manager,
     async close() {
+      clearTimeout(lobbyTimer);
       await io.close();
     },
   };

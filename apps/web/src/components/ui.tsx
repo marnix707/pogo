@@ -109,10 +109,12 @@ export function Sheet({
 
 export function Toggle({
   label,
+  hint,
   checked,
   onChange,
 }: {
   label: string;
+  hint?: string;
   checked: boolean;
   onChange: (value: boolean) => void;
 }) {
@@ -121,9 +123,12 @@ export function Toggle({
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="flex min-h-12 w-full items-center justify-between text-left font-semibold"
+      className="flex min-h-12 w-full items-center justify-between gap-4 text-left font-semibold"
     >
-      {label}
+      <span>
+        {label}
+        {hint && <span className="block text-sm font-normal text-muted">{hint}</span>}
+      </span>
       <span
         className={`relative h-8 w-14 rounded-md border-2 transition ${
           checked ? 'border-neon bg-neon/25' : 'border-edge/40 bg-panel2'

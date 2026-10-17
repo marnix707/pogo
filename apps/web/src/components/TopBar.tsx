@@ -22,12 +22,15 @@ export function TopBar({
   title,
   subtitle,
   left,
+  actions,
   onSettings,
   compact = false,
 }: {
   title: string;
   subtitle?: string;
   left?: ReactNode;
+  /** Extra buttons shown before the settings button. */
+  actions?: ReactNode;
   onSettings: () => void;
   /** One-line header that leaves more room for the screen below (used in games). */
   compact?: boolean;
@@ -51,6 +54,7 @@ export function TopBar({
         </h1>
         {subtitle && <div className="label truncate text-[10px] text-onbg/70">{subtitle}</div>}
       </div>
+      {actions}
       <TileButton
         small={compact}
         onClick={onSettings}

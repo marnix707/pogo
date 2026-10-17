@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import { getGame } from '@pogo/shared';
-import type { RoomView } from '@pogo/shared';
+import type { ChatMessage, RoomView } from '@pogo/shared';
 import { CrownIcon } from '../components/icons';
-import { Avatar, Button, Card, SectionLabel } from '../components/ui';
+import { ChatPanel } from '../components/ChatPanel';
+import { Avatar, Button, Card, SectionLabel, Toggle } from '../components/ui';
 import { TopBar } from '../components/TopBar';
 import { useToast } from '../components/Toast';
 import { getGameUi } from '../games/registry';
@@ -60,11 +62,15 @@ export function Lobby({
   room,
   me,
   api,
+  messages,
+  markRead,
   onSettings,
 }: {
   room: RoomView;
   me: string;
   api: RoomApi;
+  messages: ChatMessage[];
+  markRead: () => void;
   onSettings: () => void;
 }) {
   const toast = useToast();
@@ -73,6 +79,9 @@ export function Lobby({
   const limits = getGame(room.gameId);
   const link = `${window.location.origin}/?join=${room.code}`;
   const host = room.members.find((m) => m.id === room.hostId);
+
+  // The chat is on screen here, so everything counts as read.
+  useEffect(markRead, [markRead, messages.length]);
 
   async function share() {
     try {
@@ -100,7 +109,19 @@ export function Lobby({
       />
       <main className="flex flex-1 flex-col gap-5 px-4 pb-8 pt-2">
         <Card className="hud-ticks text-center">
-          <div className="label text-muted">Room code</div>
+          <div className="label flex items-center justify-center gap-2 text-muted">
+            Room code
+            <span
+              data-testid="room-visibility"
+              className={`rounded border px-1.5 py-0.5 text-[9px] ${
+                room.visibility === 'public'
+                  ? 'border-accent text-accent'
+                  : 'border-edge/50 text-muted'
+              }`}
+            >
+              {room.visibility === 'public' ? 'Public' : 'Private'}
+            </span>
+          </div>
           <div
             data-testid="room-code"
             className="my-2 select-all text-5xl font-bold tracking-[0.25em] text-neon"
@@ -160,10 +181,23 @@ export function Lobby({
           </ul>
         </section>
 
+        <section aria-label="Chat">
+          <SectionLabel>Chat</SectionLabel>
+          <ChatPanel messages={messages} me={me} online={api.online} onSend={api.sendChat} />
+        </section>
+
         {isHost && limits && (
           <section aria-label="Settings">
             <SectionLabel>Settings</SectionLabel>
             <Card className="flex flex-col gap-5">
+              <Toggle
+                label="Public room"
+                hint="Show in the lobby so anyone can join"
+                checked={room.visibility === 'public'}
+                onChange={(isPublic) =>
+                  void api.updateSettings({ visibility: isPublic ? 'public' : 'private' })
+                }
+              />
               {limits.maxPlayers > limits.minPlayers && (
                 <Stepper
                   label="Max players"

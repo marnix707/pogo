@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { profileSchema, roomCodeSchema, roomCreateSchema, sanitizeNickname } from './schemas';
+import {
+  chatSendSchema,
+  profileSchema,
+  roomCodeSchema,
+  roomCreateSchema,
+  sanitizeNickname,
+} from './schemas';
 
 describe('nickname', () => {
   it('sanitizes control chars, angle brackets and whitespace', () => {
@@ -32,5 +38,22 @@ describe('room schemas', () => {
     expect(roomCreateSchema.parse({ gameId: 'yatzy' }).visibility).toBe('private');
     expect(roomCreateSchema.safeParse({ gameId: 'yatzy', maxPlayers: 0 }).success).toBe(false);
     expect(roomCreateSchema.safeParse({ gameId: 'yatzy', turnTimeSec: 9999 }).success).toBe(false);
+  });
+});
+
+describe('chat schema', () => {
+  it('trims, collapses whitespace and strips control characters', () => {
+    expect(chatSendSchema.parse({ text: '  hello\n\n  world\u0000 ' }).text).toBe('hello world');
+  });
+
+  it('keeps emoji and non-latin text', () => {
+    expect(chatSendSchema.parse({ text: 'gg 🎲🎉 dank je' }).text).toBe('gg 🎲🎉 dank je');
+  });
+
+  it('rejects empty and too long messages', () => {
+    expect(chatSendSchema.safeParse({ text: '   ' }).success).toBe(false);
+    expect(chatSendSchema.safeParse({ text: 'x'.repeat(301) }).success).toBe(false);
+    expect(chatSendSchema.safeParse({ text: 'x'.repeat(300) }).success).toBe(true);
+    expect(chatSendSchema.safeParse({}).success).toBe(false);
   });
 });

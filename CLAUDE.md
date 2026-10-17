@@ -40,6 +40,13 @@ Moves: `{type:'roll', held:boolean[5]}` (holds are sent with the roll; ignored o
 - Free-tier caveats: spins down after 15 min without traffic (~1 min cold start); in-memory rooms are lost on restart/redeploy; single instance only.
 - Test the prod image locally: `docker build -t pogo-prod .` then run it on the compose network with `DATABASE_URL` pointing at a scratch database.
 
+## Public lobby & chat (M5)
+
+- Rooms are `private` (default, join by code/link) or `public`. `Room.summary()` returns a `PublicRoomSummary` only for public rooms in `lobby` status that are not full; `RoomManager.listPublic()` sorts them longest-waiting first (cap 50). Clients call `lobby:subscribe` (joins the socket.io room `lobby`, ack = current list) and receive `lobby:list` pushes; `app.ts` debounces (150ms) and only pushes when the list actually changed. Subscriptions are lost on reconnect, so the web hook re-subscribes on `connect` (`watchLobby` in `lib/socket.ts`).
+- `room:quickplay {gameId}` = join the longest-waiting open public room for that game (idempotent if you already wait in one), else create a public room.
+- Chat is per room and in memory: `Room.chat()` sanitizes (`chatSendSchema`: one line, ≤300 chars), masks profanity (`maskProfanity` in `packages/shared/src/moderation`, a basic English+Dutch word list with leetspeak/boundary handling), keeps the last 100 messages and pushes `chat:message` to members; `chat:history` is sent on join/create/reconnect (it can arrive just before `room:state` on a refresh, which the web hook accounts for). Per-user flood limit in `socket/handlers.ts` (burst 5, then 1 per 2s) on top of the per-socket event limiter. Guest nicknames are also checked with `containsProfanity`.
+- Web: `ChatPanel` (inline in the waiting room, in a bottom `Sheet` during games with an unread badge on the header chat button), open games list + Quick match on `Home`.
+
 ## Web app (apps/web)
 
 - Screens are driven by the server's `room:state`: `Shell.tsx` owns the socket (`lib/socket.ts`) and renders `Home` (no room), `Lobby` (status `lobby`) or `GameScreen` (`playing`/`finished`, includes the generic results panel). Screens call the server only through the `RoomApi` object (`lib/api.ts`), and failures are toasted centrally in the shell.
@@ -85,5 +92,5 @@ Standalone Playwright project (own `package.json`/lockfile, not part of the pnpm
 
 ## Milestones
 
-1 Scaffold + Docker (done) · 2 Shared types/plug-in interface/Yatzy logic + tests (done) · 3 Realtime server (guests, rooms, reconnect) (done) · 4 Mobile Yatzy UI + e2e (done) · 5 Public lobby + chat · 6 Accounts, stats, PWA · 7 Production Docker + deploy guide.
+1 Scaffold + Docker (done) · 2 Shared types/plug-in interface/Yatzy logic + tests (done) · 3 Realtime server (guests, rooms, reconnect) (done) · 4 Mobile Yatzy UI + e2e (done) · 5 Public lobby + chat (done) · 6 Accounts, stats, PWA · 7 Production Docker + deploy guide.
 Work one milestone at a time; at the end run tests, verify in Docker, commit, summarize, explain phone testing, wait for go-ahead.

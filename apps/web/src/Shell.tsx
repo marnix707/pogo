@@ -20,7 +20,18 @@ const LEFT_MESSAGE = {
 
 /** Signed-in app: owns the realtime connection and routes by where the server says you are. */
 export function Shell({ session, onSignOut }: { session: AuthResponse; onSignOut: () => void }) {
-  const { connection, room, synced, leftReason, request } = useRealtime(session.token);
+  const {
+    connection,
+    room,
+    synced,
+    leftReason,
+    messages,
+    readUpTo,
+    markRead,
+    lobby,
+    watchLobby,
+    request,
+  } = useRealtime(session.token);
   const toast = useToast();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const online = connection === 'online';
@@ -43,6 +54,8 @@ export function Shell({ session, onSignOut }: { session: AuthResponse; onSignOut
     () => ({
       online,
       create: (gameId) => run(request('room:create', { gameId })),
+      quickPlay: (gameId) => run(request('room:quickplay', { gameId })),
+      sendChat: (text) => run(request('chat:send', { text })),
       join: (code) => run(request('room:join', { code })),
       leave: () => run(request('room:leave', {})),
       kick: (userId) => run(request('room:kick', { userId })),
@@ -77,11 +90,38 @@ export function Shell({ session, onSignOut }: { session: AuthResponse; onSignOut
   if (!synced) {
     screen = <p className="label p-8 text-center text-onbg">Connecting…</p>;
   } else if (!room) {
-    screen = <Home user={session.user} api={api} onSettings={openSettings} />;
+    screen = (
+      <Home
+        user={session.user}
+        api={api}
+        lobby={lobby}
+        watchLobby={watchLobby}
+        onSettings={openSettings}
+      />
+    );
   } else if (room.status === 'lobby') {
-    screen = <Lobby room={room} me={session.user.id} api={api} onSettings={openSettings} />;
+    screen = (
+      <Lobby
+        room={room}
+        me={session.user.id}
+        api={api}
+        messages={messages}
+        markRead={markRead}
+        onSettings={openSettings}
+      />
+    );
   } else {
-    screen = <GameScreen room={room} me={session.user.id} api={api} onSettings={openSettings} />;
+    screen = (
+      <GameScreen
+        room={room}
+        me={session.user.id}
+        api={api}
+        messages={messages}
+        readUpTo={readUpTo}
+        markRead={markRead}
+        onSettings={openSettings}
+      />
+    );
   }
 
   return (
