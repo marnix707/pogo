@@ -79,7 +79,16 @@ export function PlayingCard({
     const el = ref.current;
     if (!el || !flip) return;
     const r = el.getBoundingClientRect();
-    const now: Box = { left: r.left, top: r.top, width: r.width, height: r.height };
+    // A card that is mid-flight reports its animated box. Remember where it really belongs
+    // (its layout box), otherwise every re-render during a flight (the turn clock ticks every
+    // second) would start a new, wrong slide from the middle of the old one.
+    const m = new DOMMatrix(getComputedStyle(el).transform);
+    const now: Box = {
+      left: r.left - m.e,
+      top: r.top - m.f,
+      width: m.a ? r.width / m.a : r.width,
+      height: m.d ? r.height / m.d : r.height,
+    };
     const seen = lastBoxes.get(flip.id);
     lastBoxes.set(flip.id, now);
     if (!enabled || now.width === 0) return;

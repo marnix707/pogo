@@ -294,7 +294,9 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const handOrigin = (): FlipOrigin | null => {
     if (!lastEvent || lastEvent.playerId !== me) return null;
     const fromPile = lastEvent.kind === 'pickup' || lastEvent.pickedUp > 0;
-    return boxOf(fromPile ? pileEl.current : stockEl.current);
+    // A point, not a box: the card grows out of the middle of the deck/pile at its own proportions.
+    const box = boxOf(fromPile ? pileEl.current : stockEl.current);
+    return box ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : null;
   };
   /** A card newly on the pile that was not on screen (an opponent's hand card): from their seat. */
   const pileOrigin = (card: Card): FlipOrigin | null => {
@@ -473,6 +475,14 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   }
 
   const shownHint = flash ?? (pileArmed ? 'Tap the pile again to pick it up' : hint);
+
+  // Nothing in my active cards can be played: picking up is the only move, so say so with colour.
+  const activeCards = zone === 'hand' ? hand : zone === 'up' ? (mine?.faceUp ?? []) : [];
+  const mustPickUp =
+    playing &&
+    pile.length > 0 &&
+    zone !== 'down' &&
+    !activeCards.some((c) => c !== null && canPlayRank(pile, rankOf(c)));
 
   const endgame = !!mine && view.phase === 'play' && view.stockCount === 0 && hand.length === 0;
   const tableFont = view.phase === 'swap' || endgame ? tableBig : tableBig * 0.62;
@@ -693,8 +703,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                       Ready
                     </Button>
                   )}
-                  {playing && (
-                    <>
+                  {view.phase === 'play' && (
+                    <div
+                      className={`flex flex-col gap-1.5 ${playing ? '' : 'invisible'}`}
+                      aria-hidden={!playing}
+                    >
                       <Button
                         data-testid="karma-play"
                         className="min-h-9 !px-2 !text-xs"
@@ -711,14 +724,17 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                       </Button>
                       <Button
                         data-testid="karma-pickup"
-                        variant="secondary"
-                        className="min-h-9 !px-2 !text-xs"
+                        data-urgent={mustPickUp}
+                        variant={mustPickUp ? 'primary' : 'secondary'}
+                        className={`min-h-9 !px-2 !text-xs ${
+                          mustPickUp ? 'animate-pulse ring-4 ring-neon' : ''
+                        }`}
                         disabled={busy || pile.length === 0}
                         onClick={pickUpPile}
                       >
                         Pick up ({pile.length})
                       </Button>
-                    </>
+                    </div>
                   )}
                   {view.phase === 'play' && !myTurn && secondsLeft === null && (
                     <p className="label text-center text-[11px] text-muted">
