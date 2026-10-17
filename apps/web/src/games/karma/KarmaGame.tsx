@@ -888,7 +888,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                   minHeight: `${handFont * 7 + rowStep * (rowCount - 1) + 22}px`,
                   overflowX: 'clip',
                   // Not my turn: my hand dims a little, so it is obvious who is up.
-                  filter: view.phase === 'play' && !myTurn ? 'brightness(0.8)' : undefined,
+                  filter: view.phase === 'play' && !myTurn ? 'brightness(0.3)' : undefined,
                   transition: 'filter 200ms',
                 }}
               >
