@@ -1,0 +1,21 @@
+# Shared dev image for the `web` and `server` services.
+# Dependencies are installed here; source is bind-mounted at runtime and
+# node_modules directories are masked by container-only volumes (see docker-compose.yml).
+FROM node:20-bookworm-slim
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl curl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+
+WORKDIR /app
+
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY apps/web/package.json apps/web/
+COPY apps/server/package.json apps/server/
+COPY packages/shared/package.json packages/shared/
+RUN pnpm install --frozen-lockfile
+
+COPY apps/server/prisma apps/server/prisma
+RUN pnpm --filter @pogo/server exec prisma generate
