@@ -8,6 +8,7 @@ import { play } from '../../lib/sound';
 import { useCountdown } from '../../lib/useCountdown';
 import type { GameUiProps } from '../types';
 import { KarmaRules } from './KarmaRules';
+import { WinReveal } from './WinReveal';
 import { CardFlipContext, PlayingCard } from './PlayingCard';
 import type { FlipOrigin } from './PlayingCard';
 
@@ -297,6 +298,12 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const [busy, setBusy] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [flame, setFlame] = useState(false);
+  /** Someone just played their last card: reveal it with a flourish (confetti for the winner). */
+  const [reveal, setReveal] = useState<{ card: number; label: string; winner: boolean } | null>(
+    null,
+  );
+  const revealTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(revealTimer.current), []);
   /** The pile was tapped once: tap it again to pick it up. */
   const [pileArmed, setPileArmed] = useState(false);
   /** A short message that temporarily replaces the hint (e.g. after tapping the deck). */
@@ -370,6 +377,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   };
 
   // A new move happened: forget selections and narrate it (sound, buzz, burn flash).
+  const latest = useRef({ nameOf, finishOrder: view.finishOrder });
+  latest.current = { nameOf, finishOrder: view.finishOrder };
   const [history, setHistory] = useState<karma.KarmaEvent[]>(() =>
     view.lastEvent ? [view.lastEvent] : [],
   );
@@ -379,6 +388,17 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     if (!ev || ev.seq === lastSeq.current) return;
     lastSeq.current = ev.seq;
     setHistory((h) => [ev, ...h].slice(0, HISTORY_LENGTH));
+    if (ev.out && ev.cards.length > 0) {
+      const winner = latest.current.finishOrder[0] === ev.playerId;
+      const name = latest.current.nameOf(ev.playerId);
+      setReveal({
+        card: ev.cards[ev.cards.length - 1] as Card,
+        winner,
+        label: winner ? (ev.playerId === me ? 'You win!' : `${name} wins!`) : `${name} is out`,
+      });
+      clearTimeout(revealTimer.current);
+      revealTimer.current = setTimeout(() => setReveal(null), winner ? 5200 : 3400);
+    }
     setSel([]);
     setSelDown(null);
     setPileArmed(false);
@@ -868,6 +888,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
             </div>
           </div>
         )}
+
+        {reveal && <WinReveal {...reveal} />}
 
         <KarmaRules open={rulesOpen} onClose={() => setRulesOpen(false)} />
       </div>

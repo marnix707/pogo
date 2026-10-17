@@ -82,6 +82,8 @@ Moves: `{type:'roll', held:boolean[5]}` (holds are sent with the roll; ignored o
 
 - Narration: instead of rule hints, the table shows the last `HISTORY_LENGTH` (4) moves, newest first and bold (`karma-history`; newest `karma-event`, older `karma-event-old`), kept client-side from `lastEvent` so fast opponents can still be followed. The hint line only carries transient text (swap instructions, selection, pile armed, deck tap).
 
+- Win reveal: when a move has `out: true` (`lastEvent`), `KarmaGame` shows `WinReveal` for ~5s (winner: first in `finishOrder`, with confetti) or ~3.4s (later finishers): the last card turns over slowly (CSS 3D flip, `.win-card` in `index.css`), a label says "You win!" / "X wins!" / "X is out". It is `pointer-events-none`, only fires for live moves (not on reload), and with reduced motion shows the card statically without confetti. E2E: `computer.spec.ts` checks `win-reveal` (`data-winner`).
+
 ## Computer players (bots)
 
 - A game opts in with `GameDefinition.supportsBots` (Karma only; Yatzy's `autoMove` is too basic and it has a solo mode anyway). Bots are ordinary seats in the game state: ids `bot:1..n`, names from `BOT_NAMES` (skipping names people in the room use), avatar `robot` (`packages/shared/src/game/bots.ts`). They are **not** room members for auth/chat/kick/capacity purposes (`Room.hasMember`, `memberCount`, `activeMemberIds` exclude them) but appear in `RoomView.members` with `bot: true` so the UI can name them.

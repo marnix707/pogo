@@ -125,6 +125,75 @@ button {
   }
 }
 
+@keyframes win-turn {
+  0% {
+    transform: rotateY(180deg) scale(0.7);
+  }
+  35% {
+    transform: rotateY(180deg) scale(1.1);
+  }
+  100% {
+    transform: rotateY(0deg) scale(1.25);
+  }
+}
+@keyframes win-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0.4rem rgb(var(--c-neon) / 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 1.4rem rgb(var(--c-accent) / 1));
+  }
+}
+@keyframes win-label-in {
+  0%,
+  60% {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes confetti-fall {
+  0% {
+    transform: translate3d(0, -12vh, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--drift), 112vh, 0) rotate(var(--spin));
+    opacity: 0.9;
+  }
+}
+.win-card {
+  position: relative;
+  transform-style: preserve-3d;
+  animation:
+    win-turn 2.6s cubic-bezier(0.22, 0.8, 0.3, 1) both,
+    win-glow 1.4s ease-in-out 2.6s infinite;
+}
+.win-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.win-front {
+  transform: rotateY(0deg);
+}
+.win-back {
+  transform: rotateY(180deg);
+}
+.win-label {
+  animation: win-label-in 2.6s ease-out both;
+}
+.confetti {
+  position: absolute;
+  top: 0;
+  border-radius: 1px;
+  animation: confetti-fall 3s linear both;
+}
 @keyframes card-float {
   0%,
   100% {
@@ -142,6 +211,11 @@ button {
 
 @media (prefers-reduced-motion: reduce) {
   .card-float {
+    animation: none;
+  }
+  .win-card,
+  .win-label,
+  .confetti {
     animation: none;
   }
   .animate-dice-roll,

@@ -62,6 +62,8 @@ test('a whole game against the computer, from one tap to the result, and a remat
   await expect(panel).toContainText('Robo');
   await expect(panel).toContainText('Solo');
   await expect(page.getByTestId('rank-1')).toBeVisible();
+  // Whoever went out first got the last-card reveal with confetti (it lets taps through).
+  await expect(page.getByTestId('win-reveal')).toHaveAttribute('data-winner', 'true');
   await expect(page.getByTestId('rank-2')).toBeVisible();
   await expect(panel.locator('h2')).toHaveText(/Karma got you|Robo is last/);
 
