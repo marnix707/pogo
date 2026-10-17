@@ -40,9 +40,6 @@ const ACTION_COLUMN_PX = 96;
 /** More cards than this in my hand wrap into extra rows so every card stays visible and tappable. */
 const MAX_PER_ROW = 12;
 
-/** How many of the latest moves the table narrates (newest first), so fast play can still be followed. */
-const HISTORY_LENGTH = 4;
-
 /** Em-size of an opponent's cards: fewer opponents, bigger cards (4 seats must fit in a row). */
 const seatFont = (opponents: number) =>
   opponents <= 1 ? 11 : opponents === 2 ? 9.6 : opponents === 3 ? 8.2 : 5.7;
@@ -261,24 +258,32 @@ function Seat({
   );
 }
 
-function describeEvent(ev: karma.KarmaEvent, nameOf: (id: string) => string): string {
+/** One short line for the latest move: "Bob played 7♥ · drew 2", "You picked up 5 cards", ... */
+function describeEvent(
+  ev: karma.KarmaEvent,
+  nameOf: (id: string) => string,
+  extra: { drawn: number; timedOut: boolean },
+): string {
   const who = nameOf(ev.playerId);
-  let text: string;
+  const parts: string[] = [];
   if (ev.kind === 'pickup') {
-    text = `${who} picked up ${ev.pickedUp} card${ev.pickedUp === 1 ? '' : 's'}`;
+    parts.push(`${who} picked up ${ev.pickedUp} card${ev.pickedUp === 1 ? '' : 's'}`);
   } else if (ev.kind === 'blind') {
     const c = cardLabel(ev.cards[0] as Card);
-    text =
+    parts.push(
       ev.pickedUp > 0
-        ? `${who} flipped ${c}: too low, picked up ${ev.pickedUp}`
-        : `${who} flipped ${c}`;
+        ? `${who} flipped ${c}, too low: picked up ${ev.pickedUp}`
+        : `${who} flipped ${c}`,
+    );
   } else {
-    text = `${who} played ${ev.cards.map(cardLabel).join(' ')}`;
+    parts.push(`${who} played ${ev.cards.map(cardLabel).join(' ')}`);
   }
-  if (ev.skipped.length > 0) text += ` · ${ev.skipped.map(nameOf).join(', ')} skipped`;
-  if (ev.burned) text += ' 🔥 burned!';
-  if (ev.out) text += ' · out!';
-  return text;
+  if (ev.burned) parts.push('burned 🔥');
+  if (extra.drawn > 0) parts.push(`drew ${extra.drawn} card${extra.drawn === 1 ? '' : 's'}`);
+  if (ev.skipped.length > 0) parts.push(`${ev.skipped.map(nameOf).join(', ')} skipped`);
+  if (ev.out) parts.push('out!');
+  if (extra.timedOut) parts.push('time ran out');
+  return parts.join(' · ');
 }
 
 export function KarmaGame({ room, me, sendMove }: GameUiProps) {
@@ -377,17 +382,32 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   };
 
   // A new move happened: forget selections and narrate it (sound, buzz, burn flash).
-  const latest = useRef({ nameOf, finishOrder: view.finishOrder });
-  latest.current = { nameOf, finishOrder: view.finishOrder };
-  const [history, setHistory] = useState<karma.KarmaEvent[]>(() =>
-    view.lastEvent ? [view.lastEvent] : [],
-  );
+  const latest = useRef({ nameOf, finishOrder: view.finishOrder, stock: 0, now: 0 });
+  latest.current = {
+    nameOf,
+    finishOrder: view.finishOrder,
+    stock: view.stockCount,
+    now: room.serverTime,
+  };
+  // The one-line narration of the latest move, with what the event itself does not say:
+  // how many cards were drawn (the deck shrank) and whether the turn clock ran out.
+  const [note, setNote] = useState<{
+    ev: karma.KarmaEvent;
+    drawn: number;
+    timedOut: boolean;
+  } | null>(() => (view.lastEvent ? { ev: view.lastEvent, drawn: 0, timedOut: false } : null));
+  const before = useRef({ stock: view.stockCount, deadline: game.deadline });
   const lastSeq = useRef(view.lastEvent?.seq ?? 0);
   useEffect(() => {
     const ev = view.lastEvent;
     if (!ev || ev.seq === lastSeq.current) return;
     lastSeq.current = ev.seq;
-    setHistory((h) => [ev, ...h].slice(0, HISTORY_LENGTH));
+    setNote({
+      ev,
+      drawn: Math.max(0, before.current.stock - latest.current.stock),
+      timedOut:
+        before.current.deadline !== null && latest.current.now >= before.current.deadline - 300,
+    });
     if (ev.out && ev.cards.length > 0) {
       const winner = latest.current.finishOrder[0] === ev.playerId;
       const name = latest.current.nameOf(ev.playerId);
@@ -410,6 +430,10 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
       return () => clearTimeout(t);
     }
   }, [view.lastEvent, me]);
+  // (declared after the effect above, so it still sees the previous values when a move arrives)
+  useEffect(() => {
+    before.current = { stock: view.stockCount, deadline: game.deadline };
+  });
 
   // A gentle buzz when ten seconds are left on my turn.
   const warnedFor = useRef<number | null>(null);
@@ -695,25 +719,13 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
           </div>
 
           <div className="min-w-0 flex-1">
-            <ol
-              className="flex flex-col gap-0.5"
-              data-testid="karma-history"
+            <p
+              className="label min-h-[2.6em] text-[10px] font-bold leading-snug text-onbg"
+              data-testid="karma-event"
               aria-live="polite"
-              style={{ minHeight: `${HISTORY_LENGTH * 1.1}rem` }}
             >
-              {history.map((ev, i) => (
-                <li
-                  key={ev.seq}
-                  data-testid={i === 0 ? 'karma-event' : 'karma-event-old'}
-                  className={`label truncate text-[10px] leading-snug ${
-                    i === 0 ? 'font-bold text-onbg' : 'text-onbg'
-                  }`}
-                  style={{ opacity: 1 - i * 0.22 }}
-                >
-                  {describeEvent(ev, nameOf)}
-                </li>
-              ))}
-            </ol>
+              {note ? describeEvent(note.ev, nameOf, note) : ' '}
+            </p>
             <p
               className={`mt-1 min-h-[2.4em] text-xs font-semibold leading-snug ${myTurn ? 'text-onbg' : 'text-onbg/80'}`}
               data-testid="karma-hint"

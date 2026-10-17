@@ -80,7 +80,7 @@ Moves: `{type:'roll', held:boolean[5]}` (holds are sent with the roll; ignored o
 
 - Opponent seats show their hand as a fan of small face-down cards (`HandFan`, `seat-hand-<id>` with `data-count`): beside the table cards with one opponent, under them with more.
 
-- Narration: instead of rule hints, the table shows the last `HISTORY_LENGTH` (4) moves, newest first and bold (`karma-history`; newest `karma-event`, older `karma-event-old`), kept client-side from `lastEvent` so fast opponents can still be followed. The hint line only carries transient text (swap instructions, selection, pile armed, deck tap).
+- Narration: one short line for the latest move (`karma-event`, `describeEvent`): "Bob played 7♥ · drew 1 card", "You picked up 5 cards", "Bob flipped K♣, too low: picked up 4", plus `burned 🔥`, `X skipped`, `out!`, `time ran out`. Draws and timeouts are not in `KarmaEvent`, so the client derives them: `drawn` = deck size before minus after the event, `timedOut` = the previous turn deadline had passed (`room.serverTime`). No rule hints: the hint line only carries transient text (swap instructions, selection, pile armed, deck tap).
 
 - Win reveal: when a move has `out: true` (`lastEvent`), `KarmaGame` shows `WinReveal` for ~5s (winner: first in `finishOrder`, with confetti) or ~3.4s (later finishers): the last card turns over slowly (CSS 3D flip, `.win-card` in `index.css`), a label says "You win!" / "X wins!" / "X is out". It is `pointer-events-none`, only fires for live moves (not on reload), and with reduced motion shows the card statically without confetti. E2E: `computer.spec.ts` checks `win-reveal` (`data-winner`).
 
