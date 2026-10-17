@@ -568,6 +568,23 @@ describe('the 8 skips the next player', () => {
     bad(after, 'p1', { type: 'play', cards: [card(5)] }, 'Too low');
   });
 
+  it('1v1: 8s stack on each other and you keep the turn each time, up to a final 10', () => {
+    const s = table([
+      { hand: [card(8), card(8, 1), card(8, 2), card(10), card(5)] },
+      { hand: [card(9), card(3)] },
+    ]);
+    let after = move(s, 'p1', { type: 'play', cards: [card(8)] });
+    expect(after.turn).toBe(0);
+    after = move(after, 'p1', { type: 'play', cards: [card(8, 1)] }); // 8 on an 8
+    expect(after.turn).toBe(0);
+    after = move(after, 'p1', { type: 'play', cards: [card(8, 2)] }); // and another
+    expect(after.turn).toBe(0);
+    after = move(after, 'p1', { type: 'play', cards: [card(10)] }); // a 10 burns, still me
+    expect(after.turn).toBe(0);
+    expect(after.pile).toEqual([]);
+    expect(after.lastEvent).toMatchObject({ burned: true });
+  });
+
   it('every 8 in a set skips one more player', () => {
     const four = table([
       { hand: [card(8), card(8, 1), card(5)] },

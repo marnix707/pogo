@@ -262,7 +262,7 @@ function Seat({
 function describeEvent(
   ev: karma.KarmaEvent,
   nameOf: (id: string) => string,
-  extra: { drawn: number; timedOut: boolean },
+  extra: { drawn: number; timedOut: boolean; again: boolean },
 ): string {
   const who = nameOf(ev.playerId);
   const parts: string[] = [];
@@ -280,7 +280,8 @@ function describeEvent(
   }
   if (ev.burned) parts.push('burned 🔥');
   if (extra.drawn > 0) parts.push(`drew ${extra.drawn} card${extra.drawn === 1 ? '' : 's'}`);
-  if (ev.skipped.length > 0) parts.push(`${ev.skipped.map(nameOf).join(', ')} skipped`);
+  if (extra.again) parts.push(who === 'You' ? 'go again' : 'plays again');
+  else if (ev.skipped.length > 0) parts.push(`${ev.skipped.map(nameOf).join(', ')} skipped`);
   if (ev.out) parts.push('out!');
   if (extra.timedOut) parts.push('time ran out');
   return parts.join(' · ');
@@ -382,12 +383,19 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   };
 
   // A new move happened: forget selections and narrate it (sound, buzz, burn flash).
-  const latest = useRef({ nameOf, finishOrder: view.finishOrder, stock: 0, now: 0 });
+  const latest = useRef({
+    nameOf,
+    finishOrder: view.finishOrder,
+    stock: 0,
+    now: 0,
+    currentId,
+  });
   latest.current = {
     nameOf,
     finishOrder: view.finishOrder,
     stock: view.stockCount,
     now: room.serverTime,
+    currentId,
   };
   // The one-line narration of the latest move, with what the event itself does not say:
   // how many cards were drawn (the deck shrank) and whether the turn clock ran out.
@@ -395,14 +403,25 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     ev: karma.KarmaEvent;
     drawn: number;
     timedOut: boolean;
-  } | null>(() => (view.lastEvent ? { ev: view.lastEvent, drawn: 0, timedOut: false } : null));
+    again: boolean;
+  } | null>(() =>
+    view.lastEvent ? { ev: view.lastEvent, drawn: 0, timedOut: false, again: false } : null,
+  );
   const before = useRef({ stock: view.stockCount, deadline: game.deadline });
   const lastSeq = useRef(view.lastEvent?.seq ?? 0);
   useEffect(() => {
     const ev = view.lastEvent;
     if (!ev || ev.seq === lastSeq.current) return;
     lastSeq.current = ev.seq;
+    // The same player is up again (an 8 with nobody else to skip to, or a burn): say so, and nudge
+    // me with the turn sound, because "your turn" never switched off and on.
+    const again = !ev.out && latest.current.currentId === ev.playerId;
+    if (again && ev.playerId === me) {
+      play('turn');
+      haptic('tap');
+    }
     setNote({
+      again,
       ev,
       drawn: Math.max(0, before.current.stock - latest.current.stock),
       timedOut:
