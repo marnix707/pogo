@@ -1,4 +1,3 @@
-import { maskProfanity } from '@pogo/shared';
 import type {
   AnyGameDefinition,
   ChatMessage,
@@ -35,6 +34,8 @@ export interface RoomDeps {
   emitChat(userId: string, message: ChatMessage): void;
   /** Deliver the recent chat history to a user (on join / reconnect). */
   emitHistory(userId: string, messages: ChatMessage[]): void;
+  /** Applied to every chat message before anyone sees it (profanity filter, or identity when off). */
+  maskText(text: string): string;
   /** Something about the room changed (the public lobby list may need refreshing). */
   onChange(room: Room): void;
 }
@@ -191,7 +192,7 @@ export class Room {
       userId,
       nickname: member.user.nickname,
       avatar: member.user.avatar,
-      text: maskProfanity(text),
+      text: this.deps.maskText(text),
       at: this.deps.now(),
     };
     this.messages.push(message);

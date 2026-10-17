@@ -41,6 +41,7 @@ services:
       ROOM_TTL_SEC: ${ROOM_TTL_SEC:-600}
       # Generous in dev so repeated e2e runs don't trip it; production default is 10.
       GUEST_SIGNUP_LIMIT_PER_MIN: ${GUEST_SIGNUP_LIMIT_PER_MIN:-100}
+      PROFANITY_FILTER: ${PROFANITY_FILTER:-on}
       CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING:-true}
     ports:
       - '${SERVER_PORT:-3000}:3000'
@@ -92,6 +93,8 @@ services:
     build: ./e2e
     environment:
       BASE_URL: http://web:5173
+      # So the tests know whether chat/nicknames are being filtered.
+      PROFANITY_FILTER: ${PROFANITY_FILTER:-on}
     volumes:
       - ./e2e/tests:/e2e/tests
       - ./e2e/playwright.config.ts:/e2e/playwright.config.ts

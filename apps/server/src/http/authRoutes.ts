@@ -19,18 +19,18 @@ export function registerAuthRoutes(
   app: FastifyInstance,
   users: UserStore,
   tokens: TokenService,
-  guestLimitPerMin: number,
+  options: { guestLimitPerMin: number; rejectProfaneNicknames: boolean },
 ) {
   // Guest signup: pick a nickname + avatar, get a signed token to keep in localStorage.
   app.post(
     '/api/auth/guest',
-    { config: { rateLimit: { max: guestLimitPerMin, timeWindow: '1 minute' } } },
+    { config: { rateLimit: { max: options.guestLimitPerMin, timeWindow: '1 minute' } } },
     async (req, reply) => {
       const parsed = profileSchema.safeParse(req.body);
       if (!parsed.success) {
         return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? 'Invalid input' });
       }
-      if (containsProfanity(parsed.data.nickname)) {
+      if (options.rejectProfaneNicknames && containsProfanity(parsed.data.nickname)) {
         return reply.code(400).send({ error: 'Please pick a different nickname' });
       }
       const user = await users.createGuest(parsed.data);
@@ -52,7 +52,7 @@ export function registerAuthRoutes(
     if (!parsed.success) {
       return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? 'Invalid input' });
     }
-    if (containsProfanity(parsed.data.nickname)) {
+    if (options.rejectProfaneNicknames && containsProfanity(parsed.data.nickname)) {
       return reply.code(400).send({ error: 'Please pick a different nickname' });
     }
     const updated = await users.updateProfile(user.id, parsed.data);

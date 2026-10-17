@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createSeededRng, getGame } from '@pogo/shared';
+import { createSeededRng, getGame, maskProfanity } from '@pogo/shared';
 import type { ChatMessage, LeaveReason, PublicUser, RoomView } from '@pogo/shared';
 import { RoomManager } from './RoomManager';
 import { GOAL, raceGame } from './testGame';
@@ -16,7 +16,7 @@ const user = (n: number): PublicUser => ({
 });
 const [a, b, c] = [user(1), user(2), user(3)] as [PublicUser, PublicUser, PublicUser];
 
-function setup() {
+function setup(maskText: (text: string) => string = maskProfanity) {
   const inbox = new Map<string, { room: RoomView | null; reason?: LeaveReason }[]>();
   const chats = new Map<string, ChatMessage[]>();
   const histories = new Map<string, ChatMessage[][]>();
@@ -31,6 +31,7 @@ function setup() {
     },
     limits: { graceMs: GRACE, emptyTtlMs: TTL, autoStepMs: STEP },
     defaultTurnTimeSec: 30,
+    maskText,
     emitChat: (userId, message) => chats.set(userId, [...(chats.get(userId) ?? []), message]),
     emitHistory: (userId, messages) =>
       histories.set(userId, [...(histories.get(userId) ?? []), messages]),
@@ -557,5 +558,15 @@ describe('with Karma (simultaneous swap phase, private hands)', () => {
       true,
     );
     expect(manager.roomCount).toBe(1);
+  });
+});
+
+describe('profanity filter switch', () => {
+  it('delivers chat untouched when the filter is off', () => {
+    const { manager, chats, must } = setup((text) => text);
+    const { code } = must(manager.create(a, { gameId: 'race' }));
+    must(manager.join(b, code));
+    must(manager.chat(a.id, 'oh shit that was close'));
+    expect(chats.get(b.id)?.[0]?.text).toBe('oh shit that was close');
   });
 });

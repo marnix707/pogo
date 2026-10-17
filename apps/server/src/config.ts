@@ -14,6 +14,7 @@ const schema = z.object({
   DISCONNECT_GRACE_SEC: z.coerce.number().int().min(1).default(20),
   ROOM_TTL_SEC: z.coerce.number().int().min(1).default(600),
   GUEST_SIGNUP_LIMIT_PER_MIN: z.coerce.number().int().min(1).default(10),
+  PROFANITY_FILTER: z.enum(['on', 'off']).default('on'),
 });
 
 export interface AppConfig {
@@ -36,6 +37,8 @@ export interface AppConfig {
   roomTtlMs: number;
   /** Guest signups allowed per IP per minute. */
   guestSignupLimitPerMin: number;
+  /** Mask profanity in chat and refuse profane guest nicknames. */
+  profanityFilter: boolean;
 }
 
 const list = (value: string) =>
@@ -62,5 +65,6 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     disconnectGraceMs: env.DISCONNECT_GRACE_SEC * 1000,
     roomTtlMs: env.ROOM_TTL_SEC * 1000,
     guestSignupLimitPerMin: env.GUEST_SIGNUP_LIMIT_PER_MIN,
+    profanityFilter: env.PROFANITY_FILTER === 'on',
   };
 }

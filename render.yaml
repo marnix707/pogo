@@ -38,6 +38,11 @@ services:
       - key: JWT_SECRET
         generateValue: true
 
+      # Profanity filter for chat and guest nicknames: 'on' or 'off'. Can be flipped in the Render
+      # dashboard (Environment) without a code change.
+      - key: PROFANITY_FILTER
+        value: 'off'
+
       # Gameplay timings (same defaults as .env.example)
       - key: TURN_TIME_SEC
         value: '90'

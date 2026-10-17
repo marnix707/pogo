@@ -30,6 +30,7 @@ beforeAll(async () => {
       disconnectGraceMs: 20_000,
       roomTtlMs: 600_000,
       guestSignupLimitPerMin: 1000,
+      profanityFilter: true,
     },
     users: createMemoryUserStore(),
     rng: createSeededRng(1),

@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
 import type { Browser } from '@playwright/test';
 
+// Set by docker-compose from PROFANITY_FILTER (the dev server's filter setting).
+const filterOn = process.env.PROFANITY_FILTER !== 'off';
+
 async function newPlayer(browser: Browser, nickname: string, avatar: string) {
   const context = await browser.newContext();
   const page = await context.newPage();
@@ -84,7 +87,9 @@ test('players chat in the waiting room and during the game; profanity is masked'
   await b.getByTestId('chat-input').fill('well shit, ready!');
   await b.getByTestId('chat-send').click();
   await expect(
-    a.getByTestId('chat-message').filter({ hasText: 'well ****, ready!' }),
+    a.getByTestId('chat-message').filter({
+      hasText: filterOn ? 'well ****, ready!' : 'well shit, ready!',
+    }),
   ).toBeVisible();
 
   // Start the game: the chat moves into a sheet behind a button, and keeps its history.
@@ -115,13 +120,19 @@ test('players chat in the waiting room and during the game; profanity is masked'
   await bob.context.close();
 });
 
-test('profane nicknames are refused at sign-in', async ({ browser }) => {
+test('profane nicknames are refused at sign-in when the filter is on (and allowed when off)', async ({
+  browser,
+}) => {
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.goto('/');
   await page.getByTestId('signin-nickname').fill('Big Sh1t');
   await page.getByTestId('signin-submit').click();
-  await expect(page.getByRole('alert')).toContainText('different nickname');
-  await expect(page.getByTestId('home-nickname')).toHaveCount(0);
+  if (filterOn) {
+    await expect(page.getByRole('alert')).toContainText('different nickname');
+    await expect(page.getByTestId('home-nickname')).toHaveCount(0);
+  } else {
+    await expect(page.getByTestId('home-nickname')).toHaveText('Big Sh1t');
+  }
   await context.close();
 });

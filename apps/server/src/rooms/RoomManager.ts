@@ -29,6 +29,8 @@ export interface RoomManagerDeps {
   emit(userId: string, room: RoomView | null, reason?: LeaveReason): void;
   limits: RoomLimits;
   defaultTurnTimeSec: number;
+  /** Chat text filter; pass an identity function to switch the profanity filter off. */
+  maskText(text: string): string;
   emitChat(userId: string, message: ChatMessage): void;
   emitHistory(userId: string, messages: ChatMessage[]): void;
   /** The set of public rooms (or their contents) may have changed. */
@@ -75,6 +77,7 @@ export class RoomManager {
         now: this.now,
         limits: this.deps.limits,
         emit: this.deps.emit,
+        maskText: this.deps.maskText,
         emitChat: this.deps.emitChat,
         emitHistory: this.deps.emitHistory,
         onChange: () => this.deps.onLobbyChanged(),

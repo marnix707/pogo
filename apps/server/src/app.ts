@@ -2,7 +2,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import { Server } from 'socket.io';
-import { APP_NAME, getGame } from '@pogo/shared';
+import { APP_NAME, getGame, maskProfanity } from '@pogo/shared';
 import type { AnyGameDefinition, Rng } from '@pogo/shared';
 import type { AppConfig } from './config';
 import { createTokenService } from './auth/tokens';
@@ -51,7 +51,10 @@ export async function buildApp(deps: AppDeps) {
     await deps.healthCheck();
     return { ok: true, app: APP_NAME };
   });
-  registerAuthRoutes(app, deps.users, tokens, config.guestSignupLimitPerMin);
+  registerAuthRoutes(app, deps.users, tokens, {
+    guestLimitPerMin: config.guestSignupLimitPerMin,
+    rejectProfaneNicknames: config.profanityFilter,
+  });
   if (config.webDistDir) await registerStatic(app, config.webDistDir);
 
   // Socket.IO shares Fastify's HTTP server (must be attached before listen).
@@ -84,6 +87,7 @@ export async function buildApp(deps: AppDeps) {
       autoStepMs: deps.autoStepMs ?? 1200,
     },
     defaultTurnTimeSec: config.turnTimeSec,
+    maskText: config.profanityFilter ? maskProfanity : (text) => text,
     emitChat: (userId, message) => {
       io.to(userChannel(userId)).emit('chat:message', message);
     },
