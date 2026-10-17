@@ -2,6 +2,7 @@
 # Dev entrypoint for the server: wait for Postgres, apply migrations, then run in watch mode.
 set -eu
 
+export DIRECT_URL="${DIRECT_URL:-$DATABASE_URL}"
 cd /app/apps/server
 
 echo "Waiting for database and applying migrations..."

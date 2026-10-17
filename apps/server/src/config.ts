@@ -9,6 +9,7 @@ const schema = z.object({
   CORS_ORIGINS: z.string().default('http://localhost:5173'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   HOST_LAN_IPS: z.string().default(''),
+  WEB_DIST_DIR: z.string().optional(),
   TURN_TIME_SEC: z.coerce.number().int().min(0).default(90),
   DISCONNECT_GRACE_SEC: z.coerce.number().int().min(1).default(20),
   ROOM_TTL_SEC: z.coerce.number().int().min(1).default(600),
@@ -24,6 +25,8 @@ export interface AppConfig {
   corsOrigins: string[] | true;
   logLevel: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace';
   lanIps: string[];
+  /** Built web app to serve (production). Unset in dev, where Vite serves the web app. */
+  webDistDir?: string;
   /** Default seconds per turn action in new rooms (0 = no timer). */
   turnTimeSec: number;
   /** How long a disconnected player is waited for before being auto-skipped / dropped from a lobby. */
@@ -51,6 +54,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     corsOrigins: origins.includes('*') ? true : origins,
     logLevel: env.LOG_LEVEL,
     lanIps: list(env.HOST_LAN_IPS),
+    webDistDir: env.WEB_DIST_DIR || undefined,
     turnTimeSec: env.TURN_TIME_SEC,
     disconnectGraceMs: env.DISCONNECT_GRACE_SEC * 1000,
     roomTtlMs: env.ROOM_TTL_SEC * 1000,

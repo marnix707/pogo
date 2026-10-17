@@ -8,6 +8,7 @@ import type { AppConfig } from './config';
 import { createTokenService } from './auth/tokens';
 import type { UserStore } from './auth/userStore';
 import { registerAuthRoutes } from './http/authRoutes';
+import { registerStatic } from './http/static';
 import { RoomManager } from './rooms/RoomManager';
 import { registerSocketHandlers, userChannel } from './socket/handlers';
 import type { PogoServer } from './socket/handlers';
@@ -25,18 +26,28 @@ export interface AppDeps {
 
 export async function buildApp(deps: AppDeps) {
   const { config } = deps;
-  const app = Fastify({ logger: deps.logger ?? false });
+  // Behind Render's proxy the real client IP is in X-Forwarded-For; without this every user
+  // would share one rate-limit bucket.
+  const app = Fastify({ logger: deps.logger ?? false, trustProxy: config.isProd });
 
   await app.register(cors, { origin: config.corsOrigins });
-  await app.register(rateLimit, { max: 120, timeWindow: '1 minute' });
+  // Only the API is rate limited; static assets are not.
+  await app.register(rateLimit, {
+    max: 120,
+    timeWindow: '1 minute',
+    allowList: (req) => !req.url.startsWith('/api'),
+  });
 
   const tokens = createTokenService(config.jwtSecret);
 
+  // Liveness for the host's health probes: never touches the database (keeps Neon asleep).
+  app.get('/api/livez', async () => ({ ok: true }));
   app.get('/api/healthz', async () => {
     await deps.healthCheck();
     return { ok: true, app: APP_NAME };
   });
   registerAuthRoutes(app, deps.users, tokens);
+  if (config.webDistDir) await registerStatic(app, config.webDistDir);
 
   // Socket.IO shares Fastify's HTTP server (must be attached before listen).
   const io: PogoServer = new Server(app.server, { cors: { origin: config.corsOrigins } });

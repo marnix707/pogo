@@ -34,6 +34,10 @@ async function main() {
 
   await app.listen({ host: '0.0.0.0', port: config.port });
 
+  if (config.isProd) {
+    app.log.info(`${APP_NAME} is up`);
+    return;
+  }
   const urls = ['localhost', ...config.lanIps].map((h) => `  http://${h}:${config.webPort}`);
   app.log.info(
     `${APP_NAME} is up. Open on this machine or on your phone (same Wi-Fi):\n${urls.join('\n')}`,

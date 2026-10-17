@@ -7,7 +7,7 @@ services:
     plan: free
     region: frankfurt # cannot be changed after the service is created
 
-    # Multi-stage image that builds the web app and runs the server (added in the next step).
+    # Multi-stage image: builds the web app, bundles the server, runs migrations on start.
     dockerfilePath: ./Dockerfile
     dockerContext: .
 

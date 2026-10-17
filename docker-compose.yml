@@ -31,6 +31,7 @@ services:
       SERVER_PORT: ${SERVER_PORT:-3000}
       WEB_PORT: ${WEB_PORT:-5173}
       DATABASE_URL: ${DATABASE_URL:-postgresql://pogo:pogo_dev_password@db:5432/pogo?schema=public}
+      DIRECT_URL: ${DIRECT_URL:-${DATABASE_URL:-postgresql://pogo:pogo_dev_password@db:5432/pogo?schema=public}}
       JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-dev-only-change-me}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
       LOG_LEVEL: ${LOG_LEVEL:-info}
