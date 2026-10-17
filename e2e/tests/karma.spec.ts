@@ -254,6 +254,56 @@ test('tap selects a card, tapping the same card again plays it; there is no Read
   for (const c of [alice, bob]) await c.context.close();
 });
 
+test('the pile is picked up with two taps, the deck explains itself, a timer counts down, buttons sit beside the cards', async ({
+  browser,
+}) => {
+  const alice = await newPlayer(browser, 'Alice', 'fox');
+  const bob = await newPlayer(browser, 'Bob', 'cat');
+  const [a, b] = [alice.page, bob.page];
+
+  await a.getByTestId('home-new-karma').click();
+  const code = (await a.getByTestId('room-code').textContent())!.trim();
+  await b.getByTestId('home-join-code').fill(code);
+  await b.getByTestId('home-join-submit').click();
+  await a.getByTestId('lobby-start').click();
+  for (const p of [a, b]) await doubleTapFirstCard(p);
+  for (const p of [a, b])
+    await expect(p.getByTestId('karma-game')).toHaveAttribute('data-phase', 'play');
+
+  const mover = (await a.getByTestId('karma-hint').getAttribute('data-my-turn')) === 'true' ? a : b;
+  const other = mover === a ? b : a;
+
+  // Timer counts down for both players; the action buttons sit beside (not under) my cards.
+  for (const p of [a, b]) await expect(p.getByTestId('karma-timer')).toBeVisible();
+  const hand = await mover.getByTestId('my-hand').boundingBox();
+  const play = await mover.getByTestId('karma-play').boundingBox();
+  expect(play!.x).toBeGreaterThanOrEqual(hand!.x + hand!.width - 2);
+
+  // The deck cannot be drawn from: tapping it only explains why.
+  await mover.getByTestId('stock').click();
+  await expect(mover.getByTestId('karma-hint')).toContainText('drawn for you');
+
+  // Pile is empty: tapping it does nothing.
+  await mover.getByTestId('pile').click();
+  await expect(mover.getByTestId('pile')).toHaveAttribute('data-armed', 'false');
+
+  // Play a card, then the other player picks the pile up with two taps.
+  const snap = await snapshot(mover);
+  await takeTurn(mover, snap);
+  await expect(mover.getByTestId('karma-event')).toContainText('played');
+  const pile = other.getByTestId('pile');
+  if (Number(await pile.getAttribute('data-count')) > 0) {
+    await expect(other.getByTestId('karma-hint')).toHaveAttribute('data-my-turn', 'true');
+    await pile.click();
+    await expect(pile).toHaveAttribute('data-armed', 'true');
+    await expect(other.getByTestId('karma-hint')).toContainText('pile again');
+    await pile.click();
+    await expect(other.getByTestId('karma-event')).toContainText('picked up');
+  }
+
+  for (const c of [alice, bob]) await c.context.close();
+});
+
 test('a very long hand (after picking up piles) stays reachable: first and last card can be selected', async ({
   browser,
 }) => {
