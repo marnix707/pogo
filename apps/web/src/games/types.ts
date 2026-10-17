@@ -16,4 +16,6 @@ export interface GameUi {
   emoji: string;
   tagline: string;
   Component: ComponentType<GameUiProps>;
+  /** Optional custom headline for the results panel (default: "<winner> wins!"). */
+  resultsTitle?: (room: RoomView, me: string) => string | undefined;
 }

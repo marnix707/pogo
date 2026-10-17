@@ -504,3 +504,58 @@ describe('chat', () => {
     expect(chats.get(b.id)).toBeUndefined();
   });
 });
+
+describe('with Karma (simultaneous swap phase, private hands)', () => {
+  function karmaRoom() {
+    const s = setup();
+    const { code } = s.must(s.manager.create(a, { gameId: 'karma' }));
+    s.must(s.manager.join(b, code));
+    s.must(s.manager.start(a.id));
+    return s;
+  }
+
+  type View = {
+    phase: string;
+    players: { id: string; hand: number[] | null; handCount: number; faceDown: boolean[] }[];
+    stockCount: number;
+  };
+  const viewOf = (room: RoomView | null) => room?.game?.view as View;
+
+  it('never sends one player the cards in another hand or the face-down cards', () => {
+    const { lastRoom } = karmaRoom();
+    const forA = viewOf(lastRoom(a.id));
+    const forB = viewOf(lastRoom(b.id));
+    expect(forA.players.find((p) => p.id === a.id)?.hand).toHaveLength(3);
+    expect(forA.players.find((p) => p.id === b.id)?.hand).toBeNull();
+    expect(forB.players.find((p) => p.id === a.id)?.hand).toBeNull();
+    expect(forB.players.find((p) => p.id === b.id)?.hand).toHaveLength(3);
+    expect(forA.players[0]?.faceDown).toEqual([true, true, true]);
+    expect(forA.stockCount).toBe(52 - 18);
+  });
+
+  it('lets both players act in the swap phase, and moves to play when both are ready', () => {
+    const { manager, lastRoom, must } = karmaRoom();
+    expect(lastRoom(a.id)?.game?.currentPlayers.sort()).toEqual([a.id, b.id]);
+    must(manager.move(a.id, { type: 'ready' }));
+    expect(lastRoom(a.id)?.game?.currentPlayers).toEqual([b.id]);
+    must(manager.move(b.id, { type: 'ready' }));
+    expect(viewOf(lastRoom(a.id)).phase).toBe('play');
+    expect(lastRoom(a.id)?.game?.currentPlayers).toHaveLength(1);
+  });
+
+  it('auto-readies players who run out of time, then auto-plays the first turn', () => {
+    const { manager, lastRoom } = karmaRoom();
+    vi.advanceTimersByTime(30_000); // the turn timer
+    expect(viewOf(lastRoom(a.id)).phase).toBe('play');
+    const view = viewOf(lastRoom(a.id)) as View & { pile: number[] };
+    const [starter] = lastRoom(a.id)!.game!.currentPlayers;
+    expect(starter).toBeDefined();
+    vi.advanceTimersByTime(30_000);
+    const after = viewOf(lastRoom(a.id)) as View & { pile: number[] };
+    // Someone played or picked up on the auto-played turn.
+    expect(after.pile.length !== view.pile.length || after.stockCount !== view.stockCount).toBe(
+      true,
+    );
+    expect(manager.roomCount).toBe(1);
+  });
+});

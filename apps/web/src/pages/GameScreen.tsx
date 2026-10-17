@@ -12,7 +12,17 @@ import { play } from '../lib/sound';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
-function ResultsPanel({ room, me, api }: { room: RoomView; me: string; api: RoomApi }) {
+function ResultsPanel({
+  room,
+  me,
+  api,
+  title,
+}: {
+  room: RoomView;
+  me: string;
+  api: RoomApi;
+  title?: string;
+}) {
   const results = room.game?.results;
   if (!results) return null;
   const isHost = room.hostId === me;
@@ -25,9 +35,10 @@ function ResultsPanel({ room, me, api }: { room: RoomView; me: string; api: Room
     >
       <div className="mx-auto flex max-w-md flex-col gap-3">
         <h2 className="text-center text-2xl font-bold uppercase tracking-[0.12em]">
-          {iWon
-            ? '🎉 You won!'
-            : `🏆 ${room.members.find((m) => m.id === best?.playerId)?.nickname ?? ''} wins!`}
+          {title ??
+            (iWon
+              ? '🎉 You won!'
+              : `🏆 ${room.members.find((m) => m.id === best?.playerId)?.nickname ?? ''} wins!`)}
         </h2>
         <ol className="flex flex-col gap-1.5">
           {results.rankings.map((r) => {
@@ -155,7 +166,9 @@ export function GameScreen({
       <div className="min-h-0 flex-1">
         <ui.Component room={room} me={me} sendMove={api.move} />
       </div>
-      {finished && <ResultsPanel room={room} me={me} api={api} />}
+      {finished && (
+        <ResultsPanel room={room} me={me} api={api} title={ui.resultsTitle?.(room, me)} />
+      )}
 
       <Sheet open={chatOpen} onClose={() => setChatOpen(false)} title="Chat">
         <ChatPanel

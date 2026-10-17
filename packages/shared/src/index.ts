@@ -7,4 +7,5 @@ export * from './game/types';
 export * from './game/rng';
 export * from './game/testing';
 export * as yatzy from './games/yatzy';
+export * as karma from './games/karma';
 export * from './games/registry';

@@ -53,6 +53,9 @@ test('public games show up live in the lobby, can be joined from it, and quick m
   await expect(h.getByTestId('member-Quicky')).toBeVisible();
   await expect(h.getByTestId('player-count')).toHaveText('3 / 6');
 
+  // Leave so the public room does not linger in the shared lobby for other tests.
+  for (const p of [third.page, w, h]) await p.getByTestId('lobby-leave').click();
+
   await watcher.context.close();
   await host.context.close();
   await third.context.close();
