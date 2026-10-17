@@ -70,10 +70,25 @@ describe('canPlayRank', () => {
     for (let r = 2; r <= 14; r++) expect(canPlayRank([], r)).toBe(true);
   });
   it('requires equal or higher on a normal card', () => {
-    expect(canPlayRank([card(7)], 7)).toBe(true);
-    expect(canPlayRank([card(7)], 8)).toBe(true);
-    expect(canPlayRank([card(7)], 6)).toBe(false);
+    expect(canPlayRank([card(6)], 6)).toBe(true);
+    expect(canPlayRank([card(6)], 8)).toBe(true);
+    expect(canPlayRank([card(6)], 5)).toBe(false);
     expect(canPlayRank([card(14)], 13)).toBe(false);
+  });
+  it('after a 7 only lower cards, a 2 or a 10 may follow', () => {
+    for (const rank of [3, 4, 5, 6, 2, 10]) expect(canPlayRank([card(7)], rank)).toBe(true);
+    for (const rank of [7, 8, 9, 11, 12, 13, 14]) expect(canPlayRank([card(7)], rank)).toBe(false);
+  });
+  it('a 7 can be played on anything that is not higher than it', () => {
+    expect(canPlayRank([card(5)], 7)).toBe(true);
+    expect(canPlayRank([card(6)], 7)).toBe(true);
+    expect(canPlayRank([card(8)], 7)).toBe(false);
+    expect(canPlayRank([card(14)], 7)).toBe(false);
+  });
+  it('the 7 rule only looks at the top card', () => {
+    expect(canPlayRank([card(7), card(9)], 9)).toBe(true);
+    expect(canPlayRank([card(9), card(7)], 9)).toBe(false);
+    expect(canPlayRank([card(7), card(2)], 9)).toBe(true); // a 2 resets
   });
   it('lets 2 and 10 go on anything, and anything go on a 2', () => {
     expect(canPlayRank([card(14)], 2)).toBe(true);
@@ -262,10 +277,87 @@ describe('playing cards', () => {
   });
 
   it('accepts equal or higher, rejects lower', () => {
-    const s = table([{ hand: [card(6), card(7, 1), card(8)] }, {}], { pile: [card(7)] });
-    ok(s, 'p1', { type: 'play', cards: [card(7, 1)] });
+    const s = table([{ hand: [card(5), card(6, 1), card(8)] }, {}], { pile: [card(6)] });
+    ok(s, 'p1', { type: 'play', cards: [card(6, 1)] });
     ok(s, 'p1', { type: 'play', cards: [card(8)] });
-    bad(s, 'p1', { type: 'play', cards: [card(6)] }, 'Too low');
+    bad(s, 'p1', { type: 'play', cards: [card(5)] }, 'Too low');
+  });
+
+  describe('after a 7', () => {
+    const onSeven = () =>
+      table([{ hand: [card(3), card(6), card(7, 1), card(8), card(2), card(10)] }, {}], {
+        pile: [card(9), card(7)],
+      });
+
+    it('accepts lower cards, a 2 and a 10', () => {
+      ok(onSeven(), 'p1', { type: 'play', cards: [card(3)] });
+      ok(onSeven(), 'p1', { type: 'play', cards: [card(6)] });
+      ok(onSeven(), 'p1', { type: 'play', cards: [card(2)] });
+      ok(onSeven(), 'p1', { type: 'play', cards: [card(10)] });
+    });
+
+    it('rejects another 7 and anything higher, with a helpful message', () => {
+      bad(onSeven(), 'p1', { type: 'play', cards: [card(7, 1)] }, 'After a 7');
+      bad(onSeven(), 'p1', { type: 'play', cards: [card(8)] }, 'After a 7');
+    });
+
+    it('a 10 still burns the pile after a 7', () => {
+      const after = move(onSeven(), 'p1', { type: 'play', cards: [card(10)] });
+      expect(after.pile).toEqual([]);
+      expect(after.turn).toBe(0);
+    });
+
+    it('a set of 7s can be played together on a lower card', () => {
+      const s = table([{ hand: [card(7), card(7, 1), card(4)] }, { hand: [card(3), card(9)] }], {
+        pile: [card(5)],
+      });
+      const after = move(s, 'p1', { type: 'play', cards: [card(7), card(7, 1)] });
+      expect(after.pile).toEqual([card(5), card(7), card(7, 1)]);
+      // ...and the next player is now held to lower cards
+      bad(after, 'p2', { type: 'play', cards: [card(9)] }, 'After a 7');
+    });
+
+    it('a player with nothing lower must pick up', () => {
+      const s = table([{ hand: [card(8), card(9)] }, {}], { pile: [card(7)] });
+      bad(s, 'p1', { type: 'play', cards: [card(8)] });
+      ok(s, 'p1', { type: 'pickup' });
+      expect(game.autoMove!(s, 'p1', rng).move).toEqual({ type: 'pickup' });
+    });
+
+    it('applies to blind cards too: a high blind card after a 7 is picked up', () => {
+      const s = table([{ faceDown: [card(9), card(3), card(4)] }, { hand: [card(9)] }], {
+        pile: [card(7)],
+      });
+      const after = move(s, 'p1', { type: 'playDown', index: 0 });
+      expect(after.pile).toEqual([]);
+      expect(hand(after, 0)).toEqual([card(7), card(9)]);
+      expect(after.lastEvent).toMatchObject({ kind: 'blind', pickedUp: 2 });
+    });
+
+    it('a low blind card after a 7 is fine', () => {
+      const s = table([{ faceDown: [card(4), card(3), card(5)] }, { hand: [card(9)] }], {
+        pile: [card(7)],
+      });
+      const after = move(s, 'p1', { type: 'playDown', index: 0 });
+      expect(after.pile).toEqual([card(7), card(4)]);
+    });
+  });
+
+  it('a 10 can be played at any time, on anything: empty pile, ace, 7, 2, even a pile of 10s', () => {
+    for (const pile of [
+      [],
+      [card(14)],
+      [card(7)],
+      [card(2)],
+      [card(9), card(7)],
+      [card(5), card(10, 1)],
+    ]) {
+      const s = table([{ hand: [card(10), card(4)] }, {}], { pile });
+      ok(s, 'p1', { type: 'play', cards: [card(10)] });
+      const after = move(s, 'p1', { type: 'play', cards: [card(10)] });
+      expect(after.pile).toEqual([]); // always burns
+      expect(after.turn).toBe(0); // and you go again
+    }
   });
 
   it('allows 2 and 10 on anything, and anything on a 2', () => {
@@ -390,10 +482,10 @@ describe('burning the pile', () => {
   });
 
   it('the fourth card on top of three of a kind burns, even across turns', () => {
-    const s = table([{ hand: [card(7, 3), card(4)] }, {}], {
-      pile: [card(9), card(7), card(7, 1), card(7, 2)],
+    const s = table([{ hand: [card(8, 3), card(4)] }, {}], {
+      pile: [card(9), card(8), card(8, 1), card(8, 2)],
     });
-    const after = move(s, 'p1', { type: 'play', cards: [card(7, 3)] });
+    const after = move(s, 'p1', { type: 'play', cards: [card(8, 3)] });
     expect(after.pile).toEqual([]);
     expect(after.burned).toBe(5);
     expect(after.turn).toBe(0);
@@ -469,10 +561,10 @@ describe('face-up and face-down cards', () => {
 
   it('plays a good blind card like any other', () => {
     const s = table([{ faceDown: [card(9), card(3), card(4)] }, { hand: [card(9)] }], {
-      pile: [card(7)],
+      pile: [card(6)],
     });
     const after = move(s, 'p1', { type: 'playDown', index: 0 });
-    expect(after.pile).toEqual([card(7), card(9)]);
+    expect(after.pile).toEqual([card(6), card(9)]);
     expect(after.players[0]!.faceDown).toEqual([null, card(3), card(4)]);
     expect(after.turn).toBe(1);
     expect(after.lastEvent).toMatchObject({ kind: 'blind', cards: [card(9)], pickedUp: 0 });

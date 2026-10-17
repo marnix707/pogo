@@ -20,8 +20,12 @@ export function KarmaRules({ open, onClose }: { open: boolean; onClose: () => vo
         </li>
         <li>
           <b className="text-neon">2</b> goes on anything, and anything goes on a 2.{' '}
-          <b className="text-neon">10</b> goes on anything too and burns the whole pile, and you go
-          again. Four of a kind on top of the pile also burns it.
+          <b className="text-neon">10</b> can be played any time, on anything: it burns the whole
+          pile and you go again. Four of a kind on top of the pile also burns it.
+        </li>
+        <li>
+          <b className="text-neon">7:</b> after a 7 the next card must be <b>lower</b> than 7 (3 to
+          6), or a 2, or a 10. Anything higher, or another 7, can&apos;t be played, so you pick up.
         </li>
         <li>
           <b className="text-neon">Draw:</b> after playing, draw back up to three cards while the

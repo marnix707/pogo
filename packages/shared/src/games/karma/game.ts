@@ -59,13 +59,20 @@ const OK: MoveValidation = { ok: true };
 
 // ---- rules helpers (exported for the UI) ----------------------------------------------------
 
-/** Can a card of this rank be played on the pile? 2 and 10 always can; anything follows a 2. */
+/**
+ * Can a card of this rank be played on the pile?
+ * - 2 and 10 can always be played (a 10 also burns the pile); anything may follow a 2.
+ * - After a 7 the next card must be LOWER than 7 (the "lower than" variant): 3-6, a 2 or a 10.
+ * - Otherwise the card must be equal to or higher than the top card.
+ */
 export function canPlayRank(pile: readonly Card[], rank: number): boolean {
   if (rank === 2 || rank === 10) return true;
   const top = pile[pile.length - 1];
   if (top === undefined) return true;
   const topRank = rankOf(top);
-  return topRank === 2 || rank >= topRank;
+  if (topRank === 2) return true;
+  if (topRank === 7) return rank < 7;
+  return rank >= topRank;
 }
 
 /** Four of a kind on top of the pile burns it. */
@@ -175,7 +182,12 @@ function validateMove(state: KarmaState, playerId: string, move: KarmaMove): Mov
       }
       const rank = rankOf(move.cards[0] as Card);
       if (move.cards.some((c) => rankOf(c) !== rank)) return err('Play cards of the same rank');
-      if (!canPlayRank(state.pile, rank)) return err('Too low: play higher, or a 2 or a 10');
+      if (!canPlayRank(state.pile, rank))
+        return err(
+          rankOf(state.pile[state.pile.length - 1] as Card) === 7
+            ? 'After a 7 you must play lower, or a 2 or a 10'
+            : 'Too low: play higher, or a 2 or a 10',
+        );
       return OK;
     }
   }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { PublicRoomSummary, PublicUser } from '@pogo/shared';
+import { InstallCard } from '../components/InstallCard';
 import { LogoMark } from '../components/icons';
 import { Avatar, Button, Card, SectionLabel } from '../components/ui';
 import { TopBar } from '../components/TopBar';
@@ -113,6 +114,8 @@ export function Home({
             </div>
           </div>
         </div>
+
+        <InstallCard variant="banner" />
 
         <section aria-label="Games">
           <SectionLabel>Play</SectionLabel>

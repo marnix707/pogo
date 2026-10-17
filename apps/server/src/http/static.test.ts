@@ -13,6 +13,8 @@ beforeAll(async () => {
   mkdirSync(join(dir, 'assets'));
   writeFileSync(join(dir, 'index.html'), '<!doctype html><title>Pogo</title>');
   writeFileSync(join(dir, 'assets', 'app-abc123.js'), 'console.log(1)');
+  writeFileSync(join(dir, 'manifest.webmanifest'), '{"name":"Pogo"}');
+  writeFileSync(join(dir, 'sw.js'), 'self.addEventListener("fetch", () => {});');
 
   app = await buildApp({
     config: {
@@ -57,6 +59,20 @@ describe('production web serving', () => {
     const res = await app.app.inject('/assets/app-abc123.js');
     expect(res.statusCode).toBe(200);
     expect(res.headers['cache-control']).toContain('immutable');
+  });
+
+  it('serves the web app manifest with the right type', async () => {
+    const res = await app.app.inject('/manifest.webmanifest');
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toContain('manifest+json');
+    expect(res.json()).toEqual({ name: 'Pogo' });
+  });
+
+  it('serves the service worker as JavaScript that is never cached, so updates roll out', async () => {
+    const res = await app.app.inject('/sw.js');
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toContain('javascript');
+    expect(res.headers['cache-control']).toBe('no-cache');
   });
 
   it('falls back to index.html for client-side routes', async () => {

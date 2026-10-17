@@ -330,6 +330,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     if (zone === 'down') hint = 'Pick a face-down card… blind!';
     else if (top === undefined) hint = 'The pile is empty: lead with anything';
     else if (rankOf(top) === 2) hint = 'A 2 is on top: play anything';
+    else if (rankOf(top) === 7) hint = 'A 7 is on top: play lower, a 2 or a 10, or pick up';
     else hint = `Play ${RANK_LABEL[rankOf(top)]} or higher, a 2 or a 10, or pick up`;
   } else if (currentId) {
     hint = `${nameOf(currentId)} ${currentId === me ? 'are' : 'is'} playing…`;

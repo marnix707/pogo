@@ -26,6 +26,9 @@ function applyTheme() {
     current.theme === 'dark' ||
     (current.theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.classList.toggle('dark', dark);
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute('content', dark ? '#001850' : '#00A9AB');
 }
 
 export function getSettings(): Settings {

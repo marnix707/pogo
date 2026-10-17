@@ -81,6 +81,19 @@ button {
   touch-action: manipulation;
 }
 
+/*
+  When launched from the home screen the status bar is translucent and the page runs underneath it.
+  This navy strip fills the inset so the clock/battery stay readable. It is 0px high in a normal browser.
+*/
+.safe-top-scrim {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: env(safe-area-inset-top);
+  background: rgb(0 24 80 / 0.92);
+  z-index: 60;
+  pointer-events: none;
+}
+
 @layer components {
   /* A flat HUD panel with a defined outline. */
   .hud {
