@@ -187,7 +187,7 @@ test('cards slide when swapped and when played to the pile (unless motion is red
   for (const c of [alice, bob, calm]) await c.context.close();
 });
 
-test('tap selects a card, tapping the same card again plays it; Ready button works in the swap phase', async ({
+test('tap selects, a slow second tap deselects, a fast double tap plays; Ready button works in the swap phase', async ({
   browser,
 }) => {
   const alice = await newPlayer(browser, 'Alice', 'fox');
@@ -213,7 +213,12 @@ test('tap selects a card, tapping the same card again plays it; Ready button wor
   await expect(hand(a).nth(0)).toHaveAttribute('aria-pressed', 'false');
   await expect(hand(a).nth(1)).toHaveAttribute('aria-pressed', 'true');
   await expect(a.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
-  await hand(a).nth(1).click(STRIP); // same card again: ready
+  await a.waitForTimeout(450); // a slow second tap on the selected card deselects it...
+  await hand(a).nth(1).click(STRIP);
+  await expect(hand(a).nth(1)).toHaveAttribute('aria-pressed', 'false');
+  await a.waitForTimeout(450); // ...and a fast double tap means ready
+  await hand(a).nth(1).click(STRIP);
+  await hand(a).nth(1).click(STRIP);
   await expect(b.getByText('Ready ✓')).toBeVisible(); // Bob sees Alice is ready
 
   await b.getByTestId('karma-ready').click();
@@ -231,7 +236,7 @@ test('tap selects a card, tapping the same card again plays it; Ready button wor
   // One tap selects: nothing is played yet.
   await mover.getByTestId(first!.id).click(STRIP);
   await expect(mover.getByTestId(first!.id)).toHaveAttribute('aria-pressed', 'true');
-  await expect(mover.getByTestId('karma-hint')).toContainText('again to play');
+  await expect(mover.getByTestId('karma-hint')).toContainText('Double-tap to play');
   await expect(pile).toHaveAttribute('data-count', '0');
 
   // Tapping the table (outside the cards) clears the selection.
@@ -239,14 +244,28 @@ test('tap selects a card, tapping the same card again plays it; Ready button wor
   await expect(mover.getByTestId(first!.id)).toHaveAttribute('aria-pressed', 'false');
   await expect(pile).toHaveAttribute('data-count', '0');
 
-  // Select, switch to another card of a different rank, then tap that one again to play it.
+  // Select, switch to another card of a different rank, deselect it, then double-tap it to play it.
+  await mover.waitForTimeout(450); // (not a double tap with the earlier tap on this card)
   await mover.getByTestId(first!.id).click(STRIP);
   if (second!.rank !== first!.rank) {
     await mover.getByTestId(second!.id).click(STRIP);
     await expect(mover.getByTestId(first!.id)).toHaveAttribute('aria-pressed', 'false');
     await expect(mover.getByTestId(second!.id)).toHaveAttribute('aria-pressed', 'true');
+    // A slow tap on the selected card deselects it (the pile stays empty)...
+    await mover.waitForTimeout(450);
+    await mover.getByTestId(second!.id).click(STRIP);
+    await expect(mover.getByTestId(second!.id)).toHaveAttribute('aria-pressed', 'false');
+    await expect(pile).toHaveAttribute('data-count', '0');
+    // ...and a fast double tap plays it.
+    await mover.waitForTimeout(450);
+    await mover.getByTestId(second!.id).click(STRIP);
     await mover.getByTestId(second!.id).click(STRIP);
   } else {
+    await mover.waitForTimeout(450);
+    await mover.getByTestId(first!.id).click(STRIP);
+    await expect(mover.getByTestId(first!.id)).toHaveAttribute('aria-pressed', 'false');
+    await mover.waitForTimeout(450);
+    await mover.getByTestId(first!.id).click(STRIP);
     await mover.getByTestId(first!.id).click(STRIP);
   }
   // (A 10 would burn the pile, leaving it empty, so check the narration rather than the pile size.)

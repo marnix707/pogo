@@ -36,6 +36,9 @@ const MY_SLOT_OVERLAP = 0.7;
 /** Width of the timer + buttons column beside my table cards (w-[5.5rem] + gap). */
 const ACTION_COLUMN_PX = 96;
 
+/** Two taps on the same card within this many ms are a double tap (play / ready). */
+const DOUBLE_TAP_MS = 350;
+
 /** Em-size of an opponent's cards: fewer opponents, bigger cards (4 seats must fit in a row). */
 const seatFont = (opponents: number) =>
   opponents <= 1 ? 11 : opponents === 2 ? 9.6 : opponents === 3 ? 8.2 : 5.7;
@@ -417,13 +420,25 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     await send({ type: 'ready' });
   }
 
+  /** True when this is the second tap on the same thing within DOUBLE_TAP_MS. */
+  const lastTap = useRef({ key: '', at: 0 });
+  function isDoubleTap(key: string): boolean {
+    const now = Date.now();
+    const fast = lastTap.current.key === key && now - lastTap.current.at < DOUBLE_TAP_MS;
+    lastTap.current = { key, at: fast ? 0 : now };
+    return fast;
+  }
+
   function tapSwapHand(card: Card) {
+    const fast = isDoubleTap(`c${card}`);
     if (swapUp !== null) {
       void send({ type: 'swap', hand: card, up: swapUp });
       setSwapUp(null);
       setSwapHand(null);
-    } else if (swapHand === card) {
+    } else if (fast) {
       void getReady();
+    } else if (swapHand === card) {
+      setSwapHand(null);
     } else {
       haptic('tap');
       setSwapHand(card);
@@ -431,42 +446,49 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   }
 
   function tapSwapUp(slot: number) {
+    const fast = isDoubleTap(`u${slot}`);
     if (swapHand !== null) {
       void send({ type: 'swap', hand: swapHand, up: slot });
       setSwapUp(null);
       setSwapHand(null);
-    } else if (swapUp === slot) {
+    } else if (fast) {
       void getReady();
+    } else if (swapUp === slot) {
+      setSwapUp(null);
     } else {
       haptic('tap');
       setSwapUp(slot);
     }
   }
 
-  /** Play phase: tap selects; tapping a selected card again plays the whole selection. */
+  /** Play phase: tap selects, tap a selected card again to deselect it, double-tap plays the selection. */
   function tapCard(card: Card) {
     if (!playing || !canPlayRank(pile, rankOf(card))) return;
-    if (sel.includes(card)) {
-      void playSelected();
+    const fast = isDoubleTap(`c${card}`);
+    const next = sel.includes(card)
+      ? sel
+      : sel.length > 0 && rankOf(sel[0] as Card) === rankOf(card)
+        ? [...sel, card]
+        : [card];
+    if (fast) {
+      void playSelected(next, null);
       return;
     }
     haptic('tap');
     setSelDown(null);
     setPileArmed(false);
-    setSel((prev) =>
-      prev.length > 0 && rankOf(prev[0] as Card) === rankOf(card) ? [...prev, card] : [card],
-    );
+    setSel(sel.includes(card) ? sel.filter((c) => c !== card) : next);
   }
 
   function tapDown(slot: number) {
-    if (selDown === slot) {
-      void playSelected();
+    if (isDoubleTap(`d${slot}`)) {
+      void playSelected([], slot);
       return;
     }
     haptic('tap');
     setSel([]);
     setPileArmed(false);
-    setSelDown(slot);
+    setSelDown(selDown === slot ? null : slot);
   }
 
   function clearSelection() {
@@ -499,11 +521,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     flashHint('Cards are drawn for you after you play');
   }
 
-  async function playSelected() {
+  async function playSelected(cards: Card[] = sel, down: number | null = selDown) {
     const res =
-      selDown !== null
-        ? await send({ type: 'playDown', index: selDown })
-        : await send({ type: 'play', cards: sel });
+      down !== null
+        ? await send({ type: 'playDown', index: down })
+        : await send({ type: 'play', cards });
     if (res?.ok) {
       setSel([]);
       setSelDown(null);
@@ -522,7 +544,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         'Time to swap! Tap a floating face-up card and a hand card to switch them, then press Ready';
   } else if (view.phase === 'swap') hint = 'Waiting for the others to get ready…';
   else if (myTurn && (sel.length > 0 || selDown !== null)) {
-    hint = 'Tap the card again to play it';
+    hint = 'Double-tap to play · tap a card again to deselect';
   } else if (myTurn) {
     if (zone === 'down') hint = 'Pick a face-down card… blind!';
     else if (top === undefined) hint = 'The pile is empty: lead with anything';

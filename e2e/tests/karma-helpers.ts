@@ -16,12 +16,29 @@ export async function newPlayer(browser: Browser, nickname: string, avatar: stri
 // Cards in the fanned hand overlap, so tap the visible left strip, like a thumb would.
 export const STRIP = { position: { x: 6, y: 14 } };
 
-/** Getting ready (and playing) is a double tap: select a card, then tap the same card again. */
+/** Getting ready (and playing) is a fast double tap; a slow second tap deselects instead. */
 export async function doubleTapFirstCard(page: Page) {
   const card = page.locator('[data-testid^=hand-card-]').first();
   await card.click(STRIP);
-  await expect(card).toHaveAttribute('aria-pressed', 'true');
   await card.click(STRIP);
+}
+
+/**
+ * Select a set of same-rank cards and play it. One card: tap twice quickly. Several: tap each to
+ * select, then tap the first one twice quickly (the first tap deselects it, the fast second one
+ * plays the whole selection, with that card included).
+ */
+async function playSet(
+  page: Page,
+  ids: string[],
+  tap: { position: { x: number; y: number } } | undefined,
+) {
+  for (const id of ids) await page.getByTestId(id).click(tap);
+  if (ids.length === 1) await page.getByTestId(ids[0]!).click(tap);
+  else {
+    await page.getByTestId(ids[0]!).click(tap);
+    await page.getByTestId(ids[0]!).click(tap);
+  }
 }
 
 export interface Snapshot {
@@ -73,13 +90,19 @@ export async function takeTurn(page: Page, s: Snapshot) {
   if (s.handCount > 0) {
     const set = choose(s.playableHand);
     if (set.length === 0) return page.getByTestId('karma-pickup').click();
-    for (const card of set) await page.getByTestId(card.id).click(STRIP); // select (adds same-rank cards)
-    await page.getByTestId(set[0]!.id).click(STRIP); // tap a selected card again: play them all
+    await playSet(
+      page,
+      set.map((c) => c.id),
+      STRIP,
+    );
   } else if (s.hasUp) {
     const set = choose(s.playableUp);
     if (set.length === 0) return page.getByTestId('karma-pickup').click();
-    for (const card of set) await page.getByTestId(card.id).click();
-    await page.getByTestId(set[0]!.id).click();
+    await playSet(
+      page,
+      set.map((c) => c.id),
+      undefined,
+    );
   } else {
     await page.getByTestId(s.downs[0]!).click();
     await page.getByTestId(s.downs[0]!).click();
