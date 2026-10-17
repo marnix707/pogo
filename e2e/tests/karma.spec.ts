@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test';
 import type { Browser, Page } from '@playwright/test';
 
 async function newPlayer(browser: Browser, nickname: string, avatar: string) {
-  const context = await browser.newContext();
+  // Reduced motion keeps card animations from slowing down the automated taps.
+  const context = await browser.newContext({ reducedMotion: 'reduce' });
   const page = await context.newPage();
   await page.goto('/');
   await page.getByTestId('signin-nickname').fill(nickname);
@@ -167,4 +168,89 @@ test('the lobby can be filtered by game', async ({ browser }) => {
   await expect(w.getByTestId(/^open-game-/).filter({ hasText: "YatzyHost's game" })).toHaveCount(0);
 
   for (const c of [watcher, hostA, hostB]) await c.context.close();
+});
+
+/** Resolves true if the element gets a running animation within ~1.5s (polling every frame). */
+const animatesSoon = (page: Page, selector: string) =>
+  page.evaluate(
+    (sel) =>
+      new Promise<boolean>((resolve) => {
+        let frames = 0;
+        const check = () => {
+          const el = document.querySelector(sel);
+          if (el && el.getAnimations().length > 0) return resolve(true);
+          if (++frames > 90) return resolve(false);
+          requestAnimationFrame(check);
+        };
+        check();
+      }),
+    selector,
+  );
+
+test('cards slide when swapped and when played to the pile (unless motion is reduced)', async ({
+  browser,
+}) => {
+  // The suite runs with reduced motion; this test wants the real thing.
+  const make = async (name: string, avatar: string, reduce: 'reduce' | 'no-preference') => {
+    const context = await browser.newContext({ reducedMotion: reduce });
+    const page = await context.newPage();
+    await page.goto('/');
+    await page.getByTestId('signin-nickname').fill(name);
+    await page.getByRole('button', { name: avatar, exact: true }).click();
+    await page.getByTestId('signin-submit').click();
+    await expect(page.getByTestId('home-nickname')).toHaveText(name);
+    return { context, page };
+  };
+  const alice = await make('Alice', 'fox', 'no-preference');
+  const bob = await make('Bob', 'cat', 'no-preference');
+  const calm = await make('Calm', 'owl', 'reduce'); // reduced motion: must not animate
+  const pages = [alice.page, bob.page, calm.page];
+
+  await alice.page.getByTestId('home-new-karma').click();
+  const code = (await alice.page.getByTestId('room-code').textContent())!.trim();
+  for (const p of [bob.page, calm.page]) {
+    await p.getByTestId('home-join-code').fill(code);
+    await p.getByTestId('home-join-submit').click();
+  }
+  await alice.page.getByTestId('lobby-start').click();
+  for (const p of pages)
+    await expect(p.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
+  await alice.page.waitForTimeout(300); // let the "first paint, no animation" window pass
+
+  // Swapping: the two cards trade places by sliding.
+  await alice.page.locator('[data-testid^=hand-card-]').first().click(STRIP);
+  await alice.page.getByTestId('my-up-0').click();
+  expect(await animatesSoon(alice.page, '[data-testid=my-up-0]')).toBe(true);
+  // ...but not for the player who asked for reduced motion (they just swap instantly).
+  await calm.page.locator('[data-testid^=hand-card-]').first().click(STRIP);
+  await calm.page.getByTestId('my-up-0').click();
+  expect(await animatesSoon(calm.page, '[data-testid=my-up-0]')).toBe(false);
+
+  for (const p of pages) await p.getByTestId('karma-ready').click();
+  for (const p of pages)
+    await expect(p.getByTestId('karma-game')).toHaveAttribute('data-phase', 'play');
+  await alice.page.waitForTimeout(300);
+
+  // Playing: whoever starts, the card flies to the pile for the player and for the watchers.
+  let mover = alice.page;
+  for (const p of pages) {
+    if ((await p.getByTestId('karma-hint').getAttribute('data-my-turn')) === 'true') mover = p;
+  }
+  const snap = await snapshot(mover);
+  const card = snap.playableHand[0]!;
+  await mover.getByTestId(card.id).click(STRIP);
+  await mover.getByTestId('karma-play').click();
+
+  const watchers = [alice.page, bob.page].filter((p) => p !== mover);
+  const [moverAnimates, ...watcherAnimates] = await Promise.all([
+    animatesSoon(mover, '[data-testid=pile-top]'),
+    ...watchers.map((p) => animatesSoon(p, '[data-testid=pile-top]')),
+  ]);
+  if (mover !== calm.page) expect(moverAnimates).toBe(true);
+  else expect(moverAnimates).toBe(false);
+  for (const [i, ok] of watcherAnimates.entries()) {
+    expect(ok).toBe(watchers[i] !== calm.page);
+  }
+
+  for (const c of [alice, bob, calm]) await c.context.close();
 });
