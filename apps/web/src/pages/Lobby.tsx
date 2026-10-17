@@ -108,28 +108,36 @@ export function Lobby({
         onSettings={onSettings}
       />
       <main className="flex flex-1 flex-col gap-5 px-4 pb-8 pt-2">
-        <Card className="hud-ticks text-center">
-          <div className="label flex items-center justify-center gap-2 text-muted">
-            Room code
-            <span
-              data-testid="room-visibility"
-              className={`rounded border px-1.5 py-0.5 text-[9px] ${
-                room.visibility === 'public'
-                  ? 'border-accent text-accent'
-                  : 'border-edge/50 text-muted'
-              }`}
+        {/* Compact room code: the code on the left, the invite button on the right. */}
+        <Card className="hud-ticks flex items-center justify-between gap-3 !p-3">
+          <div className="min-w-0">
+            <div className="label flex items-center gap-2 text-muted">
+              Room code
+              <span
+                data-testid="room-visibility"
+                className={`rounded border px-1.5 py-0.5 text-[9px] ${
+                  room.visibility === 'public'
+                    ? 'border-accent text-accent'
+                    : 'border-edge/50 text-muted'
+                }`}
+              >
+                {room.visibility === 'public' ? 'Public' : 'Private'}
+              </span>
+            </div>
+            <div
+              data-testid="room-code"
+              className="select-all text-3xl font-bold leading-tight tracking-[0.2em] text-neon"
             >
-              {room.visibility === 'public' ? 'Public' : 'Private'}
-            </span>
+              {room.code}
+            </div>
           </div>
-          <div
-            data-testid="room-code"
-            className="my-2 select-all text-5xl font-bold tracking-[0.25em] text-neon"
+          <Button
+            variant="secondary"
+            aria-label="Invite friends"
+            className="min-h-11 shrink-0 !px-4"
+            onClick={() => void share()}
           >
-            {room.code}
-          </div>
-          <Button variant="secondary" className="mt-1 w-full" onClick={() => void share()}>
-            Invite friends
+            Invite
           </Button>
         </Card>
 
@@ -181,11 +189,6 @@ export function Lobby({
           </ul>
         </section>
 
-        <section aria-label="Chat">
-          <SectionLabel>Chat</SectionLabel>
-          <ChatPanel messages={messages} me={me} online={api.online} onSend={api.sendChat} />
-        </section>
-
         {isHost && limits && (
           <section aria-label="Settings">
             <SectionLabel>Settings</SectionLabel>
@@ -230,25 +233,36 @@ export function Lobby({
           </section>
         )}
 
-        <div className="mt-auto flex flex-col gap-3 pt-2">
-          {isHost ? (
-            <Button
-              data-testid="lobby-start"
-              disabled={!api.online || room.members.length < room.minPlayers}
-              onClick={() => void api.start()}
-            >
-              {room.members.length < room.minPlayers
-                ? `Need ${room.minPlayers} players`
-                : room.members.length === 1
-                  ? 'Start solo game'
-                  : 'Start game'}
-            </Button>
-          ) : (
-            <p className="label text-center text-onbg" data-testid="lobby-waiting">
-              Waiting for {host?.nickname ?? 'the host'} to start…
-            </p>
-          )}
-          <Button variant="ghost" data-testid="lobby-leave" onClick={() => void api.leave()}>
+        {isHost ? (
+          <Button
+            data-testid="lobby-start"
+            disabled={!api.online || room.members.length < room.minPlayers}
+            onClick={() => void api.start()}
+          >
+            {room.members.length < room.minPlayers
+              ? `Need ${room.minPlayers} players`
+              : room.members.length === 1
+                ? 'Start solo game'
+                : 'Start game'}
+          </Button>
+        ) : (
+          <p className="label text-center text-onbg" data-testid="lobby-waiting">
+            Waiting for {host?.nickname ?? 'the host'} to start…
+          </p>
+        )}
+
+        <section aria-label="Chat">
+          <SectionLabel>Chat</SectionLabel>
+          <ChatPanel messages={messages} me={me} online={api.online} onSend={api.sendChat} />
+        </section>
+
+        <div className="mt-auto pt-2">
+          <Button
+            variant="ghost"
+            data-testid="lobby-leave"
+            className="w-full"
+            onClick={() => void api.leave()}
+          >
             Leave room
           </Button>
         </div>
