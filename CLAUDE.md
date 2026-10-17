@@ -15,7 +15,11 @@ packages/shared Types, Zod protocol schemas, GameDefinition interface, pure game
 docker/         Dev entrypoints   scripts/  Host helper scripts
 ```
 
-Game plug-in split: pure logic in `packages/shared/src/games/<id>`, UI in `apps/web/src/games/<id>`, registries in `apps/server/src/games.ts` and `apps/web/src/games/registry.ts`. Rooms only see `GameDefinition` (createInitialState, validateMove, applyMove, getPlayerView, getCurrentPlayers, isGameOver, getResults, optional autoMove). Randomness is always an injected `Rng` (server: `crypto`; tests: seeded).
+Game plug-in split: pure logic in `packages/shared/src/games/<id>`, UI in `apps/web/src/games/<id>`, logic registry in `packages/shared/src/games/registry.ts` (`getGame(id)`), UI registry in `apps/web/src/games/registry.ts`. Rooms only see `GameDefinition` (createInitialState, validateMove, applyMove, getPlayerView, getCurrentPlayers, isGameOver, getResults, optional autoMove). Randomness is always an injected `Rng` (server: `crypto`; tests: `createSeededRng` / scripted `createDiceRng` from shared). `autoMove` is called repeatedly by the server until the timed-out player is no longer to move.
+
+## Yatzy (packages/shared/src/games/yatzy)
+
+Moves: `{type:'roll', held:boolean[5]}` (holds are sent with the roll; ignored on the first roll) and `{type:'score', category}`. Standard Joker rules: with Yatzy box filled, a further Yatzy forces the matching upper box, else any open lower box (full house/straights at full value), else any upper box for 0; +100 only if the Yatzy box holds 50. `getPreviewScores` drives the UI score preview.
 
 ## Conventions
 
@@ -40,5 +44,5 @@ Game plug-in split: pure logic in `packages/shared/src/games/<id>`, UI in `apps/
 
 ## Milestones
 
-1 Scaffold + Docker · 2 Shared types/plug-in interface/Yatzy logic + tests · 3 Realtime server (guests, rooms, reconnect) · 4 Mobile Yatzy UI + e2e · 5 Public lobby + chat · 6 Accounts, stats, PWA · 7 Production Docker + deploy guide.
+1 Scaffold + Docker (done) · 2 Shared types/plug-in interface/Yatzy logic + tests (done) · 3 Realtime server (guests, rooms, reconnect) · 4 Mobile Yatzy UI + e2e · 5 Public lobby + chat · 6 Accounts, stats, PWA · 7 Production Docker + deploy guide.
 Work one milestone at a time; at the end run tests, verify in Docker, commit, summarize, explain phone testing, wait for go-ahead.
