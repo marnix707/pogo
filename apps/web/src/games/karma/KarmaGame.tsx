@@ -868,9 +868,13 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                 className="flex w-full flex-col px-1 pb-1 pt-4"
                 data-testid="my-hand"
                 data-rows={rowCount}
+                data-dimmed={view.phase === 'play' && !myTurn}
                 style={{
                   minHeight: `${handFont * 7 + rowStep * (rowCount - 1) + 22}px`,
                   overflowX: 'clip',
+                  // Not my turn: my hand dims a little, so it is obvious who is up.
+                  filter: view.phase === 'play' && !myTurn ? 'brightness(0.8)' : undefined,
+                  transition: 'filter 200ms',
                 }}
               >
                 {handRows.map((row, r) => {

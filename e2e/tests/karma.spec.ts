@@ -293,6 +293,9 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
   expect(play!.x).toBeGreaterThanOrEqual(up0!.x + up0!.width - 2); // beside the table cards
   expect(play!.y + play!.height).toBeLessThanOrEqual(hand!.y + 4); // above the hand row
 
+  // My hand dims while it is the other player's turn.
+  await expect(mover.getByTestId('my-hand')).toHaveAttribute('data-dimmed', 'false');
+  await expect(other.getByTestId('my-hand')).toHaveAttribute('data-dimmed', 'true');
   // The other player's hand is shown as a fan of face-down cards, one per card; Play is the lowest button.
   await expect(mover.locator('[data-testid^=seat-hand-]')).toHaveAttribute('data-count', '3');
   const pickBox = await mover.getByTestId('karma-pickup').boundingBox();
