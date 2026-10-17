@@ -538,7 +538,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     haptic('tap');
     setSelDown(null);
     setPileArmed(false);
-    setSel(plan.type === 'select' ? plan.cards : []);
+    setSel(plan.cards);
   }
 
   function tapDown(slot: number) {

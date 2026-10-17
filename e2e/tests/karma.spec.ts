@@ -243,17 +243,26 @@ test('tap selects, tapping again deselects, the Play button plays; Ready button 
   await mover.getByTestId('karma-hint').click();
   for (const c of group(first!.rank)) await pressed(c.id, false);
 
-  // Tapping again deselects. With duplicates even a fast double tap only deselects (no play).
+  // Tapping a selected card again deselects. With duplicates it deselects only that card (even
+  // when tapped twice quickly: no play), and a further tap adds it back.
   await mover.waitForTimeout(450);
-  await mover.getByTestId(first!.id).click(STRIP);
-  if (group(first!.rank).length > 1) {
-    await mover.getByTestId(first!.id).click(STRIP); // quickly again: deselects, does not play
+  const firstGroup = group(first!.rank);
+  if (firstGroup.length > 1) {
+    await mover.getByTestId(first!.id).click(STRIP); // selects the whole rank
+    for (const c of firstGroup) await pressed(c.id, true);
+    await mover.getByTestId(first!.id).click(STRIP); // deselects just this card
+    await pressed(first!.id, false);
+    for (const c of firstGroup.slice(1)) await pressed(c.id, true);
+    await mover.getByTestId(first!.id).click(STRIP); // adds it back
+    await pressed(first!.id, true);
+    await mover.getByTestId('karma-hint').click(); // clear
   } else {
+    await mover.getByTestId(first!.id).click(STRIP);
     await pressed(first!.id, true);
     await mover.waitForTimeout(450); // a slow second tap deselects
     await mover.getByTestId(first!.id).click(STRIP);
   }
-  for (const c of group(first!.rank)) await pressed(c.id, false);
+  for (const c of firstGroup) await pressed(c.id, false);
   await expect(pile).toHaveAttribute('data-count', '0');
   await expect(mover.getByTestId('karma-play')).toBeDisabled();
 

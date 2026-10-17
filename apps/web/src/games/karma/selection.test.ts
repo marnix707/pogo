@@ -14,11 +14,25 @@ describe('planTap', () => {
     });
   });
 
-  it('never plays on a double tap when you hold duplicates: the second tap deselects them', () => {
+  it('deselects only the tapped card of a selected set, even on a fast double tap (never plays)', () => {
+    const all = [c(9), c(9, 1), c(9, 2)];
+    expect(planTap({ zoneCards: hand, selected: all, card: c(9, 1), fast: false })).toEqual({
+      type: 'select',
+      cards: [c(9), c(9, 2)],
+    });
+    expect(planTap({ zoneCards: hand, selected: all, card: c(9), fast: true })).toEqual({
+      type: 'select',
+      cards: [c(9, 1), c(9, 2)],
+    });
+  });
+
+  it('tapping a deselected card of a partly selected set adds it back; the last one off clears', () => {
     expect(
-      planTap({ zoneCards: hand, selected: [c(9), c(9, 1), c(9, 2)], card: c(9), fast: true }),
-    ).toEqual({
-      type: 'deselect',
+      planTap({ zoneCards: hand, selected: [c(9), c(9, 2)], card: c(9, 1), fast: false }),
+    ).toEqual({ type: 'select', cards: [c(9), c(9, 2), c(9, 1)] });
+    expect(planTap({ zoneCards: hand, selected: [c(9)], card: c(9), fast: false })).toEqual({
+      type: 'select',
+      cards: [],
     });
   });
 
@@ -28,7 +42,8 @@ describe('planTap', () => {
       cards: [c(5)],
     });
     expect(planTap({ zoneCards: hand, selected: [c(5)], card: c(5), fast: false })).toEqual({
-      type: 'deselect',
+      type: 'select',
+      cards: [],
     });
     expect(planTap({ zoneCards: hand, selected: [c(5)], card: c(5), fast: true })).toEqual({
       type: 'play',
