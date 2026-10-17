@@ -2,6 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  Palette: #001850 navy · #5B29A7 purple · #00A9AB teal · #1FE0E0 cyan · #FF6BDE pink.
+  Light = bright teal map with navy HUD panels. Dark = deep navy map. Values are "r g b" triples
+  so Tailwind can apply opacity (bg-panel/90).
+*/
+:root {
+  --c-page: 0 169 171;
+  --c-panel: 0 24 80;
+  --c-panel2: 10 46 112;
+  --c-edge: 31 224 224;
+  --c-ink: 255 255 255;
+  --c-muted: 150 222 236;
+  --c-onbg: 0 24 80;
+  --c-accent: 255 107 222;
+  --c-accentink: 0 24 80;
+  --c-neon: 31 224 224;
+  --c-lagoon: 0 169 171;
+  --c-grape: 91 41 167;
+  --c-danger: 255 92 122;
+  --c-topo: 0 24 80;
+  --topo-alpha: 0.17;
+  --page-gradient:
+    radial-gradient(120% 70% at 8% 0%, rgb(31 224 224 / 0.5), transparent 60%),
+    linear-gradient(165deg, #14c8c4 0%, #00a9ab 50%, #007f90 100%);
+}
+
+.dark {
+  --c-page: 0 24 80;
+  --c-panel: 5 33 98;
+  --c-panel2: 11 52 132;
+  --c-edge: 0 169 171;
+  --c-muted: 128 190 220;
+  --c-onbg: 224 252 255;
+  --c-topo: 31 224 224;
+  --topo-alpha: 0.11;
+  --page-gradient:
+    radial-gradient(110% 60% at 92% 0%, rgb(91 41 167 / 0.55), transparent 60%),
+    linear-gradient(165deg, #04246f 0%, #001850 55%, #000a2b 100%);
+}
+
+html {
+  background: rgb(var(--c-page));
+}
+
 html,
 body,
 #root {
@@ -9,13 +53,63 @@ body,
 }
 
 body {
-  @apply bg-violet-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+  @apply bg-transparent font-sans text-onbg antialiased;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
 }
 
+/* The map: gradient base + contour lines (an SVG used as a mask so the lines follow the theme). */
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+body::before {
+  z-index: -2;
+  background: var(--page-gradient);
+}
+body::after {
+  z-index: -1;
+  background-color: rgb(var(--c-topo) / var(--topo-alpha));
+  -webkit-mask: url('/topo.svg') center / cover no-repeat;
+  mask: url('/topo.svg') center / cover no-repeat;
+}
+
 button {
   touch-action: manipulation;
+}
+
+@layer components {
+  /* A flat HUD panel with a defined outline. */
+  .hud {
+    @apply relative rounded-md border-2 border-edge/50 bg-panel/95 text-ink;
+  }
+
+  /* Corner brackets, like the targeting reticle in the reference. Put on a wrapper. */
+  .hud-ticks::before {
+    content: '';
+    position: absolute;
+    inset: -5px;
+    pointer-events: none;
+    --t: rgb(var(--c-neon));
+    background:
+      linear-gradient(var(--t), var(--t)) top left / 16px 2px,
+      linear-gradient(var(--t), var(--t)) top left / 2px 16px,
+      linear-gradient(var(--t), var(--t)) top right / 16px 2px,
+      linear-gradient(var(--t), var(--t)) top right / 2px 16px,
+      linear-gradient(var(--t), var(--t)) bottom left / 16px 2px,
+      linear-gradient(var(--t), var(--t)) bottom left / 2px 16px,
+      linear-gradient(var(--t), var(--t)) bottom right / 16px 2px,
+      linear-gradient(var(--t), var(--t)) bottom right / 2px 16px;
+    background-repeat: no-repeat;
+  }
+
+  /* Small tracked uppercase caption, as in the PWR. / ZM. labels. */
+  .label {
+    @apply text-[11px] font-bold uppercase tracking-[0.22em];
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

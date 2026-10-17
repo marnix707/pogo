@@ -34,6 +34,7 @@ beforeAll(async () => {
       turnTimeSec: 0,
       disconnectGraceMs: 20_000,
       roomTtlMs: 600_000,
+      guestSignupLimitPerMin: 1000,
     },
     users: createMemoryUserStore(),
     rng: createSeededRng(11),

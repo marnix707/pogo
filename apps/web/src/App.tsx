@@ -24,10 +24,10 @@ export function App() {
   return (
     <ToastProvider>
       {loading ? (
-        <p className="p-8 text-center text-slate-500">Loading…</p>
+        <p className="label p-8 text-center text-onbg">Loading…</p>
       ) : error ? (
         <div className="p-8 text-center">
-          <p className="mb-4 font-semibold text-rose-600">{error}</p>
+          <p className="mb-4 font-semibold text-danger">{error}</p>
           <button className="underline" onClick={() => window.location.reload()}>
             Try again
           </button>

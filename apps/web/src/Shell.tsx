@@ -75,7 +75,7 @@ export function Shell({ session, onSignOut }: { session: AuthResponse; onSignOut
 
   let screen;
   if (!synced) {
-    screen = <p className="p-8 text-center text-slate-500">Connecting…</p>;
+    screen = <p className="label p-8 text-center text-onbg">Connecting…</p>;
   } else if (!room) {
     screen = <Home user={session.user} api={api} onSettings={openSettings} />;
   } else if (room.status === 'lobby') {

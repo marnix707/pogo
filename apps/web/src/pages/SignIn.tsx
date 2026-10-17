@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { AVATARS } from '@pogo/shared';
 import type { AuthResponse } from '@pogo/shared';
+import { LogoMark } from '../components/icons';
 import { Button } from '../components/ui';
 import { avatarEmoji } from '../lib/avatars';
 import { createGuest } from '../lib/session';
@@ -26,22 +27,18 @@ export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) 
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-5 py-10">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 px-5 py-10">
       <div className="text-center">
-        <div className="text-6xl" aria-hidden>
-          🎲
-        </div>
-        <h1 className="text-6xl font-black tracking-tight text-violet-600 dark:text-violet-400">
+        <LogoMark className="mx-auto mb-3 h-16 w-16" />
+        <h1 className="text-6xl font-bold uppercase tracking-[0.18em] text-onbg [text-shadow:4px_4px_0_rgb(var(--c-accent))]">
           Pogo
         </h1>
-        <p className="mt-2 text-slate-600 dark:text-slate-300">
-          Quick games with friends. No account needed.
-        </p>
+        <p className="label mt-4 text-onbg/80">Quick games · No account needed</p>
       </div>
 
-      <form onSubmit={submit} className="flex flex-col gap-5">
-        <label className="flex flex-col gap-2 font-semibold">
-          Your nickname
+      <form onSubmit={submit} className="hud hud-ticks flex flex-col gap-5 p-5">
+        <label className="flex flex-col gap-2">
+          <span className="label text-muted">Your nickname</span>
           <input
             data-testid="signin-nickname"
             value={nickname}
@@ -49,12 +46,12 @@ export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) 
             placeholder="e.g. Dice Queen"
             maxLength={20}
             autoComplete="nickname"
-            className="min-h-14 rounded-2xl border-2 border-transparent bg-white px-4 text-lg font-normal shadow-sm outline-none focus:border-violet-500 dark:bg-slate-900"
+            className="min-h-14 rounded-md border-2 border-edge/40 bg-panel2 px-4 text-lg font-semibold text-ink placeholder:text-muted/50 outline-none focus:border-neon"
           />
         </label>
 
         <fieldset className="flex flex-col gap-2">
-          <legend className="mb-2 font-semibold">Pick an avatar</legend>
+          <legend className="label mb-2 text-muted">Pick an avatar</legend>
           <div className="grid grid-cols-6 gap-2">
             {AVATARS.map((a) => (
               <button
@@ -63,10 +60,8 @@ export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) 
                 aria-label={a}
                 aria-pressed={avatar === a}
                 onClick={() => setAvatar(a)}
-                className={`flex aspect-square items-center justify-center rounded-2xl text-3xl transition ${
-                  avatar === a
-                    ? 'scale-110 bg-violet-600 shadow-md'
-                    : 'bg-white shadow-sm dark:bg-slate-900'
+                className={`flex aspect-square items-center justify-center rounded-full border-2 text-2xl transition ${
+                  avatar === a ? 'scale-110 border-accent bg-accent/25' : 'border-edge/40 bg-panel2'
                 }`}
               >
                 {avatarEmoji(a)}
@@ -76,7 +71,7 @@ export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) 
         </fieldset>
 
         {error && (
-          <p role="alert" className="rounded-xl bg-rose-100 px-4 py-2 font-medium text-rose-700">
+          <p role="alert" className="rounded-md bg-danger/20 px-4 py-2 font-medium text-danger">
             {error}
           </p>
         )}

@@ -39,6 +39,8 @@ services:
       TURN_TIME_SEC: ${TURN_TIME_SEC:-90}
       DISCONNECT_GRACE_SEC: ${DISCONNECT_GRACE_SEC:-20}
       ROOM_TTL_SEC: ${ROOM_TTL_SEC:-600}
+      # Generous in dev so repeated e2e runs don't trip it; production default is 10.
+      GUEST_SIGNUP_LIMIT_PER_MIN: ${GUEST_SIGNUP_LIMIT_PER_MIN:-100}
       CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING:-true}
     ports:
       - '${SERVER_PORT:-3000}:3000'

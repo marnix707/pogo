@@ -77,12 +77,13 @@ test('two players play a full Yatzy game, with a reconnect in the middle', async
   // Both players see the same final standings.
   for (const page of [a, b]) {
     await expect(page.getByTestId('results-panel')).toBeVisible();
-    await expect(page.getByTestId('rank-1')).toBeVisible();
+    // Ties share rank 1, so there can be more than one.
+    await expect(page.getByTestId('rank-1').first()).toBeVisible();
     await expect(page.getByTestId('results-panel')).toContainText('Alice');
     await expect(page.getByTestId('results-panel')).toContainText('Bob');
   }
   const scoreOf = async (page: Page, rank: number) =>
-    (await page.getByTestId(`rank-${rank}`).locator('span').last().textContent())!;
+    (await page.getByTestId(`rank-${rank}`).first().locator('span').last().textContent())!;
   expect(await scoreOf(a, 1)).toBe(await scoreOf(b, 1));
 
   // Rematch returns both to the waiting room.

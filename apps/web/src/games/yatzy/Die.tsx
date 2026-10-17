@@ -48,10 +48,10 @@ export function Die({
       aria-label={value ? `Die ${index + 1}: ${value}${held ? ', held' : ''}` : `Die ${index + 1}`}
       disabled={!interactive}
       onClick={onToggle}
-      className={`relative aspect-square w-full rounded-2xl shadow-[0_4px_0_0_rgba(0,0,0,0.18)] transition-transform disabled:cursor-default ${
+      className={`relative aspect-square w-full rounded-lg border-[3px] shadow-[0_4px_0_0_rgb(0_24_80/0.7)] transition-transform disabled:cursor-default ${
         held
-          ? '-translate-y-2 bg-amber-100 ring-4 ring-amber-400 dark:bg-amber-200'
-          : 'bg-white dark:bg-slate-100'
+          ? '-translate-y-2 border-accent bg-[#ffe6f8] shadow-[0_4px_0_0_#b13d9c]'
+          : 'border-[#001850] bg-[#e9ffff]'
       } ${rolling ? 'animate-dice-roll' : ''}`}
     >
       <span className="absolute inset-[14%] grid grid-cols-3 grid-rows-3 place-items-center">
@@ -59,13 +59,17 @@ export function Die({
           <span
             key={cell}
             className={`aspect-square w-[78%] rounded-full ${
-              pips.includes(cell) ? 'bg-slate-900' : value === 0 && cell === 4 ? 'bg-slate-200' : ''
+              pips.includes(cell)
+                ? 'bg-[#001850]'
+                : value === 0 && cell === 4
+                  ? 'bg-[#001850]/15'
+                  : ''
             }`}
           />
         ))}
       </span>
       {held && (
-        <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+        <span className="label absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-accent">
           Held
         </span>
       )}

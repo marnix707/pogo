@@ -13,6 +13,7 @@ const schema = z.object({
   TURN_TIME_SEC: z.coerce.number().int().min(0).default(90),
   DISCONNECT_GRACE_SEC: z.coerce.number().int().min(1).default(20),
   ROOM_TTL_SEC: z.coerce.number().int().min(1).default(600),
+  GUEST_SIGNUP_LIMIT_PER_MIN: z.coerce.number().int().min(1).default(10),
 });
 
 export interface AppConfig {
@@ -33,6 +34,8 @@ export interface AppConfig {
   disconnectGraceMs: number;
   /** How long a room with nobody connected is kept before being deleted. */
   roomTtlMs: number;
+  /** Guest signups allowed per IP per minute. */
+  guestSignupLimitPerMin: number;
 }
 
 const list = (value: string) =>
@@ -58,5 +61,6 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     turnTimeSec: env.TURN_TIME_SEC,
     disconnectGraceMs: env.DISCONNECT_GRACE_SEC * 1000,
     roomTtlMs: env.ROOM_TTL_SEC * 1000,
+    guestSignupLimitPerMin: env.GUEST_SIGNUP_LIMIT_PER_MIN,
   };
 }

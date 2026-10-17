@@ -114,37 +114,32 @@ export function YatzyGame({ room, me, sendMove }: GameUiProps) {
       <div
         data-testid="turn-banner"
         data-my-turn={myTurn}
-        className={`mx-3 mb-2 flex items-center gap-3 rounded-2xl px-4 py-2.5 ${
-          myTurn
-            ? 'bg-violet-600 text-white'
-            : 'bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100'
+        className={`hud mx-4 mb-3 flex items-center gap-3 px-3 py-2.5 ${
+          myTurn ? '!border-neon !bg-grape' : ''
         }`}
       >
-        <span className="text-2xl" aria-hidden>
+        <span
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-neon bg-panel2 text-2xl"
+          aria-hidden
+        >
           {finished ? '🏁' : avatarEmoji(current?.avatar ?? '')}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-lg font-black leading-tight">
+          <div className="truncate text-lg font-bold uppercase leading-tight tracking-[0.1em]">
             {finished ? 'Game over' : myTurn ? 'Your turn' : `${current?.nickname ?? '…'}'s turn`}
           </div>
-          <div className={`text-xs ${myTurn ? 'text-violet-200' : 'text-slate-500'}`}>
-            Round {state.round} of {yatzy.ROUNDS}
+          <div className="label text-[10px] text-muted">
+            Round {state.round} / {yatzy.ROUNDS}
           </div>
         </div>
         {!finished && (
           <div className="text-right">
-            <div className="flex justify-end gap-1" aria-label={`${state.rollsLeft} rolls left`}>
+            <div className="flex justify-end gap-1.5" aria-label={`${state.rollsLeft} rolls left`}>
               {Array.from({ length: yatzy.MAX_ROLLS }, (_, i) => (
                 <span
                   key={i}
-                  className={`h-2.5 w-2.5 rounded-full ${
-                    i < state.rollsLeft
-                      ? myTurn
-                        ? 'bg-white'
-                        : 'bg-violet-500'
-                      : myTurn
-                        ? 'bg-violet-400/50'
-                        : 'bg-slate-300 dark:bg-slate-700'
+                  className={`h-3 w-3 rounded-full border-2 ${
+                    i < state.rollsLeft ? 'border-accent bg-accent' : 'border-muted/50'
                   }`}
                 />
               ))}
@@ -152,12 +147,8 @@ export function YatzyGame({ room, me, sendMove }: GameUiProps) {
             {secondsLeft !== null && (
               <div
                 data-testid="countdown"
-                className={`mt-1 text-xs font-bold tabular-nums ${
-                  secondsLeft <= 10
-                    ? 'text-rose-400'
-                    : myTurn
-                      ? 'text-violet-200'
-                      : 'text-slate-500'
+                className={`label mt-1 text-xs tabular-nums ${
+                  secondsLeft <= 10 ? 'text-danger' : 'text-muted'
                 }`}
               >
                 {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}
@@ -167,7 +158,7 @@ export function YatzyGame({ room, me, sendMove }: GameUiProps) {
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-2">
         <Scorecard
           state={state}
           members={room.members}
@@ -183,9 +174,9 @@ export function YatzyGame({ room, me, sendMove }: GameUiProps) {
       </div>
 
       {!finished && (
-        <div className="border-t border-slate-200 bg-white/90 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-4 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
+        <div className="border-t-2 border-edge/60 bg-panel px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-4 text-ink">
           <div className="mx-auto flex max-w-md flex-col gap-3">
-            <div className="grid grid-cols-5 gap-2 pb-4 pt-1">
+            <div className="grid grid-cols-5 gap-2.5 pb-5 pt-1">
               {Array.from({ length: yatzy.DICE_COUNT }, (_, i) => (
                 <Die
                   key={i}
@@ -202,7 +193,7 @@ export function YatzyGame({ room, me, sendMove }: GameUiProps) {
                 />
               ))}
             </div>
-            <p className="min-h-5 text-center text-sm text-slate-500 dark:text-slate-400">{hint}</p>
+            <p className="label min-h-4 text-center text-[10px] text-muted">{hint}</p>
             {myTurn && (
               <div className="flex gap-3">
                 <Button

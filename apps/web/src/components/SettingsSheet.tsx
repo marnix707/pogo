@@ -4,8 +4,8 @@ import { Button, Sheet, Toggle } from './ui';
 
 const THEMES: { value: Theme; label: string }[] = [
   { value: 'system', label: 'Auto' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
+  { value: 'light', label: 'Teal' },
+  { value: 'dark', label: 'Navy' },
 ];
 
 export function SettingsSheet({
@@ -34,17 +34,17 @@ export function SettingsSheet({
           onChange={(vibration) => updateSettings({ vibration })}
         />
         <div className="py-2">
-          <div className="mb-2 font-semibold">Theme</div>
-          <div className="grid grid-cols-3 gap-2 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800">
+          <div className="label mb-2 text-muted">Theme</div>
+          <div className="grid grid-cols-3 gap-2">
             {THEMES.map((t) => (
               <button
                 key={t.value}
                 aria-pressed={settings.theme === t.value}
                 onClick={() => updateSettings({ theme: t.value })}
-                className={`min-h-11 rounded-xl text-sm font-bold ${
+                className={`min-h-11 rounded-md border-2 text-sm font-bold uppercase tracking-wider ${
                   settings.theme === t.value
-                    ? 'bg-white shadow dark:bg-slate-950'
-                    : 'text-slate-500 dark:text-slate-400'
+                    ? 'border-accent bg-accent text-accentink'
+                    : 'border-edge/40 text-muted'
                 }`}
               >
                 {t.label}

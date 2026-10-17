@@ -15,11 +15,16 @@ export async function authenticate(
   return userId ? users.get(userId) : null;
 }
 
-export function registerAuthRoutes(app: FastifyInstance, users: UserStore, tokens: TokenService) {
+export function registerAuthRoutes(
+  app: FastifyInstance,
+  users: UserStore,
+  tokens: TokenService,
+  guestLimitPerMin: number,
+) {
   // Guest signup: pick a nickname + avatar, get a signed token to keep in localStorage.
   app.post(
     '/api/auth/guest',
-    { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+    { config: { rateLimit: { max: guestLimitPerMin, timeWindow: '1 minute' } } },
     async (req, reply) => {
       const parsed = profileSchema.safeParse(req.body);
       if (!parsed.success) {

@@ -1,6 +1,7 @@
 import { getGame } from '@pogo/shared';
 import type { RoomView } from '@pogo/shared';
-import { Avatar, Button, Card } from '../components/ui';
+import { CrownIcon } from '../components/icons';
+import { Avatar, Button, Card, SectionLabel } from '../components/ui';
 import { TopBar } from '../components/TopBar';
 import { useToast } from '../components/Toast';
 import { getGameUi } from '../games/registry';
@@ -9,9 +10,9 @@ import type { RoomApi } from '../lib/api';
 const TIMER_CHOICES = [
   { value: 0, label: 'Off' },
   { value: 30, label: '30s' },
-  { value: 60, label: '1 min' },
+  { value: 60, label: '1m' },
   { value: 90, label: '90s' },
-  { value: 120, label: '2 min' },
+  { value: 120, label: '2m' },
 ];
 
 function Stepper({
@@ -28,7 +29,7 @@ function Stepper({
   onChange: (v: number) => void;
 }) {
   const btn =
-    'flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-2xl font-black disabled:opacity-30 dark:bg-slate-800';
+    'flex h-12 w-12 items-center justify-center rounded-md border-2 border-neon text-2xl font-bold text-neon disabled:border-edge/30 disabled:text-muted/40';
   return (
     <div className="flex items-center justify-between">
       <span className="font-semibold">{label}</span>
@@ -41,7 +42,7 @@ function Stepper({
         >
           −
         </button>
-        <span className="w-6 text-center text-xl font-black tabular-nums">{value}</span>
+        <span className="w-6 text-center text-xl font-bold tabular-nums">{value}</span>
         <button
           className={btn}
           aria-label={`More ${label}`}
@@ -97,48 +98,59 @@ export function Lobby({
         subtitle="Waiting room"
         onSettings={onSettings}
       />
-      <main className="flex flex-1 flex-col gap-4 px-4 pb-8 pt-2">
-        <Card className="text-center">
-          <div className="text-sm font-semibold text-slate-500">Room code</div>
+      <main className="flex flex-1 flex-col gap-5 px-4 pb-8 pt-2">
+        <Card className="hud-ticks text-center">
+          <div className="label text-muted">Room code</div>
           <div
             data-testid="room-code"
-            className="my-1 select-all text-5xl font-black tracking-[0.25em] text-violet-600 dark:text-violet-400"
+            className="my-2 select-all text-5xl font-bold tracking-[0.25em] text-neon"
           >
             {room.code}
           </div>
-          <Button variant="secondary" className="mt-2 w-full" onClick={() => void share()}>
+          <Button variant="secondary" className="mt-1 w-full" onClick={() => void share()}>
             Invite friends
           </Button>
         </Card>
 
         <section aria-label="Players">
-          <h2 className="mb-2 flex items-baseline justify-between text-sm font-black uppercase tracking-wider text-slate-500">
-            Players
-            <span data-testid="player-count">
-              {room.members.length} / {room.maxPlayers}
-            </span>
-          </h2>
+          <SectionLabel
+            right={
+              <span data-testid="player-count" className="text-onbg">
+                {room.members.length} / {room.maxPlayers}
+              </span>
+            }
+          >
+            Crew
+          </SectionLabel>
           <ul className="flex flex-col gap-2">
             {room.members.map((m) => (
               <li
                 key={m.id}
                 data-testid={`member-${m.nickname}`}
-                className="flex items-center gap-3 rounded-2xl bg-white px-3 py-2.5 shadow-sm dark:bg-slate-900"
+                className="hud flex items-center gap-3 px-3 py-2.5"
               >
                 <Avatar avatar={m.avatar} dim={!m.connected} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-bold">
                     {m.nickname}
-                    {m.id === me && <span className="font-normal text-slate-500"> (you)</span>}
+                    {m.id === me && <span className="font-normal text-muted"> (you)</span>}
                   </div>
-                  <div className="text-xs text-slate-500">
-                    {m.id === room.hostId ? '👑 Host' : m.connected ? 'Ready' : 'Reconnecting…'}
+                  <div className="label flex items-center gap-1.5 text-[10px] text-muted">
+                    {m.id === room.hostId ? (
+                      <>
+                        <CrownIcon className="h-3.5 w-3.5 text-accent" /> Host
+                      </>
+                    ) : m.connected ? (
+                      'Ready'
+                    ) : (
+                      'Reconnecting…'
+                    )}
                   </div>
                 </div>
                 {isHost && m.id !== me && (
                   <button
                     onClick={() => void api.kick(m.id)}
-                    className="min-h-10 rounded-xl px-3 text-sm font-bold text-rose-600"
+                    className="label min-h-10 rounded-md px-3 text-danger"
                   >
                     Remove
                   </button>
@@ -149,37 +161,39 @@ export function Lobby({
         </section>
 
         {isHost && limits && (
-          <Card className="flex flex-col gap-4">
-            <h2 className="text-sm font-black uppercase tracking-wider text-slate-500">Settings</h2>
-            {limits.maxPlayers > limits.minPlayers && (
-              <Stepper
-                label="Max players"
-                value={room.maxPlayers}
-                min={Math.max(limits.minPlayers, room.members.length)}
-                max={limits.maxPlayers}
-                onChange={(maxPlayers) => void api.updateSettings({ maxPlayers })}
-              />
-            )}
-            <div>
-              <div className="mb-2 font-semibold">Turn timer</div>
-              <div className="grid grid-cols-5 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800">
-                {TIMER_CHOICES.map((t) => (
-                  <button
-                    key={t.value}
-                    aria-pressed={room.turnTimeSec === t.value}
-                    onClick={() => void api.updateSettings({ turnTimeSec: t.value })}
-                    className={`min-h-11 rounded-xl text-sm font-bold ${
-                      room.turnTimeSec === t.value
-                        ? 'bg-white shadow dark:bg-slate-950'
-                        : 'text-slate-500 dark:text-slate-400'
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
+          <section aria-label="Settings">
+            <SectionLabel>Settings</SectionLabel>
+            <Card className="flex flex-col gap-5">
+              {limits.maxPlayers > limits.minPlayers && (
+                <Stepper
+                  label="Max players"
+                  value={room.maxPlayers}
+                  min={Math.max(limits.minPlayers, room.members.length)}
+                  max={limits.maxPlayers}
+                  onChange={(maxPlayers) => void api.updateSettings({ maxPlayers })}
+                />
+              )}
+              <div>
+                <div className="mb-2 font-semibold">Turn timer</div>
+                <div className="grid grid-cols-5 gap-2">
+                  {TIMER_CHOICES.map((t) => (
+                    <button
+                      key={t.value}
+                      aria-pressed={room.turnTimeSec === t.value}
+                      onClick={() => void api.updateSettings({ turnTimeSec: t.value })}
+                      className={`min-h-11 rounded-md border-2 text-sm font-bold ${
+                        room.turnTimeSec === t.value
+                          ? 'border-accent bg-accent text-accentink'
+                          : 'border-edge/40 text-muted'
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          </Card>
+            </Card>
+          </section>
         )}
 
         <div className="mt-auto flex flex-col gap-3 pt-2">
@@ -196,7 +210,7 @@ export function Lobby({
                   : 'Start game'}
             </Button>
           ) : (
-            <p className="text-center font-semibold text-slate-500" data-testid="lobby-waiting">
+            <p className="label text-center text-onbg" data-testid="lobby-waiting">
               Waiting for {host?.nickname ?? 'the host'} to start…
             </p>
           )}

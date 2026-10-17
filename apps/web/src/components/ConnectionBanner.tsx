@@ -8,12 +8,12 @@ export function ConnectionBanner({ connection }: { connection: Connection }) {
     <div
       role="status"
       data-testid="connection-banner"
-      className={`fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-2 px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-sm font-bold text-white ${
-        offline ? 'bg-rose-600' : 'bg-amber-500'
+      className={`label fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-2 px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-white ${
+        offline ? 'bg-danger' : 'bg-grape'
       }`}
     >
-      <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
-      {offline ? 'Connection lost. Reconnecting…' : 'Connecting…'}
+      <span className="h-2 w-2 animate-pulse rounded-full bg-neon" />
+      {offline ? 'Connection lost · reconnecting' : 'Connecting'}
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RoomView } from '@pogo/shared';
 import { Button, Sheet } from '../components/ui';
-import { TopBar } from '../components/TopBar';
+import { ArrowLeftIcon } from '../components/icons';
+import { TileButton, TopBar } from '../components/TopBar';
 import { getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
 import { avatarEmoji } from '../lib/avatars';
@@ -19,10 +20,10 @@ function ResultsPanel({ room, me, api }: { room: RoomView; me: string; api: Room
   return (
     <div
       data-testid="results-panel"
-      className="animate-slide-up border-t border-slate-200 bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 dark:border-slate-800 dark:bg-slate-900"
+      className="animate-slide-up border-t-2 border-edge/60 bg-panel px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 text-ink"
     >
       <div className="mx-auto flex max-w-md flex-col gap-3">
-        <h2 className="text-center text-2xl font-black">
+        <h2 className="text-center text-2xl font-bold uppercase tracking-[0.12em]">
           {iWon
             ? '🎉 You won!'
             : `🏆 ${room.members.find((m) => m.id === best?.playerId)?.nickname ?? ''} wins!`}
@@ -34,10 +35,8 @@ function ResultsPanel({ room, me, api }: { room: RoomView; me: string; api: Room
               <li
                 key={r.playerId}
                 data-testid={`rank-${r.rank}`}
-                className={`flex items-center gap-3 rounded-2xl px-3 py-2 ${
-                  r.playerId === me
-                    ? 'bg-violet-100 dark:bg-violet-950'
-                    : 'bg-slate-50 dark:bg-slate-800'
+                className={`flex items-center gap-3 rounded-md border-2 px-3 py-2 ${
+                  r.playerId === me ? 'border-accent bg-accent/15' : 'border-edge/30 bg-panel2'
                 }`}
               >
                 <span className="w-8 text-center text-2xl">{MEDALS[r.rank - 1] ?? r.rank}</span>
@@ -46,7 +45,7 @@ function ResultsPanel({ room, me, api }: { room: RoomView; me: string; api: Room
                   {m?.nickname ?? 'Player'}
                   {r.playerId === me && ' (you)'}
                 </span>
-                <span className="text-xl font-black tabular-nums">{r.score}</span>
+                <span className="text-xl font-bold tabular-nums text-neon">{r.score}</span>
               </li>
             );
           })}
@@ -56,9 +55,7 @@ function ResultsPanel({ room, me, api }: { room: RoomView; me: string; api: Room
             Play again
           </Button>
         ) : (
-          <p className="text-center text-sm font-semibold text-slate-500">
-            Waiting for the host to start a rematch…
-          </p>
+          <p className="label text-center text-muted">Waiting for the host to start a rematch…</p>
         )}
         <Button variant="ghost" data-testid="results-leave" onClick={() => void api.leave()}>
           Leave room
@@ -110,14 +107,13 @@ export function GameScreen({
         subtitle={`Room ${room.code}`}
         onSettings={onSettings}
         left={
-          <button
+          <TileButton
             onClick={() => (finished ? void api.leave() : setConfirmLeave(true))}
             aria-label="Leave game"
             data-testid="leave-game"
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-xl shadow-sm dark:bg-slate-900"
           >
-            ←
-          </button>
+            <ArrowLeftIcon className="h-5 w-5" />
+          </TileButton>
         }
       />
       <div className="min-h-0 flex-1">
@@ -126,7 +122,7 @@ export function GameScreen({
       {finished && <ResultsPanel room={room} me={me} api={api} />}
 
       <Sheet open={confirmLeave} onClose={() => setConfirmLeave(false)} title="Leave this game?">
-        <p className="mb-4 text-slate-600 dark:text-slate-300">
+        <p className="mb-4 text-muted">
           Your seat stays in the game and will be played automatically until it ends.
         </p>
         <div className="flex flex-col gap-3">

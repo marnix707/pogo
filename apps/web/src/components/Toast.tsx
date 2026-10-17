@@ -28,8 +28,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           key={toast.id}
           role="status"
           data-testid="toast"
-          className={`animate-pop pointer-events-none fixed inset-x-4 bottom-28 z-50 mx-auto max-w-sm rounded-2xl px-4 py-3 text-center font-semibold text-white shadow-lg ${
-            toast.kind === 'error' ? 'bg-rose-600' : 'bg-slate-800'
+          className={`animate-pop pointer-events-none fixed inset-x-4 bottom-28 z-50 mx-auto max-w-sm rounded-md border-2 px-4 py-3 text-center font-semibold shadow-lg ${
+            toast.kind === 'error'
+              ? 'border-danger bg-danger text-white'
+              : 'border-neon bg-panel text-ink'
           }`}
         >
           {toast.message}

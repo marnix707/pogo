@@ -36,6 +36,11 @@ export async function buildApp(deps: AppDeps) {
     max: 120,
     timeWindow: '1 minute',
     allowList: (req) => !req.url.startsWith('/api'),
+    // Shown to players as-is by the web app, so keep it human.
+    errorResponseBuilder: () => ({
+      statusCode: 429,
+      error: 'Too many attempts. Please wait a minute and try again.',
+    }),
   });
 
   const tokens = createTokenService(config.jwtSecret);
@@ -46,7 +51,7 @@ export async function buildApp(deps: AppDeps) {
     await deps.healthCheck();
     return { ok: true, app: APP_NAME };
   });
-  registerAuthRoutes(app, deps.users, tokens);
+  registerAuthRoutes(app, deps.users, tokens, config.guestSignupLimitPerMin);
   if (config.webDistDir) await registerStatic(app, config.webDistDir);
 
   // Socket.IO shares Fastify's HTTP server (must be attached before listen).

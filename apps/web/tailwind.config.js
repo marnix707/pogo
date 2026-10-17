@@ -1,9 +1,31 @@
 /** @type {import('tailwindcss').Config} */
+
+// Colors come from CSS variables (see src/index.css) so light/dark themes swap in one place.
+const token = (name) => `rgb(var(--c-${name}) / <alpha-value>)`;
+
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   darkMode: 'class',
   theme: {
     extend: {
+      colors: {
+        page: token('page'), // the map behind everything
+        panel: token('panel'), // HUD panels
+        panel2: token('panel2'), // nested surfaces, inputs
+        edge: token('edge'), // panel outlines
+        ink: token('ink'), // text on panels
+        muted: token('muted'), // secondary text on panels
+        onbg: token('onbg'), // text directly on the map
+        accent: token('accent'), // pink: primary actions, selection
+        accentink: token('accentink'),
+        neon: token('neon'), // cyan: highlights, outlines
+        lagoon: token('lagoon'), // teal
+        grape: token('grape'), // purple
+        danger: token('danger'),
+      },
+      fontFamily: {
+        sans: ['"Space Grotesk Variable"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
       keyframes: {
         diceRoll: {
           '0%': { transform: 'rotate(0deg) scale(1)' },
