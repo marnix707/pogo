@@ -267,6 +267,8 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
   await a.getByTestId('lobby-start').click();
+  const tableCardWidth = async (p: Page) => (await p.getByTestId('my-up-0').boundingBox())!.width;
+  const swapWidth = await tableCardWidth(a);
   for (const p of [a, b]) await doubleTapFirstCard(p);
   for (const p of [a, b])
     await expect(p.getByTestId('karma-game')).toHaveAttribute('data-phase', 'play');
@@ -274,11 +276,16 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
   const mover = (await a.getByTestId('karma-hint').getAttribute('data-my-turn')) === 'true' ? a : b;
   const other = mover === a ? b : a;
 
+  // Once the game is on, the three table cards shrink to make room for the hand.
+  await expect.poll(() => tableCardWidth(mover)).toBeLessThan(swapWidth * 0.8);
+
   // Timer counts down for both players; the action buttons sit beside (not under) my cards.
   for (const p of [a, b]) await expect(p.getByTestId('karma-timer')).toBeVisible();
   const hand = await mover.getByTestId('my-hand').boundingBox();
   const play = await mover.getByTestId('karma-play').boundingBox();
-  expect(play!.x).toBeGreaterThanOrEqual(hand!.x + hand!.width - 2);
+  const up0 = await mover.getByTestId('my-up-0').boundingBox();
+  expect(play!.x).toBeGreaterThanOrEqual(up0!.x + up0!.width - 2); // beside the table cards
+  expect(play!.y + play!.height).toBeLessThanOrEqual(hand!.y + 4); // above the hand row
 
   // The deck cannot be drawn from: tapping it only explains why.
   await mover.getByTestId('stock').click();
