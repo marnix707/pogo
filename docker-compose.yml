@@ -42,6 +42,8 @@ services:
       # Generous in dev so repeated e2e runs don't trip it; production default is 10.
       GUEST_SIGNUP_LIMIT_PER_MIN: ${GUEST_SIGNUP_LIMIT_PER_MIN:-100}
       PROFANITY_FILTER: ${PROFANITY_FILTER:-on}
+      # How long the computer "thinks" per move (ms); quick in dev, 1000 by default elsewhere.
+      BOT_DELAY_MS: ${BOT_DELAY_MS:-700}
       CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING:-true}
     ports:
       - '${SERVER_PORT:-3000}:3000'

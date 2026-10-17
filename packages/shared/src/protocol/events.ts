@@ -36,6 +36,8 @@ export interface RoomMemberView {
   connected: boolean;
   /** Left mid-game; the seat is auto-played until the game ends. */
   left: boolean;
+  /** A computer player. */
+  bot: boolean;
 }
 
 export interface RoomGameView {
@@ -55,6 +57,8 @@ export interface RoomView {
   visibility: Visibility;
   minPlayers: number;
   maxPlayers: number;
+  /** Computer players that will join when the game starts. */
+  bots: number;
   options: unknown;
   turnTimeSec: number;
   status: RoomStatus;

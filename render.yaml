@@ -43,6 +43,10 @@ services:
       - key: PROFANITY_FILTER
         value: 'off'
 
+      # How long computer players "think" before each move (ms)
+      - key: BOT_DELAY_MS
+        value: '1000'
+
       # Gameplay timings (same defaults as .env.example)
       - key: TURN_TIME_SEC
         value: '90'

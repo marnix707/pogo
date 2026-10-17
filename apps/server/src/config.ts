@@ -15,6 +15,7 @@ const schema = z.object({
   ROOM_TTL_SEC: z.coerce.number().int().min(1).default(600),
   GUEST_SIGNUP_LIMIT_PER_MIN: z.coerce.number().int().min(1).default(10),
   PROFANITY_FILTER: z.enum(['on', 'off']).default('on'),
+  BOT_DELAY_MS: z.coerce.number().int().min(0).default(1000),
 });
 
 export interface AppConfig {
@@ -39,6 +40,8 @@ export interface AppConfig {
   guestSignupLimitPerMin: number;
   /** Mask profanity in chat and refuse profane guest nicknames. */
   profanityFilter: boolean;
+  /** How long a computer player "thinks" before each move. */
+  botDelayMs: number;
 }
 
 const list = (value: string) =>
@@ -66,5 +69,6 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     roomTtlMs: env.ROOM_TTL_SEC * 1000,
     guestSignupLimitPerMin: env.GUEST_SIGNUP_LIMIT_PER_MIN,
     profanityFilter: env.PROFANITY_FILTER === 'on',
+    botDelayMs: env.BOT_DELAY_MS,
   };
 }

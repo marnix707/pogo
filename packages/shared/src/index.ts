@@ -5,6 +5,7 @@ export * from './protocol/events';
 export * from './moderation/profanity';
 export * from './game/types';
 export * from './game/rng';
+export * from './game/bots';
 export * from './game/testing';
 export * as yatzy from './games/yatzy';
 export * as karma from './games/karma';

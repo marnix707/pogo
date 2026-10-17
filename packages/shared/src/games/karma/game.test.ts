@@ -659,6 +659,61 @@ describe('the 8 skips the next player', () => {
   });
 });
 
+describe('computer swapping (autoMove in the swap phase)', () => {
+  const swapTable = (hand: Card[], faceUp: (Card | null)[]) =>
+    table([{ hand, faceUp, ready: false }, { ready: false }], { phase: 'swap' });
+
+  it('moves strong cards (10, 2, aces) face-up and keeps low cards in hand', () => {
+    let s = swapTable([card(10), card(14), card(3)], [card(4), card(5), card(6)]);
+    const played: string[] = [];
+    for (let i = 0; i < 10 && !s.players[0]!.ready; i++) {
+      const { move: m } = game.autoMove!(s, 'p1', rng);
+      played.push(m.type);
+      s = move(s, 'p1', m);
+    }
+    expect(s.players[0]!.ready).toBe(true);
+    expect(played.at(-1)).toBe('ready');
+    expect(played.filter((t) => t === 'swap').length).toBeGreaterThanOrEqual(2);
+    const up = s.players[0]!.faceUp.map((c) => rankOf(c!));
+    expect(up).toEqual(expect.arrayContaining([10, 14])); // the 10 and the ace made it onto the table
+    expect(Math.max(...s.players[0]!.hand.map(rankOf))).toBeLessThan(10); // nothing strong left in hand
+  });
+
+  it('does not bother with swaps that gain little', () => {
+    const s = swapTable([card(8), card(6), card(5)], [card(7), card(7, 1), card(7, 2)]);
+    expect(game.autoMove!(s, 'p1', rng).move).toEqual({ type: 'ready' });
+  });
+
+  it('keeps the turn open while it still swaps, then reports it as ended with ready', () => {
+    const s = swapTable([card(10), card(3), card(4)], [card(5), card(6), card(9)]);
+    const first = game.autoMove!(s, 'p1', rng);
+    expect(first.move.type).toBe('swap');
+    expect(first.endsTurn).toBe(false);
+    const done = swapTable([card(3), card(4), card(5)], [card(10), card(14), card(2)]);
+    const last = game.autoMove!(done, 'p1', rng);
+    expect(last.move).toEqual({ type: 'ready' });
+    expect(last.endsTurn).toBe(true);
+  });
+
+  it('never swaps forever (every swap improves the table)', () => {
+    for (let seed = 0; seed < 100; seed++) {
+      let s = game.createInitialState(seat(2), {}, createSeededRng(seed));
+      let steps = 0;
+      while (!s.players[0]!.ready) {
+        if (steps++ > 20) throw new Error('swapping did not settle');
+        s = move(s, 'p1', game.autoMove!(s, 'p1', rng).move);
+      }
+    }
+  });
+});
+
+describe('computer players', () => {
+  it('Karma can be played against the computer; Yatzy is not offered (its auto-play is too basic)', () => {
+    expect(game.supportsBots).toBe(true);
+    expect(getGame('yatzy')?.supportsBots).toBeUndefined();
+  });
+});
+
 describe('face-up and face-down cards', () => {
   it('plays face-up cards once the hand is empty, never before', () => {
     const s = table([{ hand: [card(9)], faceUp: [card(10), null, null] }, {}]);

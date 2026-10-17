@@ -21,6 +21,8 @@ export interface AppDeps {
   healthCheck: () => Promise<void>;
   getGame?: (id: string) => AnyGameDefinition | undefined;
   autoStepMs?: number;
+  /** How long computer players think before moving. */
+  botMs?: number;
   logger?: boolean | object;
 }
 
@@ -85,6 +87,7 @@ export async function buildApp(deps: AppDeps) {
       graceMs: config.disconnectGraceMs,
       emptyTtlMs: config.roomTtlMs,
       autoStepMs: deps.autoStepMs ?? 1200,
+      botMs: deps.botMs ?? config.botDelayMs,
     },
     defaultTurnTimeSec: config.turnTimeSec,
     maskText: config.profanityFilter ? maskProfanity : (text) => text,

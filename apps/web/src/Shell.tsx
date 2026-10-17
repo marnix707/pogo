@@ -55,6 +55,8 @@ export function Shell({ session, onSignOut }: { session: AuthResponse; onSignOut
       online,
       create: (gameId) => run(request('room:create', { gameId })),
       quickPlay: (gameId) => run(request('room:quickplay', { gameId })),
+      playComputer: (gameId, bots) =>
+        run(request('room:create', { gameId, visibility: 'private', bots, autoStart: true })),
       sendChat: (text) => run(request('chat:send', { text })),
       join: (code) => run(request('room:join', { code })),
       leave: () => run(request('room:leave', {})),

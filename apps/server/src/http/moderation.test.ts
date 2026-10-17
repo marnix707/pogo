@@ -18,6 +18,7 @@ const config = (profanityFilter: boolean) => ({
   roomTtlMs: 600_000,
   guestSignupLimitPerMin: 1000,
   profanityFilter,
+  botDelayMs: 1000,
 });
 
 const build = (profanityFilter: boolean) =>

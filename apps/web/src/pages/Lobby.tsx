@@ -201,6 +201,15 @@ export function Lobby({
                   void api.updateSettings({ visibility: isPublic ? 'public' : 'private' })
                 }
               />
+              {limits.supportsBots && (
+                <Stepper
+                  label="Computer players"
+                  value={room.bots}
+                  min={0}
+                  max={limits.maxPlayers - room.members.length}
+                  onChange={(bots) => void api.updateSettings({ bots })}
+                />
+              )}
               {limits.maxPlayers > limits.minPlayers && (
                 <Stepper
                   label="Max players"
@@ -236,13 +245,15 @@ export function Lobby({
         {isHost ? (
           <Button
             data-testid="lobby-start"
-            disabled={!api.online || room.members.length < room.minPlayers}
+            disabled={!api.online || room.members.length + room.bots < room.minPlayers}
             onClick={() => void api.start()}
           >
-            {room.members.length < room.minPlayers
+            {room.members.length + room.bots < room.minPlayers
               ? `Need ${room.minPlayers} players`
               : room.members.length === 1
-                ? 'Start solo game'
+                ? room.bots > 0
+                  ? 'Start vs computer'
+                  : 'Start solo game'
                 : 'Start game'}
           </Button>
         ) : (

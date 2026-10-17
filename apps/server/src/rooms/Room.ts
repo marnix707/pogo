@@ -1,3 +1,4 @@
+import { BOT_AVATAR, BOT_NAMES, botId } from '@pogo/shared';
 import type {
   AnyGameDefinition,
   ChatMessage,
@@ -18,6 +19,8 @@ export interface RoomLimits {
   emptyTtlMs: number;
   /** Pause between consecutive auto-played moves of one turn, so others can follow along. */
   autoStepMs: number;
+  /** How long a computer player "thinks" before each move. */
+  botMs: number;
 }
 
 export interface RoomDeps {
@@ -48,6 +51,8 @@ interface Member {
   left: boolean;
   /** When the member last became absent (disconnected or left); null while present. */
   absentSince: number | null;
+  /** A computer player: no socket, moves by itself. */
+  bot?: boolean;
 }
 
 export interface RoomInit {
@@ -59,6 +64,8 @@ export interface RoomInit {
   maxPlayers: number;
   options: unknown;
   turnTimeSec: number;
+  /** Computer players that join when the game starts. */
+  bots: number;
 }
 
 const fail = (error: string): Result<never> => ({ ok: false, error });
@@ -77,6 +84,8 @@ export class Room {
   maxPlayers: number;
   options: unknown;
   turnTimeSec: number;
+  /** Number of computer players added when the game starts. */
+  bots: number;
   status: RoomStatus = 'lobby';
 
   private members: Member[] = [];
@@ -88,6 +97,8 @@ export class Room {
   private turnStartedAt = 0;
   private turnDeadline: number | null = null;
   private nextAutoAt: number | null = null;
+  /** When the game state last changed (computer players wait a moment after it). */
+  private lastChangeAt = 0;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private destroyed = false;
 
@@ -103,17 +114,19 @@ export class Room {
     this.maxPlayers = init.maxPlayers;
     this.options = init.options;
     this.turnTimeSec = init.turnTimeSec;
+    this.bots = init.bots;
     this.members.push({ user: init.host, connected: true, left: false, absentSince: null });
   }
 
   // ---- membership -------------------------------------------------------------------------
 
+  /** People in the room (computer players are seats in the game, not members). */
   hasMember(userId: string): boolean {
-    return this.members.some((m) => m.user.id === userId && !m.left);
+    return this.members.some((m) => m.user.id === userId && !m.left && !m.bot);
   }
 
   get activeMemberIds(): string[] {
-    return this.members.filter((m) => !m.left).map((m) => m.user.id);
+    return this.members.filter((m) => !m.left && !m.bot).map((m) => m.user.id);
   }
 
   get memberCount(): number {
@@ -125,6 +138,7 @@ export class Room {
     if (this.hasMember(user.id)) return ok(null);
     if (this.status !== 'lobby') return fail('This game has already started');
     if (this.memberCount >= this.maxPlayers) return fail('This room is full');
+    if (this.memberCount + this.bots >= this.game.maxPlayers) return fail('This room is full');
     this.members.push({ user, connected: true, left: false, absentSince: null });
     this.changed();
     return ok(null);
@@ -132,7 +146,7 @@ export class Room {
 
   /** Voluntary leave. Mid-game the seat stays (auto-played) until the game ends. */
   leave(userId: string, reason: LeaveReason = 'left'): void {
-    const member = this.members.find((m) => m.user.id === userId && !m.left);
+    const member = this.members.find((m) => m.user.id === userId && !m.left && !m.bot);
     if (!member) return;
     if (this.status === 'playing') {
       member.left = true;
@@ -155,7 +169,7 @@ export class Room {
   }
 
   setPresence(userId: string, connected: boolean): void {
-    const member = this.members.find((m) => m.user.id === userId && !m.left);
+    const member = this.members.find((m) => m.user.id === userId && !m.left && !m.bot);
     if (!member || member.connected === connected) return;
     member.connected = connected;
     member.absentSince = connected ? null : this.deps.now();
@@ -174,8 +188,8 @@ export class Room {
       return;
     }
     if (removedId === this.hostId) {
-      const next =
-        this.members.find((m) => !m.left && m.connected) ?? this.members.find((m) => !m.left);
+      const people = this.members.filter((m) => !m.bot);
+      const next = people.find((m) => !m.left && m.connected) ?? people.find((m) => !m.left);
       if (next) this.hostId = next.user.id;
     }
     this.changed();
@@ -185,7 +199,7 @@ export class Room {
 
   /** Post a message from a member (text is already sanitized by the caller's schema). */
   chat(userId: string, text: string): Result<null> {
-    const member = this.members.find((m) => m.user.id === userId && !m.left);
+    const member = this.members.find((m) => m.user.id === userId && !m.left && !m.bot);
     if (!member) return fail('You are not in this room');
     const message: ChatMessage = {
       id: this.nextMessageId++,
@@ -198,7 +212,7 @@ export class Room {
     this.messages.push(message);
     if (this.messages.length > CHAT_HISTORY_LIMIT) this.messages.shift();
     for (const m of this.members) {
-      if (!m.left) this.deps.emitChat(m.user.id, message);
+      if (!m.left && !m.bot) this.deps.emitChat(m.user.id, message);
     }
     return ok(null);
   }
@@ -213,6 +227,7 @@ export class Room {
   summary(): PublicRoomSummary | null {
     if (this.visibility !== 'public' || this.status !== 'lobby') return null;
     if (this.memberCount >= this.maxPlayers) return null;
+    if (this.memberCount + this.bots >= this.game.maxPlayers) return null;
     const host = this.members.find((m) => m.user.id === this.hostId);
     return {
       code: this.code,
@@ -232,7 +247,7 @@ export class Room {
     if (userId !== this.hostId) return fail('Only the host can change settings');
     if (this.status !== 'lobby') return fail('Settings are locked once the game has started');
 
-    let { maxPlayers, options } = this;
+    let { maxPlayers, options, bots } = this;
     if (patch.maxPlayers !== undefined) {
       if (patch.maxPlayers < this.game.minPlayers || patch.maxPlayers > this.game.maxPlayers) {
         return fail(
@@ -243,12 +258,22 @@ export class Room {
         return fail('There are already more players than that');
       maxPlayers = patch.maxPlayers;
     }
+    if (patch.bots !== undefined) {
+      if (patch.bots > 0 && !this.game.supportsBots) {
+        return fail(`${this.game.name} cannot be played against the computer`);
+      }
+      if (this.memberCount + patch.bots > this.game.maxPlayers) {
+        return fail(`${this.game.name} supports at most ${this.game.maxPlayers} players`);
+      }
+      bots = patch.bots;
+    }
     if (patch.options !== undefined) {
       const parsed = this.game.optionsSchema.safeParse(patch.options);
       if (!parsed.success) return fail('Invalid game options');
       options = parsed.data;
     }
     this.maxPlayers = maxPlayers;
+    this.bots = bots;
     this.options = options;
     if (patch.visibility !== undefined) this.visibility = patch.visibility;
     if (patch.turnTimeSec !== undefined) this.turnTimeSec = patch.turnTimeSec;
@@ -259,13 +284,25 @@ export class Room {
   start(userId: string): Result<null> {
     if (userId !== this.hostId) return fail('Only the host can start the game');
     if (this.status !== 'lobby') return fail('The game has already started');
-    const players = this.members
-      .filter((m) => !m.left)
-      .map((m) => ({ id: m.user.id, nickname: m.user.nickname, avatar: m.user.avatar }));
+    if (this.bots > 0 && !this.game.supportsBots) {
+      return fail(`${this.game.name} cannot be played against the computer`);
+    }
+    // Computer players take the last seats; drop any left over from a previous game first.
+    this.members = this.members.filter((m) => !m.bot && !m.left);
+    this.members.push(...this.makeBots());
+    const players = this.members.map((m) => ({
+      id: m.user.id,
+      nickname: m.user.nickname,
+      avatar: m.user.avatar,
+    }));
     if (players.length < this.game.minPlayers) {
+      this.members = this.members.filter((m) => !m.bot);
       return fail(`${this.game.name} needs at least ${this.game.minPlayers} player(s)`);
     }
-    if (players.length > this.game.maxPlayers) return fail('Too many players for this game');
+    if (players.length > this.game.maxPlayers) {
+      this.members = this.members.filter((m) => !m.bot);
+      return fail('Too many players for this game');
+    }
 
     this.state = this.game.createInitialState(players, this.options, this.deps.rng);
     this.results = undefined;
@@ -279,9 +316,8 @@ export class Room {
   rematch(userId: string): Result<null> {
     if (userId !== this.hostId) return fail('Only the host can start a rematch');
     if (this.status !== 'finished') return fail('The game is not finished');
-    for (const m of this.members.filter((x) => x.left)) {
-      this.members = this.members.filter((x) => x !== m);
-    }
+    // Back to the waiting room: players who left and the computer players go away (the setting stays).
+    this.members = this.members.filter((m) => !m.left && !m.bot);
     this.state = undefined;
     this.results = undefined;
     this.status = 'lobby';
@@ -318,6 +354,7 @@ export class Room {
   }
 
   private afterStateChange(): void {
+    this.lastChangeAt = this.deps.now();
     if (this.game.isGameOver(this.state)) {
       this.results = this.game.getResults(this.state);
       this.status = 'finished';
@@ -351,6 +388,51 @@ export class Room {
     this.afterStateChange();
   }
 
+  // ---- computer players -------------------------------------------------------------------
+
+  /** Seats for the computer players (names that no person in the room already uses). */
+  private makeBots(): Member[] {
+    const taken = new Set(this.members.map((m) => m.user.nickname.toLowerCase()));
+    const names = BOT_NAMES.filter((n) => !taken.has(n.toLowerCase()));
+    return Array.from({ length: this.bots }, (_, i) => ({
+      user: {
+        id: botId(i),
+        nickname: names[i] ?? `Bot ${i + 1}`,
+        avatar: BOT_AVATAR,
+        isGuest: true,
+      },
+      connected: true,
+      left: false,
+      absentSince: null,
+      bot: true,
+    }));
+  }
+
+  /** When a computer player should move next, or null if none is up (or nobody is here to play with). */
+  private botDue(): number | null {
+    if (this.destroyed || this.status !== 'playing') return null;
+    if (!this.members.some((m) => m.bot)) return null;
+    // Pause while every person is away; the game carries on when someone comes back.
+    if (!this.members.some((m) => !m.bot && !m.left && m.connected)) return null;
+    if (!this.currentMembers().some((m) => m.bot)) return null;
+    return this.lastChangeAt + this.deps.limits.botMs;
+  }
+
+  /** Every computer player who is up makes one move (they all act at once in simultaneous phases). */
+  private playBots(): void {
+    const autoMove = this.game.autoMove;
+    if (!autoMove) return;
+    for (const id of this.game.getCurrentPlayers(this.state)) {
+      if (!this.members.find((m) => m.user.id === id)?.bot) continue;
+      const auto = autoMove.call(this.game, this.state, id, this.deps.rng);
+      this.state = this.game.applyMove(this.state, id, auto.move, this.deps.rng);
+      if (this.game.isGameOver(this.state)) break;
+    }
+    this.nextAutoAt = null;
+    this.startTurnClock(); // the next person (if any) gets a fresh turn clock
+    this.afterStateChange();
+  }
+
   // ---- timers -----------------------------------------------------------------------------
 
   private isAbsent(m: Member): boolean {
@@ -376,8 +458,9 @@ export class Room {
   }
 
   private abandonedAt(): number | null {
-    if (this.members.length === 0 || !this.members.every((m) => this.isAbsent(m))) return null;
-    return Math.max(...this.members.map((m) => m.absentSince ?? 0)) + this.deps.limits.emptyTtlMs;
+    const people = this.members.filter((m) => !m.bot);
+    if (people.length === 0 || !people.every((m) => this.isAbsent(m))) return null;
+    return Math.max(...people.map((m) => m.absentSince ?? 0)) + this.deps.limits.emptyTtlMs;
   }
 
   private nextWake(): number | null {
@@ -389,6 +472,8 @@ export class Room {
         }
       }
     }
+    const botAt = this.botDue();
+    if (botAt !== null) wakes.push(botAt);
     const action = this.actionDeadline();
     if (action !== null) wakes.push(action);
     const abandoned = this.abandonedAt();
@@ -428,6 +513,12 @@ export class Room {
       }
     }
 
+    const botAt = this.botDue();
+    if (botAt !== null && now >= botAt) {
+      this.playBots();
+      return;
+    }
+
     const action = this.actionDeadline();
     if (action !== null && now >= action) this.autoplay();
     else this.schedule();
@@ -444,6 +535,7 @@ export class Room {
       visibility: this.visibility,
       minPlayers: this.game.minPlayers,
       maxPlayers: this.maxPlayers,
+      bots: this.bots,
       options: this.options,
       turnTimeSec: this.turnTimeSec,
       status: this.status,
@@ -453,16 +545,20 @@ export class Room {
         avatar: m.user.avatar,
         connected: m.connected && !m.left,
         left: m.left,
+        bot: !!m.bot,
       })),
       serverTime: this.deps.now(),
     };
     if (this.status === 'lobby') return base;
+    // While a computer player is thinking there is no human clock to show.
+    const current = this.currentMembers();
+    const onlyComputers = current.length > 0 && current.every((m) => m.bot);
     return {
       ...base,
       game: {
         view: this.game.getPlayerView(this.state, forUserId),
         currentPlayers: this.game.getCurrentPlayers(this.state),
-        deadline: this.nextAutoAt ?? this.turnDeadline,
+        deadline: onlyComputers ? null : (this.nextAutoAt ?? this.turnDeadline),
         results: this.results,
       },
     };
@@ -477,7 +573,7 @@ export class Room {
 
   broadcast(): void {
     for (const m of this.members) {
-      if (!m.left) this.deps.emit(m.user.id, this.view(m.user.id));
+      if (!m.left && !m.bot) this.deps.emit(m.user.id, this.view(m.user.id));
     }
   }
 

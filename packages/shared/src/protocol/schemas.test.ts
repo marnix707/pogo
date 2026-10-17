@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   chatSendSchema,
+  roomSettingsSchema,
   profileSchema,
   roomCodeSchema,
   roomCreateSchema,
@@ -55,5 +56,20 @@ describe('chat schema', () => {
     expect(chatSendSchema.safeParse({ text: 'x'.repeat(301) }).success).toBe(false);
     expect(chatSendSchema.safeParse({ text: 'x'.repeat(300) }).success).toBe(true);
     expect(chatSendSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe('computer player settings', () => {
+  it('accepts bots and autoStart when creating a room', () => {
+    const parsed = roomCreateSchema.parse({ gameId: 'karma', bots: 2, autoStart: true });
+    expect(parsed).toMatchObject({ bots: 2, autoStart: true, visibility: 'private' });
+  });
+
+  it('bounds the number of bots', () => {
+    expect(roomCreateSchema.safeParse({ gameId: 'karma', bots: -1 }).success).toBe(false);
+    expect(roomCreateSchema.safeParse({ gameId: 'karma', bots: 9 }).success).toBe(false);
+    expect(roomCreateSchema.safeParse({ gameId: 'karma', bots: 1.5 }).success).toBe(false);
+    expect(roomSettingsSchema.safeParse({ bots: 3 }).success).toBe(true);
+    expect(roomSettingsSchema.safeParse({ bots: 20 }).success).toBe(false);
   });
 });

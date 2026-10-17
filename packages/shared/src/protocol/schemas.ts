@@ -65,6 +65,10 @@ export const roomCreateSchema = z.object({
   options: z.unknown().optional(),
   /** Seconds per turn action; 0 disables the timer. */
   turnTimeSec: turnTimeSchema.optional(),
+  /** Computer players (only for games that support them). */
+  bots: z.number().int().min(0).max(8).optional(),
+  /** Start the game right away (used for "play the computer"). */
+  autoStart: z.boolean().optional(),
 });
 export type RoomCreateInput = z.input<typeof roomCreateSchema>;
 
@@ -79,6 +83,7 @@ export const roomSettingsSchema = z.object({
   maxPlayers: maxPlayersSchema.optional(),
   options: z.unknown().optional(),
   turnTimeSec: turnTimeSchema.optional(),
+  bots: z.number().int().min(0).max(8).optional(),
 });
 export type RoomSettingsInput = z.input<typeof roomSettingsSchema>;
 

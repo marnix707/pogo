@@ -379,13 +379,43 @@ function getResults(state: KarmaState): GameResults {
   };
 }
 
-/** Cheap, sensible play for absent / timed-out players: lowest legal rank first, specials last. */
+/** How valuable a card is lying face-up on the table (the computer swaps good ones up). */
+function tableValue(card: Card): number {
+  const rank = rankOf(card);
+  if (rank === 10) return 20; // burns the pile
+  if (rank === 2) return 19; // plays on anything
+  return rank; // 3..9 low, J..A high
+}
+
+/** The hand/face-up swap that improves the table the most, if one is worth making. */
+function bestSwap(me: KarmaPlayerState): { hand: Card; up: number } | null {
+  let result: { hand: Card; up: number } | null = null;
+  let bestGain = 1; // a swap must gain at least 2
+  for (const hand of me.hand) {
+    for (let slot = 0; slot < me.faceUp.length; slot++) {
+      const up = me.faceUp[slot];
+      if (up === null || up === undefined) continue;
+      const gain = tableValue(hand) - tableValue(up);
+      if (gain > bestGain) {
+        bestGain = gain;
+        result = { hand, up: slot };
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Sensible play for the computer and for absent / timed-out players: arrange a strong table while
+ * swapping, then lowest legal rank first with specials last.
+ */
 function autoMove(state: KarmaState, playerId: string, rng: Rng): AutoMove<KarmaMove> {
   const me = state.players.find((p) => p.id === playerId)!;
   let move: KarmaMove;
 
   if (state.phase === 'swap') {
-    move = { type: 'ready' };
+    const swap = bestSwap(me);
+    move = swap ? { type: 'swap', ...swap } : { type: 'ready' };
   } else {
     const zone = stateZone(me);
     if (zone === 'down') {
@@ -428,6 +458,7 @@ export const karmaGame: GameDefinition<KarmaState, KarmaMove, KarmaOptions, Karm
   isGameOver: (state) => state.phase === 'over',
   getResults,
   autoMove,
+  supportsBots: true,
 };
 
 export { cardLabel };

@@ -38,10 +38,12 @@ beforeAll(async () => {
       roomTtlMs: 600_000,
       guestSignupLimitPerMin: 1000,
       profanityFilter: true,
+      botDelayMs: 1000,
     },
     users: createMemoryUserStore(),
     rng: createSeededRng(11),
     healthCheck: async () => {},
+    botMs: 20,
   });
   await app.listen({ host: '127.0.0.1', port: 0 });
   base = `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
@@ -346,5 +348,50 @@ describe('nickname moderation', () => {
     expect(((await res.json()) as { error: string }).error).toBe(
       'Please pick a different nickname',
     );
+  });
+});
+
+describe('playing against the computer over sockets', () => {
+  it('starts straight away, shows the computer as a member, and the computer plays by itself', async () => {
+    const { token, user } = await signup('Solo');
+    const me = await login(token);
+    const created = await call<RoomView>((ack) =>
+      me.client.emit('room:create', { gameId: 'karma', bots: 1, autoStart: true }, ack),
+    );
+    if (!created.ok) throw new Error(created.error);
+    expect(created.data).toMatchObject({ status: 'playing', bots: 1, visibility: 'private' });
+    const bot = created.data.members.find((m) => m.bot);
+    expect(bot).toMatchObject({ nickname: 'Robo', avatar: 'robot', connected: true });
+
+    type Seats = {
+      phase: string;
+      players: { id: string; hand: number[] | null; ready: boolean }[];
+    };
+    const seats = (r: RoomView | null) => r?.game?.view as Seats;
+    // Its hand is private; it readies itself after a moment without any socket.
+    const ready = await me.until((r) => !!seats(r)?.players.find((p) => p.id === bot!.id)?.ready);
+    const botSeat = seats(ready).players.find((p) => p.id === bot!.id)!;
+    expect(botSeat.hand).toBeNull();
+    expect(seats(ready).players.find((p) => p.id === user.id)!.hand).toHaveLength(3);
+
+    // Once I am ready too the game moves on to the play phase.
+    const readyMove = await call<null>((ack) =>
+      me.client.emit('game:move', { move: { type: 'ready' } }, ack),
+    );
+    expect(readyMove.ok).toBe(true);
+    await me.until((r) => seats(r)?.phase === 'play');
+  });
+
+  it('rejects computers for games without them, and normal Yatzy rooms still work', async () => {
+    const { token } = await signup('Nobot');
+    const me = await login(token);
+    const res = await call((ack) =>
+      me.client.emit('room:create', { gameId: 'yatzy', bots: 1, autoStart: true }, ack),
+    );
+    expect(res).toEqual({ ok: false, error: 'Yatzy cannot be played against the computer' });
+    const solo = await call<RoomView>((ack) =>
+      me.client.emit('room:create', { gameId: 'yatzy' }, ack),
+    );
+    expect(solo.ok).toBe(true);
   });
 });

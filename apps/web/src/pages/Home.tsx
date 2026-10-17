@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import { getGame } from '@pogo/shared';
 import type { PublicRoomSummary, PublicUser } from '@pogo/shared';
 import { InstallCard } from '../components/InstallCard';
 import { LogoMark } from '../components/icons';
-import { Avatar, Button, Card, SectionLabel } from '../components/ui';
+import { Avatar, Button, Card, SectionLabel, Sheet } from '../components/ui';
 import { TopBar } from '../components/TopBar';
 import { gameUis, getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
@@ -74,6 +75,8 @@ export function Home({
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<string>('all');
+  /** The game whose "how many computer opponents?" picker is open. */
+  const [computerGame, setComputerGame] = useState<string | null>(null);
 
   // Live-update the open games while this screen is showing.
   useEffect(() => watchLobby(), [watchLobby]);
@@ -153,6 +156,17 @@ export function Home({
                     With friends
                   </Button>
                 </div>
+                {getGame(g.id)?.supportsBots && (
+                  <Button
+                    data-testid={`home-computer-${g.id}`}
+                    variant="secondary"
+                    disabled={blocked}
+                    className="w-full !px-3"
+                    onClick={() => setComputerGame(g.id)}
+                  >
+                    🤖 Play the computer
+                  </Button>
+                )}
               </Card>
             ))}
           </div>
@@ -232,6 +246,36 @@ export function Home({
           </form>
         </section>
       </main>
+
+      {computerGame && (
+        <Sheet
+          open
+          onClose={() => setComputerGame(null)}
+          title={`Play ${getGameUi(computerGame)?.name ?? 'the computer'}`}
+        >
+          <p className="mb-4 text-muted">How many computer opponents?</p>
+          <div className="grid grid-cols-2 gap-3">
+            {Array.from(
+              { length: (getGame(computerGame)?.maxPlayers ?? 2) - 1 },
+              (_, i) => i + 1,
+            ).map((n) => (
+              <Button
+                key={n}
+                data-testid={`computer-count-${n}`}
+                variant={n === 1 ? 'primary' : 'secondary'}
+                disabled={blocked}
+                onClick={() => {
+                  const id = computerGame;
+                  setComputerGame(null);
+                  void run(api.playComputer(id, n));
+                }}
+              >
+                {'🤖'.repeat(n)} {n === 1 ? '1 opponent' : `${n} opponents`}
+              </Button>
+            ))}
+          </div>
+        </Sheet>
+      )}
     </div>
   );
 }

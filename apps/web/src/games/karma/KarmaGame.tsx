@@ -141,7 +141,7 @@ function Seat({
       ? player.ready
         ? 'Ready ✓'
         : 'Swapping…'
-      : `${player.handCount} in hand`;
+      : `${member?.bot ? 'CPU · ' : ''}${player.handCount} in hand`;
   return (
     <div
       ref={seatRef}

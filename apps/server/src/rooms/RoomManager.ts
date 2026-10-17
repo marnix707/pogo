@@ -111,7 +111,14 @@ export class RoomManager {
   create(user: PublicUser, input: RoomCreateInput): Result<RoomView> {
     const parsed = roomCreateSchema.safeParse(input);
     if (!parsed.success) return fail('Invalid room settings');
-    const { gameId, visibility, maxPlayers, turnTimeSec } = parsed.data;
+    const {
+      gameId,
+      visibility,
+      maxPlayers,
+      turnTimeSec,
+      bots = 0,
+      autoStart = false,
+    } = parsed.data;
 
     const game = this.deps.getGame(gameId);
     if (!game) return fail('Unknown game');
@@ -121,6 +128,10 @@ export class RoomManager {
     if (max < game.minPlayers || max > game.maxPlayers) {
       return fail(`${game.name} supports ${game.minPlayers}-${game.maxPlayers} players`);
     }
+    if (bots > 0 && !game.supportsBots)
+      return fail(`${game.name} cannot be played against the computer`);
+    if (1 + bots > game.maxPlayers)
+      return fail(`${game.name} supports at most ${game.maxPlayers} players`);
     if (this.rooms.size >= MAX_ROOMS) return fail('The server is busy, try again in a moment');
 
     const released = this.releaseUser(user.id);
@@ -137,12 +148,20 @@ export class RoomManager {
       maxPlayers: max,
       options: options.data,
       turnTimeSec: turnTimeSec ?? this.deps.defaultTurnTimeSec,
+      bots,
     });
     this.rooms.set(code, room);
     this.roomOfUser.set(user.id, code);
     room.broadcast();
     room.sendHistory(user.id);
     this.deps.onLobbyChanged();
+    if (autoStart) {
+      const started = room.start(user.id);
+      if (!started.ok) {
+        room.leave(user.id); // nobody else is in it, so this closes the room again
+        return started;
+      }
+    }
     return ok(room.view(user.id));
   }
 

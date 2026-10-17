@@ -3,6 +3,8 @@ import type { Result, RoomSettingsInput } from '@pogo/shared';
 /** What screens can ask the server to do. Errors are toasted centrally by the shell. */
 export interface RoomApi {
   create(gameId: string): Promise<Result<unknown>>;
+  /** Start a private game against `bots` computer players, straight away. */
+  playComputer(gameId: string, bots: number): Promise<Result<unknown>>;
   /** Join the longest-waiting open public room for this game, or open a new one. */
   quickPlay(gameId: string): Promise<Result<unknown>>;
   join(code: string): Promise<Result<unknown>>;

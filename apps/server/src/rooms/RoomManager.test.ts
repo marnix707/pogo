@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createSeededRng, getGame, maskProfanity } from '@pogo/shared';
+import { createSeededRng, getGame, karma, maskProfanity } from '@pogo/shared';
 import type { ChatMessage, LeaveReason, PublicUser, RoomView } from '@pogo/shared';
 import { RoomManager } from './RoomManager';
 import { GOAL, raceGame } from './testGame';
@@ -7,6 +7,7 @@ import { GOAL, raceGame } from './testGame';
 const GRACE = 20_000;
 const TTL = 600_000;
 const STEP = 1_000;
+const BOT = 1_000;
 
 const user = (n: number): PublicUser => ({
   id: `u${n}`,
@@ -29,7 +30,7 @@ function setup(maskText: (text: string) => string = maskProfanity) {
       list.push({ room, reason });
       inbox.set(userId, list);
     },
-    limits: { graceMs: GRACE, emptyTtlMs: TTL, autoStepMs: STEP },
+    limits: { graceMs: GRACE, emptyTtlMs: TTL, autoStepMs: STEP, botMs: BOT },
     defaultTurnTimeSec: 30,
     maskText,
     emitChat: (userId, message) => chats.set(userId, [...(chats.get(userId) ?? []), message]),
@@ -546,7 +547,8 @@ describe('with Karma (simultaneous swap phase, private hands)', () => {
 
   it('auto-readies players who run out of time, then auto-plays the first turn', () => {
     const { manager, lastRoom } = karmaRoom();
-    vi.advanceTimersByTime(30_000); // the turn timer
+    vi.advanceTimersByTime(30_000); // the turn timer: they start arranging their table...
+    vi.advanceTimersByTime(8 * STEP); // ...a swap per step, then ready
     expect(viewOf(lastRoom(a.id)).phase).toBe('play');
     const view = viewOf(lastRoom(a.id)) as View & { pile: number[] };
     const [starter] = lastRoom(a.id)!.game!.currentPlayers;
@@ -568,5 +570,154 @@ describe('profanity filter switch', () => {
     must(manager.join(b, code));
     must(manager.chat(a.id, 'oh shit that was close'));
     expect(chats.get(b.id)?.[0]?.text).toBe('oh shit that was close');
+  });
+});
+
+describe('computer players', () => {
+  type KView = karma.KarmaView;
+  const kview = (room: RoomView | null) => room?.game?.view as KView;
+  const seatOf = (room: RoomView | null, id: string) =>
+    kview(room).players.find((p) => p.id === id)!;
+
+  it('starts a game against the computer straight away', () => {
+    const { manager, lastRoom, must } = setup();
+    const room = must(manager.create(a, { gameId: 'karma', bots: 1, autoStart: true }));
+    expect(room.status).toBe('playing');
+    expect(room.bots).toBe(1);
+    expect(room.members.map((m) => [m.nickname, m.bot])).toEqual([
+      ['User1', false],
+      ['Robo', true],
+    ]);
+    expect(room.members[1]).toMatchObject({ avatar: 'robot', connected: true, left: false });
+    // The computer's hand is as private as anyone else's.
+    expect(seatOf(lastRoom(a.id), a.id).hand).toHaveLength(3);
+    expect(seatOf(lastRoom(a.id), 'bot:1').hand).toBeNull();
+    expect(seatOf(lastRoom(a.id), 'bot:1').handCount).toBe(3);
+    expect(manager.listPublic()).toEqual([]);
+  });
+
+  it('picks computer names that nobody in the room already uses', () => {
+    const { manager, must } = setup();
+    const robo: PublicUser = { id: 'x1', nickname: 'robo', avatar: 'fox', isGuest: true };
+    const room = must(manager.create(robo, { gameId: 'karma', bots: 2, autoStart: true }));
+    expect(room.members.map((m) => m.nickname)).toEqual(['robo', 'Bolt', 'Pixel']);
+  });
+
+  it('only works for games that support it, and within the player limits', () => {
+    const { manager } = setup();
+    expect(manager.create(a, { gameId: 'race', bots: 1 })).toEqual({
+      ok: false,
+      error: 'Race cannot be played against the computer',
+    });
+    expect(manager.create(a, { gameId: 'yatzy', bots: 1 }).ok).toBe(false);
+    expect(manager.create(a, { gameId: 'karma', bots: 5 }).ok).toBe(false); // 1 + 5 > 5 seats
+    expect(manager.create(a, { gameId: 'karma', bots: 4, autoStart: true }).ok).toBe(true);
+  });
+
+  it('can be added to a waiting room by the host, and fills the room for other people', () => {
+    const { manager, must } = setup();
+    const { code } = must(manager.create(a, { gameId: 'karma' }));
+    expect(manager.updateSettings(b.id, { bots: 1 }).ok).toBe(false); // not the host
+    expect(must(manager.updateSettings(a.id, { bots: 4 })).bots).toBe(4);
+    expect(manager.join(b, code)).toEqual({ ok: false, error: 'This room is full' });
+    expect(manager.updateSettings(a.id, { bots: 5 }).ok).toBe(false);
+    must(manager.updateSettings(a.id, { bots: 1 }));
+    must(manager.join(b, code)); // room for another person again
+  });
+
+  it('refuses to start a game that is too small even with computers', () => {
+    const { manager, must } = setup();
+    must(manager.create(a, { gameId: 'karma' })); // Karma needs 2 and there are no computers
+    expect(manager.start(a.id).ok).toBe(false);
+  });
+
+  it('makes its moves after a short think, and not while every person is away', () => {
+    const { manager, lastRoom, must } = setup();
+    must(manager.create(a, { gameId: 'karma', bots: 1, autoStart: true }));
+    expect(seatOf(lastRoom(a.id), 'bot:1').ready).toBe(false);
+
+    manager.userDisconnected(a.id);
+    vi.advanceTimersByTime(10 * BOT);
+    expect(seatOf(manager.getView(a.id), 'bot:1').ready).toBe(false); // paused: nobody to play with
+
+    manager.userConnected(a.id);
+    vi.advanceTimersByTime(BOT - 1);
+    expect(seatOf(manager.getView(a.id), 'bot:1').ready).toBe(false); // still thinking...
+    vi.advanceTimersByTime(6 * BOT); // swaps (a few), then ready
+    expect(seatOf(manager.getView(a.id), 'bot:1').ready).toBe(true);
+  });
+
+  it('closes the room when the last person leaves, even though computers remain', () => {
+    const { manager, must } = setup();
+    must(manager.create(a, { gameId: 'karma', bots: 2, autoStart: true }));
+    expect(manager.roomCount).toBe(1);
+    manager.leave(a.id);
+    expect(manager.roomCount).toBe(0);
+  });
+
+  it('cannot be kicked, chat, or be addressed like a person', () => {
+    const { manager, must } = setup();
+    must(manager.create(a, { gameId: 'karma', bots: 1, autoStart: true }));
+    expect(manager.kick(a.id, 'bot:1')).toEqual({
+      ok: false,
+      error: 'That player is not in the room',
+    });
+    expect(manager.chat('bot:1', 'hi').ok).toBe(false);
+    expect(manager.move('bot:1', { type: 'ready' }).ok).toBe(false);
+  });
+
+  /** A person who plays like a tired human: lowest legal card (sets), pick up, blind cards. */
+  function humanMove(view: KView, me: string, jitter: () => number): unknown {
+    const mine = view.players.find((p) => p.id === me)!;
+    if (view.phase === 'swap') return { type: 'ready' };
+    const zone = karma.activeZone(mine);
+    if (zone === 'down') return { type: 'playDown', index: mine.faceDown.findIndex(Boolean) };
+    const source = (zone === 'hand' ? (mine.hand ?? []) : mine.faceUp).filter(
+      (c): c is number => c !== null,
+    );
+    const ranks = [...new Set(source.map(karma.rankOf))]
+      .filter((r) => karma.canPlayRank(view.pile, r))
+      .sort((x, y) => (x === 10 ? 200 : x === 2 ? 100 : x) - (y === 10 ? 200 : y === 2 ? 100 : y));
+    if (ranks.length === 0) return { type: 'pickup' };
+    const rank = ranks.length > 1 && jitter() < 0.25 ? ranks[1] : ranks[0];
+    return { type: 'play', cards: source.filter((c) => karma.rankOf(c) === rank) };
+  }
+
+  function playOut() {
+    const s = setup();
+    s.must(s.manager.create(a, { gameId: 'karma', bots: 2, autoStart: true }));
+    const rng = createSeededRng(99);
+    const jitter = () => rng.int(1000) / 1000;
+    for (let i = 0; i < 4000; i++) {
+      const room = s.manager.getView(a.id)!;
+      if (room.status === 'finished') return { ...s, room };
+      const current = room.game!.currentPlayers;
+      if (current.includes(a.id)) {
+        s.must(s.manager.move(a.id, humanMove(kview(room), a.id, jitter)));
+      } else {
+        vi.advanceTimersByTime(BOT); // the computer's turn
+      }
+    }
+    throw new Error('the game against the computer never finished');
+  }
+
+  it('plays a whole game against two computers, with a proper result list', () => {
+    const { room } = playOut();
+    expect(room.status).toBe('finished');
+    const ids = room.game!.results!.rankings.map((r) => r.playerId).sort();
+    expect(ids).toEqual([a.id, 'bot:1', 'bot:2'].sort());
+    expect(room.game!.results!.rankings.map((r) => r.rank)).toEqual([1, 2, 3]);
+    // Everybody can be named in the results.
+    for (const id of ids) expect(room.members.some((m) => m.id === id)).toBe(true);
+  });
+
+  it('a rematch removes the computer seats, keeps the setting, and brings them back on start', () => {
+    const { manager, must } = playOut();
+    const lobby = must(manager.rematch(a.id));
+    expect(lobby.status).toBe('lobby');
+    expect(lobby.members.map((m) => m.id)).toEqual([a.id]);
+    expect(lobby.bots).toBe(2);
+    const again = must(manager.start(a.id));
+    expect(again.members.map((m) => m.nickname)).toEqual(['User1', 'Robo', 'Bolt']);
   });
 });

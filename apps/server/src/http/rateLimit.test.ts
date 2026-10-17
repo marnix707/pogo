@@ -22,6 +22,7 @@ beforeAll(async () => {
       roomTtlMs: 600_000,
       guestSignupLimitPerMin: 2,
       profanityFilter: true,
+      botDelayMs: 1000,
     },
     users: createMemoryUserStore(),
     rng: createSeededRng(1),

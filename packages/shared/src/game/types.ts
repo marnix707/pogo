@@ -59,6 +59,11 @@ export interface GameDefinition<State, Move, Options, PlayerView = State> {
    * `endsTurn` is false, calls it again after a short pause (so others can follow along).
    */
   autoMove?(state: State, playerId: PlayerId, rng: Rng): AutoMove<Move>;
+  /**
+   * The game can be played against computer players. They are real seats driven by `autoMove`, so
+   * set this only when `autoMove` plays a reasonable game (not just "any legal move").
+   */
+  supportsBots?: boolean;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
