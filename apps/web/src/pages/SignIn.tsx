@@ -29,7 +29,7 @@ export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 px-5 py-10">
       <div className="text-center">
-        <LogoMark className="mx-auto mb-3 h-16 w-16" />
+        <LogoMark className="mx-auto mb-4 h-24 w-24 drop-shadow-[0_6px_0_rgb(0_24_80/0.35)]" />
         <h1 className="text-6xl font-bold uppercase tracking-[0.18em] text-onbg [text-shadow:4px_4px_0_rgb(var(--c-accent))]">
           Pogo
         </h1>

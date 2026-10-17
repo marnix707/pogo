@@ -36,16 +36,14 @@ export const CrownIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-/** Hexagon with a pip: the Pogo mark. */
+/** The Pogo logo: a die and a stem that together read as a "P". Keep in sync with public/favicon.svg. */
 export const LogoMark = (p: SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" aria-hidden {...p}>
-    <path
-      d="M12 2l8.66 5v10L12 22l-8.66-5V7z"
-      fill="rgb(var(--c-accent))"
-      stroke="rgb(var(--c-accentink))"
-      strokeWidth="1.6"
-      strokeLinejoin="round"
-    />
-    <circle cx="12" cy="12" r="3.2" fill="rgb(var(--c-accentink))" />
+  <svg viewBox="0 0 100 100" role="img" aria-label="Pogo" {...p}>
+    <rect width="100" height="100" rx="24" fill="#5B29A7" />
+    <rect x="22" y="33" width="17" height="55" rx="8.5" fill="#FF6BDE" />
+    <rect x="31" y="22" width="45" height="45" rx="11" fill="#1FE0E0" />
+    <circle cx="42.25" cy="33.25" r="3.8" fill="#001850" />
+    <circle cx="53.5" cy="44.5" r="3.8" fill="#001850" />
+    <circle cx="64.75" cy="55.75" r="3.8" fill="#001850" />
   </svg>
 );

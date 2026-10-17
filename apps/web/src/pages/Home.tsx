@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import type { PublicUser } from '@pogo/shared';
+import { LogoMark } from '../components/icons';
 import { Avatar, Button, Card, SectionLabel } from '../components/ui';
 import { TopBar } from '../components/TopBar';
 import { gameUis } from '../games/registry';
@@ -31,7 +32,12 @@ export function Home({
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
-      <TopBar title="Pogo" subtitle="Game hub" onSettings={onSettings} />
+      <TopBar
+        title="Pogo"
+        subtitle="Game hub"
+        left={<LogoMark className="h-11 w-11 shrink-0" />}
+        onSettings={onSettings}
+      />
       <main className="flex flex-1 flex-col gap-6 px-4 pb-8 pt-2">
         <div className="hud flex items-center gap-4 p-3">
           <Avatar avatar={user.avatar} size="lg" />
