@@ -133,6 +133,44 @@ function TableSlots({
   );
 }
 
+/** An opponent's hand as a small fan of face-down cards, one per card they hold. */
+function HandFan({
+  id,
+  count,
+  cardFont,
+  maxWidth,
+}: {
+  id: string;
+  count: number;
+  cardFont: number;
+  /** The fan squeezes its cards together to stay within this width. */
+  maxWidth: number;
+}) {
+  const cardW = cardFont * 5;
+  const strip =
+    count > 1
+      ? Math.max(cardW * 0.12, Math.min(cardW * 0.45, (maxWidth - cardW) / (count - 1)))
+      : 0;
+  return (
+    <div
+      className="flex items-center"
+      data-testid={`seat-hand-${id}`}
+      data-count={count}
+      aria-label={`${count} cards in hand`}
+      style={{ minHeight: `${cardFont * 7}px` }}
+    >
+      {Array.from({ length: count }, (_, i) => (
+        <PlayingCard
+          key={i}
+          faceDown
+          size={cardFont}
+          style={{ marginLeft: i === 0 ? 0 : `-${cardW - strip}px` }}
+        />
+      ))}
+    </div>
+  );
+}
+
 function Seat({
   player,
   member,
@@ -142,6 +180,7 @@ function Seat({
   font,
   overlap,
   endgame,
+  beside,
   seatRef,
 }: {
   player: karma.KarmaPlayerView;
@@ -153,6 +192,8 @@ function Seat({
   overlap: boolean;
   /** Hand and deck are empty: only table cards left. */
   endgame: boolean;
+  /** Room for the hand fan next to the table cards (one opponent); otherwise it goes underneath. */
+  beside: boolean;
   seatRef: (el: HTMLDivElement | null) => void;
 }) {
   const status = player.out
@@ -178,13 +219,31 @@ function Seat({
         </span>
         <span className="label truncate text-[9px]">{member?.nickname ?? '?'}</span>
       </div>
-      <TableSlots
-        faceUp={player.faceUp}
-        faceDown={player.faceDown}
-        font={font}
-        overlapEm={overlap ? 1.1 : 0}
-        floatAll={endgame && !player.out}
-      />
+      <div className="flex items-center justify-center gap-3">
+        <TableSlots
+          faceUp={player.faceUp}
+          faceDown={player.faceDown}
+          font={font}
+          overlapEm={overlap ? 1.1 : 0}
+          floatAll={endgame && !player.out}
+        />
+        {beside && player.handCount > 0 && (
+          <HandFan
+            id={player.id}
+            count={player.handCount}
+            cardFont={font * 0.5}
+            maxWidth={font * 8}
+          />
+        )}
+      </div>
+      {!beside && player.handCount > 0 && (
+        <HandFan
+          id={player.id}
+          count={player.handCount}
+          cardFont={Math.max(2, font * 0.3)}
+          maxWidth={font * (overlap ? 12.8 : 16.2)}
+        />
+      )}
       <div
         className={`label text-[9px] ${current ? 'text-accent' : 'text-muted'}`}
         data-testid={`seat-status-${player.id}`}
@@ -520,6 +579,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
               phase={view.phase}
               font={oppFont}
               overlap={opponentCount >= 3}
+              beside={opponentCount === 1}
               endgame={view.phase === 'play' && view.stockCount === 0 && p.handCount === 0}
               seatRef={(el) => {
                 if (el) seatEls.current.set(p.id, el);
@@ -709,6 +769,18 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                       aria-hidden={!playing}
                     >
                       <Button
+                        data-testid="karma-pickup"
+                        data-urgent={mustPickUp}
+                        variant={mustPickUp ? 'primary' : 'secondary'}
+                        className={`min-h-9 !px-2 !text-xs ${
+                          mustPickUp ? 'animate-pulse ring-4 ring-neon' : ''
+                        }`}
+                        disabled={busy || pile.length === 0}
+                        onClick={pickUpPile}
+                      >
+                        Pick up ({pile.length})
+                      </Button>
+                      <Button
                         data-testid="karma-play"
                         className="min-h-9 !px-2 !text-xs"
                         disabled={busy || selCount === 0}
@@ -721,18 +793,6 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                             : cardsPlayable
                               ? 'Pick a card'
                               : 'Play'}
-                      </Button>
-                      <Button
-                        data-testid="karma-pickup"
-                        data-urgent={mustPickUp}
-                        variant={mustPickUp ? 'primary' : 'secondary'}
-                        className={`min-h-9 !px-2 !text-xs ${
-                          mustPickUp ? 'animate-pulse ring-4 ring-neon' : ''
-                        }`}
-                        disabled={busy || pile.length === 0}
-                        onClick={pickUpPile}
-                      >
-                        Pick up ({pile.length})
                       </Button>
                     </div>
                   )}
