@@ -12,7 +12,7 @@ import { CardFlipContext, PlayingCard } from './PlayingCard';
 import type { FlipOrigin } from './PlayingCard';
 
 type Card = number;
-const { rankOf, suitOf, canPlayRank, effectiveTop, activeZone, cardLabel, RANK_LABEL } = karma;
+const { rankOf, suitOf, canPlayRank, activeZone, cardLabel } = karma;
 
 const byRankThenSuit = (a: Card, b: Card) => rankOf(a) - rankOf(b) || suitOf(a) - suitOf(b);
 
@@ -38,6 +38,9 @@ const ACTION_COLUMN_PX = 96;
 
 /** More cards than this in my hand wrap into extra rows so every card stays visible and tappable. */
 const MAX_PER_ROW = 12;
+
+/** How many of the latest moves the table narrates (newest first), so fast play can still be followed. */
+const HISTORY_LENGTH = 4;
 
 /** Em-size of an opponent's cards: fewer opponents, bigger cards (4 seats must fit in a row). */
 const seatFont = (opponents: number) =>
@@ -342,7 +345,6 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
 
   const zone = mine ? activeZone(mine) : 'none';
   const pile = view.pile;
-  const top = effectiveTop(pile);
   const hand = useMemo(() => [...(mine?.hand ?? [])].sort(byRankThenSuit), [mine?.hand]);
   const swapping = view.phase === 'swap' && !!mine && !mine.ready;
   const playing = view.phase === 'play' && myTurn;
@@ -368,11 +370,15 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   };
 
   // A new move happened: forget selections and narrate it (sound, buzz, burn flash).
+  const [history, setHistory] = useState<karma.KarmaEvent[]>(() =>
+    view.lastEvent ? [view.lastEvent] : [],
+  );
   const lastSeq = useRef(view.lastEvent?.seq ?? 0);
   useEffect(() => {
     const ev = view.lastEvent;
     if (!ev || ev.seq === lastSeq.current) return;
     lastSeq.current = ev.seq;
+    setHistory((h) => [ev, ...h].slice(0, HISTORY_LENGTH));
     setSel([]);
     setSelDown(null);
     setPileArmed(false);
@@ -522,14 +528,6 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   } else if (view.phase === 'swap') hint = 'Waiting for the others to get ready…';
   else if (myTurn && (sel.length > 0 || selDown !== null)) {
     hint = 'Press Play · tap a selected card again to deselect';
-  } else if (myTurn) {
-    if (zone === 'down') hint = 'Pick a face-down card… blind!';
-    else if (top === undefined) hint = 'The pile is empty: lead with anything';
-    else if (rankOf(top) === 2) hint = 'A 2 is on top: play anything';
-    else if (rankOf(top) === 7) hint = 'A 7 is on top: play lower, a 2 or a 10, or pick up';
-    else hint = `Play ${RANK_LABEL[rankOf(top)]} or higher, a 2 or a 10, or pick up`;
-  } else if (currentId) {
-    hint = `${nameOf(currentId)} ${currentId === me ? 'are' : 'is'} playing…`;
   }
 
   const shownHint = flash ?? (pileArmed ? 'Tap the pile again to pick it up' : hint);
@@ -677,15 +675,27 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
           </div>
 
           <div className="min-w-0 flex-1">
-            <p
-              className="label min-h-4 text-[10px] leading-snug text-onbg/80"
-              data-testid="karma-event"
+            <ol
+              className="flex flex-col gap-0.5"
+              data-testid="karma-history"
               aria-live="polite"
+              style={{ minHeight: `${HISTORY_LENGTH * 1.1}rem` }}
             >
-              {view.lastEvent ? describeEvent(view.lastEvent, nameOf) : ' '}
-            </p>
+              {history.map((ev, i) => (
+                <li
+                  key={ev.seq}
+                  data-testid={i === 0 ? 'karma-event' : 'karma-event-old'}
+                  className={`label truncate text-[10px] leading-snug ${
+                    i === 0 ? 'font-bold text-onbg' : 'text-onbg'
+                  }`}
+                  style={{ opacity: 1 - i * 0.22 }}
+                >
+                  {describeEvent(ev, nameOf)}
+                </li>
+              ))}
+            </ol>
             <p
-              className={`mt-1.5 text-sm font-semibold leading-snug ${myTurn ? 'text-onbg' : 'text-onbg/80'}`}
+              className={`mt-1 min-h-[2.4em] text-xs font-semibold leading-snug ${myTurn ? 'text-onbg' : 'text-onbg/80'}`}
               data-testid="karma-hint"
               data-my-turn={myTurn}
             >

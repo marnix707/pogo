@@ -324,6 +324,8 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
     await expect(other.getByTestId('karma-hint')).toContainText('pile again');
     await pile.click();
     await expect(other.getByTestId('karma-event')).toContainText('picked up');
+    // The move before it stays visible, so fast play can still be followed.
+    await expect(other.getByTestId('karma-event-old').first()).toContainText('played');
   }
 
   for (const c of [alice, bob]) await c.context.close();
