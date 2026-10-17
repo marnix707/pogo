@@ -16,29 +16,19 @@ export async function newPlayer(browser: Browser, nickname: string, avatar: stri
 // Cards in the fanned hand overlap, so tap the visible left strip, like a thumb would.
 export const STRIP = { position: { x: 6, y: 14 } };
 
-/** Getting ready (and playing) is a fast double tap; a slow second tap deselects instead. */
-export async function doubleTapFirstCard(page: Page) {
-  const card = page.locator('[data-testid^=hand-card-]').first();
-  await card.click(STRIP);
-  await card.click(STRIP);
+/** Press the Ready button (swap phase). */
+export async function readyUp(page: Page) {
+  await page.getByTestId('karma-ready').click();
 }
 
-/**
- * Select a set of same-rank cards and play it. One card: tap twice quickly. Several: tap each to
- * select, then tap the first one twice quickly (the first tap deselects it, the fast second one
- * plays the whole selection, with that card included).
- */
+/** Select a set of same-rank cards one by one, then press Play. */
 async function playSet(
   page: Page,
   ids: string[],
   tap: { position: { x: number; y: number } } | undefined,
 ) {
   for (const id of ids) await page.getByTestId(id).click(tap);
-  if (ids.length === 1) await page.getByTestId(ids[0]!).click(tap);
-  else {
-    await page.getByTestId(ids[0]!).click(tap);
-    await page.getByTestId(ids[0]!).click(tap);
-  }
+  await page.getByTestId('karma-play').click();
 }
 
 export interface Snapshot {
@@ -105,6 +95,6 @@ export async function takeTurn(page: Page, s: Snapshot) {
     );
   } else {
     await page.getByTestId(s.downs[0]!).click();
-    await page.getByTestId(s.downs[0]!).click();
+    await page.getByTestId('karma-play').click();
   }
 }

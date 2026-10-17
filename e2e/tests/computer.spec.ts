@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { doubleTapFirstCard, newPlayer, snapshot, takeTurn } from './karma-helpers';
+import { readyUp, newPlayer, snapshot, takeTurn } from './karma-helpers';
 
 /** Plays my turns (the computer plays its own) until the results are on screen. */
 async function playUntilResults(page: Page, limitMs = 200_000) {
@@ -52,7 +52,7 @@ test('a whole game against the computer, from one tap to the result, and a remat
   // It arranges its table and gets ready by itself (no one presses anything for it).
   await expect(page.getByTestId('seat-status-bot:1')).toHaveText('Ready ✓', { timeout: 20_000 });
 
-  await doubleTapFirstCard(page);
+  await readyUp(page);
   await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'play');
 
   await playUntilResults(page);

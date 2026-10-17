@@ -36,8 +36,8 @@ const MY_SLOT_OVERLAP = 0.7;
 /** Width of the timer + buttons column beside my table cards (w-[5.5rem] + gap). */
 const ACTION_COLUMN_PX = 96;
 
-/** Two taps on the same card within this many ms are a double tap (play / ready). */
-const DOUBLE_TAP_MS = 350;
+/** More cards than this in my hand wrap into extra rows so every card stays visible and tappable. */
+const MAX_PER_ROW = 12;
 
 /** Em-size of an opponent's cards: fewer opponents, bigger cards (4 seats must fit in a row). */
 const seatFont = (opponents: number) =>
@@ -420,23 +420,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     await send({ type: 'ready' });
   }
 
-  /** True when this is the second tap on the same thing within DOUBLE_TAP_MS. */
-  const lastTap = useRef({ key: '', at: 0 });
-  function isDoubleTap(key: string): boolean {
-    const now = Date.now();
-    const fast = lastTap.current.key === key && now - lastTap.current.at < DOUBLE_TAP_MS;
-    lastTap.current = { key, at: fast ? 0 : now };
-    return fast;
-  }
-
   function tapSwapHand(card: Card) {
-    const fast = isDoubleTap(`c${card}`);
     if (swapUp !== null) {
       void send({ type: 'swap', hand: card, up: swapUp });
       setSwapUp(null);
       setSwapHand(null);
-    } else if (fast) {
-      void getReady();
     } else if (swapHand === card) {
       setSwapHand(null);
     } else {
@@ -446,13 +434,10 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   }
 
   function tapSwapUp(slot: number) {
-    const fast = isDoubleTap(`u${slot}`);
     if (swapHand !== null) {
       void send({ type: 'swap', hand: swapHand, up: slot });
       setSwapUp(null);
       setSwapHand(null);
-    } else if (fast) {
-      void getReady();
     } else if (swapUp === slot) {
       setSwapUp(null);
     } else {
@@ -461,30 +446,22 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     }
   }
 
-  /** Play phase: tap selects, tap a selected card again to deselect it, double-tap plays the selection. */
+  /** Play phase: tap selects (same-rank cards add up), tap a selected card again to deselect it. */
   function tapCard(card: Card) {
     if (!playing || !canPlayRank(pile, rankOf(card))) return;
-    const fast = isDoubleTap(`c${card}`);
-    const next = sel.includes(card)
-      ? sel
-      : sel.length > 0 && rankOf(sel[0] as Card) === rankOf(card)
-        ? [...sel, card]
-        : [card];
-    if (fast) {
-      void playSelected(next, null);
-      return;
-    }
     haptic('tap');
     setSelDown(null);
     setPileArmed(false);
-    setSel(sel.includes(card) ? sel.filter((c) => c !== card) : next);
+    setSel((prev) =>
+      prev.includes(card)
+        ? prev.filter((c) => c !== card)
+        : prev.length > 0 && rankOf(prev[0] as Card) === rankOf(card)
+          ? [...prev, card]
+          : [card],
+    );
   }
 
   function tapDown(slot: number) {
-    if (isDoubleTap(`d${slot}`)) {
-      void playSelected([], slot);
-      return;
-    }
     haptic('tap');
     setSel([]);
     setPileArmed(false);
@@ -521,11 +498,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     flashHint('Cards are drawn for you after you play');
   }
 
-  async function playSelected(cards: Card[] = sel, down: number | null = selDown) {
+  async function playSelected() {
     const res =
-      down !== null
-        ? await send({ type: 'playDown', index: down })
-        : await send({ type: 'play', cards });
+      selDown !== null
+        ? await send({ type: 'playDown', index: selDown })
+        : await send({ type: 'play', cards: sel });
     if (res?.ok) {
       setSel([]);
       setSelDown(null);
@@ -544,7 +521,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         'Time to swap! Tap a floating face-up card and a hand card to switch them, then press Ready';
   } else if (view.phase === 'swap') hint = 'Waiting for the others to get ready…';
   else if (myTurn && (sel.length > 0 || selDown !== null)) {
-    hint = 'Double-tap to play · tap a card again to deselect';
+    hint = 'Press Play · tap a selected card again to deselect';
   } else if (myTurn) {
     if (zone === 'down') hint = 'Pick a face-down card… blind!';
     else if (top === undefined) hint = 'The pile is empty: lead with anything';
@@ -573,15 +550,21 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const selCount = selDown !== null ? 1 : sel.length;
   const cardsPlayable = zone === 'hand' || zone === 'up';
 
-  // The hand fans out: overlap just enough to fit the row, never hiding more than ~75% of a card.
-  const cardW = myFont * 5;
-  const maxStrip = cardW * 0.5;
-  const minStrip = cardW * 0.24;
-  const strip = Math.max(
-    minStrip,
-    Math.min(maxStrip, hand.length > 1 ? (handWidth - 8 - cardW) / (hand.length - 1) : maxStrip),
+  // The hand fans out: overlap just enough to fit its row, never hiding more than ~75% of a card.
+  // Past MAX_PER_ROW cards it wraps into extra rows (each overlapping the one above by half a card).
+  const rowCount = Math.max(1, Math.ceil(hand.length / MAX_PER_ROW));
+  const perRow = Math.ceil(hand.length / rowCount);
+  const handRows = Array.from({ length: rowCount }, (_, r) =>
+    hand.slice(r * perRow, (r + 1) * perRow),
   );
-  const overflowing = cardW + strip * (hand.length - 1) > handWidth;
+  const handFont = myFont * (rowCount > 1 ? 0.85 : 1);
+  const cardW = handFont * 5;
+  const rowStep = handFont * 7 * 0.5;
+  const stripFor = (n: number) =>
+    Math.max(
+      cardW * 0.24,
+      Math.min(cardW * 0.5, n > 1 ? (handWidth - 8 - cardW) / (n - 1) : cardW * 0.5),
+    );
 
   return (
     <CardFlipContext.Provider value={flipContext}>
@@ -826,40 +809,49 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                 </div>
               </div>
 
-              {/* overflow-x: clip (not auto) keeps cards free to fly up out of the row while animating.
-                  The row centres itself with mx-auto, NOT justify-center: centring cuts off the left side of an
-                  overflowing row, where the lowest cards would be unreachable. */}
+              {/* overflow-x: clip keeps cards free to fly up out of the row while animating. Rows centre
+                  themselves with mx-auto, NOT justify-center (that cuts off the left side when too wide). */}
               <div
                 ref={handEl}
-                className="flex w-full px-1 pb-1 pt-4"
+                className="flex w-full flex-col px-1 pb-1 pt-4"
                 data-testid="my-hand"
+                data-rows={rowCount}
                 style={{
-                  minHeight: `${myFont * 7 + 22}px`,
-                  overflowX: overflowing ? 'auto' : 'clip',
+                  minHeight: `${handFont * 7 + rowStep * (rowCount - 1) + 22}px`,
+                  overflowX: 'clip',
                 }}
               >
-                <div className="mx-auto flex items-end">
-                  {hand.map((c, i) => {
-                    const playable = canPlayRank(pile, rankOf(c));
-                    return (
-                      <PlayingCard
-                        key={c}
-                        card={c}
-                        size={myFont}
-                        testId={`hand-card-${c}`}
-                        data={{
-                          playable: playing && zone === 'hand' && playable,
-                          rank: rankOf(c),
-                        }}
-                        selected={swapping ? swapHand === c : sel.includes(c)}
-                        dimmed={playing && zone === 'hand' && !playable}
-                        style={{ marginLeft: i === 0 ? 0 : `-${cardW - strip}px` }}
-                        flip={{ id: c, origin: handOrigin }}
-                        onClick={() => (swapping ? tapSwapHand(c) : tapCard(c))}
-                      />
-                    );
-                  })}
-                </div>
+                {handRows.map((row, r) => {
+                  const strip = stripFor(row.length);
+                  return (
+                    <div
+                      key={r}
+                      className="mx-auto flex items-end"
+                      style={{ marginTop: r === 0 ? 0 : `-${rowStep}px` }}
+                    >
+                      {row.map((c, i) => {
+                        const playable = canPlayRank(pile, rankOf(c));
+                        return (
+                          <PlayingCard
+                            key={c}
+                            card={c}
+                            size={handFont}
+                            testId={`hand-card-${c}`}
+                            data={{
+                              playable: playing && zone === 'hand' && playable,
+                              rank: rankOf(c),
+                            }}
+                            selected={swapping ? swapHand === c : sel.includes(c)}
+                            dimmed={playing && zone === 'hand' && !playable}
+                            style={{ marginLeft: i === 0 ? 0 : `-${cardW - strip}px` }}
+                            flip={{ id: c, origin: handOrigin }}
+                            onClick={() => (swapping ? tapSwapHand(c) : tapCard(c))}
+                          />
+                        );
+                      })}
+                    </div>
+                  );
+                })}
               </div>
 
               {swapping && (

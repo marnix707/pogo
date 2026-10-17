@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { STRIP, doubleTapFirstCard, newPlayer, snapshot, takeTurn } from './karma-helpers';
+import { STRIP, readyUp, newPlayer, snapshot, takeTurn } from './karma-helpers';
 
 test('three players play a complete Karma game through the UI', async ({ browser }) => {
   test.setTimeout(240_000);
@@ -27,7 +27,7 @@ test('three players play a complete Karma game through the UI', async ({ browser
   await alice.page.locator('[data-testid^=hand-card-]').first().click(STRIP);
   await alice.page.getByTestId('my-up-0').click();
   await expect(alice.page.getByTestId('my-up-0')).not.toHaveAttribute('aria-label', upBefore!);
-  for (const p of pages) await doubleTapFirstCard(p);
+  for (const p of pages) await readyUp(p);
   for (const p of pages)
     await expect(p.getByTestId('karma-game')).toHaveAttribute('data-phase', 'play');
 
@@ -157,7 +157,7 @@ test('cards slide when swapped and when played to the pile (unless motion is red
   await calm.page.getByTestId('my-up-0').click();
   expect(await animatesSoon(calm.page, '[data-testid=my-up-0]')).toBe(false);
 
-  for (const p of pages) await doubleTapFirstCard(p);
+  for (const p of pages) await readyUp(p);
   for (const p of pages)
     await expect(p.getByTestId('karma-game')).toHaveAttribute('data-phase', 'play');
   await alice.page.waitForTimeout(300);
@@ -171,7 +171,7 @@ test('cards slide when swapped and when played to the pile (unless motion is red
   // Not a 10: that would burn the pile and there would be no pile card left to watch fly in.
   const card = (snap.playableHand.find((c) => c.rank !== 10) ?? snap.playableHand[0])!;
   await mover.getByTestId(card.id).click(STRIP);
-  await mover.getByTestId(card.id).click(STRIP);
+  await mover.getByTestId('karma-play').click();
 
   const watchers = [alice.page, bob.page].filter((p) => p !== mover);
   const [moverAnimates, ...watcherAnimates] = await Promise.all([
@@ -187,7 +187,7 @@ test('cards slide when swapped and when played to the pile (unless motion is red
   for (const c of [alice, bob, calm]) await c.context.close();
 });
 
-test('tap selects, a slow second tap deselects, a fast double tap plays; Ready button works in the swap phase', async ({
+test('tap selects, tapping again deselects, the Play button plays; Ready button works in the swap phase', async ({
   browser,
 }) => {
   const alice = await newPlayer(browser, 'Alice', 'fox');
@@ -205,7 +205,7 @@ test('tap selects, a slow second tap deselects, a fast double tap plays; Ready b
   // The Ready button is there, and the three face-up cards float to say "change these".
   for (const p of [a, b]) await expect(p.getByTestId('karma-ready')).toBeVisible();
 
-  // Swap phase: one tap only selects (you can change your mind); the second tap is "ready".
+  // Swap phase: one tap only selects (you can change your mind); the Ready button gets you ready.
   const hand = (p: Page) => p.locator('[data-testid^=hand-card-]');
   await hand(a).nth(0).click(STRIP);
   await expect(hand(a).nth(0)).toHaveAttribute('aria-pressed', 'true');
@@ -213,12 +213,9 @@ test('tap selects, a slow second tap deselects, a fast double tap plays; Ready b
   await expect(hand(a).nth(0)).toHaveAttribute('aria-pressed', 'false');
   await expect(hand(a).nth(1)).toHaveAttribute('aria-pressed', 'true');
   await expect(a.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
-  await a.waitForTimeout(450); // a slow second tap on the selected card deselects it...
-  await hand(a).nth(1).click(STRIP);
+  await hand(a).nth(1).click(STRIP); // tapping the selected card again deselects it
   await expect(hand(a).nth(1)).toHaveAttribute('aria-pressed', 'false');
-  await a.waitForTimeout(450); // ...and a fast double tap means ready
-  await hand(a).nth(1).click(STRIP);
-  await hand(a).nth(1).click(STRIP);
+  await a.getByTestId('karma-ready').click();
   await expect(b.getByText('Ready ✓')).toBeVisible(); // Bob sees Alice is ready
 
   await b.getByTestId('karma-ready').click();
@@ -236,7 +233,7 @@ test('tap selects, a slow second tap deselects, a fast double tap plays; Ready b
   // One tap selects: nothing is played yet.
   await mover.getByTestId(first!.id).click(STRIP);
   await expect(mover.getByTestId(first!.id)).toHaveAttribute('aria-pressed', 'true');
-  await expect(mover.getByTestId('karma-hint')).toContainText('Double-tap to play');
+  await expect(mover.getByTestId('karma-hint')).toContainText('Press Play');
   await expect(pile).toHaveAttribute('data-count', '0');
 
   // Tapping the table (outside the cards) clears the selection.
@@ -244,30 +241,19 @@ test('tap selects, a slow second tap deselects, a fast double tap plays; Ready b
   await expect(mover.getByTestId(first!.id)).toHaveAttribute('aria-pressed', 'false');
   await expect(pile).toHaveAttribute('data-count', '0');
 
-  // Select, switch to another card of a different rank, deselect it, then double-tap it to play it.
-  await mover.waitForTimeout(450); // (not a double tap with the earlier tap on this card)
+  // Select, switch to another card of a different rank, deselect it, select again and press Play.
   await mover.getByTestId(first!.id).click(STRIP);
   if (second!.rank !== first!.rank) {
     await mover.getByTestId(second!.id).click(STRIP);
     await expect(mover.getByTestId(first!.id)).toHaveAttribute('aria-pressed', 'false');
     await expect(mover.getByTestId(second!.id)).toHaveAttribute('aria-pressed', 'true');
-    // A slow tap on the selected card deselects it (the pile stays empty)...
-    await mover.waitForTimeout(450);
     await mover.getByTestId(second!.id).click(STRIP);
     await expect(mover.getByTestId(second!.id)).toHaveAttribute('aria-pressed', 'false');
+    await expect(mover.getByTestId('karma-play')).toBeDisabled();
     await expect(pile).toHaveAttribute('data-count', '0');
-    // ...and a fast double tap plays it.
-    await mover.waitForTimeout(450);
     await mover.getByTestId(second!.id).click(STRIP);
-    await mover.getByTestId(second!.id).click(STRIP);
-  } else {
-    await mover.waitForTimeout(450);
-    await mover.getByTestId(first!.id).click(STRIP);
-    await expect(mover.getByTestId(first!.id)).toHaveAttribute('aria-pressed', 'false');
-    await mover.waitForTimeout(450);
-    await mover.getByTestId(first!.id).click(STRIP);
-    await mover.getByTestId(first!.id).click(STRIP);
   }
+  await mover.getByTestId('karma-play').click();
   // (A 10 would burn the pile, leaving it empty, so check the narration rather than the pile size.)
   await expect(mover.getByTestId('karma-event')).toContainText('played');
 
@@ -288,7 +274,7 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
   await a.getByTestId('lobby-start').click();
   const tableCardWidth = async (p: Page) => (await p.getByTestId('my-up-0').boundingBox())!.width;
   const swapWidth = await tableCardWidth(a);
-  for (const p of [a, b]) await doubleTapFirstCard(p);
+  for (const p of [a, b]) await readyUp(p);
   for (const p of [a, b])
     await expect(p.getByTestId('karma-game')).toHaveAttribute('data-phase', 'play');
 
@@ -336,7 +322,7 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
   for (const c of [alice, bob]) await c.context.close();
 });
 
-test('a very long hand (after picking up piles) stays reachable: first and last card can be selected', async ({
+test('a very long hand (after picking up piles) wraps into rows of at most 12 and every card stays reachable', async ({
   browser,
 }) => {
   test.setTimeout(180_000);
@@ -349,7 +335,7 @@ test('a very long hand (after picking up piles) stays reachable: first and last 
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
   await a.getByTestId('lobby-start').click();
-  for (const p of [a, b]) await doubleTapFirstCard(p);
+  for (const p of [a, b]) await readyUp(p);
   for (const p of [a, b])
     await expect(p.getByTestId('karma-game')).toHaveAttribute('data-phase', 'play');
 
@@ -376,20 +362,27 @@ test('a very long hand (after picking up piles) stays reachable: first and last 
     if (!acted) await a.waitForTimeout(50);
   }
 
-  // The hand is now wider than the screen. Both ends must be reachable (Playwright scrolls the row).
+  // More than 12 cards wrap into extra rows instead of scrolling: nothing is cut off at the sides.
   const cards = a.locator('[data-testid^=hand-card-]');
   const count = await cards.count();
   expect(count).toBeGreaterThanOrEqual(26);
   const hand = a.getByTestId('my-hand');
-  expect(await hand.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
-  expect(await hand.evaluate((el) => el.scrollLeft)).toBe(0); // starts at the left edge, nothing cut off
+  await expect(hand).toHaveAttribute('data-rows', String(Math.ceil(count / 12)));
+  const viewport = a.viewportSize()!;
+  const tops = new Map<number, number>();
+  for (let i = 0; i < count; i++) {
+    const box = (await cards.nth(i).boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
+    const key = Math.round(box.y);
+    tops.set(key, (tops.get(key) ?? 0) + 1);
+  }
+  expect(tops.size).toBe(Math.ceil(count / 12));
+  for (const n of tops.values()) expect(n).toBeLessThanOrEqual(12);
 
   // A "trial" click performs every actionability check (scroll into view, nothing covering the card at the
-  // tap point) without actually tapping: it is how we know a thumb could reach the card.
-  await cards.first().click({ ...STRIP, trial: true });
-  await cards.last().click({ ...STRIP, trial: true });
-  // ...and the cards in the middle too (every 4th one is enough to catch clipping).
-  for (let i = 0; i < count; i += 4) await cards.nth(i).click({ ...STRIP, trial: true });
+  // tap point) without actually tapping: it is how we know a thumb could reach every single card.
+  for (let i = 0; i < count; i++) await cards.nth(i).click({ ...STRIP, trial: true });
 
   for (const c of [alice, bob]) await c.context.close();
 });
