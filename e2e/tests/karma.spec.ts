@@ -288,6 +288,7 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
   for (const p of [a, b]) await expect(p.getByTestId('karma-timer')).toBeVisible();
   const hand = await mover.getByTestId('my-hand').boundingBox();
   const play = await mover.getByTestId('karma-play').boundingBox();
+  const timerBefore = await mover.getByTestId('karma-timer').boundingBox();
   const up0 = await mover.getByTestId('my-up-0').boundingBox();
   expect(play!.x).toBeGreaterThanOrEqual(up0!.x + up0!.width - 2); // beside the table cards
   expect(play!.y + play!.height).toBeLessThanOrEqual(hand!.y + 4); // above the hand row
@@ -309,6 +310,12 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
   const snap = await snapshot(mover);
   await takeTurn(mover, snap);
   await expect(mover.getByTestId('karma-event')).toContainText('played');
+  // The action column keeps its place between turns (no bump when the turn passes).
+  await expect(mover.getByTestId('karma-play')).toBeDisabled();
+  const playAfter = await mover.getByTestId('karma-play').boundingBox();
+  const timerAfter = await mover.getByTestId('karma-timer').boundingBox();
+  expect(playAfter).toEqual(play);
+  expect(timerAfter!.height).toBe(timerBefore!.height);
   const pile = other.getByTestId('pile');
   if (Number(await pile.getAttribute('data-count')) > 0) {
     await expect(other.getByTestId('karma-hint')).toHaveAttribute('data-my-turn', 'true');

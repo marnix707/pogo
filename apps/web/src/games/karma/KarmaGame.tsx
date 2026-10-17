@@ -548,7 +548,6 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const opponents = view.players.filter((p) => p.id !== me);
   const finishRank = (id: string) => view.finishOrder.indexOf(id) + 1;
   const selCount = selDown !== null ? 1 : sel.length;
-  const cardsPlayable = zone === 'hand' || zone === 'up';
 
   // The hand fans out: overlap just enough to fit its row, never hiding more than ~75% of a card.
   // Past MAX_PER_ROW cards it wraps into extra rows (each overlapping the one above by half a card).
@@ -741,27 +740,29 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                   />
                 </div>
                 <div className="flex w-[5.5rem] shrink-0 flex-col gap-1.5">
-                  {view.phase === 'play' && secondsLeft !== null && (
+                  {view.phase === 'play' && (
                     <div
                       data-testid="karma-timer"
                       data-my-turn={myTurn}
                       data-seconds={secondsLeft}
-                      className={`rounded-lg border-2 px-1 py-1 text-center ${
-                        secondsLeft <= 10
+                      className={`h-[3.25rem] rounded-lg border-2 px-1 py-1 text-center ${
+                        secondsLeft !== null && secondsLeft <= 10
                           ? 'animate-pulse border-danger text-danger'
                           : 'border-edge/40'
                       }`}
                     >
                       <p className="label text-[9px] leading-none text-muted">
-                        {myTurn ? 'Your turn' : `${nameOf(currentId ?? '')}`.slice(0, 10)}
+                        {myTurn ? 'Your turn' : nameOf(currentId ?? '').slice(0, 10)}
                       </p>
-                      <p className="text-xl font-bold leading-tight tabular-nums">{secondsLeft}s</p>
+                      <p className="text-xl font-bold leading-tight tabular-nums">
+                        {secondsLeft === null ? '–' : `${secondsLeft}s`}
+                      </p>
                     </div>
                   )}
                   {swapping && (
                     <Button
                       data-testid="karma-ready"
-                      className="min-h-9 !px-2 !text-xs"
+                      className="!h-11 !min-h-0 !px-2 !text-xs !leading-tight"
                       disabled={busy}
                       onClick={() => void getReady()}
                     >
@@ -769,42 +770,32 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                     </Button>
                   )}
                   {view.phase === 'play' && (
-                    <div
-                      className={`flex flex-col gap-1.5 ${playing ? '' : 'invisible'}`}
-                      aria-hidden={!playing}
-                    >
+                    <div className="flex flex-col gap-1.5">
                       <Button
                         data-testid="karma-pickup"
                         data-urgent={mustPickUp}
                         variant={mustPickUp ? 'primary' : 'secondary'}
-                        className={`min-h-9 !px-2 !text-xs ${
+                        className={`!h-11 !min-h-0 !px-2 !text-xs !leading-tight ${
                           mustPickUp ? 'animate-pulse ring-4 ring-neon' : ''
                         }`}
-                        disabled={busy || pile.length === 0}
+                        disabled={!playing || busy || pile.length === 0}
                         onClick={pickUpPile}
                       >
                         Pick up ({pile.length})
                       </Button>
                       <Button
                         data-testid="karma-play"
-                        className="min-h-9 !px-2 !text-xs"
-                        disabled={busy || selCount === 0}
+                        className="!h-11 !min-h-0 !px-2 !text-xs !leading-tight"
+                        disabled={!playing || busy || selCount === 0}
                         onClick={() => void playSelected()}
                       >
                         {selDown !== null
                           ? 'Flip it'
                           : selCount > 0
                             ? `Play ${selCount === 1 ? cardLabel(sel[0] as Card) : `${selCount} cards`}`
-                            : cardsPlayable
-                              ? 'Pick a card'
-                              : 'Play'}
+                            : 'Play'}
                       </Button>
                     </div>
-                  )}
-                  {view.phase === 'play' && !myTurn && secondsLeft === null && (
-                    <p className="label text-center text-[11px] text-muted">
-                      {currentId ? `${nameOf(currentId)}'s turn` : ''}
-                    </p>
                   )}
                 </div>
               </div>
