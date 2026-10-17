@@ -101,7 +101,11 @@ function TableSlots({
                 onClick={upProps?.onClick}
                 selected={upProps?.selected}
                 dimmed={upProps?.dimmed}
-                data={upProps?.playable === undefined ? undefined : { playable: upProps.playable }}
+                data={
+                  upProps?.playable === undefined
+                    ? undefined
+                    : { playable: upProps.playable, rank: rankOf(up) }
+                }
                 flip={{ id: up }}
               />
             )}
@@ -178,6 +182,7 @@ function describeEvent(ev: karma.KarmaEvent, nameOf: (id: string) => string): st
   } else {
     text = `${who} played ${ev.cards.map(cardLabel).join(' ')}`;
   }
+  if (ev.skipped.length > 0) text += ` · ${ev.skipped.map(nameOf).join(', ')} skipped`;
   if (ev.burned) text += ' 🔥 burned!';
   if (ev.out) text += ' · out!';
   return text;
@@ -555,17 +560,19 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                 }
               />
 
-              {/* overflow-x: clip (not auto) keeps cards free to fly up out of the row while animating */}
+              {/* overflow-x: clip (not auto) keeps cards free to fly up out of the row while animating.
+                  The row centres itself with mx-auto, NOT justify-center: centring cuts off the left side of an
+                  overflowing row, where the lowest cards would be unreachable. */}
               <div
                 ref={handEl}
-                className="flex w-full justify-center px-1 pb-1 pt-4"
+                className="flex w-full px-1 pb-1 pt-4"
                 data-testid="my-hand"
                 style={{
                   minHeight: `${myFont * 7 + 22}px`,
                   overflowX: overflowing ? 'auto' : 'clip',
                 }}
               >
-                <div className="flex items-end">
+                <div className="mx-auto flex items-end">
                   {hand.map((c, i) => {
                     const playable = canPlayRank(pile, rankOf(c));
                     return (

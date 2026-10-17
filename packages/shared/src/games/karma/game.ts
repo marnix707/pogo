@@ -218,14 +218,19 @@ function event(
     burned: false,
     pickedUp: 0,
     out: false,
+    skipped: [],
     ...extra,
   };
   state.lastEvent = ev;
   return ev;
 }
 
-/** After a move: mark the player out if empty, end the game if one player is left, pass the turn. */
-function advance(state: KarmaState, idx: number, ev: KarmaEvent, goAgain: boolean) {
+/**
+ * After a move: mark the player out if empty, end the game if one player is left, pass the turn.
+ * `skips` is the number of 8s just played: each skips one player. You cannot skip yourself, so when
+ * everyone else is skipped (always the case with two players) you simply go again.
+ */
+function advance(state: KarmaState, idx: number, ev: KarmaEvent, goAgain: boolean, skips = 0) {
   const me = state.players[idx]!;
   if (
     me.hand.length === 0 &&
@@ -242,7 +247,19 @@ function advance(state: KarmaState, idx: number, ev: KarmaEvent, goAgain: boolea
     state.phase = 'over';
     return;
   }
-  state.turn = goAgain && !me.out ? idx : nextActive(state, idx);
+  if (goAgain && !me.out) {
+    state.turn = idx;
+    return;
+  }
+  const othersActive = remaining.filter((p) => p.id !== me.id).length;
+  // A finished player has no turn to "go again" on, so somebody must still get to play after the skips.
+  const skipCount = Math.min(skips, me.out ? Math.max(0, othersActive - 1) : othersActive);
+  let next = nextActive(state, idx);
+  for (let i = 0; i < skipCount; i++) {
+    ev.skipped.push(state.players[next]!.id);
+    next = nextActive(state, next);
+  }
+  state.turn = next;
 }
 
 /** Put cards on the pile, apply 10 / quartet burning, refill the hand and move on. */
@@ -256,8 +273,10 @@ function playToPile(state: KarmaState, idx: number, cards: Card[], kind: 'play' 
     state.burned += state.pile.length;
     state.pile = [];
   }
+  // An 8 skips the next player (a burn takes priority: the same player leads again anyway).
+  const eights = !burn && rankOf(cards[0] as Card) === 8 ? cards.length : 0;
   const ev = event(state, me.id, kind, cards, { burned: burn });
-  advance(state, idx, ev, burn);
+  advance(state, idx, ev, burn, eights);
 }
 
 function applyMove(state: KarmaState, playerId: string, move: KarmaMove, _rng: Rng): KarmaState {
@@ -377,7 +396,10 @@ function autoMove(state: KarmaState, playerId: string, rng: Rng): AutoMove<Karma
       // Specials are worth keeping: 3..9, J..A ascending, then 2, then 10.
       const priority = (r: number) => (r === 10 ? 200 : r === 2 ? 100 : r);
       ranks.sort((a, b) => priority(a) - priority(b));
-      const best = ranks[0];
+      // Always playing the very lowest card can circle forever (a 7 that nobody can follow is picked up
+      // and led again, round and round). A little randomness breaks such cycles: 0 stuck games in
+      // 2000 simulated, versus ~1 in 500 without it. Only drawn when there is a real choice.
+      const best = ranks.length > 1 && rng.int(4) === 0 ? ranks[1] : ranks[0];
       move =
         best === undefined
           ? { type: 'pickup' }

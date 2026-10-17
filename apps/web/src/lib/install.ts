@@ -13,6 +13,8 @@ export interface InstallState {
   ios: boolean;
   /** The browser offered a one-tap install prompt. */
   canPrompt: boolean;
+  /** Chrome / Firefox / Edge on iPhone (they all use WebKit, but their home-screen shortcuts can differ). */
+  iosThirdPartyBrowser: boolean;
 }
 
 let deferred: BeforeInstallPromptEvent | null = null;
@@ -25,7 +27,8 @@ function compute(): InstallState {
   const ios =
     /iphone|ipad|ipod/i.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS reports as a Mac
-  return { standalone, ios, canPrompt: deferred !== null };
+  const iosThirdPartyBrowser = ios && /crios|fxios|edgios/i.test(navigator.userAgent);
+  return { standalone, ios, canPrompt: deferred !== null, iosThirdPartyBrowser };
 }
 
 let snapshot: InstallState | undefined;

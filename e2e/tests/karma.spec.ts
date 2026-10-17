@@ -49,33 +49,37 @@ const snapshot = (page: Page): Promise<Snapshot> =>
       })),
       playableUp: q('[data-testid^=my-up-][data-playable=true]').map((e) => ({
         id: e.getAttribute('data-testid')!,
-        rank: Number(e.getAttribute('aria-label')?.match(/^\d+|^[JQKA]/)?.[0] ?? 0),
+        rank: rank(e), // data-rank: J, Q, K, A are 11-14 (parsing the label would give NaN)
       })),
       hasUp: q('[data-testid^=my-up-]').length > 0,
       downs: q('[data-testid^=my-down-]').map((e) => e.getAttribute('data-testid')!),
     };
   });
 
-/** One sensible move through the real UI: lowest playable card, else pick up; blind cards at the end. */
+/**
+ * One sensible move through the real UI: play all cards of the lowest playable rank (2s and 10s last),
+ * sometimes the second lowest, else pick up; blind cards at the end. The randomness matters: a purely
+ * "always the lowest card" strategy can circle forever (e.g. a 7 nobody can follow gets picked up
+ * and led again), which also hits real auto-play. Tap each card of the rank to select it, then tap one again.
+ */
 async function takeTurn(page: Page, s: Snapshot) {
-  const lowest = <T extends { rank: number }>(cards: T[]) =>
-    // keep 2s and 10s for when they are needed
-    [...cards].sort(
-      (a, b) =>
-        (a.rank === 2 || a.rank === 10 ? 100 : a.rank) -
-        (b.rank === 2 || b.rank === 10 ? 100 : b.rank),
-    )[0];
+  const choose = (cards: { id: string; rank: number }[]) => {
+    const priority = (rank: number) => (rank === 10 ? 200 : rank === 2 ? 100 : rank);
+    const ranks = [...new Set(cards.map((c) => c.rank))].sort((a, b) => priority(a) - priority(b));
+    const rank = ranks.length > 1 && Math.random() < 0.25 ? ranks[1] : ranks[0];
+    return cards.filter((c) => c.rank === rank);
+  };
 
   if (s.handCount > 0) {
-    const card = lowest(s.playableHand);
-    if (!card) return page.getByTestId('karma-pickup').click();
-    await page.getByTestId(card.id).click(STRIP); // select
-    await page.getByTestId(card.id).click(STRIP); // tap again: play
+    const set = choose(s.playableHand);
+    if (set.length === 0) return page.getByTestId('karma-pickup').click();
+    for (const card of set) await page.getByTestId(card.id).click(STRIP); // select (adds same-rank cards)
+    await page.getByTestId(set[0]!.id).click(STRIP); // tap a selected card again: play them all
   } else if (s.hasUp) {
-    const card = lowest(s.playableUp);
-    if (!card) return page.getByTestId('karma-pickup').click();
-    await page.getByTestId(card.id).click();
-    await page.getByTestId(card.id).click();
+    const set = choose(s.playableUp);
+    if (set.length === 0) return page.getByTestId('karma-pickup').click();
+    for (const card of set) await page.getByTestId(card.id).click();
+    await page.getByTestId(set[0]!.id).click();
   } else {
     await page.getByTestId(s.downs[0]!).click();
     await page.getByTestId(s.downs[0]!).click();
@@ -88,6 +92,7 @@ test('three players play a complete Karma game through the UI', async ({ browser
   const bob = await newPlayer(browser, 'Bob', 'cat');
   const cleo = await newPlayer(browser, 'Cleo', 'panda');
   const pages = [alice.page, bob.page, cleo.page];
+  for (const p of pages) p.setDefaultTimeout(15_000); // a stuck click fails fast with a clear error
 
   // Karma sits next to Yatzy on the home screen; Alice opens a private Karma room.
   await alice.page.getByTestId('home-new-karma').click();
@@ -247,7 +252,8 @@ test('cards slide when swapped and when played to the pile (unless motion is red
     if ((await p.getByTestId('karma-hint').getAttribute('data-my-turn')) === 'true') mover = p;
   }
   const snap = await snapshot(mover);
-  const card = snap.playableHand[0]!;
+  // Not a 10: that would burn the pile and there would be no pile card left to watch fly in.
+  const card = (snap.playableHand.find((c) => c.rank !== 10) ?? snap.playableHand[0])!;
   await mover.getByTestId(card.id).click(STRIP);
   await mover.getByTestId(card.id).click(STRIP);
 
@@ -326,7 +332,66 @@ test('tap selects a card, tapping the same card again plays it; there is no Read
   } else {
     await mover.getByTestId(first!.id).click(STRIP);
   }
-  await expect(pile).toHaveAttribute('data-count', /^[1-9]/);
+  // (A 10 would burn the pile, leaving it empty, so check the narration rather than the pile size.)
+  await expect(mover.getByTestId('karma-event')).toContainText('played');
+
+  for (const c of [alice, bob]) await c.context.close();
+});
+
+test('a very long hand (after picking up piles) stays reachable: first and last card can be selected', async ({
+  browser,
+}) => {
+  test.setTimeout(180_000);
+  const alice = await newPlayer(browser, 'Alice', 'fox');
+  const bob = await newPlayer(browser, 'Bob', 'cat');
+  const [a, b] = [alice.page, bob.page];
+
+  await a.getByTestId('home-new-karma').click();
+  const code = (await a.getByTestId('room-code').textContent())!.trim();
+  await b.getByTestId('home-join-code').fill(code);
+  await b.getByTestId('home-join-submit').click();
+  await a.getByTestId('lobby-start').click();
+  for (const p of [a, b]) await doubleTapFirstCard(p);
+  for (const p of [a, b])
+    await expect(p.getByTestId('karma-game')).toHaveAttribute('data-phase', 'play');
+
+  // Alice never plays when she can pick up, so every card Bob plays ends up in her hand.
+  let guard = 0;
+  while ((await snapshot(a)).handCount < 26) {
+    if (guard++ > 300) throw new Error('could not build a long hand');
+    let acted = false;
+    for (const page of [a, b]) {
+      const s = await snapshot(page);
+      if (!s.myTurn) continue;
+      const pileCount = Number(await page.getByTestId('pile').getAttribute('data-count'));
+      if (page === a && pileCount > 0) {
+        await a.getByTestId('karma-pickup').click();
+      } else {
+        await takeTurn(page, s);
+      }
+      await expect
+        .poll(async () => (await snapshot(page)).event, { timeout: 10_000 })
+        .not.toBe(s.event);
+      acted = true;
+      break;
+    }
+    if (!acted) await a.waitForTimeout(50);
+  }
+
+  // The hand is now wider than the screen. Both ends must be reachable (Playwright scrolls the row).
+  const cards = a.locator('[data-testid^=hand-card-]');
+  const count = await cards.count();
+  expect(count).toBeGreaterThanOrEqual(26);
+  const hand = a.getByTestId('my-hand');
+  expect(await hand.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+  expect(await hand.evaluate((el) => el.scrollLeft)).toBe(0); // starts at the left edge, nothing cut off
+
+  // A "trial" click performs every actionability check (scroll into view, nothing covering the card at the
+  // tap point) without actually tapping: it is how we know a thumb could reach the card.
+  await cards.first().click({ ...STRIP, trial: true });
+  await cards.last().click({ ...STRIP, trial: true });
+  // ...and the cards in the middle too (every 4th one is enough to catch clipping).
+  for (let i = 0; i < count; i += 4) await cards.nth(i).click({ ...STRIP, trial: true });
 
   for (const c of [alice, bob]) await c.context.close();
 });

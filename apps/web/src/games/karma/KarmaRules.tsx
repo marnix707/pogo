@@ -30,6 +30,10 @@ export function KarmaRules({ open, onClose }: { open: boolean; onClose: () => vo
           6), or a 2, or a 10. Anything higher, or another 7, can&apos;t be played, so you pick up.
         </li>
         <li>
+          <b className="text-neon">8:</b> skips the next player. With two players that means you
+          simply go again. Each 8 you play together skips one more player.
+        </li>
+        <li>
           <b className="text-neon">Draw:</b> after playing, draw back up to three cards while the
           deck lasts.
         </li>

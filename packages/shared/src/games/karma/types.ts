@@ -33,6 +33,8 @@ export interface KarmaEvent {
   pickedUp: number;
   /** The player has no cards left. */
   out: boolean;
+  /** Players whose turn was skipped by an 8 (in order). */
+  skipped: string[];
 }
 
 export interface KarmaState {

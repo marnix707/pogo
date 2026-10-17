@@ -1,6 +1,6 @@
 import type { Theme } from '../lib/settings';
 import { updateSettings, useSettings } from '../lib/settings';
-import { InstallCard } from './InstallCard';
+import { DisplayModeNote, InstallCard } from './InstallCard';
 import { Button, Sheet, Toggle } from './ui';
 
 const THEMES: { value: Theme; label: string }[] = [
@@ -54,6 +54,7 @@ export function SettingsSheet({
           </div>
         </div>
         <InstallCard variant="settings" />
+        <DisplayModeNote />
         <Button variant="secondary" onClick={onSignOut}>
           Not {nickname}? Switch player
         </Button>

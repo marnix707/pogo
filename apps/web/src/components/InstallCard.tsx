@@ -3,8 +3,9 @@ import { readInstallDismissed, useInstall, writeInstallDismissed } from '../lib/
 import { CloseIcon, LogoMark } from './icons';
 import { Button, Sheet } from './ui';
 
-/** How to add the app to the home screen on iPhone/iPad (Safari and Chrome both use the Share menu). */
+/** How to add the app to the home screen on iPhone/iPad. */
 function IosSteps() {
+  const { iosThirdPartyBrowser } = useInstall();
   return (
     <ol className="flex flex-col gap-3 text-sm leading-relaxed" data-testid="install-steps">
       <li>
@@ -17,6 +18,19 @@ function IosSteps() {
       <li>
         <b className="text-neon">3.</b> Tap <b>Add</b>. Open Pogo from your home screen: it runs
         fullscreen, without the browser bars.
+      </li>
+      <li className="rounded-md bg-panel2 p-3 text-muted">
+        <b className="text-ink">Still opens with browser bars?</b> iPhone keeps the settings an icon
+        had on the day you added it, so delete the old Pogo icon (hold it, Remove App) and add it
+        again.{' '}
+        {iosThirdPartyBrowser ? (
+          <>
+            You are in a browser other than Safari: open this page in <b>Safari</b> and add it from
+            there, which is the most reliable way to get a fullscreen app.
+          </>
+        ) : (
+          <>Adding it from Safari is the most reliable way to get a fullscreen app.</>
+        )}
       </li>
     </ol>
   );
@@ -92,5 +106,20 @@ export function InstallCard({ variant }: { variant: 'banner' | 'settings' }) {
         </Sheet>
       )}
     </>
+  );
+}
+
+/** Tells you whether this page is running as the installed fullscreen app or in a browser tab. */
+export function DisplayModeNote() {
+  const { standalone } = useInstall();
+  return (
+    <div
+      data-testid="display-mode"
+      data-standalone={standalone}
+      className={`flex items-center gap-2 py-2 text-sm ${standalone ? 'text-neon' : 'text-muted'}`}
+    >
+      <span className={`h-2 w-2 rounded-full ${standalone ? 'bg-neon' : 'bg-muted/60'}`} />
+      {standalone ? 'Running as an app (fullscreen)' : 'Running in a browser tab'}
+    </div>
   );
 }

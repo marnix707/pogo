@@ -532,6 +532,133 @@ describe('burning the pile', () => {
   });
 });
 
+describe('the 8 skips the next player', () => {
+  const three = () =>
+    table([
+      { hand: [card(8), card(8, 1), card(8, 2), card(5)] },
+      { hand: [card(9), card(3)] },
+      { hand: [card(11), card(4)] },
+    ]);
+
+  it('passes over the next player', () => {
+    const after = move(three(), 'p1', { type: 'play', cards: [card(8)] });
+    expect(after.turn).toBe(2); // p2 is skipped, p3 plays
+    expect(after.lastEvent).toMatchObject({ kind: 'play', skipped: ['p2'], burned: false });
+    expect(after.pile).toEqual([card(8)]);
+  });
+
+  it('with two players you simply go again', () => {
+    const s = table([{ hand: [card(8), card(5)] }, { hand: [card(9), card(3)] }]);
+    const after = move(s, 'p1', { type: 'play', cards: [card(8)] });
+    expect(after.turn).toBe(0);
+    expect(after.lastEvent).toMatchObject({ skipped: ['p2'] });
+    // ...and the next card must still beat the 8 (a 5 may not follow it)
+    bad(after, 'p1', { type: 'play', cards: [card(5)] }, 'Too low');
+  });
+
+  it('every 8 in a set skips one more player', () => {
+    const four = table([
+      { hand: [card(8), card(8, 1), card(5)] },
+      { hand: [card(9)] },
+      { hand: [card(11)] },
+      { hand: [card(12)] },
+    ]);
+    const after = move(four, 'p1', { type: 'play', cards: [card(8), card(8, 1)] });
+    expect(after.lastEvent?.skipped).toEqual(['p2', 'p3']);
+    expect(after.turn).toBe(3); // p4
+  });
+
+  it('you cannot skip yourself: skipping everybody else means you go again, once', () => {
+    const after = move(three(), 'p1', { type: 'play', cards: [card(8), card(8, 1), card(8, 2)] });
+    expect(after.lastEvent?.skipped).toEqual(['p2', 'p3']);
+    expect(after.turn).toBe(0);
+  });
+
+  it('does not stack with a burn: four 8s burn the pile and you lead again, nobody is skipped', () => {
+    const s = table(
+      [
+        { hand: [card(8), card(8, 1), card(8, 2), card(8, 3), card(5)] },
+        { hand: [card(9)] },
+        { hand: [card(11)] },
+      ],
+      { pile: [card(6)] },
+    );
+    const after = move(s, 'p1', {
+      type: 'play',
+      cards: [card(8), card(8, 1), card(8, 2), card(8, 3)],
+    });
+    expect(after.pile).toEqual([]);
+    expect(after.turn).toBe(0);
+    expect(after.lastEvent?.skipped).toEqual([]);
+  });
+
+  it('skips the next player who is still in the game, not one who is out', () => {
+    const s = table(
+      [
+        { hand: [card(8), card(5)] },
+        { hand: [], out: true },
+        { hand: [card(9)] },
+        { hand: [card(11)] },
+      ],
+      { finishOrder: ['p2'] },
+    );
+    const after = move(s, 'p1', { type: 'play', cards: [card(8)] });
+    expect(after.lastEvent?.skipped).toEqual(['p3']);
+    expect(after.turn).toBe(3);
+  });
+
+  it('applies when it is the last card too: the player is out and the next one is still skipped', () => {
+    const s = table([
+      { hand: [card(8)] },
+      { hand: [card(9), card(3)] },
+      { hand: [card(11), card(4)] },
+    ]);
+    const after = move(s, 'p1', { type: 'play', cards: [card(8)] });
+    expect(after.players[0]!.out).toBe(true);
+    expect(after.lastEvent).toMatchObject({ out: true, skipped: ['p2'] });
+    expect(after.turn).toBe(2);
+  });
+
+  it('a blind 8 skips too, and a failed blind card never does', () => {
+    const ok = move(
+      table(
+        [{ faceDown: [card(8), card(3), card(4)] }, { hand: [card(9)] }, { hand: [card(11)] }],
+        { pile: [card(6)] },
+      ),
+      'p1',
+      { type: 'playDown', index: 0 },
+    );
+    expect(ok.lastEvent).toMatchObject({ kind: 'blind', skipped: ['p2'] });
+    expect(ok.turn).toBe(2);
+
+    const failed = move(
+      table(
+        [{ faceDown: [card(5), card(3), card(4)] }, { hand: [card(9)] }, { hand: [card(11)] }],
+        { pile: [card(12)] },
+      ),
+      'p1',
+      { type: 'playDown', index: 0 },
+    );
+    expect(failed.lastEvent?.skipped).toEqual([]);
+    expect(failed.turn).toBe(1);
+  });
+
+  it('cannot be played on top of a 7 (it is higher), and other cards do not skip', () => {
+    const s = table([{ hand: [card(8), card(6)] }, { hand: [card(9)] }], { pile: [card(7)] });
+    bad(s, 'p1', { type: 'play', cards: [card(8)] }, 'After a 7');
+    const after = move(s, 'p1', { type: 'play', cards: [card(6)] });
+    expect(after.lastEvent?.skipped).toEqual([]);
+    expect(after.turn).toBe(1);
+  });
+
+  it('autoMove reports that the turn continues when an 8 sends it back to the same player', () => {
+    const s = table([{ hand: [card(8)], faceUp: [card(14), null, null] }, { hand: [card(9)] }]);
+    const auto = game.autoMove!(s, 'p1', rng);
+    expect(auto.move).toEqual({ type: 'play', cards: [card(8)] });
+    expect(auto.endsTurn).toBe(false);
+  });
+});
+
 describe('face-up and face-down cards', () => {
   it('plays face-up cards once the hand is empty, never before', () => {
     const s = table([{ hand: [card(9)], faceUp: [card(10), null, null] }, {}]);
@@ -607,7 +734,7 @@ describe('going out and ending', () => {
     const s = table([
       { hand: [card(9)] },
       { hand: [card(10), card(4), card(6)] },
-      { hand: [card(8), card(5)] },
+      { hand: [card(9), card(5)] },
     ]);
     const after = move(s, 'p1', { type: 'play', cards: [card(9)] });
     expect(after.players[0]!.out).toBe(true);
@@ -619,7 +746,7 @@ describe('going out and ending', () => {
     expect(p2.turn).toBe(1);
     const p2b = move(p2, 'p2', { type: 'play', cards: [card(4)] });
     expect(p2b.turn).toBe(2);
-    const p3 = move(p2b, 'p3', { type: 'play', cards: [card(8)] });
+    const p3 = move(p2b, 'p3', { type: 'play', cards: [card(9)] });
     expect(p3.turn).toBe(1);
   });
 
@@ -732,6 +859,23 @@ describe('simulated games (autoMove)', () => {
       expect(results.map((r) => r.rank)).toEqual(Array.from({ length: n }, (_, i) => i + 1));
     }
   });
+
+  it.each([3, 4, 5])(
+    'auto-played %i-player games never get stuck going round in circles (200 games)',
+    (n) => {
+      for (let seed = 0; seed < 200; seed++) {
+        const r = createSeededRng(50_000 * n + seed);
+        let s = game.createInitialState(seat(n), {}, r);
+        let moves = 0;
+        while (!game.isGameOver(s)) {
+          if (moves++ > 3000)
+            throw new Error(`${n}p seed ${seed} was still going after 3000 moves`);
+          const [id] = game.getCurrentPlayers(s);
+          s = game.applyMove(s, id!, game.autoMove!(s, id!, r).move, r);
+        }
+      }
+    },
+  );
 
   it('autoMove reports a turn as ended only when the turn really passes', () => {
     const r = createSeededRng(77);
