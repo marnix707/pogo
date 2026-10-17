@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import type { GameDefinition, GamePlayer, GameResults, MoveValidation } from '../../game/types';
+import type {
+  AutoMove,
+  GameDefinition,
+  GamePlayer,
+  GameResults,
+  MoveValidation,
+} from '../../game/types';
 import type { Rng } from '../../game/rng';
 import { earnsYatzyBonus, getAllowedCategories, getScore, getTotals } from './scoring';
 import { CATEGORIES, DICE_COUNT, MAX_ROLLS, ROUNDS } from './types';
@@ -123,9 +129,13 @@ function getResults(state: YatzyState): GameResults {
   return { rankings };
 }
 
-function autoMove(state: YatzyState, _playerId: string, _rng: Rng): YatzyMove {
-  if (state.dice.length === 0)
-    return { type: 'roll', held: Array<boolean>(DICE_COUNT).fill(false) };
+function autoMove(state: YatzyState, _playerId: string, _rng: Rng): AutoMove<YatzyMove> {
+  if (state.dice.length === 0) {
+    return {
+      move: { type: 'roll', held: Array<boolean>(DICE_COUNT).fill(false) },
+      endsTurn: false,
+    };
+  }
   const scorecard = currentPlayer(state).scorecard;
   const allowed = getAllowedCategories(state.dice, scorecard);
   let best = allowed[0] as Category;
@@ -137,7 +147,7 @@ function autoMove(state: YatzyState, _playerId: string, _rng: Rng): YatzyMove {
       bestScore = s;
     }
   }
-  return { type: 'score', category: best };
+  return { move: { type: 'score', category: best }, endsTurn: true };
 }
 
 export const yatzyGame: GameDefinition<YatzyState, YatzyMove, YatzyOptions> = {

@@ -11,6 +11,12 @@ export interface GamePlayer {
 
 export type MoveValidation = { ok: true } | { ok: false; error: string };
 
+export interface AutoMove<Move> {
+  move: Move;
+  /** True when this move completes the player's turn. */
+  endsTurn: boolean;
+}
+
 export interface RankedPlayer {
   playerId: PlayerId;
   score: number;
@@ -49,10 +55,10 @@ export interface GameDefinition<State, Move, Options, PlayerView = State> {
   isGameOver(state: State): boolean;
   getResults(state: State): GameResults;
   /**
-   * A reasonable move for a player who timed out or is absent. The server calls it repeatedly,
-   * applying each move, until that player is no longer to move.
+   * A reasonable move for a player who timed out or is absent. The server applies it and, while
+   * `endsTurn` is false, calls it again after a short pause (so others can follow along).
    */
-  autoMove?(state: State, playerId: PlayerId, rng: Rng): Move;
+  autoMove?(state: State, playerId: PlayerId, rng: Rng): AutoMove<Move>;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

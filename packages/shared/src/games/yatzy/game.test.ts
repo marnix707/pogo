@@ -194,7 +194,7 @@ describe('full games', () => {
     while (!game.isGameOver(s)) {
       if (guard++ > 5000) throw new Error('Game did not terminate');
       const [id] = game.getCurrentPlayers(s);
-      const move = game.autoMove!(s, id!, rng);
+      const { move } = game.autoMove!(s, id!, rng);
       expect(game.validateMove(s, id!, move)).toEqual({ ok: true });
       if (move.type === 'score') scoreMoves++;
       s = game.applyMove(s, id!, move, rng);

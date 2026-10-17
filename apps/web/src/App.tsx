@@ -1,42 +1,76 @@
 import { useEffect, useState } from 'react';
-import { io, type Socket } from 'socket.io-client';
-import { APP_NAME } from '@pogo/shared';
-import type { ClientToServerEvents, ServerToClientEvents } from '@pogo/shared';
+import type { FormEvent } from 'react';
+import { APP_NAME, AVATARS } from '@pogo/shared';
+import type { AuthResponse } from '@pogo/shared';
+import { createGuest, forgetSession, restoreSession } from './lib/session';
+import { Playground } from './Playground';
 
-type Status = 'checking' | 'ok' | 'down';
+function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) {
+  const [nickname, setNickname] = useState('');
+  const [avatar, setAvatar] = useState<(typeof AVATARS)[number]>(AVATARS[0]);
+  const [error, setError] = useState<string>();
+  const [busy, setBusy] = useState(false);
 
-function StatusRow({ label, status, detail }: { label: string; status: Status; detail?: string }) {
-  const color =
-    status === 'ok' ? 'bg-emerald-500' : status === 'down' ? 'bg-rose-500' : 'bg-amber-400';
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(undefined);
+    try {
+      onDone(await createGuest({ nickname, avatar }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <div className="flex items-center gap-3 rounded-2xl bg-white px-4 py-4 shadow-sm dark:bg-slate-900">
-      <span className={`h-3 w-3 rounded-full ${color}`} />
-      <div className="flex-1">
-        <div className="font-semibold">{label}</div>
-        {detail && <div className="text-sm text-slate-500 dark:text-slate-400">{detail}</div>}
+    <form onSubmit={submit} className="flex flex-col gap-4">
+      <p className="text-slate-600 dark:text-slate-300">Pick a nickname to play as a guest.</p>
+      <input
+        value={nickname}
+        onChange={(e) => setNickname(e.target.value)}
+        placeholder="Nickname"
+        maxLength={20}
+        className="rounded-2xl border border-slate-300 bg-white px-4 py-4 text-lg dark:border-slate-700 dark:bg-slate-900"
+      />
+      <div className="flex flex-wrap gap-2">
+        {AVATARS.map((a) => (
+          <button
+            type="button"
+            key={a}
+            onClick={() => setAvatar(a)}
+            className={`rounded-2xl px-3 py-3 text-sm font-medium ${
+              avatar === a
+                ? 'bg-violet-600 text-white'
+                : 'bg-white text-slate-700 dark:bg-slate-900 dark:text-slate-200'
+            }`}
+          >
+            {a}
+          </button>
+        ))}
       </div>
-    </div>
+      {error && <p className="text-rose-600">{error}</p>}
+      <button
+        disabled={busy}
+        className="rounded-2xl bg-violet-600 px-4 py-4 text-lg font-bold text-white disabled:opacity-50"
+      >
+        Let&apos;s play
+      </button>
+    </form>
   );
 }
 
 export function App() {
-  const [api, setApi] = useState<Status>('checking');
-  const [socketStatus, setSocketStatus] = useState<Status>('checking');
-  const [hello, setHello] = useState<string>();
+  const [session, setSession] = useState<AuthResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>();
 
   useEffect(() => {
-    fetch('/api/healthz')
-      .then((r) => setApi(r.ok ? 'ok' : 'down'))
-      .catch(() => setApi('down'));
-
-    const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io();
-    socket.on('connect', () => setSocketStatus('ok'));
-    socket.on('disconnect', () => setSocketStatus('down'));
-    socket.on('connect_error', () => setSocketStatus('down'));
-    socket.on('hello', (msg) => setHello(msg.message));
-    return () => {
-      socket.disconnect();
-    };
+    restoreSession()
+      .then(setSession)
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setLoading(false));
   }, []);
 
   return (
@@ -44,9 +78,21 @@ export function App() {
       <h1 className="text-5xl font-black tracking-tight text-violet-600 dark:text-violet-400">
         {APP_NAME}
       </h1>
-      <p className="text-slate-600 dark:text-slate-300">Quick games with friends. Coming soon.</p>
-      <StatusRow label="Server API" status={api} />
-      <StatusRow label="Realtime connection" status={socketStatus} detail={hello} />
+      {loading ? (
+        <p className="text-slate-500">Loading…</p>
+      ) : error ? (
+        <p className="text-rose-600">{error}</p>
+      ) : session ? (
+        <Playground
+          session={session}
+          onSignOut={() => {
+            forgetSession();
+            setSession(null);
+          }}
+        />
+      ) : (
+        <SignIn onDone={setSession} />
+      )}
     </main>
   );
 }

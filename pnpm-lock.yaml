@@ -53,6 +53,9 @@ importers:
       fastify:
         specifier: ^5.1.0
         version: 5.12.7
+      jose:
+        specifier: ^5.9.6
+        version: 5.10.0
       socket.io:
         specifier: ^4.8.1
         version: 4.8.4
@@ -69,6 +72,9 @@ importers:
       prisma:
         specifier: ^5.22.0
         version: 5.22.0
+      socket.io-client:
+        specifier: ^4.8.1
+        version: 4.8.4
       tsx:
         specifier: ^4.19.2
         version: 4.23.15
@@ -1385,6 +1391,9 @@ packages:
   jiti@1.21.7:
     resolution: {integrity: sha512-/imKNG4EbWNrVjoNC/1H5/9GFy+tqjGBHCaSsN+P2RnPqjsLmv6UD3Ej+Kj8nBWaRAwyk7kK5ZUc+OEatnTR3A==}
     hasBin: true
+
+  jose@5.10.0:
+    resolution: {integrity: sha512-s+3Al/p9g32Iq+oqXxkW//7jk2Vig6FF1CFqzVXoTUXt2qz89YWbL+OwS17NFYEvxC35n0FKeGO2LGYSxeM2Gg==}
 
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
@@ -3225,6 +3234,8 @@ snapshots:
   isexe@2.0.0: {}
 
   jiti@1.21.7: {}
+
+  jose@5.10.0: {}
 
   joycon@3.1.1: {}
 

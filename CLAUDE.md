@@ -21,6 +21,16 @@ Game plug-in split: pure logic in `packages/shared/src/games/<id>`, UI in `apps/
 
 Moves: `{type:'roll', held:boolean[5]}` (holds are sent with the roll; ignored on the first roll) and `{type:'score', category}`. Standard Joker rules: with Yatzy box filled, a further Yatzy forces the matching upper box, else any open lower box (full house/straights at full value), else any upper box for 0; +100 only if the Yatzy box holds 50. `getPreviewScores` drives the UI score preview.
 
+## Realtime server (apps/server)
+
+- `buildApp(deps)` in `src/app.ts` wires Fastify + Socket.IO + `RoomManager`; `index.ts` injects Prisma user store, crypto Rng and config (`loadConfig`). Tests inject an in-memory user store and seeded Rng.
+- Identity: `POST /api/auth/guest {nickname, avatar}` → `{token, user}` (JWT, 90d; client keeps it in localStorage key `pogo.token`); `GET/PATCH /api/me`. Sockets authenticate with `auth: {token}` in the handshake.
+- Rooms (`src/rooms`): `RoomManager` (code → `Room`, one room per user) and `Room` (members, settings, lifecycle, timers). They only use `GameDefinition`; tests use a fake game (`rooms/testGame.ts`) to prove it.
+- Protocol (`packages/shared/src/protocol`): client emits `room:create|join|leave|kick|settings|start|rematch` and `game:move` with Zod-validated payloads and an ack `Result`; server pushes `room:state` (per-player filtered `RoomView`, or `null` + reason when you are no longer in a room) on every change and on (re)connect.
+- Presence: a user is connected while ≥1 socket is open. Lobby: disconnected members are dropped after `DISCONNECT_GRACE_SEC`. In game: seat is kept; if every current player is absent for the grace period, or the turn timer (`TURN_TIME_SEC`, per-room `turnTimeSec`, 0 = off) runs out, the server auto-plays via `autoMove` (multi-step turns are paced ~1.2s apart). Rooms nobody is connected to are deleted after `ROOM_TTL_SEC`.
+- Rate limiting: REST via `@fastify/rate-limit`; sockets via a per-socket token bucket (20 burst, 10/s).
+- `apps/web/src/Playground.tsx` is a temporary dev UI (create/join/start/play Yatzy, share link `/?join=CODE`); the real UI replaces it in M4.
+
 ## Conventions
 
 - Server-authoritative: clients send intents only; validate with Zod, then with the game's `validateMove`.
@@ -44,5 +54,5 @@ Moves: `{type:'roll', held:boolean[5]}` (holds are sent with the roll; ignored o
 
 ## Milestones
 
-1 Scaffold + Docker (done) · 2 Shared types/plug-in interface/Yatzy logic + tests (done) · 3 Realtime server (guests, rooms, reconnect) · 4 Mobile Yatzy UI + e2e · 5 Public lobby + chat · 6 Accounts, stats, PWA · 7 Production Docker + deploy guide.
+1 Scaffold + Docker (done) · 2 Shared types/plug-in interface/Yatzy logic + tests (done) · 3 Realtime server (guests, rooms, reconnect) (done) · 4 Mobile Yatzy UI + e2e · 5 Public lobby + chat · 6 Accounts, stats, PWA · 7 Production Docker + deploy guide.
 Work one milestone at a time; at the end run tests, verify in Docker, commit, summarize, explain phone testing, wait for go-ahead.
