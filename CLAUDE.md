@@ -46,6 +46,7 @@ Moves: `{type:'roll', held:boolean[5]}` (holds are sent with the roll; ignored o
 - Game UI plug-in: add a `GameUi` (`games/types.ts`: id, name, emoji, tagline, `Component({room, me, sendMove})`) and register it in `games/registry.ts`. Yatzy lives in `games/yatzy/` (`YatzyGame` = turn banner + `Scorecard` + dice dock with `Die`).
 - Yatzy UX: holds are local until you roll; tap a category chip then "Score"; the roll animation is cosmetic (faces flicker with `Math.random`, real values come from the server). `prefers-reduced-motion` skips animations (the e2e tests rely on this).
 - Settings (sound, vibration, theme auto/light/dark) are in `lib/settings.ts` (localStorage `pogo.settings`); sounds are synthesized with WebAudio (`lib/sound.ts`, no audio files); haptics use `navigator.vibrate` (`lib/haptics.ts`).
+- Yatzy layout rule: the whole scorecard + dice + buttons must fit one screen without vertical scrolling at 390x700 (enforced by an e2e test). `YatzyGame` measures the free space (ResizeObserver) and passes `fillHeight` so the table's rows stretch to use it; row/chip heights are deliberately tight (24px) and there is a denser variant under `max-height: 640px`. Horizontal scroll (many players) is fine. Avoid inline content in table cells (line boxes add height): keep cells `h-6 leading-none` and chips `block`.
 - Stable `data-testid`s (e.g. `roll-button`, `pick-<category>`, `score-button`, `turn-banner`, `results-panel`) are used by the e2e tests; keep them when refactoring.
 
 ## Visual design (apps/web)

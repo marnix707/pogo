@@ -48,9 +48,9 @@ export function Die({
       aria-label={value ? `Die ${index + 1}: ${value}${held ? ', held' : ''}` : `Die ${index + 1}`}
       disabled={!interactive}
       onClick={onToggle}
-      className={`relative aspect-square w-full rounded-lg border-[3px] shadow-[0_4px_0_0_rgb(0_24_80/0.7)] transition-transform disabled:cursor-default ${
+      className={`relative aspect-square w-full rounded-lg border-[3px] shadow-[0_3px_0_0_rgb(0_24_80/0.7)] transition-transform disabled:cursor-default ${
         held
-          ? '-translate-y-2 border-accent bg-[#ffe6f8] shadow-[0_4px_0_0_#b13d9c]'
+          ? '-translate-y-1.5 border-accent bg-[#ffe6f8] shadow-[0_4px_0_0_#b13d9c]'
           : 'border-[#001850] bg-[#e9ffff]'
       } ${rolling ? 'animate-dice-roll' : ''}`}
     >
@@ -68,11 +68,6 @@ export function Die({
           />
         ))}
       </span>
-      {held && (
-        <span className="label absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-accent">
-          Held
-        </span>
-      )}
     </button>
   );
 }

@@ -118,3 +118,36 @@ test('a share link joins the room directly, and the host can remove a player', a
   await host.context.close();
   await guestContext.close();
 });
+
+test('the Yatzy scorecard, dice and buttons fit one phone screen without vertical scrolling', async ({
+  browser,
+}) => {
+  // 390x700 is a typical phone browser window (portrait, with the browser bars showing).
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 700 },
+    reducedMotion: 'reduce',
+    hasTouch: true,
+    isMobile: true,
+  });
+  const page = await context.newPage();
+  await page.goto('/');
+  await page.getByTestId('signin-nickname').fill('Solo');
+  await page.getByTestId('signin-submit').click();
+  await page.getByTestId('home-new-yatzy').click();
+  await page.getByTestId('lobby-start').click();
+  await page.getByTestId('roll-button').click();
+  await expect(page.getByTestId('die-0')).not.toHaveAttribute('data-value', '0');
+
+  const overflow = await page.evaluate(() => {
+    const scroller = document
+      .querySelector('[data-testid=scorecard]')!
+      .closest('.overflow-y-auto')!;
+    return scroller.scrollHeight - scroller.clientHeight;
+  });
+  expect(overflow).toBeLessThanOrEqual(1);
+  // The Total row and the action buttons are both on screen at once.
+  await expect(page.getByTestId('scorecard').getByText('Total')).toBeInViewport();
+  await expect(page.getByTestId('roll-button')).toBeInViewport();
+
+  await context.close();
+});

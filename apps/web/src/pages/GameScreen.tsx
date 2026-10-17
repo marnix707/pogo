@@ -106,8 +106,10 @@ export function GameScreen({
         title={`${ui.emoji} ${ui.name}`}
         subtitle={`Room ${room.code}`}
         onSettings={onSettings}
+        compact
         left={
           <TileButton
+            small
             onClick={() => (finished ? void api.leave() : setConfirmLeave(true))}
             aria-label="Leave game"
             data-testid="leave-game"

@@ -18,13 +18,10 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   chance: 'Chance',
 };
 
-/** Short rule reminder shown under the category name. */
+/** Fixed point values, shown small next to the name (the other rules are well known). */
 export const CATEGORY_HINT: Partial<Record<Category, string>> = {
-  threeOfAKind: 'sum of all dice',
-  fourOfAKind: 'sum of all dice',
-  fullHouse: '25 points',
-  smallStraight: '30 points',
-  largeStraight: '40 points',
-  yatzy: '50 points',
-  chance: 'sum of all dice',
+  fullHouse: '25',
+  smallStraight: '30',
+  largeStraight: '40',
+  yatzy: '50',
 };

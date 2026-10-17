@@ -7,7 +7,6 @@ import { useCountdown } from '../../lib/useCountdown';
 import { Button } from '../../components/ui';
 import type { GameUiProps } from '../types';
 import { Die } from './Die';
-import { CATEGORY_LABEL } from './labels';
 import { Scorecard } from './Scorecard';
 
 type Category = yatzy.Category;
@@ -31,6 +30,23 @@ export function YatzyGame({ room, me, sendMove }: GameUiProps) {
   const [rolling, setRolling] = useState<boolean[]>(NO_HOLDS);
   const [busy, setBusy] = useState(false);
   const secondsLeft = useCountdown(game.deadline, room.serverTime);
+
+  // Let the scorecard stretch to the space between the banner and the dice dock.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [fill, setFill] = useState<number>();
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const measure = () => {
+      const style = getComputedStyle(el);
+      const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+      setFill(Math.max(0, el.clientHeight - padding - 4)); // 4 = the panel's 2px borders
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [finished]);
 
   const preview = useMemo(
     () => (myTurn && rolled && myCard ? yatzy.getPreviewScores(state.dice, myCard) : {}),
@@ -101,12 +117,12 @@ export function YatzyGame({ room, me, sendMove }: GameUiProps) {
 
   let hint = '';
   if (myTurn) {
-    if (!rolled) hint = 'Roll the dice to start your turn';
-    else if (state.rollsLeft === 0) hint = 'No rolls left: pick a category';
-    else if (allHeld) hint = 'Release a die to roll again';
-    else hint = 'Tap dice to hold them, or pick a category';
+    if (!rolled) hint = 'Roll to start';
+    else if (state.rollsLeft === 0) hint = 'Pick a category';
+    else if (allHeld) hint = 'Release a die';
+    else hint = 'Hold or pick';
   } else if (!finished) {
-    hint = `${current?.nickname ?? 'Someone'} is playing…`;
+    hint = 'Rolling…';
   }
 
   return (
@@ -114,22 +130,23 @@ export function YatzyGame({ room, me, sendMove }: GameUiProps) {
       <div
         data-testid="turn-banner"
         data-my-turn={myTurn}
-        className={`hud mx-4 mb-3 flex items-center gap-3 px-3 py-2.5 ${
+        className={`hud mx-4 flex items-center gap-3 px-3 py-1 ${
           myTurn ? '!border-neon !bg-grape' : ''
         }`}
       >
         <span
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-neon bg-panel2 text-2xl"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-neon bg-panel2 text-xl"
           aria-hidden
         >
           {finished ? '🏁' : avatarEmoji(current?.avatar ?? '')}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-lg font-bold uppercase leading-tight tracking-[0.1em]">
+          <div className="truncate text-base font-bold uppercase leading-tight tracking-[0.1em]">
             {finished ? 'Game over' : myTurn ? 'Your turn' : `${current?.nickname ?? '…'}'s turn`}
           </div>
-          <div className="label text-[10px] text-muted">
-            Round {state.round} / {yatzy.ROUNDS}
+          <div className="label truncate text-[10px] text-muted">
+            Round {state.round}/{yatzy.ROUNDS}
+            {hint && ` · ${hint}`}
           </div>
         </div>
         {!finished && (
@@ -147,7 +164,7 @@ export function YatzyGame({ room, me, sendMove }: GameUiProps) {
             {secondsLeft !== null && (
               <div
                 data-testid="countdown"
-                className={`label mt-1 text-xs tabular-nums ${
+                className={`label text-[11px] tabular-nums ${
                   secondsLeft <= 10 ? 'text-danger' : 'text-muted'
                 }`}
               >
@@ -158,7 +175,7 @@ export function YatzyGame({ room, me, sendMove }: GameUiProps) {
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-2">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 pb-2 pt-2">
         <Scorecard
           state={state}
           members={room.members}
@@ -166,6 +183,7 @@ export function YatzyGame({ room, me, sendMove }: GameUiProps) {
           currentIds={game.currentPlayers}
           preview={preview}
           selected={selected}
+          fillHeight={fill}
           onSelect={(c) => {
             setSelected(c);
             haptic('tap');
@@ -174,9 +192,9 @@ export function YatzyGame({ room, me, sendMove }: GameUiProps) {
       </div>
 
       {!finished && (
-        <div className="border-t-2 border-edge/60 bg-panel px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-4 text-ink">
-          <div className="mx-auto flex max-w-md flex-col gap-3">
-            <div className="grid grid-cols-5 gap-2.5 pb-5 pt-1">
+        <div className="border-t-2 border-edge/60 bg-panel px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 text-ink">
+          <div className="mx-auto flex max-w-md flex-col gap-2">
+            <div className="mx-auto grid w-full max-w-[16rem] grid-cols-5 gap-2 pt-1">
               {Array.from({ length: yatzy.DICE_COUNT }, (_, i) => (
                 <Die
                   key={i}
@@ -193,12 +211,11 @@ export function YatzyGame({ room, me, sendMove }: GameUiProps) {
                 />
               ))}
             </div>
-            <p className="label min-h-4 text-center text-[10px] text-muted">{hint}</p>
-            {myTurn && (
+            {myTurn ? (
               <div className="flex gap-3">
                 <Button
                   data-testid="roll-button"
-                  className="flex-1"
+                  className="min-h-11 flex-1 !px-3"
                   disabled={busy || state.rollsLeft === 0 || (rolled && allHeld)}
                   onClick={roll}
                 >
@@ -207,17 +224,17 @@ export function YatzyGame({ room, me, sendMove }: GameUiProps) {
                 <Button
                   data-testid="score-button"
                   variant="secondary"
-                  className="flex-1 !px-3"
+                  className="min-h-11 flex-1 !px-3"
                   disabled={busy || !selected}
                   onClick={score}
                 >
-                  {selected
-                    ? `Score ${preview[selected]} · ${CATEGORY_LABEL[selected]}`
-                    : rolled
-                      ? 'Pick a category'
-                      : 'Score'}
+                  {selected ? `Score ${preview[selected]}` : rolled ? 'Pick a category' : 'Score'}
                 </Button>
               </div>
+            ) : (
+              <p className="label flex min-h-11 items-center justify-center text-center text-[11px] text-muted">
+                {current?.nickname ?? 'Someone'} is playing…
+              </p>
             )}
             <span className="sr-only" data-testid="rolls-used">
               {rollsUsed}
