@@ -32,6 +32,10 @@ export function KarmaRules({ open, onClose }: { open: boolean; onClose: () => vo
           6), or a 2, or a 10. Anything higher, or another 7, can&apos;t be played, so you pick up.
         </li>
         <li>
+          <b className="text-neon">3:</b> is invisible. You can play it any time, and the card
+          underneath still counts: after 7, 3 the next player must still play lower than the 7.
+        </li>
+        <li>
           <b className="text-neon">8:</b> skips the next player. With two players that means you
           simply go again. Each 8 you play together skips one more player.
         </li>

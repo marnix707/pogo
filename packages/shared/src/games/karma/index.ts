@@ -1,3 +1,10 @@
 export * from './cards';
 export * from './types';
-export { karmaGame, karmaMoveSchema, canPlayRank, activeZone, findStarter } from './game';
+export {
+  karmaGame,
+  karmaMoveSchema,
+  canPlayRank,
+  effectiveTop,
+  activeZone,
+  findStarter,
+} from './game';

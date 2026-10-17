@@ -12,7 +12,7 @@ import { CardFlipContext, PlayingCard } from './PlayingCard';
 import type { FlipOrigin } from './PlayingCard';
 
 type Card = number;
-const { rankOf, suitOf, canPlayRank, activeZone, cardLabel, RANK_LABEL } = karma;
+const { rankOf, suitOf, canPlayRank, effectiveTop, activeZone, cardLabel, RANK_LABEL } = karma;
 
 const byRankThenSuit = (a: Card, b: Card) => rankOf(a) - rankOf(b) || suitOf(a) - suitOf(b);
 
@@ -342,7 +342,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
 
   const zone = mine ? activeZone(mine) : 'none';
   const pile = view.pile;
-  const top = pile[pile.length - 1];
+  const top = effectiveTop(pile);
   const hand = useMemo(() => [...(mine?.hand ?? [])].sort(byRankThenSuit), [mine?.hand]);
   const swapping = view.phase === 'swap' && !!mine && !mine.ready;
   const playing = view.phase === 'play' && myTurn;

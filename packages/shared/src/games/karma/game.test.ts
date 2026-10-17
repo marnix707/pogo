@@ -4,7 +4,7 @@ import type { GamePlayer } from '../../game/types';
 import { getGame } from '../registry';
 import { DECK_SIZE, cardLabel, rankOf, suitOf } from './cards';
 import type { Card } from './cards';
-import { activeZone, canPlayRank, findStarter, karmaGame as game } from './game';
+import { activeZone, canPlayRank, effectiveTop, findStarter, karmaGame as game } from './game';
 import type { KarmaMove, KarmaPlayerState, KarmaState } from './types';
 
 const rng = createSeededRng(1);
@@ -89,6 +89,18 @@ describe('canPlayRank', () => {
     expect(canPlayRank([card(7), card(9)], 9)).toBe(true);
     expect(canPlayRank([card(9), card(7)], 9)).toBe(false);
     expect(canPlayRank([card(7), card(2)], 9)).toBe(true); // a 2 resets
+  });
+  it('a 3 is invisible: playable on anything, and the card beneath it still counts', () => {
+    for (const top of [5, 7, 14]) expect(canPlayRank([card(top)], 3)).toBe(true);
+    expect(canPlayRank([card(7), card(3)], 9)).toBe(false); // 7, 3: still lower than 7
+    expect(canPlayRank([card(7), card(3)], 6)).toBe(true);
+    expect(canPlayRank([card(9), card(3)], 8)).toBe(false); // 9, 3: still 9 or higher
+    expect(canPlayRank([card(9), card(3)], 9)).toBe(true);
+    expect(canPlayRank([card(7), card(3), card(3)], 7)).toBe(false); // several 3s are all see-through
+    expect(canPlayRank([card(2), card(3)], 4)).toBe(true); // a 2 beneath: anything goes
+    expect(canPlayRank([card(3), card(3)], 4)).toBe(true); // only 3s: like an empty pile
+    expect(effectiveTop([card(9), card(3)])).toBe(card(9));
+    expect(effectiveTop([card(3)])).toBeUndefined();
   });
   it('lets 2 and 10 go on anything, and anything go on a 2', () => {
     expect(canPlayRank([card(14)], 2)).toBe(true);
@@ -361,10 +373,10 @@ describe('playing cards', () => {
   });
 
   it('allows 2 and 10 on anything, and anything on a 2', () => {
-    const onKing = table([{ hand: [card(2), card(10), card(3)] }, {}], { pile: [card(13)] });
+    const onKing = table([{ hand: [card(2), card(10), card(4)] }, {}], { pile: [card(13)] });
     ok(onKing, 'p1', { type: 'play', cards: [card(2)] });
     ok(onKing, 'p1', { type: 'play', cards: [card(10)] });
-    bad(onKing, 'p1', { type: 'play', cards: [card(3)] });
+    bad(onKing, 'p1', { type: 'play', cards: [card(4)] });
     const onTwo = table([{ hand: [card(3)] }, {}], { pile: [card(13), card(2)] });
     ok(onTwo, 'p1', { type: 'play', cards: [card(3)] });
   });
@@ -753,12 +765,12 @@ describe('face-up and face-down cards', () => {
   });
 
   it('a too-low blind card is added to the pile and the whole pile is picked up', () => {
-    const s = table([{ faceDown: [card(3), card(4), card(5)] }, { hand: [card(9)] }], {
+    const s = table([{ faceDown: [card(4), card(5), card(6)] }, { hand: [card(9)] }], {
       pile: [card(12), card(13)],
     });
     const after = move(s, 'p1', { type: 'playDown', index: 0 });
     expect(after.pile).toEqual([]);
-    expect(hand(after, 0)).toEqual([card(12), card(13), card(3)]);
+    expect(hand(after, 0)).toEqual([card(12), card(13), card(4)]);
     expect(after.turn).toBe(1);
     expect(after.lastEvent).toMatchObject({ kind: 'blind', pickedUp: 3, burned: false });
     // The hand now comes before the remaining face-down cards.
@@ -827,13 +839,13 @@ describe('going out and ending', () => {
   });
 
   it('a failed last blind card does not end the game: the card goes back to the hand', () => {
-    const s = table([{ faceDown: [card(3), null, null] }, { hand: [card(9)] }], {
+    const s = table([{ faceDown: [card(4), null, null] }, { hand: [card(9)] }], {
       pile: [card(13)],
     });
     const after = move(s, 'p1', { type: 'playDown', index: 0 });
     expect(after.players[0]!.out).toBe(false);
     expect(game.isGameOver(after)).toBe(false);
-    expect(hand(after, 0)).toEqual([card(13), card(3)]);
+    expect(hand(after, 0)).toEqual([card(13), card(4)]);
   });
 });
 

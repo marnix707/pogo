@@ -59,15 +59,25 @@ const OK: MoveValidation = { ok: true };
 
 // ---- rules helpers (exported for the UI) ----------------------------------------------------
 
+/** The card the next play is measured against: the topmost card that is not a (transparent) 3. */
+export function effectiveTop(pile: readonly Card[]): Card | undefined {
+  for (let i = pile.length - 1; i >= 0; i--) {
+    if (rankOf(pile[i] as Card) !== 3) return pile[i];
+  }
+  return undefined;
+}
+
 /**
  * Can a card of this rank be played on the pile?
  * - 2 and 10 can always be played (a 10 also burns the pile); anything may follow a 2.
+ * - A 3 is invisible: it can always be played and the card beneath it still counts
+ *   (7, 3: the next player must still play lower than the 7). A pile of only 3s counts as empty.
  * - After a 7 the next card must be LOWER than 7 (the "lower than" variant): 3-6, a 2 or a 10.
  * - Otherwise the card must be equal to or higher than the top card.
  */
 export function canPlayRank(pile: readonly Card[], rank: number): boolean {
-  if (rank === 2 || rank === 10) return true;
-  const top = pile[pile.length - 1];
+  if (rank === 2 || rank === 3 || rank === 10) return true;
+  const top = effectiveTop(pile);
   if (top === undefined) return true;
   const topRank = rankOf(top);
   if (topRank === 2) return true;
@@ -184,7 +194,7 @@ function validateMove(state: KarmaState, playerId: string, move: KarmaMove): Mov
       if (move.cards.some((c) => rankOf(c) !== rank)) return err('Play cards of the same rank');
       if (!canPlayRank(state.pile, rank))
         return err(
-          rankOf(state.pile[state.pile.length - 1] as Card) === 7
+          rankOf(effectiveTop(state.pile) as Card) === 7
             ? 'After a 7 you must play lower, or a 2 or a 10'
             : 'Too low: play higher, or a 2 or a 10',
         );
