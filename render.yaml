@@ -1,0 +1,47 @@
+# Render Blueprint for Pogo: one free web service in Frankfurt, database on Neon (also Frankfurt).
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: pogo
+    runtime: docker
+    plan: free
+    region: frankfurt # cannot be changed after the service is created
+
+    # Multi-stage image that builds the web app and runs the server (added in the next step).
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+
+    # Cheap liveness check that does NOT touch the database, so Render's frequent probes
+    # never wake Neon's auto-suspended compute.
+    healthCheckPath: /api/livez
+
+    autoDeployTrigger: commit # redeploy on every push to the default branch
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SERVER_PORT
+        value: '10000' # Render's default port for web services
+      - key: LOG_LEVEL
+        value: info
+
+      # Secret: Render prompts for this when you first create the Blueprint; it is never in git.
+      # Paste your Neon connection string (with ?sslmode=require).
+      - key: DATABASE_URL
+        sync: false
+      # Optional secret: Neon's *direct* (non-pooled) string, used for migrations only.
+      # If left empty the server falls back to DATABASE_URL.
+      - key: DIRECT_URL
+        sync: false
+
+      # Random 256-bit value generated once by Render; signs guest/user tokens.
+      - key: JWT_SECRET
+        generateValue: true
+
+      # Gameplay timings (same defaults as .env.example)
+      - key: TURN_TIME_SEC
+        value: '90'
+      - key: DISCONNECT_GRACE_SEC
+        value: '20'
+      - key: ROOM_TTL_SEC
+        value: '600'
