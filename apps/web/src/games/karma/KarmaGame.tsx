@@ -618,7 +618,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         'Time to swap! Tap a floating face-up card and a hand card to switch them, then press Ready';
   } else if (view.phase === 'swap') hint = 'Waiting for the others to get ready…';
   else if (myTurn && (sel.length > 0 || selDown !== null)) {
-    hint = 'Press Play · tap again to deselect (a single card: double-tap plays)';
+    hint = 'Press Play · tap again to deselect (a single card or four of a kind: double-tap plays)';
   }
 
   // Nothing in my active cards can be played, so picking up is the only move: it happens by itself

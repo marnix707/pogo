@@ -36,6 +36,31 @@ describe('planTap', () => {
     });
   });
 
+  it('four of a kind: tap selects all four, a fast double tap plays them (instant burn)', () => {
+    const quad = [c(6), c(6, 1), c(6, 2), c(6, 3)];
+    const zone = [c(4), ...quad];
+    expect(planTap({ zoneCards: zone, selected: [], card: c(6, 2), fast: false })).toEqual({
+      type: 'select',
+      cards: quad,
+    });
+    expect(planTap({ zoneCards: zone, selected: quad, card: c(6, 2), fast: true })).toEqual({
+      type: 'play',
+      cards: quad,
+    });
+    // a slow tap on a selected one still just drops that card
+    expect(planTap({ zoneCards: zone, selected: quad, card: c(6, 2), fast: false })).toEqual({
+      type: 'select',
+      cards: [c(6), c(6, 1), c(6, 3)],
+    });
+  });
+
+  it('two or three of a kind never play on a double tap (select mode only)', () => {
+    const triple = [c(6), c(6, 1), c(6, 2)];
+    expect(planTap({ zoneCards: triple, selected: triple, card: c(6), fast: true }).type).toBe(
+      'select',
+    );
+  });
+
   it('selects a single card, deselects it on a slow second tap, plays it on a fast one', () => {
     expect(planTap({ zoneCards: hand, selected: [], card: c(5), fast: false })).toEqual({
       type: 'select',
