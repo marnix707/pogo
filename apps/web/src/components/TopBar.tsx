@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { RaisedColon } from './Brand';
 import { SlidersIcon } from './icons';
 
 export function TileButton({
@@ -50,7 +51,7 @@ export function TopBar({
             compact ? 'text-lg' : 'text-xl'
           }`}
         >
-          {title}
+          <RaisedColon text={title} />
         </h1>
         {subtitle && <div className="label truncate text-[10px] text-onbg/70">{subtitle}</div>}
       </div>

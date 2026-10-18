@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { AVATARS } from '@pogo/shared';
 import type { AuthResponse } from '@pogo/shared';
+import { RaisedColon } from '../components/Brand';
 import { LogoMark } from '../components/icons';
 import { Button } from '../components/ui';
 import { avatarEmoji } from '../lib/avatars';
@@ -31,7 +32,7 @@ export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) 
       <div className="text-center">
         <LogoMark className="mx-auto mb-4 h-24 w-24 drop-shadow-[0_6px_0_rgb(0_24_80/0.35)]" />
         <h1 className="text-6xl font-bold uppercase tracking-[0.18em] text-onbg [text-shadow:4px_4px_0_rgb(var(--c-accent))]">
-          Pogo
+          <RaisedColon text="Po:go" />
         </h1>
         <p className="label mt-4 text-onbg/80">Quick games · No account needed</p>
       </div>
