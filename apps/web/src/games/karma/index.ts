@@ -7,6 +7,7 @@ export const karmaUi: GameUi = {
   emoji: '🃏',
   tagline: 'Shed all your cards. Don’t be the last one left.',
   Component: KarmaGame,
+  hideScores: true, // the score is only a rank in Karma
   resultsTitle(room, me) {
     const results = room.game?.results?.rankings;
     const last = results?.[results.length - 1];

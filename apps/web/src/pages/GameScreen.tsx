@@ -12,66 +12,127 @@ import { play } from '../lib/sound';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
+/** Podium bar heights (rem) for 1st, 2nd and 3rd, and when each rises. */
+const PODIUM_HEIGHT = ['9rem', '6.5rem', '5rem'];
+const PODIUM_DELAY = ['1.1s', '0.55s', '0s'];
+
+/** The final standings: a podium for the top three, a list for everybody else. Full screen and scrollable. */
 function ResultsPanel({
   room,
   me,
   api,
   title,
+  showScores = true,
 }: {
   room: RoomView;
   me: string;
   api: RoomApi;
   title?: string;
+  showScores?: boolean;
 }) {
   const results = room.game?.results;
   if (!results) return null;
   const isHost = room.hostId === me;
   const best = results.rankings[0];
   const iWon = results.rankings.some((r) => r.rank === 1 && r.playerId === me);
+  const rankings = results.rankings;
+  // Left to right: 2nd, 1st, 3rd (the classic podium); with two players just 2nd, 1st.
+  const podium = [1, 0, 2].filter((i) => i < rankings.length);
+  const rest = rankings.slice(3);
+  const nameOf = (id: string) => room.members.find((x) => x.id === id);
   return (
     <div
       data-testid="results-panel"
-      className="animate-slide-up border-t-2 border-edge/60 bg-panel px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 text-ink"
+      className="animate-slide-up fixed inset-0 z-40 overflow-y-auto bg-panel text-ink"
     >
-      <div className="mx-auto flex max-w-md flex-col gap-3">
+      <div className="mx-auto flex min-h-full max-w-lg flex-col gap-5 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))]">
         <h2 className="text-center text-2xl font-bold uppercase tracking-[0.12em]">
           {title ??
-            (iWon
-              ? '🎉 You won!'
-              : `🏆 ${room.members.find((m) => m.id === best?.playerId)?.nickname ?? ''} wins!`)}
+            (iWon ? '🎉 You won!' : `🏆 ${nameOf(best?.playerId ?? '')?.nickname ?? ''} wins!`)}
         </h2>
-        <ol className="flex flex-col gap-1.5">
-          {results.rankings.map((r) => {
-            const m = room.members.find((x) => x.id === r.playerId);
+
+        <ol className="flex items-end justify-center gap-2 pt-2" data-testid="podium">
+          {podium.map((i) => {
+            const r = rankings[i]!;
+            const m = nameOf(r.playerId);
+            const mine = r.playerId === me;
             return (
               <li
                 key={r.playerId}
                 data-testid={`rank-${r.rank}`}
-                className={`flex items-center gap-3 rounded-md border-2 px-3 py-2 ${
-                  r.playerId === me ? 'border-accent bg-accent/15' : 'border-edge/30 bg-panel2'
-                }`}
+                data-place={i + 1}
+                className="flex min-w-0 flex-1 flex-col items-center"
               >
-                <span className="w-8 text-center text-2xl">{MEDALS[r.rank - 1] ?? r.rank}</span>
-                <span aria-hidden>{avatarEmoji(m?.avatar ?? '')}</span>
-                <span className="flex-1 truncate font-bold">
-                  {m?.nickname ?? 'Player'}
-                  {r.playerId === me && ' (you)'}
-                </span>
-                <span className="text-xl font-bold tabular-nums text-neon">{r.score}</span>
+                <div
+                  className="podium-top flex w-full flex-col items-center gap-0.5 pb-1.5"
+                  style={{ animationDelay: `calc(${PODIUM_DELAY[i]} + 0.5s)` }}
+                >
+                  <span className="text-3xl leading-none">{MEDALS[r.rank - 1] ?? r.rank}</span>
+                  <span className="text-3xl leading-none" aria-hidden>
+                    {avatarEmoji(m?.avatar ?? '')}
+                  </span>
+                  <span
+                    className={`w-full truncate text-center text-sm font-bold ${mine ? 'text-accent' : ''}`}
+                  >
+                    {m?.nickname ?? 'Player'}
+                    {mine && ' (you)'}
+                  </span>
+                  {showScores && (
+                    <span className="text-sm font-bold tabular-nums text-neon">{r.score}</span>
+                  )}
+                </div>
+                <div
+                  className={`podium-bar flex w-full items-start justify-center rounded-t-lg border-2 border-b-0 pt-2 text-3xl font-bold ${
+                    mine ? 'border-accent bg-accent/25' : 'border-edge/50 bg-panel2'
+                  }`}
+                  style={{ height: PODIUM_HEIGHT[i], animationDelay: PODIUM_DELAY[i] }}
+                >
+                  {r.rank}
+                </div>
               </li>
             );
           })}
         </ol>
-        {isHost ? (
-          <Button data-testid="rematch" disabled={!api.online} onClick={() => void api.rematch()}>
-            Play again
-          </Button>
-        ) : (
-          <p className="label text-center text-muted">Waiting for the host to start a rematch…</p>
+
+        {rest.length > 0 && (
+          <ol className="flex flex-col gap-1.5">
+            {rest.map((r) => {
+              const m = nameOf(r.playerId);
+              return (
+                <li
+                  key={r.playerId}
+                  data-testid={`rank-${r.rank}`}
+                  className={`flex items-center gap-3 rounded-md border-2 px-3 py-2 ${
+                    r.playerId === me ? 'border-accent bg-accent/15' : 'border-edge/30 bg-panel2'
+                  }`}
+                >
+                  <span className="w-8 text-center text-xl font-bold">{r.rank}</span>
+                  <span aria-hidden>{avatarEmoji(m?.avatar ?? '')}</span>
+                  <span className="flex-1 truncate font-bold">
+                    {m?.nickname ?? 'Player'}
+                    {r.playerId === me && ' (you)'}
+                  </span>
+                  {showScores && (
+                    <span className="text-xl font-bold tabular-nums text-neon">{r.score}</span>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
         )}
-        <Button variant="ghost" data-testid="results-leave" onClick={() => void api.leave()}>
-          Leave room
-        </Button>
+
+        <div className="mt-auto flex flex-col gap-3">
+          {isHost ? (
+            <Button data-testid="rematch" disabled={!api.online} onClick={() => void api.rematch()}>
+              Play again
+            </Button>
+          ) : (
+            <p className="label text-center text-muted">Waiting for the host to start a rematch…</p>
+          )}
+          <Button variant="secondary" data-testid="results-leave" onClick={() => void api.leave()}>
+            Leave room
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -167,7 +228,13 @@ export function GameScreen({
         <ui.Component room={room} me={me} sendMove={api.move} />
       </div>
       {finished && (
-        <ResultsPanel room={room} me={me} api={api} title={ui.resultsTitle?.(room, me)} />
+        <ResultsPanel
+          room={room}
+          me={me}
+          api={api}
+          title={ui.resultsTitle?.(room, me)}
+          showScores={!ui.hideScores}
+        />
       )}
 
       <Sheet open={chatOpen} onClose={() => setChatOpen(false)} title="Chat">

@@ -16,6 +16,8 @@ export interface GameUi {
   emoji: string;
   tagline: string;
   Component: ComponentType<GameUiProps>;
+  /** Hide the score column in the standings (for games where the score is just the rank). */
+  hideScores?: boolean;
   /** Optional custom headline for the results panel (default: "<winner> wins!"). */
   resultsTitle?: (room: RoomView, me: string) => string | undefined;
 }

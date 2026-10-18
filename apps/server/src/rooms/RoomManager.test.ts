@@ -683,10 +683,10 @@ describe('computer players', () => {
     return { type: 'play', cards: source.filter((c) => karma.rankOf(c) === rank) };
   }
 
-  function playOut() {
+  function playOut(bots = 2, seed = 99) {
     const s = setup();
-    s.must(s.manager.create(a, { gameId: 'karma', bots: 2, autoStart: true }));
-    const rng = createSeededRng(99);
+    s.must(s.manager.create(a, { gameId: 'karma', bots, autoStart: true }));
+    const rng = createSeededRng(seed);
     const jitter = () => rng.int(1000) / 1000;
     for (let i = 0; i < 4000; i++) {
       const room = s.manager.getView(a.id)!;
@@ -710,6 +710,20 @@ describe('computer players', () => {
     // Everybody can be named in the results.
     for (const id of ids) expect(room.members.some((m) => m.id === id)).toBe(true);
   });
+
+  it.each([1, 2, 3, 4])(
+    'games against %i computers always finish with a full ranking, whoever goes out first',
+    (bots) => {
+      for (let seed = 1; seed <= 30; seed++) {
+        const { room } = playOut(bots, seed);
+        expect(room.status).toBe('finished');
+        expect(room.game!.results!.rankings.map((r) => r.rank)).toEqual(
+          Array.from({ length: bots + 1 }, (_, i) => i + 1),
+        );
+      }
+    },
+    120_000,
+  );
 
   it('a rematch removes the computer seats, keeps the setting, and brings them back on start', () => {
     const { manager, must } = playOut();
