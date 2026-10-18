@@ -307,6 +307,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const [busy, setBusy] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [flame, setFlame] = useState(false);
+  const flameTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(flameTimer.current), []);
   /** Someone just played their last card: reveal it with a flourish (confetti for the winner). */
   const [reveal, setReveal] = useState<{ card: number; label: string; winner: boolean } | null>(
     null,
@@ -446,9 +448,12 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     play(ev.burned ? 'score' : ev.pickedUp > 0 ? 'error' : 'tap');
     if (ev.playerId === me) haptic(ev.burned ? 'success' : ev.pickedUp > 0 ? 'error' : 'tap');
     if (ev.burned) {
+      // The timer lives in a ref, NOT in this effect's cleanup: the effect re-runs on every state
+      // push (lastEvent is a new object each time), and a cleanup would cancel the timer and leave
+      // the flame on screen for the rest of the game.
       setFlame(true);
-      const t = setTimeout(() => setFlame(false), 1500);
-      return () => clearTimeout(t);
+      clearTimeout(flameTimer.current);
+      flameTimer.current = setTimeout(() => setFlame(false), 1500);
     }
   }, [view.lastEvent, me]);
   // (declared after the effect above, so it still sees the previous values when a move arrives)

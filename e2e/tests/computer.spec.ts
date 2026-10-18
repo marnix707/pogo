@@ -8,6 +8,9 @@ async function playUntilResults(page: Page, limitMs = 200_000) {
   while (!(await page.getByTestId('results-panel').isVisible())) {
     if (Date.now() - started > limitMs)
       throw new Error('the game against the computer did not finish');
+    // A burn flame must go away by itself (it once got stuck for the rest of the game).
+    if (await page.getByTestId('burn-flash').isVisible())
+      await expect(page.getByTestId('burn-flash')).toHaveCount(0, { timeout: 4000 });
     const s = await snapshot(page);
     if (!s.myTurn) {
       await page.waitForTimeout(60); // the computer is thinking
@@ -62,6 +65,8 @@ test('a whole game against the computer, from one tap to the result, and a remat
   await expect(panel).toContainText('Robo');
   await expect(panel).toContainText('Solo');
   await expect(page.getByTestId('rank-1')).toBeVisible();
+  // The burn flame (🔥 over the pile) is a short animation; it must never stay stuck on screen.
+  await expect(page.getByTestId('burn-flash')).toHaveCount(0, { timeout: 5000 });
   // Whoever went out first got the last-card reveal with confetti (it lets taps through).
   await expect(page.getByTestId('win-reveal')).toHaveAttribute('data-winner', 'true');
   await expect(page.getByTestId('rank-2')).toBeVisible();
