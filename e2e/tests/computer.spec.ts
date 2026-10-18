@@ -26,9 +26,14 @@ async function playUntilResults(page: Page, limitMs = 200_000) {
 test('Karma offers "Play the computer" with 1-4 opponents; Yatzy does not', async ({ browser }) => {
   const me = await newPlayer(browser, 'Picker', 'fox');
   const page = me.page;
-  await expect(page.getByTestId('home-computer-karma')).toBeVisible();
+  await page.getByTestId('home-game-yatzy').click();
+  await expect(page.getByTestId('home-new-yatzy')).toBeVisible();
   await expect(page.getByTestId('home-computer-yatzy')).toHaveCount(0);
+  await page.getByTestId('sheet-backdrop').click({ position: { x: 5, y: 5 } }); // tap outside: closes
+  await expect(page.getByTestId('sheet-backdrop')).toHaveCount(0);
 
+  await page.getByTestId('home-game-karma').click();
+  await expect(page.getByTestId('home-computer-karma')).toBeVisible();
   await page.getByTestId('home-computer-karma').click();
   for (const n of [1, 2, 3, 4]) await expect(page.getByTestId(`computer-count-${n}`)).toBeVisible();
   await expect(page.getByTestId('computer-count-5')).toHaveCount(0); // Karma seats at most 5 in total
@@ -44,6 +49,8 @@ test('a whole game against the computer, from one tap to the result, and a remat
   const me = await newPlayer(browser, 'Solo', 'fox');
   const page = me.page;
   page.setDefaultTimeout(15_000);
+
+  await page.getByTestId('home-game-karma').click();
 
   await page.getByTestId('home-computer-karma').click();
   await page.getByTestId('computer-count-1').click();
@@ -93,6 +100,7 @@ test('a four-player game against three computers ends with a podium: 1st, 2nd, 3
   const me = await newPlayer(browser, 'Quad', 'fox');
   const page = me.page;
   page.setDefaultTimeout(15_000);
+  await page.getByTestId('home-game-karma').click();
   await page.getByTestId('home-computer-karma').click();
   await page.getByTestId('computer-count-3').click();
   await expect(page.getByTestId('seat-status-bot:3')).toHaveText('Ready ✓', { timeout: 20_000 });
@@ -119,6 +127,7 @@ test('with several computers the whole table fills up, each with its own name', 
 }) => {
   const me = await newPlayer(browser, 'Many', 'fox');
   const page = me.page;
+  await page.getByTestId('home-game-karma').click();
   await page.getByTestId('home-computer-karma').click();
   await page.getByTestId('computer-count-3').click();
   await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
@@ -135,6 +144,7 @@ test('with several computers the whole table fills up, each with its own name', 
 test('a host can add a computer player in the waiting room', async ({ browser }) => {
   const me = await newPlayer(browser, 'Host', 'fox');
   const page = me.page;
+  await page.getByTestId('home-game-karma').click();
   await page.getByTestId('home-new-karma').click();
 
   // Karma needs two players; alone it cannot start...
@@ -153,6 +163,7 @@ test('a host can add a computer player in the waiting room', async ({ browser })
 
 test('Yatzy rooms have no computer setting', async ({ browser }) => {
   const me = await newPlayer(browser, 'Yatzy', 'fox');
+  await me.page.getByTestId('home-game-yatzy').click();
   await me.page.getByTestId('home-new-yatzy').click();
   await expect(me.page.getByRole('button', { name: 'More Computer players' })).toHaveCount(0);
   await me.page.getByTestId('lobby-leave').click();

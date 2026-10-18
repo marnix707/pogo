@@ -27,6 +27,7 @@ test('public games show up live in the lobby, can be joined from it, and quick m
   await expect(w.getByText("Hosty's game")).toHaveCount(0);
 
   // A private room never shows up.
+  await h.getByTestId('home-game-yatzy').click();
   await h.getByTestId('home-new-yatzy').click();
   await expect(h.getByTestId('room-visibility')).toHaveText('Private');
   await expect(w.getByText("Hosty's game")).toHaveCount(0);
@@ -51,6 +52,7 @@ test('public games show up live in the lobby, can be joined from it, and quick m
 
   // Quick match for a third player lands in the same (longest-waiting, still open) room.
   const third = await newPlayer(browser, 'Quicky', 'cat');
+  await third.page.getByTestId('home-game-yatzy').click();
   await third.page.getByTestId('home-quick-yatzy').click();
   await expect(third.page.getByTestId('lobby-waiting')).toBeVisible();
   await expect(h.getByTestId('member-Quicky')).toBeVisible();
@@ -70,6 +72,8 @@ test('players chat in the waiting room and during the game; profanity is masked'
   const alice = await newPlayer(browser, 'Alice', 'fox');
   const bob = await newPlayer(browser, 'Bob', 'cat');
   const [a, b] = [alice.page, bob.page];
+
+  await a.getByTestId('home-game-yatzy').click();
 
   await a.getByTestId('home-new-yatzy').click();
   const code = (await a.getByTestId('room-code').textContent())!.trim();
@@ -135,4 +139,39 @@ test('profane nicknames are refused at sign-in when the filter is on (and allowe
     await expect(page.getByTestId('home-nickname')).toHaveText('Big Sh1t');
   }
   await context.close();
+});
+
+test('the dashboard: join-by-code beside the name, open games, then the games; buttons slide up on tap', async ({
+  browser,
+}) => {
+  const me = await newPlayer(browser, 'Layout', 'fox');
+  const page = me.page;
+  const box = async (id: string) => (await page.getByTestId(id).boundingBox())!;
+
+  // Top row: the name and the join form share a row.
+  const name = await box('home-nickname');
+  const code = await box('home-join-code');
+  expect(Math.abs(name.y - code.y)).toBeLessThan(60);
+  expect(code.x).toBeGreaterThan(name.x);
+
+  // Order: open games above the games section; the game cards have no action buttons.
+  const open = await page.getByRole('region', { name: 'Open games' }).boundingBox();
+  const games = await page.getByRole('region', { name: 'Games', exact: true }).boundingBox();
+  expect(open!.y).toBeLessThan(games!.y);
+  await expect(page.getByTestId('home-quick-karma')).toHaveCount(0);
+  await expect(page.getByTestId('home-new-karma')).toHaveCount(0);
+
+  // Tapping a game dims the page and slides the menu up; tapping outside slides it away again.
+  await page.getByTestId('home-game-karma').click();
+  await expect(page.getByTestId('home-quick-karma')).toBeVisible();
+  await expect(page.getByTestId('home-new-karma')).toBeVisible();
+  await expect(page.getByTestId('home-computer-karma')).toBeVisible();
+  await expect(page.getByTestId('sheet-backdrop')).toHaveCSS(
+    'background-color',
+    /rgba\(0, 0, 0, 0\.6\)/,
+  );
+  await page.getByTestId('sheet-backdrop').click({ position: { x: 5, y: 5 } });
+  await expect(page.getByTestId('sheet-backdrop')).toHaveCount(0);
+  await expect(page.getByTestId('home-quick-karma')).toHaveCount(0);
+  await me.context.close();
 });

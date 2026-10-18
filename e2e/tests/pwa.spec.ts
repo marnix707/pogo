@@ -55,6 +55,7 @@ test.describe('iPhone (no install prompt exists there, so we explain the Share m
     await expect(steps).toContainText('Add to Home Screen');
     await expect(steps).toContainText('Still opens with browser bars');
     await page.getByRole('button', { name: 'Close' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0); // (it slides away first)
 
     // The same help is always available in Settings.
     await page.getByTestId('settings-button').click();
@@ -62,6 +63,7 @@ test.describe('iPhone (no install prompt exists there, so we explain the Share m
     await expect(page.getByTestId('display-mode')).toHaveAttribute('data-standalone', 'false');
     await expect(page.getByTestId('display-mode')).toContainText('browser tab');
     await page.getByRole('button', { name: 'Close' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0); // (it slides away first)
 
     await page.getByTestId('install-dismiss').click();
     await expect(banner).toHaveCount(0);

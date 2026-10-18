@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { avatarEmoji } from '../lib/avatars';
 import { haptic } from '../lib/haptics';
@@ -71,6 +72,13 @@ export function Avatar({
   );
 }
 
+/** How long the sheet takes to slide away (matches `sheet-down` in index.css). */
+const SHEET_MS = 220;
+
+/**
+ * A panel that slides up from the bottom over a dimmed page; tapping outside (or the X) slides it
+ * back down and the page returns to normal brightness. It stays mounted while it slides away.
+ */
 export function Sheet({
   open,
   onClose,
@@ -82,14 +90,37 @@ export function Sheet({
   title: string;
   children: ReactNode;
 }) {
-  if (!open) return null;
+  const [mounted, setMounted] = useState(open);
+  const [closing, setClosing] = useState(false);
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      setClosing(false);
+      return;
+    }
+    setClosing(true);
+    const t = setTimeout(() => {
+      setMounted(false);
+      setClosing(false);
+    }, SHEET_MS);
+    return () => clearTimeout(t);
+  }, [open]);
+  if (!mounted) return null;
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50" onClick={onClose}>
+    <div
+      className={`sheet-backdrop fixed inset-0 z-40 flex items-end justify-center bg-black/60 ${
+        closing ? 'pointer-events-none' : ''
+      }`}
+      data-closing={closing}
+      data-testid="sheet-backdrop"
+      onClick={onClose}
+    >
       <div
         role="dialog"
         aria-label={title}
+        data-closing={closing}
         onClick={(e) => e.stopPropagation()}
-        className="hud animate-slide-up w-full max-w-lg rounded-b-none !border-b-0 bg-panel p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl"
+        className="hud sheet-panel w-full max-w-lg rounded-b-none !border-b-0 bg-panel p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl"
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold uppercase tracking-[0.16em]">{title}</h2>

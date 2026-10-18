@@ -4,7 +4,7 @@ import { getGame } from '@pogo/shared';
 import type { PublicRoomSummary, PublicUser } from '@pogo/shared';
 import { InstallCard } from '../components/InstallCard';
 import { LogoMark } from '../components/icons';
-import { Avatar, Button, Card, SectionLabel, Sheet } from '../components/ui';
+import { Avatar, Button, SectionLabel, Sheet } from '../components/ui';
 import { TopBar } from '../components/TopBar';
 import { gameUis, getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
@@ -75,8 +75,10 @@ export function Home({
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<string>('all');
-  /** The game whose "how many computer opponents?" picker is open. */
-  const [computerGame, setComputerGame] = useState<string | null>(null);
+  /** The game whose menu (quick match, friends, computer) is open, and which page of it. */
+  const [menu, setMenu] = useState<{ gameId: string; page: 'main' | 'computer' } | null>(null);
+  // Remember the last game while the menu slides away, so its content does not vanish mid-slide.
+  const [lastMenuGame, setLastMenuGame] = useState<string | null>(null);
 
   // Live-update the open games while this screen is showing.
   useEffect(() => watchLobby(), [watchLobby]);
@@ -97,80 +99,58 @@ export function Home({
     if (code.trim().length >= 4) void run(api.join(code));
   }
 
+  function openMenu(gameId: string) {
+    setLastMenuGame(gameId);
+    setMenu({ gameId, page: 'main' });
+  }
+
   const blocked = busy || !api.online;
+  const menuGameId = menu?.gameId ?? lastMenuGame;
+  const menuUi = menuGameId ? getGameUi(menuGameId) : undefined;
+  const menuGame = menuGameId ? getGame(menuGameId) : undefined;
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
       <TopBar
-        title="Pogo"
-        subtitle="Game hub"
+        title="Po:go"
+        subtitle="Play Online, GO!"
         left={<LogoMark className="h-11 w-11 shrink-0" />}
         onSettings={onSettings}
       />
       <main className="flex flex-1 flex-col gap-6 px-4 pb-8 pt-2">
-        <div className="hud flex items-center gap-4 p-3">
+        {/* Who I am, and joining with a code, side by side */}
+        <div className="hud flex items-center gap-3 p-3">
           <Avatar avatar={user.avatar} size="lg" />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="label text-muted">Pilot</div>
-            <div className="truncate text-2xl font-bold" data-testid="home-nickname">
+            <div className="truncate text-xl font-bold" data-testid="home-nickname">
               {user.nickname}
             </div>
           </div>
+          <form onSubmit={join} className="flex shrink-0 gap-2" aria-label="Join with a code">
+            <input
+              data-testid="home-join-code"
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+              placeholder="CODE"
+              maxLength={8}
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-label="Room code"
+              className="hud min-h-12 w-[5.5rem] min-w-0 bg-panel px-2 text-center text-lg font-bold uppercase tracking-[0.2em] text-ink outline-none placeholder:text-muted/40 focus:!border-neon"
+            />
+            <Button
+              data-testid="home-join-submit"
+              disabled={blocked || code.length < 4}
+              className="!min-h-12 !px-3"
+            >
+              Join
+            </Button>
+          </form>
         </div>
 
         <InstallCard variant="banner" />
-
-        <section aria-label="Games">
-          <SectionLabel>Play</SectionLabel>
-          <div className="flex flex-col gap-3">
-            {gameUis.map((g) => (
-              <Card key={g.id} className="hud-ticks flex flex-col gap-4">
-                <div className="flex items-center gap-4">
-                  <span
-                    className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-accent text-4xl"
-                    aria-hidden
-                  >
-                    {g.emoji}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-xl font-bold uppercase tracking-[0.12em]">{g.name}</div>
-                    <div className="text-sm leading-snug text-muted">{g.tagline}</div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    data-testid={`home-quick-${g.id}`}
-                    disabled={blocked}
-                    className="!px-3"
-                    onClick={() => void run(api.quickPlay(g.id))}
-                  >
-                    Quick match
-                  </Button>
-                  <Button
-                    data-testid={`home-new-${g.id}`}
-                    variant="secondary"
-                    disabled={blocked}
-                    className="!px-3"
-                    onClick={() => void run(api.create(g.id))}
-                  >
-                    With friends
-                  </Button>
-                </div>
-                {getGame(g.id)?.supportsBots && (
-                  <Button
-                    data-testid={`home-computer-${g.id}`}
-                    variant="secondary"
-                    disabled={blocked}
-                    className="w-full !px-3"
-                    onClick={() => setComputerGame(g.id)}
-                  >
-                    🤖 Play the computer
-                  </Button>
-                )}
-              </Card>
-            ))}
-          </div>
-        </section>
 
         <section aria-label="Open games">
           <SectionLabel
@@ -204,8 +184,8 @@ export function Home({
             <p className="label text-onbg/70">Looking for games…</p>
           ) : openGames.length === 0 ? (
             <div className="hud p-4 text-center text-sm text-muted" data-testid="open-games-empty">
-              No open games right now. Tap <b className="text-ink">Quick match</b> to start one that
-              others can join.
+              No open games right now. Pick a game below and choose{' '}
+              <b className="text-ink">Quick match</b> to start one that others can join.
             </div>
           ) : (
             <ul className="flex flex-col gap-2">
@@ -221,61 +201,109 @@ export function Home({
           )}
         </section>
 
-        <section aria-label="Join a game">
-          <SectionLabel>Join with a code</SectionLabel>
-          <form onSubmit={join} className="flex gap-3">
-            <input
-              data-testid="home-join-code"
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-              placeholder="ABCDE"
-              maxLength={8}
-              autoCapitalize="characters"
-              autoCorrect="off"
-              spellCheck={false}
-              aria-label="Room code"
-              className="hud min-h-14 min-w-0 flex-1 bg-panel px-4 text-center text-2xl font-bold uppercase tracking-[0.3em] text-ink outline-none placeholder:text-muted/40 focus:!border-neon"
-            />
-            <Button
-              data-testid="home-join-submit"
-              disabled={blocked || code.length < 4}
-              className="px-6"
-            >
-              Join
-            </Button>
-          </form>
+        <section aria-label="Games">
+          <SectionLabel>Play</SectionLabel>
+          <div className="flex flex-col gap-3">
+            {gameUis.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                data-testid={`home-game-${g.id}`}
+                disabled={!api.online}
+                onClick={() => openMenu(g.id)}
+                className="hud hud-ticks flex w-full items-center gap-4 bg-panel p-4 text-left text-ink transition active:scale-[0.99] disabled:opacity-50"
+              >
+                <span
+                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-accent text-4xl"
+                  aria-hidden
+                >
+                  {g.emoji}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xl font-bold uppercase tracking-[0.12em]">
+                    {g.name}
+                  </span>
+                  <span className="block text-sm leading-snug text-muted">{g.tagline}</span>
+                </span>
+              </button>
+            ))}
+          </div>
         </section>
       </main>
 
-      {computerGame && (
-        <Sheet
-          open
-          onClose={() => setComputerGame(null)}
-          title={`Play ${getGameUi(computerGame)?.name ?? 'the computer'}`}
-        >
-          <p className="mb-4 text-muted">How many computer opponents?</p>
-          <div className="grid grid-cols-2 gap-3">
-            {Array.from(
-              { length: (getGame(computerGame)?.maxPlayers ?? 2) - 1 },
-              (_, i) => i + 1,
-            ).map((n) => (
+      <Sheet
+        open={menu !== null}
+        onClose={() => setMenu(null)}
+        title={
+          menu?.page === 'computer'
+            ? `${menuUi?.name ?? 'Game'}: computer`
+            : `${menuUi?.emoji ?? ''} ${menuUi?.name ?? ''}`.trim()
+        }
+      >
+        {menuGameId && menu?.page !== 'computer' && (
+          <div className="flex flex-col gap-3">
+            <Button
+              data-testid={`home-quick-${menuGameId}`}
+              disabled={blocked}
+              onClick={() => {
+                setMenu(null);
+                void run(api.quickPlay(menuGameId));
+              }}
+            >
+              Quick match
+            </Button>
+            <Button
+              data-testid={`home-new-${menuGameId}`}
+              variant="secondary"
+              disabled={blocked}
+              onClick={() => {
+                setMenu(null);
+                void run(api.create(menuGameId));
+              }}
+            >
+              With friends
+            </Button>
+            {menuGame?.supportsBots && (
               <Button
-                key={n}
-                data-testid={`computer-count-${n}`}
-                variant={n === 1 ? 'primary' : 'secondary'}
+                data-testid={`home-computer-${menuGameId}`}
+                variant="secondary"
                 disabled={blocked}
-                onClick={() => {
-                  const id = computerGame;
-                  setComputerGame(null);
-                  void run(api.playComputer(id, n));
-                }}
+                onClick={() => setMenu({ gameId: menuGameId, page: 'computer' })}
               >
-                {'🤖'.repeat(n)} {n === 1 ? '1 opponent' : `${n} opponents`}
+                🤖 Play the computer
               </Button>
-            ))}
+            )}
           </div>
-        </Sheet>
-      )}
+        )}
+        {menuGameId && menu?.page === 'computer' && (
+          <>
+            <p className="mb-4 text-muted">How many computer opponents?</p>
+            <div className="grid grid-cols-2 gap-3">
+              {Array.from({ length: (menuGame?.maxPlayers ?? 2) - 1 }, (_, i) => i + 1).map((n) => (
+                <Button
+                  key={n}
+                  data-testid={`computer-count-${n}`}
+                  variant={n === 1 ? 'primary' : 'secondary'}
+                  disabled={blocked}
+                  onClick={() => {
+                    setMenu(null);
+                    void run(api.playComputer(menuGameId, n));
+                  }}
+                >
+                  {'🤖'.repeat(n)} {n === 1 ? '1 opponent' : `${n} opponents`}
+                </Button>
+              ))}
+            </div>
+            <Button
+              variant="secondary"
+              className="mt-3 w-full"
+              onClick={() => setMenu({ gameId: menuGameId, page: 'main' })}
+            >
+              Back
+            </Button>
+          </>
+        )}
+      </Sheet>
     </div>
   );
 }

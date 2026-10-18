@@ -125,6 +125,38 @@ button {
   }
 }
 
+@keyframes sheet-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes sheet-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes sheet-down {
+  to {
+    transform: translateY(100%);
+  }
+}
+.sheet-backdrop {
+  animation: sheet-fade-in 0.22s ease-out both;
+}
+.sheet-backdrop[data-closing='true'] {
+  animation: sheet-fade-out 0.22s ease-in both;
+}
+.sheet-panel {
+  animation: sheet-up 0.25s ease-out both;
+}
+.sheet-panel[data-closing='true'] {
+  animation: sheet-down 0.22s ease-in both;
+}
 @keyframes podium-rise {
   from {
     transform: scaleY(0);
@@ -242,8 +274,10 @@ button {
   .win-label,
   .confetti,
   .podium-bar,
-  .podium-top {
-    animation: none;
+  .podium-top,
+  .sheet-backdrop,
+  .sheet-panel {
+    animation: none !important;
   }
   .animate-dice-roll,
   .animate-pop,

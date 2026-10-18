@@ -11,6 +11,7 @@ test('three players play a complete Karma game through the UI', async ({ browser
   for (const p of pages) p.setDefaultTimeout(15_000); // a stuck click fails fast with a clear error
 
   // Karma sits next to Yatzy on the home screen; Alice opens a private Karma room.
+  await alice.page.getByTestId('home-game-karma').click();
   await alice.page.getByTestId('home-new-karma').click();
   const code = (await alice.page.getByTestId('room-code').textContent())!.trim();
   for (const p of [bob.page, cleo.page]) {
@@ -75,8 +76,11 @@ test('the lobby can be filtered by game', async ({ browser }) => {
   const hostA = await newPlayer(browser, 'KarmaHost', 'fox');
   const hostB = await newPlayer(browser, 'YatzyHost', 'cat');
 
+  await hostA.page.getByTestId('home-game-karma').click();
+
   await hostA.page.getByTestId('home-quick-karma').click();
   await expect(hostA.page.getByTestId('room-visibility')).toHaveText('Public');
+  await hostB.page.getByTestId('home-game-yatzy').click();
   await hostB.page.getByTestId('home-quick-yatzy').click();
 
   const w = watcher.page;
@@ -137,6 +141,8 @@ test('cards slide when swapped and when played to the pile (unless motion is red
   const calm = await make('Calm', 'owl', 'reduce'); // reduced motion: must not animate
   const pages = [alice.page, bob.page, calm.page];
 
+  await alice.page.getByTestId('home-game-karma').click();
+
   await alice.page.getByTestId('home-new-karma').click();
   const code = (await alice.page.getByTestId('room-code').textContent())!.trim();
   for (const p of [bob.page, calm.page]) {
@@ -193,6 +199,8 @@ test('tap selects, tapping again deselects, the Play button plays; Ready button 
   const alice = await newPlayer(browser, 'Alice', 'fox');
   const bob = await newPlayer(browser, 'Bob', 'cat');
   const [a, b] = [alice.page, bob.page];
+
+  await a.getByTestId('home-game-karma').click();
 
   await a.getByTestId('home-new-karma').click();
   const code = (await a.getByTestId('room-code').textContent())!.trim();
@@ -293,6 +301,8 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
   const bob = await newPlayer(browser, 'Bob', 'cat');
   const [a, b] = [alice.page, bob.page];
 
+  await a.getByTestId('home-game-karma').click();
+
   await a.getByTestId('home-new-karma').click();
   const code = (await a.getByTestId('room-code').textContent())!.trim();
   await b.getByTestId('home-join-code').fill(code);
@@ -366,6 +376,8 @@ test('a very long hand (after picking up piles) wraps into rows of at most 12 an
   const alice = await newPlayer(browser, 'Alice', 'fox');
   const bob = await newPlayer(browser, 'Bob', 'cat');
   const [a, b] = [alice.page, bob.page];
+
+  await a.getByTestId('home-game-karma').click();
 
   await a.getByTestId('home-new-karma').click();
   const code = (await a.getByTestId('room-code').textContent())!.trim();
