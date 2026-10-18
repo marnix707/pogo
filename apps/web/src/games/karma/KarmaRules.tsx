@@ -19,8 +19,8 @@ export function KarmaRules({ open, onClose }: { open: boolean; onClose: () => vo
           deselect), then press <b>Play</b>, or double-tap a card to play it quickly. If you hold
           several cards of the same rank, tapping one selects them all (tap one again to drop just
           that card); press Play. No double-tap then. The card must be equal to or higher than the
-          top card of the pile. Can&apos;t or don&apos;t want to? Tap <b>Pick up</b> to take the
-          whole pile.
+          top card of the pile. Can&apos;t play anything? The pile is picked up for you
+          automatically. Want to pick it up anyway? Tap the <b>pile</b> twice.
         </li>
         <li>
           <b className="text-neon">2</b> goes on anything, and anything goes on a 2.{' '}

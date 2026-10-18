@@ -41,6 +41,9 @@ const ACTION_COLUMN_PX = 96;
 /** More cards than this in my hand wrap into extra rows so every card stays visible and tappable. */
 const MAX_PER_ROW = 12;
 
+/** How long the table waits before picking up the pile for a player who has no legal play. */
+const AUTO_PICKUP_MS = 1100;
+
 /** Em-size of an opponent's cards: fewer opponents, bigger cards (4 seats must fit in a row). */
 const seatFont = (opponents: number) =>
   opponents <= 1 ? 11 : opponents === 2 ? 9.6 : opponents === 3 ? 8.2 : 5.7;
@@ -608,15 +611,31 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     hint = 'Press Play · tap again to deselect (a single card: double-tap plays)';
   }
 
-  const shownHint = flash ?? (pileArmed ? 'Tap the pile again to pick it up' : hint);
-
-  // Nothing in my active cards can be played: picking up is the only move, so say so with colour.
+  // Nothing in my active cards can be played, so picking up is the only move: it happens by itself
+  // (after a beat, so you can see why). Picking up voluntarily is still possible by tapping the pile.
   const activeCards = zone === 'hand' ? hand : zone === 'up' ? (mine?.faceUp ?? []) : [];
   const mustPickUp =
     playing &&
     pile.length > 0 &&
     zone !== 'down' &&
     !activeCards.some((c) => c !== null && canPlayRank(pile, rankOf(c)));
+
+  const sendRef = useRef(send);
+  sendRef.current = send;
+  const moveSeq = view.lastEvent?.seq;
+  useEffect(() => {
+    if (!mustPickUp || busy) return;
+    const t = setTimeout(() => void sendRef.current({ type: 'pickup' }), AUTO_PICKUP_MS);
+    return () => clearTimeout(t);
+  }, [mustPickUp, busy, moveSeq]);
+
+  const shownHint =
+    flash ??
+    (mustPickUp
+      ? 'Nothing you can play: picking up the pile…'
+      : pileArmed
+        ? 'Tap the pile again to pick it up'
+        : hint);
 
   const endgame = !!mine && view.phase === 'play' && view.stockCount === 0 && hand.length === 0;
   const tableFont = view.phase === 'swap' || endgame ? tableBig : tableBig * 0.62;
@@ -783,8 +802,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         {mine && !finished && (
           <div className="border-t-2 border-edge/60 bg-panel px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-3 text-ink">
             <div className="mx-auto flex max-w-md flex-col gap-1">
-              <div className="flex items-start gap-2">
-                <div className="flex min-w-0 flex-1 justify-center">
+              <div className="flex items-stretch gap-2">
+                <div className="flex shrink-0 justify-start">
                   <TableSlots
                     faceUp={mine.faceUp}
                     faceDown={mine.faceDown}
@@ -815,22 +834,24 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                     }
                   />
                 </div>
-                <div className="flex w-[5.5rem] shrink-0 flex-col gap-1.5">
+                {/* Timer and Play fill all the room the table cards leave (they sit to the left), in
+                    a fixed 2 : 3 split so nothing moves between turns. */}
+                <div className="flex min-w-[5.5rem] flex-1 flex-col gap-2">
                   {view.phase === 'play' && (
                     <div
                       data-testid="karma-timer"
                       data-my-turn={myTurn}
                       data-seconds={secondsLeft}
-                      className={`h-[3.25rem] rounded-lg border-2 px-1 py-1 text-center ${
+                      className={`flex min-h-0 flex-[2] flex-col items-center justify-center rounded-lg border-2 px-1 text-center ${
                         secondsLeft !== null && secondsLeft <= 10
                           ? 'animate-pulse border-danger text-danger'
                           : 'border-edge/40'
                       }`}
                     >
-                      <p className="label text-[9px] leading-none text-muted">
-                        {myTurn ? 'Your turn' : nameOf(currentId ?? '').slice(0, 10)}
+                      <p className="label text-[10px] leading-none text-muted">
+                        {myTurn ? 'Your turn' : nameOf(currentId ?? '').slice(0, 12)}
                       </p>
-                      <p className="text-xl font-bold leading-tight tabular-nums">
+                      <p className="text-3xl font-bold leading-none tabular-nums">
                         {secondsLeft === null ? '–' : `${secondsLeft}s`}
                       </p>
                     </div>
@@ -838,7 +859,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                   {swapping && (
                     <Button
                       data-testid="karma-ready"
-                      className="!h-11 !min-h-0 !px-2 !text-xs !leading-tight"
+                      className="!min-h-0 flex-1 !text-xl !leading-tight"
                       disabled={busy}
                       onClick={() => void getReady()}
                     >
@@ -846,32 +867,18 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                     </Button>
                   )}
                   {view.phase === 'play' && (
-                    <div className="flex flex-col gap-1.5">
-                      <Button
-                        data-testid="karma-pickup"
-                        data-urgent={mustPickUp}
-                        variant={mustPickUp ? 'primary' : 'secondary'}
-                        className={`!h-11 !min-h-0 !px-2 !text-xs !leading-tight ${
-                          mustPickUp ? 'animate-pulse ring-4 ring-neon' : ''
-                        }`}
-                        disabled={!playing || busy || pile.length === 0}
-                        onClick={pickUpPile}
-                      >
-                        Pick up ({pile.length})
-                      </Button>
-                      <Button
-                        data-testid="karma-play"
-                        className="!h-11 !min-h-0 !px-2 !text-xs !leading-tight"
-                        disabled={!playing || busy || selCount === 0}
-                        onClick={() => void playSelected()}
-                      >
-                        {selDown !== null
-                          ? 'Flip it'
-                          : selCount > 0
-                            ? `Play ${selCount === 1 ? cardLabel(sel[0] as Card) : `${selCount} cards`}`
-                            : 'Play'}
-                      </Button>
-                    </div>
+                    <Button
+                      data-testid="karma-play"
+                      className="!min-h-0 flex-[3] !px-2 !text-xl !leading-tight"
+                      disabled={!playing || busy || selCount === 0}
+                      onClick={() => void playSelected()}
+                    >
+                      {selDown !== null
+                        ? 'Flip it'
+                        : selCount > 0
+                          ? `Play ${selCount === 1 ? cardLabel(sel[0] as Card) : `${selCount} cards`}`
+                          : 'Play'}
+                    </Button>
                   )}
                 </div>
               </div>

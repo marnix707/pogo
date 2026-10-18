@@ -324,8 +324,8 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
   await expect(other.getByTestId('my-hand')).toHaveAttribute('data-dimmed', 'true');
   // The other player's hand is shown as a fan of face-down cards, one per card; Play is the lowest button.
   await expect(mover.locator('[data-testid^=seat-hand-]')).toHaveAttribute('data-count', '3');
-  const pickBox = await mover.getByTestId('karma-pickup').boundingBox();
-  expect(play!.y).toBeGreaterThan(pickBox!.y);
+  expect(play!.y).toBeGreaterThan(timerBefore!.y); // Play is the big button under the timer
+  expect(play!.width).toBeGreaterThan(90);
 
   // The deck cannot be drawn from: tapping it only explains why.
   await mover.getByTestId('stock').click();
@@ -385,7 +385,8 @@ test('a very long hand (after picking up piles) wraps into rows of at most 12 an
       if (!s.myTurn) continue;
       const pileCount = Number(await page.getByTestId('pile').getAttribute('data-count'));
       if (page === a && pileCount > 0) {
-        await a.getByTestId('karma-pickup').click();
+        await a.getByTestId('pile').click(); // tap the pile twice: pick it up
+        await a.getByTestId('pile').click();
       } else {
         await takeTurn(page, s);
       }

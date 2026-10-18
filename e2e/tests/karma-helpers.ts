@@ -82,7 +82,7 @@ export async function takeTurn(page: Page, s: Snapshot) {
 
   if (s.handCount > 0) {
     const set = choose(s.playableHand);
-    if (set.length === 0) return page.getByTestId('karma-pickup').click();
+    if (set.length === 0) return; // nothing playable: the table picks the pile up by itself
     await playSet(
       page,
       set.map((c) => c.id),
@@ -90,7 +90,7 @@ export async function takeTurn(page: Page, s: Snapshot) {
     );
   } else if (s.hasUp) {
     const set = choose(s.playableUp);
-    if (set.length === 0) return page.getByTestId('karma-pickup').click();
+    if (set.length === 0) return; // nothing playable: the table picks the pile up by itself
     await playSet(
       page,
       set.map((c) => c.id),
