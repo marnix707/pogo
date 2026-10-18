@@ -40,7 +40,7 @@ export function TopBar({
       className={`flex items-center gap-3 px-4 ${
         compact
           ? 'pb-1.5 pt-[max(0.5rem,env(safe-area-inset-top))]'
-          : 'pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]'
+          : 'pb-3 pt-[max(1.25rem,env(safe-area-inset-top))]'
       }`}
     >
       {left}
