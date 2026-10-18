@@ -51,7 +51,10 @@ export const snapshot = (page: Page): Promise<Snapshot> =>
     const turn = document.querySelector('[data-testid=karma-hint]');
     return {
       myTurn: turn?.getAttribute('data-my-turn') === 'true',
-      event: document.querySelector('[data-testid=karma-event]')?.textContent ?? '',
+      // data-seq changes with every move, even while the (n-1) text is still blank.
+      event: `${document.querySelector('[data-testid=karma-event]')?.getAttribute('data-seq') ?? ''}|${
+        document.querySelector('[data-testid=karma-event]')?.textContent ?? ''
+      }`,
       handCount: q('[data-testid^=hand-card-]').length,
       playableHand: q('[data-testid^=hand-card-][data-playable=true]').map((e) => ({
         id: e.getAttribute('data-testid')!,

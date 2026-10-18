@@ -195,7 +195,8 @@ export function PlayingCard({
         boxShadow: selected
           ? '0 0 0 0.25em #FF6BDE, 0 0.3em 0 0.1em rgba(0,24,80,0.45)'
           : '0 0.2em 0 0 rgba(0,24,80,0.35)',
-        opacity: dimmed ? 0.4 : 1,
+        // Unavailable cards are dimmed by 70% (the same as my hand while it is not my turn).
+        filter: dimmed ? 'brightness(0.3)' : undefined,
       }}
     >
       {content}

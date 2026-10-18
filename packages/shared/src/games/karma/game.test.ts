@@ -75,9 +75,9 @@ describe('canPlayRank', () => {
     expect(canPlayRank([card(6)], 5)).toBe(false);
     expect(canPlayRank([card(14)], 13)).toBe(false);
   });
-  it('after a 7 only lower cards, a 2 or a 10 may follow', () => {
-    for (const rank of [3, 4, 5, 6, 2, 10]) expect(canPlayRank([card(7)], rank)).toBe(true);
-    for (const rank of [7, 8, 9, 11, 12, 13, 14]) expect(canPlayRank([card(7)], rank)).toBe(false);
+  it('after a 7 only 7 or lower, a 2 or a 10 may follow (7s stack)', () => {
+    for (const rank of [3, 4, 5, 6, 7, 2, 10]) expect(canPlayRank([card(7)], rank)).toBe(true);
+    for (const rank of [8, 9, 11, 12, 13, 14]) expect(canPlayRank([card(7)], rank)).toBe(false);
   });
   it('a 7 can be played on anything that is not higher than it', () => {
     expect(canPlayRank([card(5)], 7)).toBe(true);
@@ -92,11 +92,12 @@ describe('canPlayRank', () => {
   });
   it('a 3 is invisible: playable on anything, and the card beneath it still counts', () => {
     for (const top of [5, 7, 14]) expect(canPlayRank([card(top)], 3)).toBe(true);
-    expect(canPlayRank([card(7), card(3)], 9)).toBe(false); // 7, 3: still lower than 7
+    expect(canPlayRank([card(7), card(3)], 9)).toBe(false); // 7, 3: still 7 or lower
     expect(canPlayRank([card(7), card(3)], 6)).toBe(true);
     expect(canPlayRank([card(9), card(3)], 8)).toBe(false); // 9, 3: still 9 or higher
     expect(canPlayRank([card(9), card(3)], 9)).toBe(true);
-    expect(canPlayRank([card(7), card(3), card(3)], 7)).toBe(false); // several 3s are all see-through
+    expect(canPlayRank([card(7), card(3), card(3)], 8)).toBe(false); // several 3s are all see-through
+    expect(canPlayRank([card(7), card(3), card(3)], 7)).toBe(true);
     expect(canPlayRank([card(2), card(3)], 4)).toBe(true); // a 2 beneath: anything goes
     expect(canPlayRank([card(3), card(3)], 4)).toBe(true); // only 3s: like an empty pile
     expect(effectiveTop([card(9), card(3)])).toBe(card(9));
@@ -301,15 +302,15 @@ describe('playing cards', () => {
         pile: [card(9), card(7)],
       });
 
-    it('accepts lower cards, a 2 and a 10', () => {
+    it('accepts equal or lower cards (another 7 too), a 2 and a 10', () => {
+      ok(onSeven(), 'p1', { type: 'play', cards: [card(7, 1)] });
       ok(onSeven(), 'p1', { type: 'play', cards: [card(3)] });
       ok(onSeven(), 'p1', { type: 'play', cards: [card(6)] });
       ok(onSeven(), 'p1', { type: 'play', cards: [card(2)] });
       ok(onSeven(), 'p1', { type: 'play', cards: [card(10)] });
     });
 
-    it('rejects another 7 and anything higher, with a helpful message', () => {
-      bad(onSeven(), 'p1', { type: 'play', cards: [card(7, 1)] }, 'After a 7');
+    it('rejects anything higher, with a helpful message', () => {
       bad(onSeven(), 'p1', { type: 'play', cards: [card(8)] }, 'After a 7');
     });
 

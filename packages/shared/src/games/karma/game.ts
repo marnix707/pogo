@@ -71,8 +71,8 @@ export function effectiveTop(pile: readonly Card[]): Card | undefined {
  * Can a card of this rank be played on the pile?
  * - 2 and 10 can always be played (a 10 also burns the pile); anything may follow a 2.
  * - A 3 is invisible: it can always be played and the card beneath it still counts
- *   (7, 3: the next player must still play lower than the 7). A pile of only 3s counts as empty.
- * - After a 7 the next card must be LOWER than 7 (the "lower than" variant): 3-6, a 2 or a 10.
+ *   (7, 3: the next player must still play 7 or lower). A pile of only 3s counts as empty.
+ * - After a 7 the next card must be 7 or LOWER (the "lower than or equal" variant): 3-7, a 2 or a 10.
  * - Otherwise the card must be equal to or higher than the top card.
  */
 export function canPlayRank(pile: readonly Card[], rank: number): boolean {
@@ -81,7 +81,7 @@ export function canPlayRank(pile: readonly Card[], rank: number): boolean {
   if (top === undefined) return true;
   const topRank = rankOf(top);
   if (topRank === 2) return true;
-  if (topRank === 7) return rank < 7;
+  if (topRank === 7) return rank <= 7;
   return rank >= topRank;
 }
 
@@ -195,7 +195,7 @@ function validateMove(state: KarmaState, playerId: string, move: KarmaMove): Mov
       if (!canPlayRank(state.pile, rank))
         return err(
           rankOf(effectiveTop(state.pile) as Card) === 7
-            ? 'After a 7 you must play lower, or a 2 or a 10'
+            ? 'After a 7 you must play 7 or lower, or a 2 or a 10'
             : 'Too low: play higher, or a 2 or a 10',
         );
       return OK;

@@ -281,7 +281,7 @@ test('tap selects, tapping again deselects, the Play button plays; Ready button 
     await mover.getByTestId('karma-play').click();
   }
   // (A 10 would burn the pile, leaving it empty, so check the narration rather than the pile size.)
-  await expect(mover.getByTestId('karma-event')).toContainText('played');
+  await expect(mover.getByTestId('karma-event')).toHaveAttribute('data-seq', /\d+/);
 
   for (const c of [alice, bob]) await c.context.close();
 });
@@ -338,7 +338,7 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
   // Play a card, then the other player picks the pile up with two taps.
   const snap = await snapshot(mover);
   await takeTurn(mover, snap);
-  await expect(mover.getByTestId('karma-event')).toContainText('played');
+  await expect(mover.getByTestId('karma-event')).toHaveAttribute('data-seq', /\d+/);
   // The action column keeps its place between turns (no bump when the turn passes).
   await expect(mover.getByTestId('karma-play')).toBeDisabled();
   const playAfter = await mover.getByTestId('karma-play').boundingBox();
@@ -352,7 +352,8 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
     await expect(pile).toHaveAttribute('data-armed', 'true');
     await expect(other.getByTestId('karma-hint')).toContainText('pile again');
     await pile.click();
-    await expect(other.getByTestId('karma-event')).toContainText('picked up all the cards');
+    // The line narrates the move before the latest one: Alice's play, now that the pile is picked up.
+    await expect(other.getByTestId('karma-event')).toContainText('played');
   }
 
   for (const c of [alice, bob]) await c.context.close();

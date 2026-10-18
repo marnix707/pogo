@@ -398,13 +398,17 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     now: room.serverTime,
     currentId,
   };
-  // The one-line narration of the latest move, with what the event itself does not say:
-  // whether the turn clock ran out.
-  const [note, setNote] = useState<{
+  // The one-line narration: the move BEFORE the latest one (n-1; the pile already shows the latest),
+  // plus what the event itself does not say: whether the turn clock ran out, who goes again.
+  interface Note {
     ev: karma.KarmaEvent;
     timedOut: boolean;
     again: boolean;
-  } | null>(() => (view.lastEvent ? { ev: view.lastEvent, timedOut: false, again: false } : null));
+  }
+  const [notes, setNotes] = useState<{ current: Note | null; previous: Note | null }>(() => ({
+    current: view.lastEvent ? { ev: view.lastEvent, timedOut: false, again: false } : null,
+    previous: null,
+  }));
   const before = useRef({ deadline: game.deadline });
   const lastSeq = useRef(view.lastEvent?.seq ?? 0);
   useEffect(() => {
@@ -418,12 +422,13 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
       play('turn');
       haptic('tap');
     }
-    setNote({
+    const note: Note = {
       again,
       ev,
       timedOut:
         before.current.deadline !== null && latest.current.now >= before.current.deadline - 300,
-    });
+    };
+    setNotes((n) => ({ current: note, previous: n.current }));
     if (ev.out && ev.cards.length > 0) {
       const winner = latest.current.finishOrder[0] === ev.playerId;
       const name = latest.current.nameOf(ev.playerId);
@@ -775,9 +780,10 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
             <p
               className="label min-h-[2.6em] text-[10px] font-bold leading-snug text-onbg"
               data-testid="karma-event"
+              data-seq={notes.current?.ev.seq ?? ''}
               aria-live="polite"
             >
-              {note ? describeEvent(note.ev, nameOf, note) : ' '}
+              {notes.previous ? describeEvent(notes.previous.ev, nameOf, notes.previous) : ' '}
             </p>
             <p
               className={`mt-1 min-h-[2.4em] text-xs font-semibold leading-snug ${myTurn ? 'text-onbg' : 'text-onbg/80'}`}

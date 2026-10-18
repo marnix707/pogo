@@ -28,12 +28,12 @@ export function KarmaRules({ open, onClose }: { open: boolean; onClose: () => vo
           pile and you go again. Four of a kind on top of the pile also burns it.
         </li>
         <li>
-          <b className="text-neon">7:</b> after a 7 the next card must be <b>lower</b> than 7 (3 to
-          6), or a 2, or a 10. Anything higher, or another 7, can&apos;t be played, so you pick up.
+          <b className="text-neon">7:</b> after a 7 the next card must be 7 or <b>lower</b> (3 to 7,
+          so 7s can stack), or a 2, or a 10. Anything higher can&apos;t be played, so you pick up.
         </li>
         <li>
           <b className="text-neon">3:</b> is invisible. You can play it any time, and the card
-          underneath still counts: after 7, 3 the next player must still play lower than the 7.
+          underneath still counts: after 7, 3 the next player must still play 7 or lower.
         </li>
         <li>
           <b className="text-neon">8:</b> skips the next player. With two players that means you
