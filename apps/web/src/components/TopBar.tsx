@@ -39,8 +39,8 @@ export function TopBar({
     <header
       className={`flex items-center gap-3 px-4 ${
         compact
-          ? 'pb-1.5 pt-[max(0.5rem,env(safe-area-inset-top))]'
-          : 'pb-3 pt-[max(1.25rem,env(safe-area-inset-top))]'
+          ? 'pb-1.5 pt-[calc(env(safe-area-inset-top)+0.5rem)]'
+          : 'pb-3 pt-[calc(env(safe-area-inset-top)+1.25rem)]'
       }`}
     >
       {left}

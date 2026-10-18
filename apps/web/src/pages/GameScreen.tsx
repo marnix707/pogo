@@ -45,7 +45,7 @@ function ResultsPanel({
       data-testid="results-panel"
       className="animate-slide-up fixed inset-0 z-40 overflow-y-auto bg-panel text-ink"
     >
-      <div className="mx-auto flex min-h-full max-w-lg flex-col gap-5 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))]">
+      <div className="mx-auto flex min-h-full max-w-lg flex-col gap-5 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+1.5rem)]">
         <h2 className="text-center text-2xl font-bold uppercase tracking-[0.12em]">
           {title ??
             (iWon ? '🎉 You won!' : `🏆 ${nameOf(best?.playerId ?? '')?.nickname ?? ''} wins!`)}
