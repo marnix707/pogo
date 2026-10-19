@@ -318,3 +318,18 @@ button {
   transform-origin: left center;
   animation: timer-drain linear forwards;
 }
+
+/* Last seconds of a turn: the overlay blinks (with reduced motion it just stays red). */
+@keyframes timer-flash {
+  50% {
+    opacity: 0.2;
+  }
+}
+.timer-flash {
+  animation: timer-flash 0.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .timer-flash {
+    animation: none;
+  }
+}

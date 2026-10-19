@@ -873,6 +873,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                       }`}
                     >
                       <TimerDrain
+                        active={myTurn}
                         deadline={game.deadline}
                         serverTime={room.serverTime}
                         totalSec={room.turnTimeSec}
@@ -896,19 +897,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                   {view.phase === 'play' && (
                     <Button
                       data-testid="karma-play"
-                      className="relative !min-h-0 flex-[3] overflow-hidden !px-2 !text-xl !leading-tight"
+                      className="!min-h-0 flex-[3] !px-2 !text-xl !leading-tight"
                       disabled={!playing || busy || selCount === 0}
                       onClick={() => void playSelected()}
                     >
-                      {myTurn && (
-                        <TimerDrain
-                          deadline={game.deadline}
-                          serverTime={room.serverTime}
-                          totalSec={room.turnTimeSec}
-                          urgent={urgent}
-                        />
-                      )}
-                      <span className="relative">
+                      <span>
                         {selDown !== null
                           ? 'Flip it'
                           : selCount > 0

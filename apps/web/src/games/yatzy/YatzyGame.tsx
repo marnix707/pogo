@@ -139,6 +139,7 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
         >
           {!finished && (
             <TimerDrain
+              active={myTurn}
               deadline={game.deadline}
               serverTime={room.serverTime}
               totalSec={room.turnTimeSec}
@@ -254,19 +255,11 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
               <div className="flex gap-3">
                 <Button
                   data-testid="roll-button"
-                  className="relative min-h-11 flex-1 overflow-hidden !px-3"
+                  className="min-h-11 flex-1 !px-3"
                   disabled={busy || state.rollsLeft === 0 || (rolled && allHeld)}
                   onClick={roll}
                 >
-                  <TimerDrain
-                    deadline={game.deadline}
-                    serverTime={room.serverTime}
-                    totalSec={room.turnTimeSec}
-                    urgent={urgent}
-                  />
-                  <span className="relative">
-                    {rolled ? `Roll again (${state.rollsLeft})` : 'Roll dice'}
-                  </span>
+                  <span>{rolled ? `Roll again (${state.rollsLeft})` : 'Roll dice'}</span>
                 </Button>
                 <Button
                   data-testid="score-button"

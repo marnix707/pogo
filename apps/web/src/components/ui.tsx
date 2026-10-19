@@ -193,16 +193,18 @@ function Drain({
   return (
     <span
       aria-hidden
-      className={`timer-drain pointer-events-none absolute inset-0 ${
-        urgent ? 'bg-danger/45' : 'bg-white/25'
-      }`}
-      style={
-        {
-          '--from': start.from,
-          animationDuration: `${start.ms}ms`,
-        } as React.CSSProperties
-      }
-    />
+      className={`pointer-events-none absolute inset-0 ${urgent ? 'timer-flash' : ''}`}
+    >
+      <span
+        className={`timer-drain absolute inset-0 ${urgent ? 'bg-danger/55' : 'bg-white/25'}`}
+        style={
+          {
+            '--from': start.from,
+            animationDuration: `${start.ms}ms`,
+          } as React.CSSProperties
+        }
+      />
+    </span>
   );
 }
 
@@ -216,13 +218,16 @@ export function TimerDrain({
   serverTime,
   totalSec,
   urgent = false,
+  active = true,
 }: {
   deadline: number | null | undefined;
   serverTime: number;
   totalSec: number;
   urgent?: boolean;
+  /** Only drain while true (e.g. on my turn). */
+  active?: boolean;
 }) {
-  if (deadline == null) return null;
+  if (deadline == null || !active) return null;
   const remainingMs = deadline - serverTime;
   return (
     <Drain key={deadline} remainingMs={remainingMs} totalMs={totalSec * 1000} urgent={urgent} />
