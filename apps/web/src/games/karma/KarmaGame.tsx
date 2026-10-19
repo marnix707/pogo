@@ -9,6 +9,7 @@ import { useCountdown } from '../../lib/useCountdown';
 import type { GameUiProps } from '../types';
 import { KarmaRules } from './KarmaRules';
 import { DOUBLE_TAP_MS, planTap } from './selection';
+import { FourBurn } from './FourBurn';
 import { WinReveal } from './WinReveal';
 import { CardFlipContext, PlayingCard } from './PlayingCard';
 import type { FlipOrigin } from './PlayingCard';
@@ -41,7 +42,9 @@ const ACTION_COLUMN_PX = 96;
 /** More cards than this in my hand wrap into extra rows so every card stays visible and tappable. */
 const MAX_PER_ROW = 12;
 /** How long the cards of a burn or a failed blind card stay visible on the pile before it resolves. */
-const GHOST_MS = 1300;
+const GHOST_MS = 1100;
+/** A four-of-a-kind burn gets a bigger show: the four cards side by side, dimmed table, then the fire. */
+const FOUR_BURN_MS = 2400;
 
 /** Em-size of an opponent's cards: fewer opponents, bigger cards (4 seats must fit in a row). */
 const seatFont = (opponents: number) =>
@@ -311,6 +314,9 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const ghostTimer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => () => clearTimeout(ghostTimer.current), []);
   const prevPile = useRef<Card[]>(view.pile);
+  const [fourBurn, setFourBurn] = useState<Card[] | null>(null);
+  const fourTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(fourTimer.current), []);
   const flameTimer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => () => clearTimeout(flameTimer.current), []);
   /** Someone just played their last card: reveal it with a flourish (confetti for the winner). */
@@ -368,10 +374,6 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const zone = mine ? activeZone(mine) : 'none';
   const pile = view.pile;
   const shownPile = ghost ?? pile;
-  // A burn by four of a kind fans out all four cards for the moment they are shown.
-  const top4 = shownPile.slice(-4);
-  const fanCount =
-    ghost && top4.length === 4 && top4.every((c) => rankOf(c) === rankOf(top4[0] as Card)) ? 4 : 3;
   const hand = useMemo(() => [...(mine?.hand ?? [])].sort(byRankThenSuit), [mine?.hand]);
   const swapping = view.phase === 'swap' && !!mine && !mine.ready;
   const playing = view.phase === 'play' && myTurn;
@@ -457,12 +459,24 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     play(ev.burned ? 'score' : ev.pickedUp > 0 ? 'error' : 'tap');
     if (ev.playerId === me) haptic(ev.burned ? 'success' : ev.pickedUp > 0 ? 'error' : 'tap');
     const showcase = ev.cards.length > 0 && (ev.burned || (ev.kind === 'blind' && ev.pickedUp > 0));
+    const shown = showcase
+      ? [...prevPile.current.filter((c) => !ev.cards.includes(c)), ...ev.cards]
+      : [];
+    const four = shown.slice(-4);
+    const isFour =
+      ev.burned && four.length === 4 && four.every((c) => rankOf(c) === rankOf(four[0] as Card));
+    const holdMs = isFour ? FOUR_BURN_MS : GHOST_MS;
     if (showcase) {
-      setGhost([...prevPile.current.filter((c) => !ev.cards.includes(c)), ...ev.cards]);
+      setGhost(shown);
       clearTimeout(ghostTimer.current);
-      ghostTimer.current = setTimeout(() => setGhost(null), GHOST_MS);
+      ghostTimer.current = setTimeout(() => setGhost(null), holdMs);
     }
-    if (ev.burned) {
+    if (isFour) {
+      // The overlay has its own fire emoji (burn-flash), so the pile flame is skipped.
+      setFourBurn(four);
+      clearTimeout(fourTimer.current);
+      fourTimer.current = setTimeout(() => setFourBurn(null), FOUR_BURN_MS);
+    } else if (ev.burned) {
       // The timer lives in a ref, NOT in this effect's cleanup: the effect re-runs on every state
       // push (lastEvent is a new object each time), and a cleanup would cancel the timer and leave
       // the flame on screen for the rest of the game.
@@ -768,7 +782,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                   style={{ width: `${pileFont * 5}px`, height: `${pileFont * 7}px` }}
                 />
               ) : (
-                shownPile.slice(-fanCount).map((c, i, shown) => {
+                shownPile.slice(-3).map((c, i, shown) => {
                   const fromTop = shown.length - 1 - i;
                   return (
                     <PlayingCard
@@ -778,7 +792,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                       tilt={fromTop === 0 ? 0 : fromTop % 2 ? -7 : 6}
                       className="absolute top-0"
                       style={{
-                        left: `${pileFont * (fanCount === 4 ? 1.2 - fromTop * 0.5 : 1.1 - fromTop * 0.6)}px`,
+                        left: `${pileFont * (1.1 - fromTop * 0.6)}px`,
                       }}
                       testId={fromTop === 0 ? 'pile-top' : undefined}
                       flip={{ id: c, origin: () => pileOrigin(c) }}
@@ -986,6 +1000,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
           </div>
         )}
 
+        {fourBurn && <FourBurn cards={fourBurn} ms={FOUR_BURN_MS} />}
         {reveal && <WinReveal {...reveal} />}
 
         <KarmaRules open={rulesOpen} onClose={() => setRulesOpen(false)} />
