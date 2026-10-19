@@ -873,12 +873,21 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                           : 'border-edge/40'
                       }`}
                     >
-                      <p className="label text-[10px] leading-none text-muted">
-                        {myTurn ? 'Your turn' : nameOf(currentId ?? '').slice(0, 12)}
-                      </p>
-                      <p className="text-3xl font-bold leading-none tabular-nums">
-                        {secondsLeft === null ? '–' : `${secondsLeft}s`}
-                      </p>
+                      {secondsLeft === null ? (
+                        // No turn timer: the whole box says whose turn it is.
+                        <p className="w-full break-words text-xl font-bold uppercase leading-tight tracking-wide">
+                          {myTurn ? 'Your turn' : nameOf(currentId ?? '').slice(0, 12)}
+                        </p>
+                      ) : (
+                        <>
+                          <p className="label text-[10px] leading-none text-muted">
+                            {myTurn ? 'Your turn' : nameOf(currentId ?? '').slice(0, 12)}
+                          </p>
+                          <p className="text-3xl font-bold leading-none tabular-nums">
+                            {secondsLeft}s
+                          </p>
+                        </>
+                      )}
                     </div>
                   )}
                   {swapping && (
