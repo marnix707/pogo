@@ -174,3 +174,57 @@ export function Toggle({
     </button>
   );
 }
+
+function Drain({
+  remainingMs,
+  totalMs,
+  urgent,
+}: {
+  remainingMs: number;
+  totalMs: number;
+  urgent: boolean;
+}) {
+  // Computed once per deadline (the parent keys this component by it), so re-renders never
+  // restart or bend the running animation.
+  const [start] = useState(() => ({
+    from: Math.min(1, Math.max(0, totalMs > 0 ? remainingMs / totalMs : 1)),
+    ms: Math.max(0, remainingMs),
+  }));
+  return (
+    <span
+      aria-hidden
+      className={`timer-drain pointer-events-none absolute inset-0 ${
+        urgent ? 'bg-danger/45' : 'bg-white/25'
+      }`}
+      style={
+        {
+          '--from': start.from,
+          animationDuration: `${start.ms}ms`,
+        } as React.CSSProperties
+      }
+    />
+  );
+}
+
+/**
+ * A reverse loading bar: a tinted overlay that shrinks away until the turn deadline. Put it inside
+ * a `relative overflow-hidden` element (a button or a box); it sits under the element's text only
+ * if the text has `relative` too. Renders nothing without a deadline.
+ */
+export function TimerDrain({
+  deadline,
+  serverTime,
+  totalSec,
+  urgent = false,
+}: {
+  deadline: number | null | undefined;
+  serverTime: number;
+  totalSec: number;
+  urgent?: boolean;
+}) {
+  if (deadline == null) return null;
+  const remainingMs = deadline - serverTime;
+  return (
+    <Drain key={deadline} remainingMs={remainingMs} totalMs={totalSec * 1000} urgent={urgent} />
+  );
+}

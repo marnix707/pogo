@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { karma } from '@pogo/shared';
 import type { RoomMemberView } from '@pogo/shared';
-import { Button } from '../../components/ui';
+import { Button, TimerDrain } from '../../components/ui';
 import { avatarEmoji } from '../../lib/avatars';
 import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
@@ -647,6 +647,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     zone !== 'down' &&
     !activeCards.some((c) => c !== null && canPlayRank(pile, rankOf(c)));
 
+  const urgent = secondsLeft !== null && secondsLeft <= 10;
   const shownHint =
     flash ??
     (mustPickUp
@@ -867,27 +868,19 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                       data-testid="karma-timer"
                       data-my-turn={myTurn}
                       data-seconds={secondsLeft}
-                      className={`flex min-h-0 flex-[2] flex-col items-center justify-center rounded-lg border-2 px-1 text-center ${
-                        secondsLeft !== null && secondsLeft <= 10
-                          ? 'animate-pulse border-danger text-danger'
-                          : 'border-edge/40'
+                      className={`relative flex min-h-0 flex-[2] flex-col items-center justify-center overflow-hidden rounded-lg border-2 px-1 text-center ${
+                        urgent ? 'animate-pulse border-danger text-danger' : 'border-edge/40'
                       }`}
                     >
-                      {secondsLeft === null ? (
-                        // No turn timer: the whole box says whose turn it is.
-                        <p className="w-full break-words text-xl font-bold uppercase leading-tight tracking-wide">
-                          {myTurn ? 'Your turn' : nameOf(currentId ?? '').slice(0, 12)}
-                        </p>
-                      ) : (
-                        <>
-                          <p className="label text-[10px] leading-none text-muted">
-                            {myTurn ? 'Your turn' : nameOf(currentId ?? '').slice(0, 12)}
-                          </p>
-                          <p className="text-3xl font-bold leading-none tabular-nums">
-                            {secondsLeft}s
-                          </p>
-                        </>
-                      )}
+                      <TimerDrain
+                        deadline={game.deadline}
+                        serverTime={room.serverTime}
+                        totalSec={room.turnTimeSec}
+                        urgent={urgent}
+                      />
+                      <p className="relative w-full break-words text-xl font-bold uppercase leading-tight tracking-wide">
+                        {myTurn ? 'Your turn' : nameOf(currentId ?? '').slice(0, 12)}
+                      </p>
                     </div>
                   )}
                   {swapping && (
@@ -903,15 +896,25 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                   {view.phase === 'play' && (
                     <Button
                       data-testid="karma-play"
-                      className="!min-h-0 flex-[3] !px-2 !text-xl !leading-tight"
+                      className="relative !min-h-0 flex-[3] overflow-hidden !px-2 !text-xl !leading-tight"
                       disabled={!playing || busy || selCount === 0}
                       onClick={() => void playSelected()}
                     >
-                      {selDown !== null
-                        ? 'Flip it'
-                        : selCount > 0
-                          ? `Play ${selCount === 1 ? cardLabel(sel[0] as Card) : `${selCount} cards`}`
-                          : 'Play'}
+                      {myTurn && (
+                        <TimerDrain
+                          deadline={game.deadline}
+                          serverTime={room.serverTime}
+                          totalSec={room.turnTimeSec}
+                          urgent={urgent}
+                        />
+                      )}
+                      <span className="relative">
+                        {selDown !== null
+                          ? 'Flip it'
+                          : selCount > 0
+                            ? `Play ${selCount === 1 ? cardLabel(sel[0] as Card) : `${selCount} cards`}`
+                            : 'Play'}
+                      </span>
                     </Button>
                   )}
                 </div>

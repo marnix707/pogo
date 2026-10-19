@@ -3,7 +3,7 @@ import { yatzy } from '@pogo/shared';
 import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
 import { useCountdown } from '../../lib/useCountdown';
-import { Button } from '../../components/ui';
+import { Button, TimerDrain } from '../../components/ui';
 import { ArrowLeftIcon, ChatIcon, SlidersIcon } from '../../components/icons';
 import { TileButton } from '../../components/TopBar';
 import type { GameUiProps } from '../types';
@@ -114,6 +114,7 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
   const canHold = myTurn && rolled && state.rollsLeft > 0;
   const allHeld = held.every(Boolean);
   const displayHeld = myTurn ? held : state.held;
+  const urgent = secondsLeft !== null && secondsLeft <= 10;
   const rollsUsed = yatzy.MAX_ROLLS - state.rollsLeft;
 
   let hint = '';
@@ -132,10 +133,18 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
         <div
           data-testid="turn-banner"
           data-my-turn={myTurn}
-          className={`hud flex items-center gap-2 px-2 py-1 ${
+          className={`hud relative flex items-center gap-2 overflow-hidden px-2 py-1 ${
             myTurn ? '!border-neon !bg-grape' : ''
           }`}
         >
+          {!finished && (
+            <TimerDrain
+              deadline={game.deadline}
+              serverTime={room.serverTime}
+              totalSec={room.turnTimeSec}
+              urgent={urgent}
+            />
+          )}
           {chrome && (
             <TileButton
               small
@@ -170,16 +179,6 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
                   />
                 ))}
               </div>
-              {secondsLeft !== null && (
-                <div
-                  data-testid="countdown"
-                  className={`label text-[11px] tabular-nums ${
-                    secondsLeft <= 10 ? 'text-danger' : 'text-muted'
-                  }`}
-                >
-                  {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}
-                </div>
-              )}
             </div>
           )}
           {chrome && (
@@ -255,11 +254,19 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
               <div className="flex gap-3">
                 <Button
                   data-testid="roll-button"
-                  className="min-h-11 flex-1 !px-3"
+                  className="relative min-h-11 flex-1 overflow-hidden !px-3"
                   disabled={busy || state.rollsLeft === 0 || (rolled && allHeld)}
                   onClick={roll}
                 >
-                  {rolled ? `Roll again (${state.rollsLeft})` : 'Roll dice'}
+                  <TimerDrain
+                    deadline={game.deadline}
+                    serverTime={room.serverTime}
+                    totalSec={room.turnTimeSec}
+                    urgent={urgent}
+                  />
+                  <span className="relative">
+                    {rolled ? `Roll again (${state.rollsLeft})` : 'Roll dice'}
+                  </span>
                 </Button>
                 <Button
                   data-testid="score-button"
