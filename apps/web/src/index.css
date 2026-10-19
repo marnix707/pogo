@@ -287,8 +287,21 @@ button {
 }
 
 @keyframes pile-pulse {
-  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 rgb(var(--c-neon) / 0)); }
-  50% { transform: scale(1.08); filter: drop-shadow(0 0 14px rgb(var(--c-neon) / 0.9)); }
+  0%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0 rgb(var(--c-neon) / 0));
+  }
+  50% {
+    transform: scale(1.08);
+    filter: drop-shadow(0 0 14px rgb(var(--c-neon) / 0.9));
+  }
 }
-.pile-pulse { animation: pile-pulse 0.9s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .pile-pulse { animation: none; } }
+.pile-pulse {
+  animation: pile-pulse 0.9s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pile-pulse {
+    animation: none;
+  }
+}

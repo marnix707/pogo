@@ -8,6 +8,14 @@ export const karmaUi: GameUi = {
   tagline: 'Shed all your cards. Don’t be the last one left.',
   Component: KarmaGame,
   hideScores: true, // the score is only a rank in Karma
+  // The last card's win reveal (KarmaGame's WinReveal) must finish before the standings cover it.
+  resultsDelayMs(room) {
+    const view = room.game?.view as
+      { lastEvent?: { out: boolean; playerId: string } | null; finishOrder: string[] } | undefined;
+    const ev = view?.lastEvent;
+    if (!ev?.out) return 0;
+    return view!.finishOrder[0] === ev.playerId ? 5400 : 3600;
+  },
   resultsTitle(room, me) {
     const results = room.game?.results?.rankings;
     const last = results?.[results.length - 1];

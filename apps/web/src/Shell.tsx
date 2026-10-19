@@ -135,6 +135,7 @@ export function Shell({ session, onSignOut }: { session: AuthResponse; onSignOut
         onClose={() => setSettingsOpen(false)}
         nickname={session.user.nickname}
         onSignOut={onSignOut}
+        roomCode={room?.code}
       />
     </>
   );

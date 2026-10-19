@@ -73,9 +73,7 @@ export function Scorecard({
               }`}
             >
               {value !== undefined ? (
-                <span className={`text-sm ${value === 0 ? 'text-muted/60' : 'font-bold'}`}>
-                  {value}
-                </span>
+                <span className="text-sm font-bold">{value}</span>
               ) : mine && choosable ? (
                 <button
                   type="button"
@@ -181,15 +179,15 @@ export function Scorecard({
             {yatzy.UPPER_CATEGORIES.map(row)}
             {computedRow(
               'Bonus',
-              `+${yatzy.UPPER_BONUS} at ${yatzy.UPPER_BONUS_THRESHOLD}`,
+              `${totals.get(me)?.upperSubtotal ?? 0}/${yatzy.UPPER_BONUS_THRESHOLD} · +${yatzy.UPPER_BONUS}`,
               (id) => {
                 const t = totals.get(id)!;
-                return t.upperBonus > 0
-                  ? `+${t.upperBonus}`
-                  : `${t.upperSubtotal}/${yatzy.UPPER_BONUS_THRESHOLD}`;
+                return t.upperBonus > 0 ? `+${t.upperBonus}` : String(t.upperSubtotal);
               },
-              'divider',
             )}
+            <tr aria-hidden>
+              <td colSpan={state.players.length + 1} className="h-1.5 bg-edge/20 p-0" />
+            </tr>
             {yatzy.LOWER_CATEGORIES.map(row)}
             {showYatzyBonus &&
               computedRow('Yatzy bonus', '+100 each', (id) => {

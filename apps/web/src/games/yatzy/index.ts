@@ -7,4 +7,5 @@ export const yatzyUi: GameUi = {
   emoji: '🎲',
   tagline: 'Roll five dice, chase combos, beat your friends.',
   Component: YatzyGame,
+  ownHeader: true,
 };

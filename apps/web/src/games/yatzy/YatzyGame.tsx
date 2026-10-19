@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { yatzy } from '@pogo/shared';
-import { avatarEmoji } from '../../lib/avatars';
 import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
 import { useCountdown } from '../../lib/useCountdown';
 import { Button } from '../../components/ui';
+import { ArrowLeftIcon, ChatIcon, SlidersIcon } from '../../components/icons';
+import { TileButton } from '../../components/TopBar';
 import type { GameUiProps } from '../types';
 import { Die } from './Die';
 import { Scorecard } from './Scorecard';
@@ -15,7 +16,7 @@ const ROLL_ANIMATION_MS = 550;
 const NO_HOLDS = [false, false, false, false, false];
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-export function YatzyGame({ room, me, sendMove }: GameUiProps) {
+export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
   const game = room.game!;
   const state = game.view as yatzy.YatzyState;
   const finished = room.status === 'finished';
@@ -127,53 +128,92 @@ export function YatzyGame({ room, me, sendMove }: GameUiProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div
-        data-testid="turn-banner"
-        data-my-turn={myTurn}
-        className={`hud mx-4 flex items-center gap-3 px-3 py-1 ${
-          myTurn ? '!border-neon !bg-grape' : ''
-        }`}
-      >
-        <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-neon bg-panel2 text-xl"
-          aria-hidden
+      <header className="px-4 pb-1.5 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
+        <div
+          data-testid="turn-banner"
+          data-my-turn={myTurn}
+          className={`hud flex items-center gap-2 px-2 py-1 ${
+            myTurn ? '!border-neon !bg-grape' : ''
+          }`}
         >
-          {finished ? '🏁' : avatarEmoji(current?.avatar ?? '')}
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-base font-bold uppercase leading-tight tracking-[0.1em]">
-            {finished ? 'Game over' : myTurn ? 'Your turn' : `${current?.nickname ?? '…'}'s turn`}
-          </div>
-          <div className="label truncate text-[10px] text-muted">
-            Round {state.round}/{yatzy.ROUNDS}
-            {hint && ` · ${hint}`}
-          </div>
-        </div>
-        {!finished && (
-          <div className="text-right">
-            <div className="flex justify-end gap-1.5" aria-label={`${state.rollsLeft} rolls left`}>
-              {Array.from({ length: yatzy.MAX_ROLLS }, (_, i) => (
-                <span
-                  key={i}
-                  className={`h-3 w-3 rounded-full border-2 ${
-                    i < state.rollsLeft ? 'border-accent bg-accent' : 'border-muted/50'
-                  }`}
-                />
-              ))}
+          {chrome && (
+            <TileButton
+              small
+              onClick={chrome.onLeave}
+              aria-label="Leave game"
+              data-testid="leave-game"
+            >
+              <ArrowLeftIcon className="h-5 w-5" />
+            </TileButton>
+          )}
+          <div className="min-w-0 flex-1 pl-1">
+            <div className="truncate text-base font-bold uppercase leading-tight tracking-[0.1em]">
+              {finished ? 'Game over' : myTurn ? 'Your turn' : `${current?.nickname ?? '…'}'s turn`}
             </div>
-            {secondsLeft !== null && (
-              <div
-                data-testid="countdown"
-                className={`label text-[11px] tabular-nums ${
-                  secondsLeft <= 10 ? 'text-danger' : 'text-muted'
-                }`}
-              >
-                {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}
-              </div>
-            )}
+            <div className="label truncate text-[10px] text-muted">
+              Round {state.round}/{yatzy.ROUNDS}
+              {hint && ` · ${hint}`}
+            </div>
           </div>
-        )}
-      </div>
+          {!finished && (
+            <div className="text-right">
+              <div
+                className="flex justify-end gap-1.5"
+                aria-label={`${state.rollsLeft} rolls left`}
+              >
+                {Array.from({ length: yatzy.MAX_ROLLS }, (_, i) => (
+                  <span
+                    key={i}
+                    className={`h-3 w-3 rounded-full border-2 ${
+                      i < state.rollsLeft ? 'border-accent bg-accent' : 'border-muted/50'
+                    }`}
+                  />
+                ))}
+              </div>
+              {secondsLeft !== null && (
+                <div
+                  data-testid="countdown"
+                  className={`label text-[11px] tabular-nums ${
+                    secondsLeft <= 10 ? 'text-danger' : 'text-muted'
+                  }`}
+                >
+                  {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}
+                </div>
+              )}
+            </div>
+          )}
+          {chrome && (
+            <>
+              <TileButton
+                small
+                onClick={chrome.onChat}
+                aria-label={chrome.unread > 0 ? `Chat, ${chrome.unread} unread` : 'Chat'}
+                data-testid="chat-open"
+              >
+                <span className="relative">
+                  <ChatIcon className="h-5 w-5" />
+                  {chrome.unread > 0 && (
+                    <span
+                      data-testid="chat-badge"
+                      className="absolute -right-2.5 -top-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-accentink"
+                    >
+                      {chrome.unread > 9 ? '9+' : chrome.unread}
+                    </span>
+                  )}
+                </span>
+              </TileButton>
+              <TileButton
+                small
+                onClick={chrome.onSettings}
+                aria-label="Settings"
+                data-testid="settings-button"
+              >
+                <SlidersIcon className="h-5 w-5" />
+              </TileButton>
+            </>
+          )}
+        </div>
+      </header>
 
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 pb-2 pt-2">
         <Scorecard

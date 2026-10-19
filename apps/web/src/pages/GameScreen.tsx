@@ -168,6 +168,17 @@ export function GameScreen({
 
   // Fanfare once when the game ends.
   const wasFinished = useRef(finished);
+  // Standings appear at once when you open a finished game, but after the game's own final
+  // animation (e.g. Karma's win reveal) when the game ends while you watch.
+  const [resultsShown, setResultsShown] = useState(finished);
+  const resultsDelay = ui?.resultsDelayMs?.(room) ?? 0;
+  useEffect(() => {
+    if (!finished) return setResultsShown(false);
+    if (wasFinished.current || resultsDelay === 0) return setResultsShown(true);
+    const t = setTimeout(() => setResultsShown(true), resultsDelay);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finished]);
   useEffect(() => {
     if (finished && !wasFinished.current) {
       const won = room.game?.results?.rankings.some((r) => r.rank === 1 && r.playerId === me);
@@ -188,46 +199,58 @@ export function GameScreen({
 
   return (
     <div className="mx-auto flex h-dvh max-w-lg flex-col">
-      <TopBar
-        title={`${ui.emoji} ${ui.name}`}
-        subtitle={`Room ${room.code}`}
-        onSettings={onSettings}
-        actions={
-          <TileButton
-            small
-            onClick={() => setChatOpen(true)}
-            aria-label={unread > 0 ? `Chat, ${unread} unread` : 'Chat'}
-            data-testid="chat-open"
-          >
-            <span className="relative">
-              <ChatIcon className="h-5 w-5" />
-              {unread > 0 && (
-                <span
-                  data-testid="chat-badge"
-                  className="absolute -right-2.5 -top-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-accentink"
-                >
-                  {unread > 9 ? '9+' : unread}
-                </span>
-              )}
-            </span>
-          </TileButton>
-        }
-        compact
-        left={
-          <TileButton
-            small
-            onClick={() => (finished ? void api.leave() : setConfirmLeave(true))}
-            aria-label="Leave game"
-            data-testid="leave-game"
-          >
-            <ArrowLeftIcon className="h-5 w-5" />
-          </TileButton>
-        }
-      />
+      {!ui.ownHeader && (
+        <TopBar
+          title={`${ui.emoji} ${ui.name}`}
+          subtitle={`Room ${room.code}`}
+          onSettings={onSettings}
+          actions={
+            <TileButton
+              small
+              onClick={() => setChatOpen(true)}
+              aria-label={unread > 0 ? `Chat, ${unread} unread` : 'Chat'}
+              data-testid="chat-open"
+            >
+              <span className="relative">
+                <ChatIcon className="h-5 w-5" />
+                {unread > 0 && (
+                  <span
+                    data-testid="chat-badge"
+                    className="absolute -right-2.5 -top-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-accentink"
+                  >
+                    {unread > 9 ? '9+' : unread}
+                  </span>
+                )}
+              </span>
+            </TileButton>
+          }
+          compact
+          left={
+            <TileButton
+              small
+              onClick={() => (finished ? void api.leave() : setConfirmLeave(true))}
+              aria-label="Leave game"
+              data-testid="leave-game"
+            >
+              <ArrowLeftIcon className="h-5 w-5" />
+            </TileButton>
+          }
+        />
+      )}
       <div className="min-h-0 flex-1">
-        <ui.Component room={room} me={me} sendMove={api.move} />
+        <ui.Component
+          room={room}
+          me={me}
+          sendMove={api.move}
+          chrome={{
+            onLeave: () => (finished ? void api.leave() : setConfirmLeave(true)),
+            onChat: () => setChatOpen(true),
+            onSettings,
+            unread,
+          }}
+        />
       </div>
-      {finished && (
+      {finished && resultsShown && (
         <ResultsPanel
           room={room}
           me={me}
@@ -237,7 +260,7 @@ export function GameScreen({
         />
       )}
 
-      <Sheet open={chatOpen} onClose={() => setChatOpen(false)} title="Chat">
+      <Sheet open={chatOpen} onClose={() => setChatOpen(false)} title={`Chat · Room ${room.code}`}>
         <ChatPanel
           messages={messages}
           me={me}
