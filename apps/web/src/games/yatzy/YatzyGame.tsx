@@ -234,7 +234,7 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
       {!finished && (
         <div className="border-t-2 border-edge/60 bg-panel px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 text-ink">
           <div className="mx-auto flex max-w-md flex-col gap-2">
-            <div className="mx-auto grid w-full max-w-[16rem] grid-cols-5 gap-2 pt-1">
+            <div className="mx-auto grid w-full max-w-[22rem] grid-cols-5 gap-2.5 pt-1">
               {Array.from({ length: yatzy.DICE_COUNT }, (_, i) => (
                 <Die
                   key={i}
