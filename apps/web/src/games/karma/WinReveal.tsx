@@ -26,7 +26,8 @@ export function WinReveal({
       Array.from({ length: 48 }, (_, i) => ({
         left: `${Math.round(Math.random() * 100)}%`,
         color: CONFETTI[i % CONFETTI.length],
-        delay: `${(Math.random() * 1.2).toFixed(2)}s`,
+        // Confetti only starts once the card has finished turning over (2.6s).
+        delay: `${(2.6 + Math.random() * 1.2).toFixed(2)}s`,
         duration: `${(2.4 + Math.random() * 1.8).toFixed(2)}s`,
         drift: `${Math.round(Math.random() * 120 - 60)}px`,
         spin: `${Math.round(360 + Math.random() * 540)}deg`,

@@ -451,7 +451,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         label: winner ? (ev.playerId === me ? 'You win!' : `${name} wins!`) : `${name} is out`,
       });
       clearTimeout(revealTimer.current);
-      revealTimer.current = setTimeout(() => setReveal(null), winner ? 5200 : 3400);
+      revealTimer.current = setTimeout(() => setReveal(null), winner ? 6800 : 3800);
     }
     setSel([]);
     setSelDown(null);

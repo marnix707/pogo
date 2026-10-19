@@ -203,8 +203,7 @@ button {
   }
 }
 @keyframes win-label-in {
-  0%,
-  60% {
+  0% {
     opacity: 0;
     transform: translateY(0.5rem);
   }
@@ -243,7 +242,8 @@ button {
   transform: rotateY(180deg);
 }
 .win-label {
-  animation: win-label-in 2.6s ease-out both;
+  /* Only once the card has finished turning over (win-turn is 2.6s). */
+  animation: win-label-in 0.5s ease-out 2.6s both;
 }
 .confetti {
   position: absolute;

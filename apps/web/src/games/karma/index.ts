@@ -14,7 +14,7 @@ export const karmaUi: GameUi = {
       { lastEvent?: { out: boolean; playerId: string } | null; finishOrder: string[] } | undefined;
     const ev = view?.lastEvent;
     if (!ev?.out) return 0;
-    return view!.finishOrder[0] === ev.playerId ? 5400 : 3600;
+    return view!.finishOrder[0] === ev.playerId ? 7000 : 4000;
   },
   resultsTitle(room, me) {
     const results = room.game?.results?.rankings;
