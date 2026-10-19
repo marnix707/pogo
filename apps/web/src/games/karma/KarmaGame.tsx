@@ -41,7 +41,7 @@ const ACTION_COLUMN_PX = 96;
 /** More cards than this in my hand wrap into extra rows so every card stays visible and tappable. */
 const MAX_PER_ROW = 12;
 /** How long the cards of a burn or a failed blind card stay visible on the pile before it resolves. */
-const GHOST_MS = 1100;
+const GHOST_MS = 1300;
 
 /** Em-size of an opponent's cards: fewer opponents, bigger cards (4 seats must fit in a row). */
 const seatFont = (opponents: number) =>
@@ -368,6 +368,10 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const zone = mine ? activeZone(mine) : 'none';
   const pile = view.pile;
   const shownPile = ghost ?? pile;
+  // A burn by four of a kind fans out all four cards for the moment they are shown.
+  const top4 = shownPile.slice(-4);
+  const fanCount =
+    ghost && top4.length === 4 && top4.every((c) => rankOf(c) === rankOf(top4[0] as Card)) ? 4 : 3;
   const hand = useMemo(() => [...(mine?.hand ?? [])].sort(byRankThenSuit), [mine?.hand]);
   const swapping = view.phase === 'swap' && !!mine && !mine.ready;
   const playing = view.phase === 'play' && myTurn;
@@ -764,7 +768,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                   style={{ width: `${pileFont * 5}px`, height: `${pileFont * 7}px` }}
                 />
               ) : (
-                shownPile.slice(-3).map((c, i, shown) => {
+                shownPile.slice(-fanCount).map((c, i, shown) => {
                   const fromTop = shown.length - 1 - i;
                   return (
                     <PlayingCard
@@ -773,7 +777,9 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                       size={pileFont}
                       tilt={fromTop === 0 ? 0 : fromTop % 2 ? -7 : 6}
                       className="absolute top-0"
-                      style={{ left: `${pileFont * (1.1 - fromTop * 0.6)}px` }}
+                      style={{
+                        left: `${pileFont * (fanCount === 4 ? 1.2 - fromTop * 0.5 : 1.1 - fromTop * 0.6)}px`,
+                      }}
                       testId={fromTop === 0 ? 'pile-top' : undefined}
                       flip={{ id: c, origin: () => pileOrigin(c) }}
                     />
