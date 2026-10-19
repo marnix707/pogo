@@ -20,6 +20,8 @@ export interface FlipProps {
   id: number;
   /** Where to animate a card from when it has never been seen before (deck, pile, a seat). */
   origin?: () => FlipOrigin | null;
+  /** Wait this many ms before flying in from `origin` (staggers a pile pickup). */
+  delay?: number;
 }
 
 /** `enabled` is false for the first paint (no animating the whole table in) and with reduced motion. */
@@ -94,9 +96,11 @@ export function PlayingCard({
     if (!enabled || now.width === 0) return;
 
     let from: Box | null = seen ?? null;
+    let delay = 0;
     if (!from) {
       const origin = flip.origin?.();
       if (origin) {
+        delay = flip.delay ?? 0;
         from =
           'width' in origin
             ? origin
@@ -126,7 +130,7 @@ export function PlayingCard({
         },
         { transformOrigin: 'top left', transform: 'none', zIndex: 40 },
       ],
-      { duration: MOVE_MS, easing: EASE },
+      { duration: MOVE_MS, easing: EASE, delay, fill: 'backwards' },
     );
   });
 

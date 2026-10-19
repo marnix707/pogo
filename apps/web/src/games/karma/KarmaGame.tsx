@@ -40,9 +40,8 @@ const ACTION_COLUMN_PX = 96;
 
 /** More cards than this in my hand wrap into extra rows so every card stays visible and tappable. */
 const MAX_PER_ROW = 12;
-
-/** How long the table waits before picking up the pile for a player who has no legal play. */
-const AUTO_PICKUP_MS = 1100;
+/** How long the cards of a burn or a failed blind card stay visible on the pile before it resolves. */
+const GHOST_MS = 1100;
 
 /** Em-size of an opponent's cards: fewer opponents, bigger cards (4 seats must fit in a row). */
 const seatFont = (opponents: number) =>
@@ -307,6 +306,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const [busy, setBusy] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [flame, setFlame] = useState(false);
+  /** A burn / failed blind card resolves at once on the server; keep the played cards on the pile a moment. */
+  const [ghost, setGhost] = useState<Card[] | null>(null);
+  const ghostTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(ghostTimer.current), []);
+  const prevPile = useRef<Card[]>(view.pile);
   const flameTimer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => () => clearTimeout(flameTimer.current), []);
   /** Someone just played their last card: reveal it with a flourish (confetti for the winner). */
@@ -363,6 +367,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
 
   const zone = mine ? activeZone(mine) : 'none';
   const pile = view.pile;
+  const shownPile = ghost ?? pile;
   const hand = useMemo(() => [...(mine?.hand ?? [])].sort(byRankThenSuit), [mine?.hand]);
   const swapping = view.phase === 'swap' && !!mine && !mine.ready;
   const playing = view.phase === 'play' && myTurn;
@@ -447,15 +452,27 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     setPileArmed(false);
     play(ev.burned ? 'score' : ev.pickedUp > 0 ? 'error' : 'tap');
     if (ev.playerId === me) haptic(ev.burned ? 'success' : ev.pickedUp > 0 ? 'error' : 'tap');
+    const showcase = ev.cards.length > 0 && (ev.burned || (ev.kind === 'blind' && ev.pickedUp > 0));
+    if (showcase) {
+      setGhost([...prevPile.current.filter((c) => !ev.cards.includes(c)), ...ev.cards]);
+      clearTimeout(ghostTimer.current);
+      ghostTimer.current = setTimeout(() => setGhost(null), GHOST_MS);
+    }
     if (ev.burned) {
       // The timer lives in a ref, NOT in this effect's cleanup: the effect re-runs on every state
       // push (lastEvent is a new object each time), and a cleanup would cancel the timer and leave
       // the flame on screen for the rest of the game.
-      setFlame(true);
       clearTimeout(flameTimer.current);
-      flameTimer.current = setTimeout(() => setFlame(false), 1500);
+      flameTimer.current = setTimeout(() => {
+        setFlame(true);
+        flameTimer.current = setTimeout(() => setFlame(false), 1500);
+      }, GHOST_MS);
     }
   }, [view.lastEvent, me]);
+  // (after the effect above, so it still holds the pile from before the move when one arrives)
+  useEffect(() => {
+    prevPile.current = view.pile;
+  });
   // (declared after the effect above, so it still sees the previous values when a move arrives)
   useEffect(() => {
     before.current = { deadline: game.deadline };
@@ -583,7 +600,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     if (view.phase !== 'play') return flashHint('Nothing to pick up yet');
     if (!myTurn) return flashHint('Wait for your turn');
     if (pile.length === 0) return flashHint('The pile is empty');
-    if (pileArmed) return pickUpPile();
+    if (pileArmed || mustPickUp) return pickUpPile();
     haptic('tap');
     setSel([]);
     setSelDown(null);
@@ -621,8 +638,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     hint = 'Press Play · tap again to deselect (a single card or four of a kind: double-tap plays)';
   }
 
-  // Nothing in my active cards can be played, so picking up is the only move: it happens by itself
-  // (after a beat, so you can see why). Picking up voluntarily is still possible by tapping the pile.
+  // Nothing in my active cards can be played, so picking up is the only move: the player must tap the pile
+  // (the pile pulses and one tap takes it). Picking up voluntarily is still possible by tapping the pile twice.
   const activeCards = zone === 'hand' ? hand : zone === 'up' ? (mine?.faceUp ?? []) : [];
   const mustPickUp =
     playing &&
@@ -630,19 +647,10 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     zone !== 'down' &&
     !activeCards.some((c) => c !== null && canPlayRank(pile, rankOf(c)));
 
-  const sendRef = useRef(send);
-  sendRef.current = send;
-  const moveSeq = view.lastEvent?.seq;
-  useEffect(() => {
-    if (!mustPickUp || busy) return;
-    const t = setTimeout(() => void sendRef.current({ type: 'pickup' }), AUTO_PICKUP_MS);
-    return () => clearTimeout(t);
-  }, [mustPickUp, busy, moveSeq]);
-
   const shownHint =
     flash ??
     (mustPickUp
-      ? 'Nothing you can play: picking up the pile…'
+      ? 'Nothing you can play: tap the pile to pick it up'
       : pileArmed
         ? 'Tap the pile again to pick it up'
         : hint);
@@ -661,6 +669,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const handRows = Array.from({ length: rowCount }, (_, r) =>
     hand.slice(r * perRow, (r + 1) * perRow),
   );
+  // After a pickup my new cards fly out of the pile one by one (quicker when there are many).
+  const flingStep = Math.min(90, 700 / Math.max(1, hand.length));
+  const flinging =
+    lastEvent?.playerId === me && (lastEvent.kind === 'pickup' || lastEvent.pickedUp > 0);
+  const flingLead = lastEvent?.kind === 'blind' ? GHOST_MS : 0;
   const handFont = myFont * (rowCount > 1 ? 0.85 : 1);
   const cardW = handFont * 5;
   const rowStep = handFont * 7 * 0.5;
@@ -728,10 +741,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
 
             <div
               ref={pileEl}
-              className="relative"
               data-testid="pile"
               data-count={pile.length}
               data-armed={pileArmed}
+              data-must-pick={mustPickUp}
+              className={`relative ${mustPickUp ? 'pile-pulse' : ''}`}
               role="button"
               aria-label="Pile: tap twice to pick up"
               onClick={(e) => {
@@ -743,13 +757,13 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
               {pileArmed && (
                 <span className="pointer-events-none absolute inset-0 rounded-xl ring-4 ring-neon" />
               )}
-              {pile.length === 0 ? (
+              {shownPile.length === 0 ? (
                 <div
                   className="absolute left-1/2 top-0 -translate-x-1/2 rounded-[0.55em] border-2 border-dashed border-onbg/40"
                   style={{ width: `${pileFont * 5}px`, height: `${pileFont * 7}px` }}
                 />
               ) : (
-                pile.slice(-3).map((c, i, shown) => {
+                shownPile.slice(-3).map((c, i, shown) => {
                   const fromTop = shown.length - 1 - i;
                   return (
                     <PlayingCard
@@ -775,7 +789,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                 </span>
               )}
               <span className="label absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-onbg">
-                {pileArmed ? 'Tap to pick up' : `Pile ${pile.length}`}
+                {pileArmed ? 'Tap to pick up' : `Pile ${shownPile.length}`}
                 {!pileArmed && view.burned > 0 && ` · 🔥 ${view.burned}`}
               </span>
             </div>
@@ -933,7 +947,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                             selected={swapping ? swapHand === c : sel.includes(c)}
                             dimmed={playing && zone === 'hand' && !playable}
                             style={{ marginLeft: i === 0 ? 0 : `-${cardW - strip}px` }}
-                            flip={{ id: c, origin: handOrigin }}
+                            flip={{
+                              id: c,
+                              origin: handOrigin,
+                              delay: flinging ? flingLead + (r * perRow + i) * flingStep : 0,
+                            }}
                             onClick={() => (swapping ? tapSwapHand(c) : tapCard(c))}
                           />
                         );
