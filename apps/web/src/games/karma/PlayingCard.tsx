@@ -22,6 +22,10 @@ export interface FlipProps {
   origin?: () => FlipOrigin | null;
   /** Wait this many ms before flying in from `origin` (staggers a pile pickup). */
   delay?: number;
+  /** Flight time in ms (default 320); used to slow down the cards of a multi-card play. */
+  duration?: number;
+  /** Apply `delay` to cards that merely move (seen before) too, not only to new arrivals. */
+  delayMoves?: boolean;
 }
 
 /** `enabled` is false for the first paint (no animating the whole table in) and with reduced motion. */
@@ -96,11 +100,10 @@ export function PlayingCard({
     if (!enabled || now.width === 0) return;
 
     let from: Box | null = seen ?? null;
-    let delay = 0;
+    const delay = !seen || flip.delayMoves ? (flip.delay ?? 0) : 0;
     if (!from) {
       const origin = flip.origin?.();
       if (origin) {
-        delay = flip.delay ?? 0;
         from =
           'width' in origin
             ? origin
@@ -130,7 +133,7 @@ export function PlayingCard({
         },
         { transformOrigin: 'top left', transform: 'none', zIndex: 40 },
       ],
-      { duration: MOVE_MS, easing: EASE, delay, fill: 'backwards' },
+      { duration: flip.duration ?? MOVE_MS, easing: EASE, delay, fill: 'backwards' },
     );
   });
 

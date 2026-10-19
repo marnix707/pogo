@@ -391,6 +391,16 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     const box = boxOf(fromPile ? pileEl.current : stockEl.current);
     return box ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : null;
   };
+  /**
+   * The cards of a multi-card play leave one after another and fly slower, so you can see how many
+   * were thrown (all at once they looked like a single card).
+   */
+  const playFlight = (card: Card) => {
+    const ev = lastEvent;
+    if (!ev || ev.kind === 'pickup' || ev.cards.length < 2) return {};
+    const i = ev.cards.indexOf(card);
+    return i < 0 ? {} : { delay: i * 170, duration: 520, delayMoves: true };
+  };
   /** A card newly on the pile that was not on screen (an opponent's hand card): from their seat. */
   const pileOrigin = (card: Card): FlipOrigin | null => {
     if (!lastEvent || lastEvent.kind === 'pickup' || !lastEvent.cards.includes(card)) return null;
@@ -795,7 +805,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                         left: `${pileFont * (1.1 - fromTop * 0.6)}px`,
                       }}
                       testId={fromTop === 0 ? 'pile-top' : undefined}
-                      flip={{ id: c, origin: () => pileOrigin(c) }}
+                      flip={{ id: c, origin: () => pileOrigin(c), ...playFlight(c) }}
                     />
                   );
                 })
