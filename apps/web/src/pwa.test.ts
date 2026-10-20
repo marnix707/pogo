@@ -32,8 +32,8 @@ describe('web app manifest', () => {
   });
 
   it('uses brand colours', () => {
-    expect(manifest.background_color).toBe('#0d3a2f');
-    expect(manifest.theme_color).toBe('#0d3a2f');
+    expect(manifest.background_color).toBe('#1f4f8c');
+    expect(manifest.theme_color).toBe('#1f4f8c');
   });
 
   it('ships 192 and 512 icons plus a maskable one', () => {

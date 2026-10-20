@@ -2,9 +2,9 @@ import { useEffect, useRef } from 'react';
 import { makeNoise, topoFrame } from '../lib/topo';
 
 const FRAME_MS = 1000 / 24;
-/** Dark felt lines: thin ones, and heavier index lines (like the contour lines of a map). */
-const MINOR = 'rgba(4, 34, 26, 0.34)';
-const MAJOR = 'rgba(4, 34, 26, 0.55)';
+/** Dark blue lines: thin ones, and heavier index lines (like the contour lines of a map). */
+const MINOR = 'rgba(10, 26, 56, 0.4)';
+const MAJOR = 'rgba(10, 26, 56, 0.62)';
 
 /**
  * The table's contour-line background: thin map lines that slowly drift, morph and breathe in and

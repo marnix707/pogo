@@ -3,29 +3,29 @@
 @tailwind utilities;
 
 /*
-  Look: a card-table at night. Felt green page with a slowly swirling red/blue glow, dark slate panels
+  Look: a card-table at night. A deep blue page with a soft red/purple/gold glow, blue-slate panels
   with a light inner line, a thick near-black outline and a hard "lip" under them, gold highlights,
-  a blue primary action and red for danger. Colours are "r g b" triples so Tailwind can apply opacity
+  a blue primary action and red for danger. Colours come from the Balatro modding palette. Colours are "r g b" triples so Tailwind can apply opacity
   (bg-panel/90). Same token names as before, so every component keeps working.
 */
 :root {
-  --c-page: 30 100 80; /* felt */
-  --c-panel: 43 56 61; /* slate panels */
-  --c-panel2: 30 40 44; /* nested surfaces, inputs */
-  --c-edge: 125 150 158; /* panel inner line */
-  --c-ink: 244 246 240; /* text on panels */
-  --c-muted: 168 186 190; /* secondary text on panels */
-  --c-onbg: 244 246 240; /* text directly on the felt */
-  --c-accent: 0 157 255; /* primary action: vivid blue */
-  --c-accentink: 12 20 24;
-  --c-neon: 245 184 40; /* highlights: gold */
-  --c-lagoon: 61 170 130;
-  --c-orange: 255 154 0; /* secondary highlight */
-  --c-grape: 124 88 236; /* "your turn" */
-  --c-danger: 232 56 46; /* red fills (white text) */
-  --c-dangertext: 255 120 108; /* red text on dark panels */
-  --c-line: 11 20 23; /* the dark outline round things */
-  --page-gradient: radial-gradient(130% 90% at 50% 0%, #2f8068 0%, #1e6450 52%, #124a39 100%);
+  --c-page: 31 79 140; /* the table: deep blue */
+  --c-panel: 51 68 97; /* blue-slate panels */
+  --c-panel2: 36 50 75; /* nested surfaces, inputs */
+  --c-edge: 137 154 209; /* panel inner line: periwinkle */
+  --c-ink: 253 253 253; /* text on panels */
+  --c-muted: 191 199 213; /* secondary text on panels */
+  --c-onbg: 253 253 253; /* text directly on the table */
+  --c-accent: 60 180 255; /* primary action: bright blue */
+  --c-accentink: 12 20 36;
+  --c-neon: 253 162 0; /* highlights: gold-orange */
+  --c-lagoon: 69 147 115;
+  --c-orange: 234 150 0; /* secondary highlight */
+  --c-grape: 125 81 174; /* "your turn" */
+  --c-danger: 193 65 57; /* red fills (white text) */
+  --c-dangertext: 253 160 165; /* red text on dark panels */
+  --c-line: 16 22 40; /* the dark outline round things */
+  --page-gradient: radial-gradient(130% 90% at 50% 0%, #2c78c8 0%, #1f4f8c 52%, #20325a 100%);
 }
 
 /* The UI font (SIL OFL 1.1, notice in fonts/OFL.txt). Only a regular weight exists, so bold is not faked. */
@@ -70,9 +70,9 @@ body::after {
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(38% 38% at 30% 32%, rgb(230 70 90 / 0.42), transparent 70%),
-    radial-gradient(42% 42% at 70% 64%, rgb(40 110 240 / 0.4), transparent 70%),
-    radial-gradient(30% 30% at 56% 18%, rgb(255 190 60 / 0.2), transparent 70%);
+    radial-gradient(38% 38% at 30% 32%, rgb(253 95 85 / 0.3), transparent 70%),
+    radial-gradient(42% 42% at 70% 64%, rgb(174 101 255 / 0.32), transparent 70%),
+    radial-gradient(30% 30% at 56% 18%, rgb(253 162 0 / 0.18), transparent 70%);
 }
 
 /* CRT layer (Settings > CRT effect): scanlines and a darkened edge. Never takes a tap. */
@@ -93,13 +93,13 @@ button {
 
 /*
   When launched from the home screen the status bar is translucent and the page runs underneath it.
-  This felt strip fills the inset so the clock/battery stay readable. It is 0px high in a normal browser.
+  This navy strip fills the inset so the clock/battery stay readable. It is 0px high in a normal browser.
 */
 .safe-top-scrim {
   position: fixed;
   inset: 0 0 auto 0;
   height: env(safe-area-inset-top);
-  background: rgb(13 42 34 / 0.96);
+  background: rgb(32 50 90 / 0.96);
   z-index: 60;
   pointer-events: none;
 }

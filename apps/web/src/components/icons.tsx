@@ -45,11 +45,11 @@ export const CrownIcon = (p: SVGProps<SVGSVGElement>) => (
 /** The Po:go logo: a die (two dots) and a stem that together read as a "P". Keep in sync with public/favicon.svg. */
 export const LogoMark = (p: SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 100 100" role="img" aria-label="Po:go" {...p}>
-    <rect width="100" height="100" rx="24" fill="#124034" />
-    <rect x="3" y="3" width="94" height="94" rx="21" fill="none" stroke="#eac058" stroke-width="3" />
-    <rect x="22" y="33" width="17" height="55" rx="8.5" fill="#d6342c" stroke="#0b1417" stroke-width="3.5" />
-    <rect x="31" y="22" width="45" height="45" rx="11" fill="#f4eedb" stroke="#0b1417" stroke-width="3.5" />
-    <circle cx="42.25" cy="33.25" r="3.8" fill="#0b1417" />
-    <circle cx="64.75" cy="55.75" r="3.8" fill="#0b1417" />
+    <rect width="100" height="100" rx="24" fill="#334461" />
+    <rect x="3" y="3" width="94" height="94" rx="21" fill="none" stroke="#fda200" stroke-width="3" />
+    <rect x="22" y="33" width="17" height="55" rx="8.5" fill="#fd5f55" stroke="#101628" stroke-width="3.5" />
+    <rect x="31" y="22" width="45" height="45" rx="11" fill="#f7f1e4" stroke="#101628" stroke-width="3.5" />
+    <circle cx="42.25" cy="33.25" r="3.8" fill="#101628" />
+    <circle cx="64.75" cy="55.75" r="3.8" fill="#101628" />
   </svg>
 );

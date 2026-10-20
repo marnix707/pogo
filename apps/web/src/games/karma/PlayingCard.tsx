@@ -3,10 +3,10 @@ import type { CSSProperties } from 'react';
 import { karma } from '@pogo/shared';
 
 /** Ink and suit colours of the card faces; LINE is the near-black outline (same as `--c-line`). */
-const INK = '#1d2430';
-const RED = '#e8342a';
-const LINE = '#0b1417';
-const GOLD = '#eac058';
+const INK = '#1e2b3d';
+const RED = '#c14139';
+const LINE = '#101628';
+const GOLD = '#fda200';
 
 /** Where a card was last seen on screen (viewport coordinates). */
 interface Box {
@@ -204,11 +204,11 @@ export function PlayingCard({
   ) : null;
 
   const faceStyle: CSSProperties = showFace
-    ? { background: '#f4eedb', border: `0.2em solid ${LINE}` }
+    ? { background: '#f7f1e4', border: `0.2em solid ${LINE}` }
     : {
         // The back: a diamond-patterned blue with a gold frame inside the dark outline.
         background:
-          'repeating-linear-gradient(45deg, #2a6af0 0 0.45em, #2257d4 0.45em 0.9em), #2a6af0',
+          'repeating-linear-gradient(45deg, #009cfd 0 0.45em, #008be3 0.45em 0.9em), #009cfd',
         border: `0.2em solid ${LINE}`,
         boxShadow: `inset 0 0 0 0.22em ${GOLD}`,
       };
@@ -233,8 +233,8 @@ export function PlayingCard({
         boxShadow: [
           faceStyle.boxShadow,
           selected
-            ? `0 0 0 0.25em ${GOLD}, 0 0.3em 0 0.1em rgba(11,20,23,0.7)`
-            : '0 0.2em 0 0 rgba(11,20,23,0.6)',
+            ? `0 0 0 0.25em ${GOLD}, 0 0.3em 0 0.1em rgba(16,22,40,0.7)`
+            : '0 0.2em 0 0 rgba(16,22,40,0.6)',
         ]
           .filter(Boolean)
           .join(', '),

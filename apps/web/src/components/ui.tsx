@@ -9,11 +9,11 @@ type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    'bg-accent text-accentink ring-2 ring-line shadow-[0_5px_0_0_#0067b8,0_5px_0_2px_rgb(var(--c-line))] active:translate-y-[3px] active:shadow-[0_2px_0_0_#0067b8,0_2px_0_2px_rgb(var(--c-line))]',
+    'bg-accent text-accentink ring-2 ring-line shadow-[0_5px_0_0_#0081d3,0_5px_0_2px_rgb(var(--c-line))] active:translate-y-[3px] active:shadow-[0_2px_0_0_#0081d3,0_2px_0_2px_rgb(var(--c-line))]',
   secondary:
     'border-2 border-neon/70 bg-panel2 text-neon ring-2 ring-line shadow-[0_5px_0_0_rgb(var(--c-line))] active:translate-y-[3px] active:shadow-[0_2px_0_0_rgb(var(--c-line))]',
   danger:
-    'bg-danger text-white ring-2 ring-line shadow-[0_5px_0_0_#8f1f1a,0_5px_0_2px_rgb(var(--c-line))] active:translate-y-[3px] active:shadow-[0_2px_0_0_#8f1f1a,0_2px_0_2px_rgb(var(--c-line))]',
+    'bg-danger text-white ring-2 ring-line shadow-[0_5px_0_0_#8c2b26,0_5px_0_2px_rgb(var(--c-line))] active:translate-y-[3px] active:shadow-[0_2px_0_0_#8c2b26,0_2px_0_2px_rgb(var(--c-line))]',
   ghost: 'bg-transparent text-onbg/80',
 };
 

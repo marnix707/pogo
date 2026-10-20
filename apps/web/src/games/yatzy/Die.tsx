@@ -11,18 +11,18 @@ const PIPS: Record<number, number[]> = {
 };
 
 /**
- * Every face has its own colour, so a die is easy to match with its row in the scorecard. Bright card-
- * table colours (red, orange, gold, green, blue, purple) taken from the vivid UI colours of the
- * look: against the dark slate dock they keep 3.7:1 or more (a big shape with a dark outline needs 3:1),
- * and the near-black pips read at 5.6:1 or better on every face.
+ * Every face has its own colour, so a die is easy to match with its row in the scorecard. Card-table
+ * colours from the Balatro modding palette (red, orange, yellow, green, blue, lilac): against the
+ * blue-slate dock they keep 3.2:1 or more (a big shape with a dark outline needs 3:1), and the
+ * near-black pips read at 5.2:1 or better on every face.
  */
 export const DIE_COLOR: Record<number, string> = {
-  1: '#FF4C40',
-  2: '#FF9A00',
-  3: '#FFD23F',
-  4: '#3DDC84',
-  5: '#1FA2FF',
-  6: '#B06CFF',
+  1: '#FD5F55',
+  2: '#FDA200',
+  3: '#FDE700',
+  4: '#74CCA8',
+  5: '#3CB4FF',
+  6: '#AA8ED4',
 };
 const BLANK = '#e9ffff';
 
@@ -64,8 +64,8 @@ export function Die({
       aria-label={value ? `Die ${index + 1}: ${value}${held ? ', held' : ''}` : `Die ${index + 1}`}
       disabled={!interactive}
       onClick={onToggle}
-      className={`relative aspect-square w-full rounded-lg border-[3px] shadow-[0_4px_0_0_#0b1417] transition-transform disabled:cursor-default ${
-        held ? '-translate-y-1.5 border-neon shadow-[0_5px_0_0_#0b1417]' : 'border-[#0b1417]'
+      className={`relative aspect-square w-full rounded-lg border-[3px] shadow-[0_4px_0_0_#101628] transition-transform disabled:cursor-default ${
+        held ? '-translate-y-1.5 border-neon shadow-[0_5px_0_0_#101628]' : 'border-[#101628]'
       } ${rolling ? 'animate-dice-roll' : ''}`}
       style={{
         backgroundColor: DIE_COLOR[face] ?? BLANK,
@@ -79,9 +79,9 @@ export function Die({
             key={cell}
             className={`aspect-square w-[88%] rounded-full ${
               pips.includes(cell)
-                ? 'bg-[#0b1417]'
+                ? 'bg-[#101628]'
                 : value === 0 && cell === 4
-                  ? 'bg-[#0b1417]/15'
+                  ? 'bg-[#101628]/15'
                   : ''
             }`}
           />
