@@ -88,7 +88,7 @@ test('two players play a full Yatzy game, with a reconnect in the middle', async
     (await page.getByTestId(`rank-${rank}`).first().locator('span').last().textContent())!;
   expect(await scoreOf(a, 1)).toBe(await scoreOf(b, 1));
 
-  // Rematch returns both to the waiting room.
+  // Rematch returns both to the lobby.
   await a.getByTestId('rematch').click();
   await expect(a.getByTestId('lobby-start')).toBeVisible();
   await expect(b.getByTestId('lobby-waiting')).toBeVisible();

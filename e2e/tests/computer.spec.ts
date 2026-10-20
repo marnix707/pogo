@@ -50,7 +50,7 @@ async function playUntilResults(page: Page, limitMs = 200_000) {
   return sawWinnerReveal;
 }
 
-test('a game tap opens the waiting room: Yatzy can start solo, Karma needs 2 and offers 1-4 computers', async ({
+test('a game tap opens the lobby: Yatzy can start solo, Karma needs 2 and offers 1-4 computers', async ({
   browser,
 }) => {
   const me = await newPlayer(browser, 'Picker', 'fox');
@@ -112,7 +112,7 @@ test('a whole game against the computer, from one tap to the result, and a remat
   await expect(page.getByTestId('rank-2')).toBeVisible();
   await expect(panel.locator('h2')).toHaveText(/Karma got you|Robo is last/);
 
-  // Back to lobby: the waiting room with the computer still configured, and off we go again.
+  // Back to lobby: the lobby with the computer still configured, and off we go again.
   await page.getByTestId('back-to-lobby').click();
   await expect(page.getByTestId('lobby-start')).toHaveText('Start vs computer');
   await page.getByTestId('lobby-start').click();
@@ -176,7 +176,7 @@ test('with several computers the whole table fills up, each with its own name', 
   await me.context.close();
 });
 
-test('a host can add a computer player in the waiting room', async ({ browser }) => {
+test('a host can add a computer player in the lobby', async ({ browser }) => {
   const me = await newPlayer(browser, 'Host', 'fox');
   const page = me.page;
   await page.getByTestId('home-game-karma').click();

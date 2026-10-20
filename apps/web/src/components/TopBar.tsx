@@ -22,13 +22,16 @@ export function TileButton({
 export function TopBar({
   title,
   subtitle,
+  detail,
   left,
   actions,
   onSettings,
   compact = false,
 }: {
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
+  /** An extra line under the subtitle (e.g. the room code in the lobby). */
+  detail?: ReactNode;
   left?: ReactNode;
   /** Extra buttons shown before the settings button. */
   actions?: ReactNode;
@@ -54,6 +57,7 @@ export function TopBar({
           <RaisedColon text={title} />
         </h1>
         {subtitle && <div className="label truncate text-[10px] text-onbg/70">{subtitle}</div>}
+        {detail}
       </div>
       {actions}
       <TileButton

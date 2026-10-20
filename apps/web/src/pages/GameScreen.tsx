@@ -35,7 +35,7 @@ function ResultsPanel({
   api: RoomApi;
   title?: string;
   showScores?: boolean;
-  /** "Play again" restarts at once, so the waiting room needs its own button. */
+  /** "Play again" restarts at once, so the lobby needs its own button. */
   restarts?: boolean;
   /** The game still needs something from the players: no rematch buttons yet. */
   pending?: boolean;

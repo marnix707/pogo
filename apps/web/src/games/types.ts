@@ -32,7 +32,7 @@ export interface GameUi {
   emoji: string;
   tagline: string;
   Component: ComponentType<GameUiProps>;
-  /** Extra panel in the waiting room for game-specific options (e.g. a game mode). */
+  /** Extra panel in the lobby for game-specific options (e.g. a game mode). */
   LobbyOptions?: ComponentType<LobbyOptionsProps>;
   /** The game draws its own top bar (leave, chat, settings) instead of the shared title bar. */
   ownHeader?: boolean;

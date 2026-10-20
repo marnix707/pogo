@@ -171,7 +171,7 @@ export function Home({
             <p className="label text-onbg/70">Looking for games…</p>
           ) : openGames.length === 0 ? (
             <div className="hud p-4 text-center text-sm text-muted" data-testid="open-games-empty">
-              No open games right now. Pick a game below to open the waiting room, and switch on{' '}
+              No open games right now. Pick a game below to open its lobby, and switch on{' '}
               <b className="text-ink">Public room</b> there so others can join.
             </div>
           ) : (

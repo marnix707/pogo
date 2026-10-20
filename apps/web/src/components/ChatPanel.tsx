@@ -5,7 +5,7 @@ import type { ChatMessage, Result } from '@pogo/shared';
 import { avatarEmoji } from '../lib/avatars';
 import { haptic } from '../lib/haptics';
 
-/** Message list + input. Used inline in the waiting room and inside a sheet during games. */
+/** Message list + input. Used inline in the lobby and inside a sheet during games. */
 export function ChatPanel({
   messages,
   me,

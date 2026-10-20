@@ -68,7 +68,7 @@ test('public games show up live in the lobby, can be joined from it, and quick m
   await third.context.close();
 });
 
-test('players chat in the waiting room and during the game; profanity is masked', async ({
+test('players chat in the lobby and during the game; profanity is masked', async ({
   browser,
 }) => {
   const alice = await newPlayer(browser, 'Alice', 'fox');
@@ -142,7 +142,7 @@ test('profane nicknames are refused at sign-in when the filter is on (and allowe
   await context.close();
 });
 
-test('the dashboard: join-by-code beside the name, open games, then the games; a game tap opens its waiting room', async ({
+test('the dashboard: join-by-code beside the name, open games, then the games; a game tap opens its lobby', async ({
   browser,
 }) => {
   const me = await newPlayer(browser, 'Layout', 'fox');
@@ -160,7 +160,7 @@ test('the dashboard: join-by-code beside the name, open games, then the games; a
   const games = await page.getByRole('region', { name: 'Games', exact: true }).boundingBox();
   expect(open!.y).toBeLessThan(games!.y);
 
-  // Tapping a game goes straight to its waiting room (no menu in between).
+  // Tapping a game goes straight to its lobby (no menu in between).
   await page.getByTestId('home-game-karma').click();
   await expect(page.getByTestId('room-code')).toBeVisible();
   await expect(page.getByTestId('lobby-start')).toBeVisible();

@@ -104,7 +104,42 @@ export function Lobby({
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
       <TopBar
         title={`${ui?.emoji ?? ''} ${room.gameName}`}
-        subtitle="Waiting room"
+        subtitle={
+          <span className="flex items-center gap-2">
+            Lobby
+            <span
+              data-testid="room-visibility"
+              className={`rounded border px-1.5 py-0.5 text-[9px] ${
+                room.visibility === 'public'
+                  ? 'border-accent text-accent'
+                  : 'border-edge/50 text-onbg/70'
+              }`}
+            >
+              {room.visibility === 'public' ? 'Public' : 'Private'}
+            </span>
+          </span>
+        }
+        // Only a private lobby needs its code: a public one is found in the open games list.
+        detail={
+          room.visibility === 'private' && (
+            <div
+              data-testid="room-code"
+              className="select-all text-2xl font-bold leading-tight tracking-[0.2em] text-neon"
+            >
+              {room.code}
+            </div>
+          )
+        }
+        actions={
+          <Button
+            variant="secondary"
+            aria-label="Invite friends"
+            className="min-h-10 shrink-0 !px-3"
+            onClick={() => void share()}
+          >
+            Invite
+          </Button>
+        }
         onSettings={onSettings}
         left={
           <TileButton
@@ -117,100 +152,6 @@ export function Lobby({
         }
       />
       <main className="flex flex-1 flex-col gap-5 px-4 pb-8 pt-2">
-        {/* Compact room code: the code on the left, the invite button on the right. */}
-        <Card className="hud-ticks flex items-center justify-between gap-3 !p-3">
-          <div className="min-w-0">
-            <div className="label flex items-center gap-2 text-muted">
-              Room code
-              <span
-                data-testid="room-visibility"
-                className={`rounded border px-1.5 py-0.5 text-[9px] ${
-                  room.visibility === 'public'
-                    ? 'border-accent text-accent'
-                    : 'border-edge/50 text-muted'
-                }`}
-              >
-                {room.visibility === 'public' ? 'Public' : 'Private'}
-              </span>
-            </div>
-            <div
-              data-testid="room-code"
-              className="select-all text-3xl font-bold leading-tight tracking-[0.2em] text-neon"
-            >
-              {room.code}
-            </div>
-          </div>
-          <Button
-            variant="secondary"
-            aria-label="Invite friends"
-            className="min-h-11 shrink-0 !px-4"
-            onClick={() => void share()}
-          >
-            Invite
-          </Button>
-        </Card>
-
-        <section aria-label="Players">
-          <SectionLabel
-            right={
-              <span data-testid="player-count" className="text-onbg">
-                {room.members.length} / {room.maxPlayers}
-              </span>
-            }
-          >
-            Crew
-          </SectionLabel>
-          <ul className="flex flex-col gap-2">
-            {room.members.map((m) => (
-              <li
-                key={m.id}
-                data-testid={`member-${m.nickname}`}
-                className="hud flex items-center gap-3 px-3 py-2.5"
-              >
-                <Avatar avatar={m.avatar} dim={!m.connected} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-bold">
-                    {m.nickname}
-                    {m.id === me && <span className="font-normal text-muted"> (you)</span>}
-                  </div>
-                  <div className="label flex items-center gap-1.5 text-[10px] text-muted">
-                    {m.id === room.hostId ? (
-                      <>
-                        <CrownIcon className="h-3.5 w-3.5 text-accent" /> Host
-                      </>
-                    ) : m.connected ? (
-                      'Ready'
-                    ) : (
-                      'Reconnecting…'
-                    )}
-                  </div>
-                </div>
-                {isHost && m.id !== me && (
-                  <button
-                    onClick={() => void api.kick(m.id)}
-                    className="label min-h-10 rounded-md px-3 text-danger"
-                  >
-                    Remove
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {ui?.LobbyOptions && (
-          <section aria-label="Game mode">
-            <SectionLabel>Game mode</SectionLabel>
-            <Card>
-              <ui.LobbyOptions
-                room={room}
-                isHost={isHost}
-                setOptions={(options) => void api.updateSettings({ options })}
-              />
-            </Card>
-          </section>
-        )}
-
         {isHost && limits && (
           <section aria-label="Settings">
             <SectionLabel>Settings</SectionLabel>
@@ -263,6 +204,67 @@ export function Lobby({
             </Card>
           </section>
         )}
+
+        {ui?.LobbyOptions && (
+          <section aria-label="Game mode">
+            <SectionLabel>Game mode</SectionLabel>
+            <Card>
+              <ui.LobbyOptions
+                room={room}
+                isHost={isHost}
+                setOptions={(options) => void api.updateSettings({ options })}
+              />
+            </Card>
+          </section>
+        )}
+
+        <section aria-label="Players">
+          <SectionLabel
+            right={
+              <span data-testid="player-count" className="text-onbg">
+                {room.members.length} / {room.maxPlayers}
+              </span>
+            }
+          >
+            Crew
+          </SectionLabel>
+          <ul className="flex flex-col gap-2">
+            {room.members.map((m) => (
+              <li
+                key={m.id}
+                data-testid={`member-${m.nickname}`}
+                className="hud flex items-center gap-3 px-3 py-2.5"
+              >
+                <Avatar avatar={m.avatar} dim={!m.connected} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-bold">
+                    {m.nickname}
+                    {m.id === me && <span className="font-normal text-muted"> (you)</span>}
+                  </div>
+                  <div className="label flex items-center gap-1.5 text-[10px] text-muted">
+                    {m.id === room.hostId ? (
+                      <>
+                        <CrownIcon className="h-3.5 w-3.5 text-accent" /> Host
+                      </>
+                    ) : m.connected ? (
+                      'Ready'
+                    ) : (
+                      'Reconnecting…'
+                    )}
+                  </div>
+                </div>
+                {isHost && m.id !== me && (
+                  <button
+                    onClick={() => void api.kick(m.id)}
+                    className="label min-h-10 rounded-md px-3 text-danger"
+                  >
+                    Remove
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
 
         {isHost ? (
           <Button
