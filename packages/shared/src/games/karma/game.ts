@@ -494,6 +494,12 @@ export const karmaGame: GameDefinition<KarmaState, KarmaMove, KarmaOptions, Karm
   isGameOver: (state) => state.phase === 'over',
   getResults,
   autoMove,
+  settleMs: (state) => {
+    const ev = state.lastEvent;
+    if (!ev) return 0;
+    if (ev.out) return state.finishOrder[0] === ev.playerId ? 6800 : 3800;
+    return ev.kind === 'blind' ? 3500 : 0;
+  },
   supportsBots: true,
 };
 

@@ -65,6 +65,11 @@ export interface GameDefinition<State, Move, Options, PlayerView = State> {
    */
   isFreeMove?(move: Move): boolean;
   /**
+   * Milliseconds the clients need to finish showing the latest move (e.g. a card turning over).
+   * Computer players wait at least this long before they move again.
+   */
+  settleMs?(state: State): number;
+  /**
    * The game can be played against computer players. They are real seats driven by `autoMove`, so
    * set this only when `autoMove` plays a reasonable game (not just "any legal move").
    */

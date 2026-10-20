@@ -418,7 +418,8 @@ export class Room {
     // Pause while every person is away; the game carries on when someone comes back.
     if (!this.members.some((m) => !m.bot && !m.left && m.connected)) return null;
     if (!this.currentMembers().some((m) => m.bot)) return null;
-    return this.lastChangeAt + this.deps.limits.botMs;
+    const settle = this.state ? (this.game.settleMs?.(this.state) ?? 0) : 0;
+    return this.lastChangeAt + Math.max(this.deps.limits.botMs, settle);
   }
 
   /** Every computer player who is up makes one move (they all act at once in simultaneous phases). */

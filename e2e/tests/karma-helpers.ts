@@ -52,7 +52,10 @@ export const snapshot = (page: Page): Promise<Snapshot> =>
     const rank = (el: Element) => Number(el.getAttribute('data-rank'));
     const turn = document.querySelector('[data-testid=karma-hint]');
     return {
-      myTurn: turn?.getAttribute('data-my-turn') === 'true',
+      // moves are ignored while a card is turning over, so that is not yet my turn
+      myTurn:
+        turn?.getAttribute('data-my-turn') === 'true' &&
+        !document.querySelector('[data-testid=win-reveal]'),
       // data-seq changes with every move, even while the (n-1) text is still blank.
       event: `${document.querySelector('[data-testid=karma-event]')?.getAttribute('data-seq') ?? ''}|${
         document.querySelector('[data-testid=karma-event]')?.textContent ?? ''

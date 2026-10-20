@@ -573,7 +573,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   // ---- interactions -------------------------------------------------------------------------
 
   async function send(move: unknown) {
-    if (busy) return undefined;
+    // Nothing may be played while a card is still turning over.
+    if (busy || reveal) return undefined;
     setBusy(true);
     const res = await sendMove(move);
     setBusy(false);
