@@ -3,43 +3,27 @@
 @tailwind utilities;
 
 /*
-  Palette: #001850 navy · #5B29A7 purple · #00A9AB teal · #1FE0E0 cyan · #FF6BDE pink.
-  Light = bright teal map with navy HUD panels. Dark = deep navy map. Values are "r g b" triples
-  so Tailwind can apply opacity (bg-panel/90).
+  Look: a card-table at night. Felt green page with a slowly swirling red/blue glow, dark slate panels
+  with a light inner line, a thick near-black outline and a hard "lip" under them, gold highlights,
+  a blue primary action and red for danger. Colours are "r g b" triples so Tailwind can apply opacity
+  (bg-panel/90). Same token names as before, so every component keeps working.
 */
 :root {
-  --c-page: 0 169 171;
-  --c-panel: 0 24 80;
-  --c-panel2: 10 46 112;
-  --c-edge: 31 224 224;
-  --c-ink: 255 255 255;
-  --c-muted: 150 222 236;
-  --c-onbg: 0 24 80;
-  --c-accent: 255 107 222;
-  --c-accentink: 0 24 80;
-  --c-neon: 31 224 224;
-  --c-lagoon: 0 169 171;
-  --c-grape: 91 41 167;
-  --c-danger: 255 92 122;
-  --c-topo: 0 24 80;
-  --topo-alpha: 0.17;
-  --page-gradient:
-    radial-gradient(120% 70% at 8% 0%, rgb(31 224 224 / 0.5), transparent 60%),
-    linear-gradient(165deg, #14c8c4 0%, #00a9ab 50%, #007f90 100%);
-}
-
-.dark {
-  --c-page: 0 24 80;
-  --c-panel: 5 33 98;
-  --c-panel2: 11 52 132;
-  --c-edge: 0 169 171;
-  --c-muted: 128 190 220;
-  --c-onbg: 224 252 255;
-  --c-topo: 31 224 224;
-  --topo-alpha: 0.11;
-  --page-gradient:
-    radial-gradient(110% 60% at 92% 0%, rgb(91 41 167 / 0.55), transparent 60%),
-    linear-gradient(165deg, #04246f 0%, #001850 55%, #000a2b 100%);
+  --c-page: 18 64 52; /* felt */
+  --c-panel: 43 56 61; /* slate panels */
+  --c-panel2: 30 40 44; /* nested surfaces, inputs */
+  --c-edge: 125 150 158; /* panel inner line */
+  --c-ink: 244 246 240; /* text on panels */
+  --c-muted: 168 186 190; /* secondary text on panels */
+  --c-onbg: 244 246 240; /* text directly on the felt */
+  --c-accent: 74 168 255; /* primary action: blue */
+  --c-accentink: 12 20 24;
+  --c-neon: 234 192 88; /* highlights: gold */
+  --c-lagoon: 61 140 110;
+  --c-grape: 150 120 230; /* "your turn" */
+  --c-danger: 224 56 48;
+  --c-line: 11 20 23; /* the dark outline round things */
+  --page-gradient: radial-gradient(130% 90% at 50% 0%, #1f5a49 0%, #124034 52%, #0a2a22 100%);
 }
 
 html {
@@ -58,23 +42,44 @@ body {
   overscroll-behavior-y: none;
 }
 
-/* The map: gradient base + contour lines (an SVG used as a mask so the lines follow the theme). */
+/* The table: felt gradient, and a slowly turning red/blue/gold glow over it. */
 body::before,
 body::after {
   content: '';
   position: fixed;
-  inset: 0;
   pointer-events: none;
 }
 body::before {
+  inset: 0;
   z-index: -2;
   background: var(--page-gradient);
 }
 body::after {
+  inset: -45%;
   z-index: -1;
-  background-color: rgb(var(--c-topo) / var(--topo-alpha));
-  -webkit-mask: url('/topo.svg') center / cover no-repeat;
-  mask: url('/topo.svg') center / cover no-repeat;
+  background:
+    radial-gradient(38% 38% at 30% 32%, rgb(200 64 84 / 0.3), transparent 70%),
+    radial-gradient(42% 42% at 70% 64%, rgb(64 96 210 / 0.28), transparent 70%),
+    radial-gradient(30% 30% at 56% 18%, rgb(240 190 90 / 0.14), transparent 70%);
+  animation: table-swirl 70s linear infinite;
+  will-change: transform;
+}
+@keyframes table-swirl {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* CRT layer (Settings > CRT effect): scanlines and a darkened edge. Never takes a tap. */
+html.crt::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, rgb(0 0 0 / 0.16) 0 1px, transparent 1px 3px),
+    radial-gradient(125% 105% at 50% 50%, transparent 58%, rgb(0 0 0 / 0.5) 100%);
 }
 
 button {
@@ -83,45 +88,40 @@ button {
 
 /*
   When launched from the home screen the status bar is translucent and the page runs underneath it.
-  This navy strip fills the inset so the clock/battery stay readable. It is 0px high in a normal browser.
+  This felt strip fills the inset so the clock/battery stay readable. It is 0px high in a normal browser.
 */
 .safe-top-scrim {
   position: fixed;
   inset: 0 0 auto 0;
   height: env(safe-area-inset-top);
-  background: rgb(0 24 80 / 0.92);
+  background: rgb(13 42 34 / 0.96);
   z-index: 60;
   pointer-events: none;
 }
 
 @layer components {
-  /* A flat HUD panel with a defined outline. */
+  /* A slate panel: inner light line, near-black outline and a hard lip underneath. */
   .hud {
-    @apply relative rounded-md border-2 border-edge/50 bg-panel/95 text-ink;
+    @apply relative rounded-[10px] bg-panel text-ink;
+    border: 2px solid rgb(var(--c-edge) / 0.55);
+    box-shadow:
+      0 0 0 2px rgb(var(--c-line)),
+      0 5px 0 2px rgb(var(--c-line));
   }
 
-  /* Corner brackets, like the targeting reticle in the reference. Put on a wrapper. */
+  /* A second, gold inner frame for the panels that matter (put on a .hud). */
   .hud-ticks::before {
     content: '';
     position: absolute;
-    inset: -5px;
+    inset: 3px;
+    border: 1px solid rgb(var(--c-neon) / 0.4);
+    border-radius: 6px;
     pointer-events: none;
-    --t: rgb(var(--c-neon));
-    background:
-      linear-gradient(var(--t), var(--t)) top left / 16px 2px,
-      linear-gradient(var(--t), var(--t)) top left / 2px 16px,
-      linear-gradient(var(--t), var(--t)) top right / 16px 2px,
-      linear-gradient(var(--t), var(--t)) top right / 2px 16px,
-      linear-gradient(var(--t), var(--t)) bottom left / 16px 2px,
-      linear-gradient(var(--t), var(--t)) bottom left / 2px 16px,
-      linear-gradient(var(--t), var(--t)) bottom right / 16px 2px,
-      linear-gradient(var(--t), var(--t)) bottom right / 2px 16px;
-    background-repeat: no-repeat;
   }
 
-  /* Small tracked uppercase caption, as in the PWR. / ZM. labels. */
+  /* Small tracked uppercase caption. */
   .label {
-    @apply text-[11px] font-bold uppercase tracking-[0.22em];
+    @apply text-[12px] font-bold uppercase tracking-[0.14em];
   }
 }
 

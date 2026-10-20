@@ -11,7 +11,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@fontsource-variable/space-grotesk": "^5.1.0",
+    "@fontsource/pixelify-sans": "^5.3.0",
     "@pogo/shared": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

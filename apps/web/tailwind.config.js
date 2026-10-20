@@ -22,9 +22,10 @@ export default {
         lagoon: token('lagoon'), // teal
         grape: token('grape'), // purple
         danger: token('danger'),
+        line: token('line'), // the near-black outline round panels and buttons
       },
       fontFamily: {
-        sans: ['"Space Grotesk Variable"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['"Pixelify Sans"', 'ui-monospace', 'system-ui', 'sans-serif'],
       },
       keyframes: {
         diceRoll: {

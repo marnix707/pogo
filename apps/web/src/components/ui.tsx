@@ -9,11 +9,11 @@ type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    'bg-accent text-accentink shadow-[0_4px_0_0_#b13d9c] active:translate-y-[2px] active:shadow-[0_2px_0_0_#b13d9c]',
+    'bg-accent text-accentink ring-2 ring-line shadow-[0_5px_0_0_#2a6fb0,0_5px_0_2px_rgb(var(--c-line))] active:translate-y-[3px] active:shadow-[0_2px_0_0_#2a6fb0,0_2px_0_2px_rgb(var(--c-line))]',
   secondary:
-    'border-2 border-neon bg-panel/60 text-neon shadow-[0_3px_0_0_rgb(31_224_224/0.35)] active:translate-y-[2px] active:shadow-[0_1px_0_0_rgb(31_224_224/0.35)]',
+    'border-2 border-neon/70 bg-panel2 text-neon ring-2 ring-line shadow-[0_5px_0_0_rgb(var(--c-line))] active:translate-y-[3px] active:shadow-[0_2px_0_0_rgb(var(--c-line))]',
   danger:
-    'bg-danger text-white shadow-[0_4px_0_0_#a8283f] active:translate-y-[2px] active:shadow-[0_2px_0_0_#a8283f]',
+    'bg-danger text-white ring-2 ring-line shadow-[0_5px_0_0_#8f1f1a,0_5px_0_2px_rgb(var(--c-line))] active:translate-y-[3px] active:shadow-[0_2px_0_0_#8f1f1a,0_2px_0_2px_rgb(var(--c-line))]',
   ghost: 'bg-transparent text-onbg/80',
 };
 
@@ -31,7 +31,7 @@ export function Button({
         play('tap');
         onClick?.(e);
       }}
-      className={`min-h-12 select-none rounded-md px-5 text-sm font-bold uppercase tracking-[0.14em] transition disabled:pointer-events-none disabled:opacity-40 ${VARIANTS[variant]} ${className}`}
+      className={`min-h-12 select-none rounded-[8px] px-5 text-sm font-bold uppercase tracking-[0.1em] transition disabled:pointer-events-none disabled:opacity-40 ${VARIANTS[variant]} ${className}`}
     />
   );
 }
@@ -43,9 +43,9 @@ export function Card({ children, className = '' }: { children: ReactNode; classN
 /** Section caption: tracked uppercase with a rule that runs to the edge. */
 export function SectionLabel({ children, right }: { children: ReactNode; right?: ReactNode }) {
   return (
-    <h2 className="label mb-3 flex items-center gap-3 text-onbg/80">
+    <h2 className="label mb-3 flex items-center gap-3 text-onbg [text-shadow:0_2px_0_rgb(var(--c-line))]">
       {children}
-      <span className="h-px flex-1 bg-onbg/25" />
+      <span className="h-[3px] flex-1 rounded-full bg-line/70" />
       {right}
     </h2>
   );
@@ -65,7 +65,7 @@ export function Avatar({
   return (
     <span
       aria-hidden
-      className={`inline-flex shrink-0 items-center justify-center rounded-full border-2 border-neon bg-panel2 ${sizes[size]} ${dim ? 'opacity-50 grayscale' : ''}`}
+      className={`inline-flex shrink-0 items-center justify-center rounded-full border-2 border-neon bg-panel2 ring-2 ring-line ${sizes[size]} ${dim ? 'opacity-50 grayscale' : ''}`}
     >
       {avatarEmoji(avatar)}
     </span>

@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
     />
-    <meta name="theme-color" content="#00A9AB" />
+    <meta name="theme-color" content="#0d3a2f" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <!-- Home-screen install: opens fullscreen (no browser bars) when launched from the icon -->
     <meta name="mobile-web-app-capable" content="yes" />
@@ -18,14 +18,13 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Po:go</title>
     <script>
-      // Apply the saved theme before first paint to avoid a light flash in dark mode.
+      // Apply the saved look (the CRT layer, on by default) before first paint.
       try {
         var s = JSON.parse(localStorage.getItem('pogo.settings') || '{}');
-        var dark =
-          s.theme === 'dark' ||
-          (s.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
-        document.documentElement.classList.toggle('dark', dark);
-      } catch (e) {}
+        document.documentElement.classList.toggle('crt', s.crt !== false);
+      } catch (e) {
+        document.documentElement.classList.add('crt');
+      }
     </script>
   </head>
   <body>

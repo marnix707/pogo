@@ -1,14 +1,14 @@
 import { useSyncExternalStore } from 'react';
 
-export type Theme = 'system' | 'light' | 'dark';
 export interface Settings {
   sound: boolean;
   vibration: boolean;
-  theme: Theme;
+  /** The CRT layer over the whole app: scanlines and a darkened edge. */
+  crt: boolean;
 }
 
 const KEY = 'pogo.settings';
-const defaults: Settings = { sound: true, vibration: true, theme: 'system' };
+const defaults: Settings = { sound: true, vibration: true, crt: true };
 
 function load(): Settings {
   try {
@@ -21,14 +21,8 @@ function load(): Settings {
 let current = load();
 const listeners = new Set<() => void>();
 
-function applyTheme() {
-  const dark =
-    current.theme === 'dark' ||
-    (current.theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
-  document.documentElement.classList.toggle('dark', dark);
-  document
-    .querySelector('meta[name="theme-color"]')
-    ?.setAttribute('content', dark ? '#001850' : '#00A9AB');
+function applyLook() {
+  document.documentElement.classList.toggle('crt', current.crt);
 }
 
 export function getSettings(): Settings {
@@ -42,14 +36,13 @@ export function updateSettings(patch: Partial<Settings>) {
   } catch {
     // Storage unavailable: settings just won't persist.
   }
-  applyTheme();
+  applyLook();
   listeners.forEach((l) => l());
 }
 
-/** Call once at startup: applies the theme and follows OS changes while on "system". */
+/** Call once at startup: applies the saved look (the CRT layer). */
 export function initTheme() {
-  applyTheme();
-  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+  applyLook();
 }
 
 export function useSettings(): Settings {

@@ -1,13 +1,6 @@
-import type { Theme } from '../lib/settings';
 import { updateSettings, useSettings } from '../lib/settings';
 import { DisplayModeNote, InstallCard } from './InstallCard';
 import { Button, Sheet, Toggle } from './ui';
-
-const THEMES: { value: Theme; label: string }[] = [
-  { value: 'system', label: 'Auto' },
-  { value: 'light', label: 'Teal' },
-  { value: 'dark', label: 'Navy' },
-];
 
 export function SettingsSheet({
   open,
@@ -43,25 +36,12 @@ export function SettingsSheet({
           checked={settings.vibration}
           onChange={(vibration) => updateSettings({ vibration })}
         />
-        <div className="py-2">
-          <div className="label mb-2 text-muted">Theme</div>
-          <div className="grid grid-cols-3 gap-2">
-            {THEMES.map((t) => (
-              <button
-                key={t.value}
-                aria-pressed={settings.theme === t.value}
-                onClick={() => updateSettings({ theme: t.value })}
-                className={`min-h-11 rounded-md border-2 text-sm font-bold uppercase tracking-wider ${
-                  settings.theme === t.value
-                    ? 'border-accent bg-accent text-accentink'
-                    : 'border-edge/40 text-muted'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <Toggle
+          label="CRT effect"
+          hint="Scanlines and a dark screen edge"
+          checked={settings.crt}
+          onChange={(crt) => updateSettings({ crt })}
+        />
         <InstallCard variant="settings" />
         <DisplayModeNote />
         <Button variant="secondary" onClick={onSignOut}>
