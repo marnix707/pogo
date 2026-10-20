@@ -60,7 +60,7 @@ describe('creating and joining', () => {
     expect(room).toMatchObject({
       hostId: a.id,
       status: 'lobby',
-      visibility: 'private',
+      visibility: 'public',
       maxPlayers: 3,
     });
     expect(room.members.map((m) => m.id)).toEqual([a.id]);
