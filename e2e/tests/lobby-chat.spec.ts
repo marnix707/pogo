@@ -29,15 +29,15 @@ test('public games show up live in the lobby, can be joined from it, and quick m
   // A new room is public: it is listed live on the watcher's Home screen, without a refresh.
   await h.getByTestId('home-game-yatzy').click();
   await expect(h.getByTestId('room-visibility')).toHaveText('Public');
-  await expect(h.getByTestId('room-code')).toHaveCount(0); // a public room shows no code
+  await expect(h.getByTestId('room-code')).toBeVisible(); // a public room shows its code
   const listing = w.getByTestId(/^open-game-/).filter({ hasText: "Hosty's game" });
   await expect(listing).toBeVisible();
   await expect(listing).toContainText('1/6');
 
-  // Private removes it again (and shows the code under the switch).
+  // Private removes it again (and hides the code under the switch).
   await h.getByRole('switch', { name: /Public room/ }).click();
   await expect(h.getByTestId('room-visibility')).toHaveText('Private');
-  await expect(h.getByTestId('room-code')).toBeVisible();
+  await expect(h.getByTestId('room-code')).toHaveCount(0);
   await expect(listing).toHaveCount(0);
   await h.getByRole('switch', { name: /Public room/ }).click();
   await expect(listing).toBeVisible();
@@ -75,7 +75,6 @@ test('players chat in the lobby and during the game; profanity is masked', async
 
   await a.getByTestId('home-game-yatzy').click();
 
-  await a.getByRole('switch', { name: /Public room/ }).click(); // rooms are public by default; the code shows in a private one
   const code = (await a.getByTestId('room-code').textContent())!.trim();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();

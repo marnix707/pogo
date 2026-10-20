@@ -157,8 +157,8 @@ export function Lobby({
                   void api.updateSettings({ visibility: isPublic ? 'public' : 'private' })
                 }
               />
-              {/* Under the switch: only a private lobby needs a code (a public one is in the open games list). */}
-              {room.visibility === 'private' && (
+              {/* Under the switch: a public lobby shows its code, a private one hides it. */}
+              {room.visibility === 'public' && (
                 <div className="-mt-2 flex items-center justify-between gap-3">
                   <span className="font-semibold">Room code</span>
                   <span

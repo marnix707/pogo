@@ -29,7 +29,6 @@ test('two players play a full Yatzy game, with a reconnect in the middle', async
 
   // Alice creates a room; Bob joins with the code.
   await a.getByTestId('home-game-yatzy').click();
-  await a.getByRole('switch', { name: /Public room/ }).click(); // rooms are public by default; the code shows in a private one
   const code = (await a.getByTestId('room-code').textContent())!.trim();
   expect(code).toMatch(/^[A-Z0-9]{5}$/);
 
@@ -103,7 +102,6 @@ test('a share link joins the room directly, and the host can remove a player', a
 }) => {
   const host = await newPlayer(browser, 'Hana', 'owl');
   await host.page.getByTestId('home-game-yatzy').click();
-  await host.page.getByRole('switch', { name: /Public room/ }).click(); // rooms are public by default; the code shows in a private one
   const code = (await host.page.getByTestId('room-code').textContent())!.trim();
 
   // A brand new visitor opens the invite link, signs in, and ends up in the room.

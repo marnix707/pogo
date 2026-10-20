@@ -12,7 +12,6 @@ test('three players play a complete Karma game through the UI', async ({ browser
 
   // Karma sits next to Yatzy on the home screen; Alice opens a private Karma room.
   await alice.page.getByTestId('home-game-karma').click();
-  await alice.page.getByRole('switch', { name: /Public room/ }).click(); // rooms are public by default; the code shows in a private one
   const code = (await alice.page.getByTestId('room-code').textContent())!.trim();
   for (const p of [bob.page, cleo.page]) {
     await p.getByTestId('home-join-code').fill(code);
@@ -145,7 +144,6 @@ test('cards slide when swapped and when played to the pile (unless motion is red
 
   await alice.page.getByTestId('home-game-karma').click();
 
-  await alice.page.getByRole('switch', { name: /Public room/ }).click(); // rooms are public by default; the code shows in a private one
   const code = (await alice.page.getByTestId('room-code').textContent())!.trim();
   for (const p of [bob.page, calm.page]) {
     await p.getByTestId('home-join-code').fill(code);
@@ -204,7 +202,6 @@ test('tap selects, tapping again deselects, the Play button plays; Ready button 
 
   await a.getByTestId('home-game-karma').click();
 
-  await a.getByRole('switch', { name: /Public room/ }).click(); // rooms are public by default; the code shows in a private one
   const code = (await a.getByTestId('room-code').textContent())!.trim();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
@@ -305,7 +302,6 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
 
   await a.getByTestId('home-game-karma').click();
 
-  await a.getByRole('switch', { name: /Public room/ }).click(); // rooms are public by default; the code shows in a private one
   const code = (await a.getByTestId('room-code').textContent())!.trim();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
@@ -381,7 +377,6 @@ test('a very long hand (after picking up piles) wraps into rows (2 from 9 cards,
 
   await a.getByTestId('home-game-karma').click();
 
-  await a.getByRole('switch', { name: /Public room/ }).click(); // rooms are public by default; the code shows in a private one
   const code = (await a.getByTestId('room-code').textContent())!.trim();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
