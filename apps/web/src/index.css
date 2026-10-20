@@ -28,8 +28,18 @@
   --page-gradient: radial-gradient(130% 90% at 50% 0%, #2f8068 0%, #1e6450 52%, #124a39 100%);
 }
 
+/* The UI font (SIL OFL 1.1, notice in fonts/OFL.txt). Only a regular weight exists, so bold is not faked. */
+@font-face {
+  font-family: 'PogoPixel';
+  src: url('./fonts/pogo.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 html {
   background: rgb(var(--c-page));
+  font-synthesis: none;
 }
 
 html,

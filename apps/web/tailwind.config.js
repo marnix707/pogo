@@ -27,7 +27,7 @@ export default {
         line: token('line'), // the near-black outline round panels and buttons
       },
       fontFamily: {
-        sans: ['"Pixelify Sans"', 'ui-monospace', 'system-ui', 'sans-serif'],
+        sans: ['PogoPixel', '"Pixelify Sans"', 'ui-monospace', 'system-ui', 'sans-serif'],
       },
       keyframes: {
         diceRoll: {
