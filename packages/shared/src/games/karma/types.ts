@@ -29,8 +29,10 @@ export interface KarmaEvent {
   cards: Card[];
   /** The pile was burned (a 10 or four of a kind). */
   burned: boolean;
-  /** Cards taken into the hand (a pickup, or a failed blind card). */
+  /** Cards taken into the hand (a pickup). */
   pickedUp: number;
+  /** A face-down card turned out too low: it lies on the pile and its owner must pick the pile up. */
+  failed: boolean;
   /** The player has no cards left. */
   out: boolean;
   /** Players whose turn was skipped by an 8 (in order). */
@@ -50,6 +52,8 @@ export interface KarmaState {
   turn: number;
   /** Player ids in the order they ran out of cards; the last one is the loser. */
   finishOrder: string[];
+  /** The current player flipped a too-low face-down card: picking up the pile is their only move. */
+  mustPickUp: boolean;
   eventSeq: number;
   lastEvent: KarmaEvent | null;
 }
@@ -84,5 +88,6 @@ export interface KarmaView {
   burned: number;
   turn: number;
   finishOrder: string[];
+  mustPickUp: boolean;
   lastEvent: KarmaEvent | null;
 }

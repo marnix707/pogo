@@ -276,11 +276,7 @@ function describeEvent(
     parts.push(`${who} picked up all the cards!`);
   } else if (ev.kind === 'blind') {
     const c = cardLabel(ev.cards[0] as Card);
-    parts.push(
-      ev.pickedUp > 0
-        ? `${who} flipped ${c}, too low: picked up all the cards!`
-        : `${who} flipped ${c}`,
-    );
+    parts.push(ev.failed ? `${who} flipped ${c}, too low!` : `${who} flipped ${c}`);
   } else {
     parts.push(`${who} played ${ev.cards.map(cardLabel).join(' ')}`);
   }
@@ -314,6 +310,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const ghostTimer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => () => clearTimeout(ghostTimer.current), []);
   const prevPile = useRef<Card[]>(view.pile);
+  /** The last card of a player stays off the pile until its reveal is over (no spoilers behind it). */
+  const [hiddenOut, setHiddenOut] = useState<Card[]>([]);
   const [fourBurn, setFourBurn] = useState<Card[] | null>(null);
   const fourTimer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => () => clearTimeout(fourTimer.current), []);
@@ -373,7 +371,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
 
   const zone = mine ? activeZone(mine) : 'none';
   const pile = view.pile;
-  const shownPile = ghost ?? pile;
+  const shownPile =
+    ghost ?? (hiddenOut.length > 0 ? pile.filter((c) => !hiddenOut.includes(c)) : pile);
   const hand = useMemo(() => [...(mine?.hand ?? [])].sort(byRankThenSuit), [mine?.hand]);
   const swapping = view.phase === 'swap' && !!mine && !mine.ready;
   const playing = view.phase === 'play' && myTurn;
@@ -386,7 +385,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   /** A card newly in my hand: drawn from the deck, or picked up from the pile. */
   const handOrigin = (): FlipOrigin | null => {
     if (!lastEvent || lastEvent.playerId !== me) return null;
-    const fromPile = lastEvent.kind === 'pickup' || lastEvent.pickedUp > 0;
+    const fromPile = lastEvent.kind === 'pickup';
     // A point, not a box: the card grows out of the middle of the deck/pile at its own proportions.
     const box = boxOf(fromPile ? pileEl.current : stockEl.current);
     return box ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : null;
@@ -403,7 +402,13 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   };
   /** A card newly on the pile that was not on screen (an opponent's hand card): from their seat. */
   const pileOrigin = (card: Card): FlipOrigin | null => {
-    if (!lastEvent || lastEvent.kind === 'pickup' || !lastEvent.cards.includes(card)) return null;
+    if (
+      !lastEvent ||
+      lastEvent.kind === 'pickup' ||
+      lastEvent.out ||
+      !lastEvent.cards.includes(card)
+    )
+      return null;
     const seat = boxOf(seatEls.current.get(lastEvent.playerId));
     return seat ? { x: seat.left + seat.width / 2, y: seat.top + seat.height / 2 } : null;
   };
@@ -461,14 +466,23 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         label: winner ? (ev.playerId === me ? 'You win!' : `${name} wins!`) : `${name} is out`,
       });
       clearTimeout(revealTimer.current);
-      revealTimer.current = setTimeout(() => setReveal(null), winner ? 6800 : 3800);
+      setHiddenOut(ev.cards);
+      revealTimer.current = setTimeout(
+        () => {
+          setReveal(null);
+          setHiddenOut([]);
+        },
+        winner ? 6800 : 3800,
+      );
     }
     setSel([]);
     setSelDown(null);
     setPileArmed(false);
-    play(ev.burned ? 'score' : ev.pickedUp > 0 ? 'error' : 'tap');
-    if (ev.playerId === me) haptic(ev.burned ? 'success' : ev.pickedUp > 0 ? 'error' : 'tap');
-    const showcase = ev.cards.length > 0 && (ev.burned || (ev.kind === 'blind' && ev.pickedUp > 0));
+    play(ev.burned ? 'score' : ev.failed || ev.pickedUp > 0 ? 'error' : 'tap');
+    if (ev.playerId === me)
+      haptic(ev.burned ? 'success' : ev.failed || ev.pickedUp > 0 ? 'error' : 'tap');
+    // (The last card of a player has its own reveal, which must not be spoiled by this.)
+    const showcase = ev.cards.length > 0 && ev.burned && !ev.out;
     const shown = showcase
       ? [...prevPile.current.filter((c) => !ev.cards.includes(c)), ...ev.cards]
       : [];
@@ -600,6 +614,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   }
 
   function tapDown(slot: number) {
+    if (view.mustPickUp) return flashHint('Tap the pile to pick it up first');
     if (isDoubleTap(`d${slot}`)) {
       void playSelected([], slot);
       return;
@@ -672,14 +687,16 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const mustPickUp =
     playing &&
     pile.length > 0 &&
-    zone !== 'down' &&
-    !activeCards.some((c) => c !== null && canPlayRank(pile, rankOf(c)));
+    (view.mustPickUp ||
+      (zone !== 'down' && !activeCards.some((c) => c !== null && canPlayRank(pile, rankOf(c)))));
 
   const urgent = secondsLeft !== null && secondsLeft <= 10;
   const shownHint =
     flash ??
     (mustPickUp
-      ? 'Nothing you can play: tap the pile to pick it up'
+      ? view.mustPickUp
+        ? 'Too low! Tap the pile to pick it up'
+        : 'Nothing you can play: tap the pile to pick it up'
       : pileArmed
         ? 'Tap the pile again to pick it up'
         : hint);
@@ -700,9 +717,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   );
   // After a pickup my new cards fly out of the pile one by one (quicker when there are many).
   const flingStep = Math.min(90, 700 / Math.max(1, hand.length));
-  const flinging =
-    lastEvent?.playerId === me && (lastEvent.kind === 'pickup' || lastEvent.pickedUp > 0);
-  const flingLead = lastEvent?.kind === 'blind' ? GHOST_MS : 0;
+  const flinging = lastEvent?.playerId === me && lastEvent.kind === 'pickup';
   const handFont = myFont * (rowCount > 1 ? 0.85 : 1);
   const cardW = handFont * 5;
   const rowStep = handFont * 7 * 0.5;
@@ -985,7 +1000,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                             flip={{
                               id: c,
                               origin: handOrigin,
-                              delay: flinging ? flingLead + (r * perRow + i) * flingStep : 0,
+                              delay: flinging ? (r * perRow + i) * flingStep : 0,
                             }}
                             onClick={() => (swapping ? tapSwapHand(c) : tapCard(c))}
                           />

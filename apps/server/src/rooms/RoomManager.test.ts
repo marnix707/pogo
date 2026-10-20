@@ -670,6 +670,7 @@ describe('computer players', () => {
   function humanMove(view: KView, me: string, jitter: () => number): unknown {
     const mine = view.players.find((p) => p.id === me)!;
     if (view.phase === 'swap') return { type: 'ready' };
+    if (view.mustPickUp) return { type: 'pickup' }; // a too-low blind card is on the pile
     const zone = karma.activeZone(mine);
     if (zone === 'down') return { type: 'playDown', index: mine.faceDown.findIndex(Boolean) };
     const source = (zone === 'hand' ? (mine.hand ?? []) : mine.faceUp).filter(

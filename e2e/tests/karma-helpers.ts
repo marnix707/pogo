@@ -42,6 +42,8 @@ export interface Snapshot {
   playableUp: { id: string; rank: number }[];
   hasUp: boolean;
   downs: string[];
+  /** A face-down card was too low: the pile (pulsing) must be tapped to pick it up. */
+  mustPick: boolean;
 }
 
 export const snapshot = (page: Page): Promise<Snapshot> =>
@@ -65,6 +67,8 @@ export const snapshot = (page: Page): Promise<Snapshot> =>
         rank: rank(e), // data-rank: J, Q, K, A are 11-14 (parsing the label would give NaN)
       })),
       hasUp: q('[data-testid^=my-up-]').length > 0,
+      mustPick:
+        document.querySelector('[data-testid=pile]')?.getAttribute('data-must-pick') === 'true',
       downs: q('[data-testid^=my-down-]').map((e) => e.getAttribute('data-testid')!),
     };
   });
@@ -76,6 +80,10 @@ export const snapshot = (page: Page): Promise<Snapshot> =>
  * and led again), which also hits real auto-play. Tap each card of the rank to select it, then tap one again.
  */
 export async function takeTurn(page: Page, s: Snapshot) {
+  if (s.mustPick) {
+    await page.getByTestId('pile').click();
+    return;
+  }
   const choose = (cards: { id: string; rank: number }[]) => {
     const priority = (rank: number) => (rank === 10 ? 200 : rank === 2 ? 100 : rank);
     const ranks = [...new Set(cards.map((c) => c.rank))].sort((a, b) => priority(a) - priority(b));

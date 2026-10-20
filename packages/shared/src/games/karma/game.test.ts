@@ -37,6 +37,7 @@ function table(
     burned: 0,
     turn: 0,
     finishOrder: [],
+    mustPickUp: false,
     eventSeq: 0,
     lastEvent: null,
     ...extra,
@@ -341,10 +342,12 @@ describe('playing cards', () => {
       const s = table([{ faceDown: [card(9), card(3), card(4)] }, { hand: [card(9)] }], {
         pile: [card(7)],
       });
-      const after = move(s, 'p1', { type: 'playDown', index: 0 });
+      const flipped = move(s, 'p1', { type: 'playDown', index: 0 });
+      expect(flipped.lastEvent).toMatchObject({ kind: 'blind', failed: true });
+      const after = move(flipped, 'p1', { type: 'pickup' });
       expect(after.pile).toEqual([]);
       expect(hand(after, 0)).toEqual([card(7), card(9)]);
-      expect(after.lastEvent).toMatchObject({ kind: 'blind', pickedUp: 2 });
+      expect(after.lastEvent).toMatchObject({ kind: 'pickup', pickedUp: 2 });
     });
 
     it('a low blind card after a 7 is fine', () => {
@@ -661,7 +664,7 @@ describe('the 8 skips the next player', () => {
     expect(ok.lastEvent).toMatchObject({ kind: 'blind', skipped: ['p2'] });
     expect(ok.turn).toBe(2);
 
-    const failed = move(
+    const flipped = move(
       table(
         [{ faceDown: [card(5), card(3), card(4)] }, { hand: [card(9)] }, { hand: [card(11)] }],
         { pile: [card(12)] },
@@ -669,6 +672,7 @@ describe('the 8 skips the next player', () => {
       'p1',
       { type: 'playDown', index: 0 },
     );
+    const failed = move(flipped, 'p1', { type: 'pickup' });
     expect(failed.lastEvent?.skipped).toEqual([]);
     expect(failed.turn).toBe(1);
   });
@@ -782,15 +786,24 @@ describe('face-up and face-down cards', () => {
     expect(after.lastEvent).toMatchObject({ kind: 'blind', cards: [card(9)], pickedUp: 0 });
   });
 
-  it('a too-low blind card is added to the pile and the whole pile is picked up', () => {
+  it('a too-low blind card lies on the pile and its owner must then pick the pile up', () => {
     const s = table([{ faceDown: [card(4), card(5), card(6)] }, { hand: [card(9)] }], {
       pile: [card(12), card(13)],
     });
-    const after = move(s, 'p1', { type: 'playDown', index: 0 });
+    const flipped = move(s, 'p1', { type: 'playDown', index: 0 });
+    expect(flipped.pile).toEqual([card(12), card(13), card(4)]);
+    expect(flipped.turn).toBe(0);
+    expect(flipped.mustPickUp).toBe(true);
+    expect(flipped.lastEvent).toMatchObject({ kind: 'blind', failed: true, pickedUp: 0 });
+    // Nothing else is allowed until the pile is picked up; the computer does exactly that.
+    bad(flipped, 'p1', { type: 'playDown', index: 1 }, 'Pick up the pile first');
+    expect(game.autoMove!(flipped, 'p1', rng).move).toEqual({ type: 'pickup' });
+    const after = move(flipped, 'p1', { type: 'pickup' });
     expect(after.pile).toEqual([]);
+    expect(after.mustPickUp).toBe(false);
     expect(hand(after, 0)).toEqual([card(12), card(13), card(4)]);
     expect(after.turn).toBe(1);
-    expect(after.lastEvent).toMatchObject({ kind: 'blind', pickedUp: 3, burned: false });
+    expect(after.lastEvent).toMatchObject({ kind: 'pickup', pickedUp: 3, burned: false });
     // The hand now comes before the remaining face-down cards.
     expect(activeZone(after.players[0]!)).toBe('hand');
   });
@@ -860,9 +873,11 @@ describe('going out and ending', () => {
     const s = table([{ faceDown: [card(4), null, null] }, { hand: [card(9)] }], {
       pile: [card(13)],
     });
-    const after = move(s, 'p1', { type: 'playDown', index: 0 });
+    const flipped = move(s, 'p1', { type: 'playDown', index: 0 });
+    expect(flipped.players[0]!.out).toBe(false);
+    expect(game.isGameOver(flipped)).toBe(false);
+    const after = move(flipped, 'p1', { type: 'pickup' });
     expect(after.players[0]!.out).toBe(false);
-    expect(game.isGameOver(after)).toBe(false);
     expect(hand(after, 0)).toEqual([card(13), card(4)]);
   });
 });

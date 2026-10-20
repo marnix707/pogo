@@ -145,6 +145,7 @@ function createInitialState(players: GamePlayer[], _options: KarmaOptions, rng: 
     burned: 0,
     turn: 0,
     finishOrder: [],
+    mustPickUp: false,
     eventSeq: 0,
     lastEvent: null,
   };
@@ -166,6 +167,7 @@ function validateMove(state: KarmaState, playerId: string, move: KarmaMove): Mov
   }
 
   if (state.turn !== idx) return err('Not your turn');
+  if (state.mustPickUp && move.type !== 'pickup') return err('Pick up the pile first');
   const zone = stateZone(me);
 
   switch (move.type) {
@@ -227,6 +229,7 @@ function event(
     cards,
     burned: false,
     pickedUp: 0,
+    failed: false,
     out: false,
     skipped: [],
     ...extra,
@@ -319,6 +322,7 @@ function applyMove(state: KarmaState, playerId: string, move: KarmaMove, _rng: R
       const count = s.pile.length;
       me.hand.push(...s.pile);
       s.pile = [];
+      s.mustPickUp = false;
       const ev = event(s, me.id, 'pickup', [], { pickedUp: count });
       advance(s, idx, ev, false);
       return s;
@@ -341,13 +345,11 @@ function applyMove(state: KarmaState, playerId: string, move: KarmaMove, _rng: R
       if (canPlayRank(s.pile, rankOf(card))) {
         playToPile(s, idx, [card], 'blind');
       } else {
-        // Too low: the card joins the pile and the whole pile goes to the hand.
+        // Too low: the card lies on the pile for everyone to see and its owner must pick the whole
+        // pile up (their next and only move), so the UI can show what happened first.
         s.pile.push(card);
-        const count = s.pile.length;
-        me.hand.push(...s.pile);
-        s.pile = [];
-        const ev = event(s, me.id, 'blind', [card], { pickedUp: count });
-        advance(s, idx, ev, false);
+        s.mustPickUp = true;
+        event(s, me.id, 'blind', [card], { failed: true });
       }
       return s;
     }
@@ -372,6 +374,7 @@ function getPlayerView(state: KarmaState, playerId: string): KarmaView {
     burned: state.burned,
     turn: state.turn,
     finishOrder: [...state.finishOrder],
+    mustPickUp: state.mustPickUp,
     lastEvent: state.lastEvent,
   };
 }
@@ -428,7 +431,9 @@ function autoMove(state: KarmaState, playerId: string, rng: Rng): AutoMove<Karma
     move = swap ? { type: 'swap', ...swap } : { type: 'ready' };
   } else {
     const zone = stateZone(me);
-    if (zone === 'down') {
+    if (state.mustPickUp) {
+      move = { type: 'pickup' };
+    } else if (zone === 'down') {
       move = { type: 'playDown', index: me.faceDown.findIndex((c) => c !== null) };
     } else {
       const source = (zone === 'hand' ? me.hand : me.faceUp).filter((c): c is Card => c !== null);
