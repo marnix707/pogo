@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { getGame } from '@pogo/shared';
 import type { PublicRoomSummary, PublicUser } from '@pogo/shared';
 import { InstallCard } from '../components/InstallCard';
 import { LogoMark } from '../components/icons';
-import { Avatar, Button, SectionLabel, Sheet } from '../components/ui';
+import { Avatar, Button, SectionLabel } from '../components/ui';
 import { TopBar } from '../components/TopBar';
 import { gameUis, getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
@@ -75,10 +74,6 @@ export function Home({
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<string>('all');
-  /** The game whose menu (quick match, friends, computer) is open, and which page of it. */
-  const [menu, setMenu] = useState<{ gameId: string; page: 'main' | 'computer' } | null>(null);
-  // Remember the last game while the menu slides away, so its content does not vanish mid-slide.
-  const [lastMenuGame, setLastMenuGame] = useState<string | null>(null);
 
   // Live-update the open games while this screen is showing.
   useEffect(() => watchLobby(), [watchLobby]);
@@ -99,15 +94,7 @@ export function Home({
     if (code.trim().length >= 4) void run(api.join(code));
   }
 
-  function openMenu(gameId: string) {
-    setLastMenuGame(gameId);
-    setMenu({ gameId, page: 'main' });
-  }
-
   const blocked = busy || !api.online;
-  const menuGameId = menu?.gameId ?? lastMenuGame;
-  const menuUi = menuGameId ? getGameUi(menuGameId) : undefined;
-  const menuGame = menuGameId ? getGame(menuGameId) : undefined;
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
@@ -184,8 +171,8 @@ export function Home({
             <p className="label text-onbg/70">Looking for games…</p>
           ) : openGames.length === 0 ? (
             <div className="hud p-4 text-center text-sm text-muted" data-testid="open-games-empty">
-              No open games right now. Pick a game below and choose{' '}
-              <b className="text-ink">Quick match</b> to start one that others can join.
+              No open games right now. Pick a game below to open the waiting room, and switch on{' '}
+              <b className="text-ink">Public room</b> there so others can join.
             </div>
           ) : (
             <ul className="flex flex-col gap-2">
@@ -209,8 +196,8 @@ export function Home({
                 key={g.id}
                 type="button"
                 data-testid={`home-game-${g.id}`}
-                disabled={!api.online}
-                onClick={() => openMenu(g.id)}
+                disabled={blocked}
+                onClick={() => void run(api.create(g.id))}
                 className="hud hud-ticks flex w-full items-center gap-4 bg-panel p-4 text-left text-ink transition active:scale-[0.99] disabled:opacity-50"
               >
                 <span
@@ -230,80 +217,6 @@ export function Home({
           </div>
         </section>
       </main>
-
-      <Sheet
-        open={menu !== null}
-        onClose={() => setMenu(null)}
-        title={
-          menu?.page === 'computer'
-            ? `${menuUi?.name ?? 'Game'}: computer`
-            : `${menuUi?.emoji ?? ''} ${menuUi?.name ?? ''}`.trim()
-        }
-      >
-        {menuGameId && menu?.page !== 'computer' && (
-          <div className="flex flex-col gap-3">
-            <Button
-              data-testid={`home-quick-${menuGameId}`}
-              disabled={blocked}
-              onClick={() => {
-                setMenu(null);
-                void run(api.quickPlay(menuGameId));
-              }}
-            >
-              Quick match
-            </Button>
-            <Button
-              data-testid={`home-new-${menuGameId}`}
-              variant="secondary"
-              disabled={blocked}
-              onClick={() => {
-                setMenu(null);
-                void run(api.create(menuGameId));
-              }}
-            >
-              With friends
-            </Button>
-            {menuGame?.supportsBots && (
-              <Button
-                data-testid={`home-computer-${menuGameId}`}
-                variant="secondary"
-                disabled={blocked}
-                onClick={() => setMenu({ gameId: menuGameId, page: 'computer' })}
-              >
-                🤖 Play the computer
-              </Button>
-            )}
-          </div>
-        )}
-        {menuGameId && menu?.page === 'computer' && (
-          <>
-            <p className="mb-4 text-muted">How many computer opponents?</p>
-            <div className="grid grid-cols-2 gap-3">
-              {Array.from({ length: (menuGame?.maxPlayers ?? 2) - 1 }, (_, i) => i + 1).map((n) => (
-                <Button
-                  key={n}
-                  data-testid={`computer-count-${n}`}
-                  variant={n === 1 ? 'primary' : 'secondary'}
-                  disabled={blocked}
-                  onClick={() => {
-                    setMenu(null);
-                    void run(api.playComputer(menuGameId, n));
-                  }}
-                >
-                  {'🤖'.repeat(n)} {n === 1 ? '1 opponent' : `${n} opponents`}
-                </Button>
-              ))}
-            </div>
-            <Button
-              variant="secondary"
-              className="mt-3 w-full"
-              onClick={() => setMenu({ gameId: menuGameId, page: 'main' })}
-            >
-              Back
-            </Button>
-          </>
-        )}
-      </Sheet>
     </div>
   );
 }

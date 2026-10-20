@@ -29,7 +29,6 @@ test('two players play a full Yatzy game, with a reconnect in the middle', async
 
   // Alice creates a room; Bob joins with the code.
   await a.getByTestId('home-game-yatzy').click();
-  await a.getByTestId('home-new-yatzy').click();
   const code = (await a.getByTestId('room-code').textContent())!.trim();
   expect(code).toMatch(/^[A-Z0-9]{5}$/);
 
@@ -103,7 +102,6 @@ test('a share link joins the room directly, and the host can remove a player', a
 }) => {
   const host = await newPlayer(browser, 'Hana', 'owl');
   await host.page.getByTestId('home-game-yatzy').click();
-  await host.page.getByTestId('home-new-yatzy').click();
   const code = (await host.page.getByTestId('room-code').textContent())!.trim();
 
   // A brand new visitor opens the invite link, signs in, and ends up in the room.
@@ -138,7 +136,6 @@ test('the Yatzy scorecard, dice and buttons fit one phone screen without vertica
   await page.getByTestId('signin-nickname').fill('Solo');
   await page.getByTestId('signin-submit').click();
   await page.getByTestId('home-game-yatzy').click();
-  await page.getByTestId('home-new-yatzy').click();
   await page.getByTestId('lobby-start').click();
   await page.getByTestId('roll-button').click();
   await expect(page.getByTestId('die-0')).not.toHaveAttribute('data-value', '0');

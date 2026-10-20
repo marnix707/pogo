@@ -28,7 +28,6 @@ test('public games show up live in the lobby, can be joined from it, and quick m
 
   // A private room never shows up.
   await h.getByTestId('home-game-yatzy').click();
-  await h.getByTestId('home-new-yatzy').click();
   await expect(h.getByTestId('room-visibility')).toHaveText('Private');
   await expect(w.getByText("Hosty's game")).toHaveCount(0);
 
@@ -50,10 +49,13 @@ test('public games show up live in the lobby, can be joined from it, and quick m
   await expect(w.getByTestId('lobby-waiting')).toContainText('Hosty');
   await expect(h.getByTestId('member-Watcher')).toBeVisible();
 
-  // Quick match for a third player lands in the same (longest-waiting, still open) room.
+  // A third player joins from the list too.
   const third = await newPlayer(browser, 'Quicky', 'cat');
-  await third.page.getByTestId('home-game-yatzy').click();
-  await third.page.getByTestId('home-quick-yatzy').click();
+  await third.page
+    .getByTestId(/^open-game-/)
+    .filter({ hasText: "Hosty's game" })
+    .getByRole('button', { name: 'Join' })
+    .click();
   await expect(third.page.getByTestId('lobby-waiting')).toBeVisible();
   await expect(h.getByTestId('member-Quicky')).toBeVisible();
   await expect(h.getByTestId('player-count')).toHaveText('3 / 6');
@@ -75,7 +77,6 @@ test('players chat in the waiting room and during the game; profanity is masked'
 
   await a.getByTestId('home-game-yatzy').click();
 
-  await a.getByTestId('home-new-yatzy').click();
   const code = (await a.getByTestId('room-code').textContent())!.trim();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
@@ -141,7 +142,7 @@ test('profane nicknames are refused at sign-in when the filter is on (and allowe
   await context.close();
 });
 
-test('the dashboard: join-by-code beside the name, open games, then the games; buttons slide up on tap', async ({
+test('the dashboard: join-by-code beside the name, open games, then the games; a game tap opens its waiting room', async ({
   browser,
 }) => {
   const me = await newPlayer(browser, 'Layout', 'fox');
@@ -158,20 +159,11 @@ test('the dashboard: join-by-code beside the name, open games, then the games; b
   const open = await page.getByRole('region', { name: 'Open games' }).boundingBox();
   const games = await page.getByRole('region', { name: 'Games', exact: true }).boundingBox();
   expect(open!.y).toBeLessThan(games!.y);
-  await expect(page.getByTestId('home-quick-karma')).toHaveCount(0);
-  await expect(page.getByTestId('home-new-karma')).toHaveCount(0);
 
-  // Tapping a game dims the page and slides the menu up; tapping outside slides it away again.
+  // Tapping a game goes straight to its waiting room (no menu in between).
   await page.getByTestId('home-game-karma').click();
-  await expect(page.getByTestId('home-quick-karma')).toBeVisible();
-  await expect(page.getByTestId('home-new-karma')).toBeVisible();
-  await expect(page.getByTestId('home-computer-karma')).toBeVisible();
-  await expect(page.getByTestId('sheet-backdrop')).toHaveCSS(
-    'background-color',
-    /rgba\(0, 0, 0, 0\.6\)/,
-  );
-  await page.getByTestId('sheet-backdrop').click({ position: { x: 5, y: 5 } });
+  await expect(page.getByTestId('room-code')).toBeVisible();
+  await expect(page.getByTestId('lobby-start')).toBeVisible();
   await expect(page.getByTestId('sheet-backdrop')).toHaveCount(0);
-  await expect(page.getByTestId('home-quick-karma')).toHaveCount(0);
   await me.context.close();
 });

@@ -12,7 +12,6 @@ test('three players play a complete Karma game through the UI', async ({ browser
 
   // Karma sits next to Yatzy on the home screen; Alice opens a private Karma room.
   await alice.page.getByTestId('home-game-karma').click();
-  await alice.page.getByTestId('home-new-karma').click();
   const code = (await alice.page.getByTestId('room-code').textContent())!.trim();
   for (const p of [bob.page, cleo.page]) {
     await p.getByTestId('home-join-code').fill(code);
@@ -81,10 +80,11 @@ test('the lobby can be filtered by game', async ({ browser }) => {
 
   await hostA.page.getByTestId('home-game-karma').click();
 
-  await hostA.page.getByTestId('home-quick-karma').click();
+  await hostA.page.getByRole('switch', { name: /Public room/ }).click();
   await expect(hostA.page.getByTestId('room-visibility')).toHaveText('Public');
   await hostB.page.getByTestId('home-game-yatzy').click();
-  await hostB.page.getByTestId('home-quick-yatzy').click();
+  await hostB.page.getByRole('switch', { name: /Public room/ }).click();
+  await expect(hostB.page.getByTestId('room-visibility')).toHaveText('Public');
 
   const w = watcher.page;
   await expect(w.getByTestId(/^open-game-/).filter({ hasText: "KarmaHost's game" })).toBeVisible();
@@ -146,7 +146,6 @@ test('cards slide when swapped and when played to the pile (unless motion is red
 
   await alice.page.getByTestId('home-game-karma').click();
 
-  await alice.page.getByTestId('home-new-karma').click();
   const code = (await alice.page.getByTestId('room-code').textContent())!.trim();
   for (const p of [bob.page, calm.page]) {
     await p.getByTestId('home-join-code').fill(code);
@@ -205,7 +204,6 @@ test('tap selects, tapping again deselects, the Play button plays; Ready button 
 
   await a.getByTestId('home-game-karma').click();
 
-  await a.getByTestId('home-new-karma').click();
   const code = (await a.getByTestId('room-code').textContent())!.trim();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
@@ -306,7 +304,6 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
 
   await a.getByTestId('home-game-karma').click();
 
-  await a.getByTestId('home-new-karma').click();
   const code = (await a.getByTestId('room-code').textContent())!.trim();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
@@ -382,7 +379,6 @@ test('a very long hand (after picking up piles) wraps into rows (2 from 9 cards,
 
   await a.getByTestId('home-game-karma').click();
 
-  await a.getByTestId('home-new-karma').click();
   const code = (await a.getByTestId('room-code').textContent())!.trim();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
