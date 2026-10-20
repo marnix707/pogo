@@ -46,8 +46,13 @@ export const handRowsFor = (n: number) =>
   n <= 8 ? 1 : n <= 12 ? 2 : Math.max(3, Math.ceil(n / 8));
 /** How long the cards of a burn or a failed blind card stay visible on the pile before it resolves. */
 const GHOST_MS = 1100;
-/** A face-down card is flipped in the middle of the screen for this long (the turn takes 2.6s). */
-const BLIND_REVEAL_MS = 4000;
+/** A face-down card is flipped in the middle of the screen for this long (the turn takes 3.12s, then it stays ~0.4s). */
+const BLIND_REVEAL_MS = 3560;
+/** The winning / a later finisher's card: the turn plus a short hold. */
+const WIN_REVEAL_MS = 5200;
+const OUT_REVEAL_MS = 3700;
+/** After a reveal is gone, moves stay locked this long so every animation has finished. */
+const SETTLE_MS = 400;
 /** A four-of-a-kind burn gets a bigger show: the four cards side by side, dimmed table, then the fire. */
 const FOUR_BURN_MS = 2400;
 
@@ -331,6 +336,13 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   );
   const revealTimer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => () => clearTimeout(revealTimer.current), []);
+  /** A beat after a reveal: moves stay locked until every animation has finished. */
+  const [settling, setSettling] = useState(false);
+  useEffect(() => {
+    if (reveal) return setSettling(true);
+    const t = setTimeout(() => setSettling(false), SETTLE_MS);
+    return () => clearTimeout(t);
+  }, [reveal]);
   /** The pile was tapped once: tap it again to pick it up. */
   const [pileArmed, setPileArmed] = useState(false);
   /** A short message that temporarily replaces the hint (e.g. after tapping the deck). */
@@ -480,7 +492,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
           setReveal(null);
           setHiddenOut([]);
         },
-        winner ? 7300 : 4300,
+        winner ? WIN_REVEAL_MS : OUT_REVEAL_MS,
       );
     } else if (ev.kind === 'blind' && ev.cards.length > 0) {
       // Every face-down card is turned over in the middle of the screen first (the same flip as the
@@ -574,8 +586,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   // ---- interactions -------------------------------------------------------------------------
 
   async function send(move: unknown) {
-    // Nothing may be played while a card is still turning over.
-    if (busy || reveal) return undefined;
+    // Nothing may be played while a card is still turning over (nor in the beat after it).
+    if (busy || reveal || settling) return undefined;
     setBusy(true);
     const res = await sendMove(move);
     setBusy(false);

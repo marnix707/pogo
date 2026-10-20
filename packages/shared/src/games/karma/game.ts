@@ -579,8 +579,9 @@ export const karmaGame: GameDefinition<KarmaState, KarmaMove, KarmaOptions, Karm
   settleMs: (state) => {
     const ev = state.lastEvent;
     if (!ev) return 0;
-    if (ev.out) return state.finishOrder[0] === ev.playerId ? 7300 : 4300;
-    return ev.kind === 'blind' ? 4000 : 0;
+    // The client's reveal (turn + short hold) plus the beat it waits afterwards (KarmaGame SETTLE_MS).
+    if (ev.out) return state.finishOrder[0] === ev.playerId ? 5600 : 4100;
+    return ev.kind === 'blind' ? 3960 : 0;
   },
   supportsBots: true,
 };
