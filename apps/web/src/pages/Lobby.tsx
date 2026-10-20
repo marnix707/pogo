@@ -149,9 +149,17 @@ export function Lobby({
           <section aria-label="Settings">
             <SectionLabel>Settings</SectionLabel>
             <Card className="flex flex-col gap-5">
-              {/* The code lives here, out of the way; only a private lobby needs it. */}
+              <Toggle
+                label="Public room"
+                hint="Show in the lobby so anyone can join"
+                checked={room.visibility === 'public'}
+                onChange={(isPublic) =>
+                  void api.updateSettings({ visibility: isPublic ? 'public' : 'private' })
+                }
+              />
+              {/* Under the switch: only a private lobby needs a code (a public one is in the open games list). */}
               {room.visibility === 'private' && (
-                <div className="flex items-center justify-between gap-3">
+                <div className="-mt-2 flex items-center justify-between gap-3">
                   <span className="font-semibold">Room code</span>
                   <span
                     data-testid="room-code"
@@ -161,14 +169,6 @@ export function Lobby({
                   </span>
                 </div>
               )}
-              <Toggle
-                label="Public room"
-                hint="Show in the lobby so anyone can join"
-                checked={room.visibility === 'public'}
-                onChange={(isPublic) =>
-                  void api.updateSettings({ visibility: isPublic ? 'public' : 'private' })
-                }
-              />
               {limits.supportsBots && (
                 <Stepper
                   label="Computer players"

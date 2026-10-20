@@ -59,7 +59,7 @@ const turnTimeSchema = z.number().int().min(0).max(600);
 
 export const roomCreateSchema = z.object({
   gameId: z.string().min(1).max(32),
-  visibility: visibilitySchema.default('private'),
+  visibility: visibilitySchema.default('public'),
   maxPlayers: maxPlayersSchema.optional(),
   /** Validated by the chosen game's optionsSchema on the server. */
   options: z.unknown().optional(),

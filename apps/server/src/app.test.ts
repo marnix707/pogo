@@ -359,7 +359,7 @@ describe('playing against the computer over sockets', () => {
       me.client.emit('room:create', { gameId: 'karma', bots: 1, autoStart: true }, ack),
     );
     if (!created.ok) throw new Error(created.error);
-    expect(created.data).toMatchObject({ status: 'playing', bots: 1, visibility: 'private' });
+    expect(created.data).toMatchObject({ status: 'playing', bots: 1, visibility: 'public' });
     const bot = created.data.members.find((m) => m.bot);
     expect(bot).toMatchObject({ nickname: 'Robo', avatar: 'robot', connected: true });
 

@@ -26,20 +26,18 @@ test('public games show up live in the lobby, can be joined from it, and quick m
   // Nothing open yet (other tests may have left rooms; look for this host specifically).
   await expect(w.getByText("Hosty's game")).toHaveCount(0);
 
-  // A private room never shows up.
+  // A new room is public: it is listed live on the watcher's Home screen, without a refresh.
   await h.getByTestId('home-game-yatzy').click();
-  await expect(h.getByTestId('room-visibility')).toHaveText('Private');
-  await expect(w.getByText("Hosty's game")).toHaveCount(0);
-
-  // Making it public lists it live on the watcher's Home screen, without a refresh.
-  await h.getByRole('switch', { name: /Public room/ }).click();
   await expect(h.getByTestId('room-visibility')).toHaveText('Public');
+  await expect(h.getByTestId('room-code')).toHaveCount(0); // a public room shows no code
   const listing = w.getByTestId(/^open-game-/).filter({ hasText: "Hosty's game" });
   await expect(listing).toBeVisible();
   await expect(listing).toContainText('1/6');
 
-  // Back to private removes it again.
+  // Private removes it again (and shows the code under the switch).
   await h.getByRole('switch', { name: /Public room/ }).click();
+  await expect(h.getByTestId('room-visibility')).toHaveText('Private');
+  await expect(h.getByTestId('room-code')).toBeVisible();
   await expect(listing).toHaveCount(0);
   await h.getByRole('switch', { name: /Public room/ }).click();
   await expect(listing).toBeVisible();
@@ -77,6 +75,7 @@ test('players chat in the lobby and during the game; profanity is masked', async
 
   await a.getByTestId('home-game-yatzy').click();
 
+  await a.getByRole('switch', { name: /Public room/ }).click(); // rooms are public by default; the code shows in a private one
   const code = (await a.getByTestId('room-code').textContent())!.trim();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
@@ -162,7 +161,6 @@ test('the dashboard: join-by-code beside the name, open games, then the games; a
 
   // Tapping a game goes straight to its lobby (no menu in between).
   await page.getByTestId('home-game-karma').click();
-  await expect(page.getByTestId('room-code')).toBeVisible();
   await expect(page.getByTestId('lobby-start')).toBeVisible();
   await expect(page.getByTestId('sheet-backdrop')).toHaveCount(0);
   await me.context.close();

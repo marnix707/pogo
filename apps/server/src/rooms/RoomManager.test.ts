@@ -346,8 +346,11 @@ describe('public lobby', () => {
     const { manager, must } = setup();
     expect(manager.listPublic()).toEqual([]);
 
-    const priv = must(manager.create(a, { gameId: 'race' }));
-    expect(manager.listPublic()).toEqual([]); // private by default
+    const priv = must(manager.create(a, { gameId: 'race', visibility: 'private' }));
+    expect(manager.listPublic()).toEqual([]);
+    must(manager.updateSettings(a.id, { visibility: 'public' }));
+    expect(manager.listPublic().map((r) => r.code)).toEqual([priv.code]); // public by default
+    must(manager.updateSettings(a.id, { visibility: 'private' }));
 
     must(manager.updateSettings(a.id, { visibility: 'public' }));
     vi.advanceTimersByTime(5);
