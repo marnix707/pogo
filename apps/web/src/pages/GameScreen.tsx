@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChatMessage, RoomView } from '@pogo/shared';
+import type { ComponentType } from 'react';
+import type { GameUiProps } from '../games/types';
 import { Button, Sheet } from '../components/ui';
 import { ChatPanel } from '../components/ChatPanel';
 import { ArrowLeftIcon, ChatIcon } from '../components/icons';
@@ -24,6 +26,9 @@ function ResultsPanel({
   title,
   showScores = true,
   restarts = false,
+  pending = false,
+  extra,
+  sendMove,
 }: {
   room: RoomView;
   me: string;
@@ -32,7 +37,13 @@ function ResultsPanel({
   showScores?: boolean;
   /** "Play again" restarts at once, so the waiting room needs its own button. */
   restarts?: boolean;
+  /** The game still needs something from the players: no rematch buttons yet. */
+  pending?: boolean;
+  /** Game-specific section between the standings and the buttons. */
+  extra?: ComponentType<GameUiProps>;
+  sendMove: GameUiProps['sendMove'];
 }) {
+  const Extra = extra;
   const results = room.game?.results;
   if (!results) return null;
   const isHost = room.hostId === me;
@@ -124,8 +135,12 @@ function ResultsPanel({
           </ol>
         )}
 
+        {Extra && <Extra room={room} me={me} sendMove={sendMove} />}
+
         <div className="mt-auto flex flex-col gap-3">
-          {isHost ? (
+          {pending ? (
+            <p className="label text-center text-muted">Almost there…</p>
+          ) : isHost ? (
             <>
               <Button data-testid="rematch" disabled={!api.online} onClick={() => void api.rematch()}>
                 Play again
@@ -180,28 +195,33 @@ export function GameScreen({
     if (chatOpen) markRead();
   }, [chatOpen, markRead, messages.length]);
   const finished = room.status === 'finished';
+  // A game can be over for the standings while it still waits for something (Karma: the winner's rule).
+  const pendingResults = room.status === 'playing' ? (ui?.pendingResults?.(room) ?? null) : null;
+  const ended = finished || pendingResults !== null;
+  const panelRoom: RoomView =
+    pendingResults && room.game ? { ...room, game: { ...room.game, results: pendingResults } } : room;
 
   // Fanfare once when the game ends.
-  const wasFinished = useRef(finished);
+  const wasFinished = useRef(ended);
   // Standings appear at once when you open a finished game, but after the game's own final
   // animation (e.g. Karma's win reveal) when the game ends while you watch.
-  const [resultsShown, setResultsShown] = useState(finished);
+  const [resultsShown, setResultsShown] = useState(ended);
   const resultsDelay = ui?.resultsDelayMs?.(room) ?? 0;
   useEffect(() => {
-    if (!finished) return setResultsShown(false);
+    if (!ended) return setResultsShown(false);
     if (wasFinished.current || resultsDelay === 0) return setResultsShown(true);
     const t = setTimeout(() => setResultsShown(true), resultsDelay);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [finished]);
+  }, [ended]);
   useEffect(() => {
-    if (finished && !wasFinished.current) {
-      const won = room.game?.results?.rankings.some((r) => r.rank === 1 && r.playerId === me);
+    if (ended && !wasFinished.current) {
+      const won = panelRoom.game?.results?.rankings.some((r) => r.rank === 1 && r.playerId === me);
       play(won ? 'win' : 'score');
       haptic(won ? 'success' : 'tap');
     }
-    wasFinished.current = finished;
-  }, [finished, room.game?.results, me]);
+    wasFinished.current = ended;
+  }, [ended, panelRoom.game?.results, me]);
 
   if (!ui) {
     return (
@@ -265,12 +285,15 @@ export function GameScreen({
           }}
         />
       </div>
-      {finished && resultsShown && (
+      {ended && resultsShown && (
         <ResultsPanel
-          room={room}
+          room={panelRoom}
           me={me}
           api={api}
-          title={ui.resultsTitle?.(room, me)}
+          sendMove={api.move}
+          pending={pendingResults !== null}
+          extra={ui.ResultsExtra}
+          title={ui.resultsTitle?.(panelRoom, me)}
           showScores={!ui.hideScores}
           restarts={ui.playAgainRestarts}
         />

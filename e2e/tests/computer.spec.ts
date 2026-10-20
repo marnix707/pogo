@@ -7,7 +7,11 @@ import { readyUp, newPlayer, snapshot, takeTurn } from './karma-helpers';
 async function playUntilResults(page: Page, limitMs = 200_000) {
   const started = Date.now();
   let sawWinnerReveal = false;
-  while (!(await page.getByTestId('results-panel').isVisible())) {
+  // (In party mode the standings are already up while the winner still picks a rule inside them.)
+  const done = async () =>
+    (await page.getByTestId('results-panel').isVisible()) &&
+    !(await page.getByTestId('rule-pick').isVisible());
+  while (!(await done())) {
     // One evaluate, not count + getAttribute: reveals come and go (every face-down card has one).
     const winner = await page.evaluate(() =>
       document.querySelector('[data-testid=win-reveal]')?.getAttribute('data-winner'),
@@ -15,7 +19,7 @@ async function playUntilResults(page: Page, limitMs = 200_000) {
     if (winner === 'true') sawWinnerReveal = true;
     if (Date.now() - started > limitMs)
       throw new Error('the game against the computer did not finish');
-    // Party mode: the winner of the game picks a rule (the others just wait).
+    // Party mode: the winner of the game picks a rule in the standings (the others just wait).
     // (One evaluate: the overlay can vanish between two separate calls.)
     const pick = await page.evaluate(() =>
       document.querySelector('[data-testid=rule-pick]')?.getAttribute('data-mine'),
@@ -227,8 +231,9 @@ test('epic mode switches on every rule from the start', async ({ browser }) => {
   await page.getByTestId('home-new-karma').click();
   await page.getByRole('button', { name: 'More Computer players' }).click();
   await page.getByTestId('karma-mode-epic').click();
-  await expect(page.getByTestId('karma-mode-bubble')).toContainText('Big hand');
-  await expect(page.getByTestId('karma-mode-bubble')).toContainText('3 ate 9');
+  await expect(page.getByTestId('karma-mode-bubble')).toBeVisible();
+  await page.getByTestId('karma-rule-echoThree').click();
+  await expect(page.getByTestId('karma-rule-bubble')).toContainText('repeats the card beneath');
   await expect(page.getByTestId('karma-active-rules').locator('li')).toHaveCount(2);
   await page.getByTestId('lobby-start').click();
   await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');

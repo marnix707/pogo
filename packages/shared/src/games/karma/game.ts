@@ -332,7 +332,7 @@ function playToPile(state: KarmaState, idx: number, cards: Card[], kind: 'play' 
     state.pile = [];
   }
   // An 8 skips the next player (a burn takes priority: the same player leads again anyway). With
-  // "3 ate 9" a 3 repeats the 8 beneath it (3s in between do not hide it).
+  // "3 ate 8" a 3 repeats the 8 beneath it (3s in between do not hide it).
   const repeatsEight =
     rank === 3 && hasRule(state.rules, 'echoThree') && below !== undefined && rankOf(below) === 8;
   const eights = !burn && (rank === 8 || repeatsEight) ? cards.length : 0;

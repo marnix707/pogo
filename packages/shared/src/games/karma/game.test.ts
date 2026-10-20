@@ -1069,11 +1069,11 @@ describe('modes and rules', () => {
     expect(s.players[0]!.hand).toHaveLength(4);
   });
 
-  it('the extra rules are big hand and 3 ate 9', () => {
+  it('the extra rules are big hand and 3 ate 8', () => {
     expect(KARMA_RULES.map((r) => r.id)).toEqual(['bigHand', 'echoThree']);
   });
 
-  it('3 ate 9: a 3 repeats the 8 beneath it (skips the next player again)', () => {
+  it('3 ate 8: a 3 repeats the 8 beneath it (skips the next player again)', () => {
     const seats = () => [
       { hand: [card(3), card(3, 1), card(4)] },
       { hand: [card(4)] },

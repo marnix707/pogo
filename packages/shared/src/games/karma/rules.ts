@@ -18,7 +18,7 @@ export const KARMA_MODES: { id: KarmaMode; name: string; emoji: string; blurb: s
     emoji: '🎉',
     blurb: 'After each game the winner switches an extra rule on or off for all next games.',
   },
-  { id: 'epic', name: 'Epic', emoji: '🔥', blurb: 'Every extra rule is on from the start of every game:' },
+  { id: 'epic', name: 'Epic', emoji: '🔥', blurb: 'Every extra rule is on from the start. Tap a rule below to see what it does.' },
 ];
 
 export interface KarmaRule {
@@ -37,7 +37,7 @@ export const KARMA_RULES: readonly KarmaRule[] = [
   },
   {
     id: 'echoThree',
-    name: '3 ate 9',
+    name: '3 ate 8',
     emoji: '3️⃣',
     description: 'A 3 repeats the card beneath it: a 3 on an 8 skips the next player again.',
   },

@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import type { Result, RoomView } from '@pogo/shared';
+import type { GameResults, Result, RoomView } from '@pogo/shared';
 
 export interface GameUiProps {
   room: RoomView;
@@ -42,6 +42,13 @@ export interface GameUi {
   playAgainRestarts?: boolean;
   /** Wait this long after the game ends before showing the results (lets a final animation play). */
   resultsDelayMs?: (room: RoomView) => number;
+  /**
+   * The game is over but still needs something from the players (e.g. the winner picks a rule):
+   * the standings it returns are shown at once, with `ResultsExtra` and without the rematch buttons.
+   */
+  pendingResults?: (room: RoomView) => GameResults | null;
+  /** Extra section in the results panel, between the standings and the buttons. */
+  ResultsExtra?: ComponentType<GameUiProps>;
   /** Optional custom headline for the results panel (default: "<winner> wins!"). */
   resultsTitle?: (room: RoomView, me: string) => string | undefined;
 }

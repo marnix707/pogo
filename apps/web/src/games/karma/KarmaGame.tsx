@@ -10,7 +10,6 @@ import type { GameUiProps } from '../types';
 import { KarmaRules } from './KarmaRules';
 import { DOUBLE_TAP_MS, planTap } from './selection';
 import { FourBurn } from './FourBurn';
-import { RulePick } from './RulePick';
 import { WinReveal } from './WinReveal';
 import { CardFlipContext, PlayingCard } from './PlayingCard';
 import type { FlipOrigin } from './PlayingCard';
@@ -1094,16 +1093,6 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
 
         {fourBurn && <FourBurn cards={fourBurn} ms={FOUR_BURN_MS} />}
         {reveal && <WinReveal {...reveal} />}
-
-        {view.phase === 'pick' && view.pick && !reveal && !fourBurn && !ghost && (
-          <RulePick
-            choices={view.pick.choices}
-            active={view.rules}
-            chooser={nameOf(view.pick.playerId)}
-            mine={view.pick.playerId === me}
-            onPick={(rule) => void send({ type: 'pickRule', rule })}
-          />
-        )}
 
         <KarmaRules open={rulesOpen} onClose={() => setRulesOpen(false)} rules={view.rules} />
       </div>

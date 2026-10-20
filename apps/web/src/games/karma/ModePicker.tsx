@@ -1,75 +1,117 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { karma } from '@pogo/shared';
 import type { LobbyOptionsProps } from '../types';
 
 const { KARMA_MODES, KARMA_RULES } = karma;
 
+/** A small bubble that floats over the UI under its trigger (the parent is `relative`). */
+function Bubble({
+  testId,
+  align = 'center',
+  children,
+}: {
+  testId: string;
+  align?: 'left' | 'center' | 'right';
+  children: React.ReactNode;
+}) {
+  const place =
+    align === 'left'
+      ? 'left-0'
+      : align === 'right'
+        ? 'right-0'
+        : 'left-1/2 -translate-x-1/2';
+  const arrow =
+    align === 'left' ? 'left-6' : align === 'right' ? 'right-6' : 'left-1/2 -translate-x-1/2';
+  return (
+    <div
+      role="status"
+      data-testid={testId}
+      className={`info-bubble absolute top-full z-30 mt-2 w-56 max-w-[70vw] ${place}`}
+    >
+      <span
+        aria-hidden
+        className={`absolute -top-[7px] h-3 w-3 rotate-45 border-l-2 border-t-2 border-edge/40 bg-panel2 ${arrow}`}
+      />
+      <div className="relative rounded-lg border-2 border-edge/40 bg-panel2 px-3 py-2 text-left text-sm font-normal text-ink shadow-lg">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /**
- * Waiting-room panel: pick Normal / Party / Epic (host) and see which rules are on. Tapping a mode
- * also opens a small bubble under it with what it means (tap it again to close).
+ * Waiting-room panel: pick Normal / Party / Epic (host) and see which rules are on. Nothing is
+ * explained by default: tapping a mode or a rule (emoji + name) floats a small bubble over the
+ * screen with what it means; tap it again or anywhere else to close it.
  */
 export function ModePicker({ room, isHost, setOptions }: LobbyOptionsProps) {
   const options = (room.options ?? {}) as { mode?: karma.KarmaMode; rules?: string[] };
   const mode = options.mode ?? 'normal';
   const rules =
     mode === 'epic' ? KARMA_RULES.map((r) => r.id) : mode === 'party' ? (options.rules ?? []) : [];
-  const [shown, setShown] = useState<karma.KarmaMode | null>(null);
-  const bubble = KARMA_MODES.find((m) => m.id === shown);
-  const bubbleAt = KARMA_MODES.findIndex((m) => m.id === shown);
+  const [shown, setShown] = useState<string | null>(null);
+  const toggle = (key: string) => setShown((s) => (s === key ? null : key));
+
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!shown) return;
+    const close = (e: PointerEvent) => {
+      if (!root.current?.contains(e.target as Node)) setShown(null);
+    };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [shown]);
+
   return (
-    <div data-testid="karma-modes">
+    <div data-testid="karma-modes" ref={root}>
       <div className="grid grid-cols-3 gap-2">
-        {KARMA_MODES.map((m) => (
-          <button
-            key={m.id}
-            data-testid={`karma-mode-${m.id}`}
-            aria-pressed={mode === m.id}
-            onClick={() => {
-              if (isHost && mode !== m.id) setOptions({ mode: m.id });
-              setShown(shown === m.id ? null : m.id);
-            }}
-            className={`min-h-14 rounded-md border-2 text-sm font-bold ${
-              mode === m.id ? 'border-accent bg-accent text-accentink' : 'border-edge/40 text-muted'
-            }`}
-          >
-            <span className="block text-xl leading-none">{m.emoji}</span>
-            {m.name}
-          </button>
+        {KARMA_MODES.map((m, i) => (
+          <div key={m.id} className="relative">
+            <button
+              data-testid={`karma-mode-${m.id}`}
+              aria-pressed={mode === m.id}
+              onClick={() => {
+                if (isHost && mode !== m.id) setOptions({ mode: m.id });
+                toggle(`mode:${m.id}`);
+              }}
+              className={`min-h-14 w-full rounded-md border-2 text-sm font-bold ${
+                mode === m.id
+                  ? 'border-accent bg-accent text-accentink'
+                  : 'border-edge/40 text-muted'
+              }`}
+            >
+              <span className="block text-xl leading-none">{m.emoji}</span>
+              {m.name}
+            </button>
+            {shown === `mode:${m.id}` && (
+              <Bubble
+                testId="karma-mode-bubble"
+                align={i === 0 ? 'left' : i === KARMA_MODES.length - 1 ? 'right' : 'center'}
+              >
+                {m.blurb}
+              </Bubble>
+            )}
+          </div>
         ))}
       </div>
-      {bubble && (
-        <div
-          role="status"
-          data-testid="karma-mode-bubble"
-          className="relative mt-3 rounded-lg border-2 border-edge/40 bg-panel2 px-3 py-2 text-sm"
-        >
-          <span
-            aria-hidden
-            className="absolute -top-[7px] h-3 w-3 -translate-x-1/2 rotate-45 border-l-2 border-t-2 border-edge/40 bg-panel2"
-            style={{ left: `${(bubbleAt * 2 + 1) * (100 / 6)}%` }}
-          />
-          <b>
-            {bubble.emoji} {bubble.name}
-          </b>
-          : {bubble.blurb}
-          {bubble.id === 'epic' && (
-            <ul className="mt-1 flex flex-col gap-0.5 text-muted">
-              {KARMA_RULES.map((r) => (
-                <li key={r.id}>
-                  {r.emoji} {r.name}: {r.description}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
       {rules.length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-1.5" data-testid="karma-active-rules">
           {rules.map((id) => {
             const r = karma.ruleById(id);
             return r ? (
-              <li key={id} className="rounded-full border border-edge/40 px-2.5 py-1 text-xs">
-                {r.emoji} {r.name}
+              <li key={id} className="relative">
+                <button
+                  data-testid={`karma-rule-${id}`}
+                  onClick={() => toggle(`rule:${id}`)}
+                  className="rounded-full border border-edge/40 px-2.5 py-1 text-xs"
+                >
+                  {r.emoji} {r.name}
+                </button>
+                {shown === `rule:${id}` && (
+                  <Bubble testId="karma-rule-bubble" align="left">
+                    {r.description}
+                  </Bubble>
+                )}
               </li>
             ) : null;
           })}
