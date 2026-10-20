@@ -1,11 +1,13 @@
 import type { Card } from './cards';
+import type { KarmaMode } from './rules';
 
 export const HAND_SIZE = 3;
+export const BIG_HAND_SIZE = 4;
 export const SLOTS = 3;
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 5;
 
-export type KarmaPhase = 'swap' | 'play' | 'over';
+export type KarmaPhase = 'swap' | 'play' | 'pick' | 'over';
 
 export interface KarmaPlayerState {
   id: string;
@@ -56,6 +58,18 @@ export interface KarmaState {
   mustPickUp: boolean;
   eventSeq: number;
   lastEvent: KarmaEvent | null;
+  mode: KarmaMode;
+  /** Extra rules in force in this game. */
+  rules: string[];
+  /** Party mode, after the game: the winner chooses one of these rules for the next game. */
+  pick: KarmaPick | null;
+  /** The rules the next game in this room starts with. */
+  nextRules: string[];
+}
+
+export interface KarmaPick {
+  playerId: string;
+  choices: string[];
 }
 
 export type KarmaMove =
@@ -63,9 +77,14 @@ export type KarmaMove =
   | { type: 'ready' }
   | { type: 'play'; cards: Card[] }
   | { type: 'playDown'; index: number }
-  | { type: 'pickup' };
+  | { type: 'pickup' }
+  | { type: 'pickRule'; rule: string };
 
-export type KarmaOptions = Record<string, never>;
+export interface KarmaOptions {
+  mode: KarmaMode;
+  /** Rules carried over from earlier games of the room (party mode); set by the server. */
+  rules: string[];
+}
 
 /** What one player is allowed to know about a seat. */
 export interface KarmaPlayerView {
@@ -90,4 +109,7 @@ export interface KarmaView {
   finishOrder: string[];
   mustPickUp: boolean;
   lastEvent: KarmaEvent | null;
+  mode: KarmaMode;
+  rules: string[];
+  pick: KarmaPick | null;
 }

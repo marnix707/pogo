@@ -5,7 +5,8 @@ import { getGame } from '../registry';
 import { DECK_SIZE, cardLabel, rankOf, suitOf } from './cards';
 import type { Card } from './cards';
 import { activeZone, canPlayRank, effectiveTop, findStarter, karmaGame as game } from './game';
-import type { KarmaMove, KarmaPlayerState, KarmaState } from './types';
+import type { KarmaMove, KarmaOptions, KarmaPlayerState, KarmaState } from './types';
+import { KARMA_RULES } from './rules';
 
 const rng = createSeededRng(1);
 const seat = (n: number): GamePlayer[] =>
@@ -14,12 +15,19 @@ const seat = (n: number): GamePlayer[] =>
 /** card(7) = 7♠, card(7, 1) = 7♥ ... */
 const card = (rank: number, suit = 0): Card => suit * 13 + (rank - 2);
 
+const NORMAL: KarmaOptions = { mode: 'normal', rules: [] };
+
 type SeatInit = Partial<Pick<KarmaPlayerState, 'hand' | 'faceUp' | 'faceDown' | 'ready' | 'out'>>;
 
 /** A play-phase state with exact cards; p1 to move unless `turn` says otherwise. */
 function table(
   seats: SeatInit[],
-  extra: Partial<Pick<KarmaState, 'pile' | 'stock' | 'turn' | 'phase' | 'finishOrder'>> = {},
+  extra: Partial<
+    Pick<
+      KarmaState,
+      'pile' | 'stock' | 'turn' | 'phase' | 'finishOrder' | 'rules' | 'mode' | 'pick'
+    >
+  > = {},
 ): KarmaState {
   return {
     phase: 'play',
@@ -40,6 +48,10 @@ function table(
     mustPickUp: false,
     eventSeq: 0,
     lastEvent: null,
+    mode: 'normal',
+    rules: [],
+    pick: null,
+    nextRules: [],
     ...extra,
   };
 }
@@ -117,7 +129,7 @@ describe('canPlayRank', () => {
 
 describe('setup', () => {
   it.each([2, 3, 4, 5])('deals 3 face-down, 3 face-up and 3 in hand to %i players', (n) => {
-    const s = game.createInitialState(seat(n), {}, createSeededRng(n));
+    const s = game.createInitialState(seat(n), NORMAL, createSeededRng(n));
     expect(s.phase).toBe('swap');
     for (const p of s.players) {
       expect(p.faceDown.filter((c) => c !== null)).toHaveLength(3);
@@ -134,14 +146,14 @@ describe('setup', () => {
   });
 
   it('supports 2-5 players only', () => {
-    expect(() => game.createInitialState(seat(1), {}, rng)).toThrow();
-    expect(() => game.createInitialState(seat(6), {}, rng)).toThrow();
+    expect(() => game.createInitialState(seat(1), NORMAL, rng)).toThrow();
+    expect(() => game.createInitialState(seat(6), NORMAL, rng)).toThrow();
   });
 
   it('is deterministic per seed', () => {
-    const a = game.createInitialState(seat(3), {}, createSeededRng(9));
-    const b = game.createInitialState(seat(3), {}, createSeededRng(9));
-    const c = game.createInitialState(seat(3), {}, createSeededRng(10));
+    const a = game.createInitialState(seat(3), NORMAL, createSeededRng(9));
+    const b = game.createInitialState(seat(3), NORMAL, createSeededRng(9));
+    const c = game.createInitialState(seat(3), NORMAL, createSeededRng(10));
     expect(a).toEqual(b);
     expect(a).not.toEqual(c);
   });
@@ -152,13 +164,13 @@ describe('setup', () => {
   });
 
   it('lets every player act at once in the swap phase', () => {
-    const s = game.createInitialState(seat(3), {}, rng);
+    const s = game.createInitialState(seat(3), NORMAL, rng);
     expect(game.getCurrentPlayers(s)).toEqual(['p1', 'p2', 'p3']);
   });
 });
 
 describe('player views (hidden information)', () => {
-  const s = game.createInitialState(seat(3), {}, createSeededRng(4));
+  const s = game.createInitialState(seat(3), NORMAL, createSeededRng(4));
 
   it('shows you your own hand only', () => {
     const v1 = game.getPlayerView(s, 'p1');
@@ -744,7 +756,7 @@ describe('computer swapping (autoMove in the swap phase)', () => {
 
   it('never swaps forever (every swap improves the table)', () => {
     for (let seed = 0; seed < 100; seed++) {
-      let s = game.createInitialState(seat(2), {}, createSeededRng(seed));
+      let s = game.createInitialState(seat(2), NORMAL, createSeededRng(seed));
       let steps = 0;
       while (!s.players[0]!.ready) {
         if (steps++ > 20) throw new Error('swapping did not settle');
@@ -953,7 +965,7 @@ describe('wire schema', () => {
 describe('simulated games (autoMove)', () => {
   function playOut(n: number, seed: number) {
     const r = createSeededRng(seed);
-    let s = game.createInitialState(seat(n), {}, r);
+    let s = game.createInitialState(seat(n), NORMAL, r);
     let moves = 0;
     while (!game.isGameOver(s)) {
       if (moves++ > 6000) throw new Error(`game ${n}p seed ${seed} did not finish`);
@@ -998,7 +1010,7 @@ describe('simulated games (autoMove)', () => {
     (n) => {
       for (let seed = 0; seed < 200; seed++) {
         const r = createSeededRng(50_000 * n + seed);
-        let s = game.createInitialState(seat(n), {}, r);
+        let s = game.createInitialState(seat(n), NORMAL, r);
         let moves = 0;
         while (!game.isGameOver(s)) {
           if (moves++ > 3000)
@@ -1012,7 +1024,7 @@ describe('simulated games (autoMove)', () => {
 
   it('autoMove reports a turn as ended only when the turn really passes', () => {
     const r = createSeededRng(77);
-    let s = game.createInitialState(seat(3), {}, r);
+    let s = game.createInitialState(seat(3), NORMAL, r);
     for (let i = 0; i < 200 && !game.isGameOver(s); i++) {
       const [id] = game.getCurrentPlayers(s);
       const auto = game.autoMove!(s, id!, r);
@@ -1020,5 +1032,95 @@ describe('simulated games (autoMove)', () => {
       const still = !game.isGameOver(s) && game.getCurrentPlayers(s).includes(id!);
       expect(auto.endsTurn).toBe(!still);
     }
+  });
+});
+
+describe('modes and rules', () => {
+  const finished = (extra: Partial<KarmaState> = {}): KarmaState => {
+    // p1 holds one 9 and plays it; p2 holds a card too: p1 goes out, p2 ... both players needed
+    const s = table([{ hand: [card(9)] }, { hand: [card(5)] }, { hand: [card(6)] }], {
+      pile: [],
+      ...extra,
+    });
+    s.players[1]!.out = true; // p2 is already out
+    s.finishOrder = ['p2'];
+    return s;
+  };
+
+  it('normal mode has no rules, epic has all of them, party starts with the carried rules', () => {
+    const make = (options: KarmaOptions) =>
+      game.createInitialState(seat(3), options, createSeededRng(3));
+    expect(make({ mode: 'normal', rules: ['aceBurn'] }).rules).toEqual([]);
+    expect(make({ mode: 'epic', rules: [] }).rules).toEqual(KARMA_RULES.map((r) => r.id));
+    expect(make({ mode: 'party', rules: ['aceBurn', 'nonsense'] }).rules).toEqual(['aceBurn']);
+  });
+
+  it('the options schema defaults to normal', () => {
+    expect(game.optionsSchema.parse({})).toEqual({ mode: 'normal', rules: [] });
+    expect(game.optionsSchema.safeParse({ mode: 'wild' }).success).toBe(false);
+  });
+
+  it('big hand deals four cards', () => {
+    const s = game.createInitialState(
+      seat(2),
+      { mode: 'party', rules: ['bigHand'] },
+      createSeededRng(5),
+    );
+    expect(s.players[0]!.hand).toHaveLength(4);
+  });
+
+  it('jacks skip, aces burn, triples burn and sixes are wild when the rule is on', () => {
+    const jack = table([{ hand: [card(11)] }, { hand: [card(4)] }, { hand: [card(4)] }], {
+      rules: ['jacksSkip'],
+    });
+    expect(game.applyMove(jack, 'p1', { type: 'play', cards: [card(11)] }, rng).turn).toBe(2);
+    const ace = table([{ hand: [card(14), card(4)] }, { hand: [card(4)] }], {
+      rules: ['aceBurn'],
+      pile: [card(9)],
+    });
+    expect(game.applyMove(ace, 'p1', { type: 'play', cards: [card(14)] }, rng).pile).toEqual([]);
+    const triple = table([{ hand: [card(8, 2), card(4)] }, { hand: [card(4)] }], {
+      rules: ['tripleBurn'],
+      pile: [card(8), card(8, 1)],
+    });
+    expect(game.applyMove(triple, 'p1', { type: 'play', cards: [card(8, 2)] }, rng).pile).toEqual(
+      [],
+    );
+    expect(canPlayRank([card(12)], 6, ['sixesWild'])).toBe(true);
+    expect(canPlayRank([card(12)], 6)).toBe(false);
+    expect(canPlayRank([card(6)], 4, ['sixesWild'])).toBe(true);
+  });
+
+  it('party: the winner is offered four rules that are not on yet, then picks one', () => {
+    const s = finished({ rules: ['aceBurn'], mode: 'party', nextRules: ['aceBurn'] });
+    // p1 plays the last card; p3 is the loser
+    const after = game.applyMove(s, 'p1', { type: 'play', cards: [card(9)] }, rng);
+    expect(after.phase).toBe('pick');
+    expect(after.pick!.playerId).toBe('p2'); // p2 finished first
+    expect(after.pick!.choices).toHaveLength(4);
+    expect(after.pick!.choices).not.toContain('aceBurn');
+    expect(game.isGameOver(after)).toBe(false);
+    expect(game.getCurrentPlayers(after)).toEqual(['p2']);
+    // only the winner, only an offered rule
+    expect(
+      game.validateMove(after, 'p1', { type: 'pickRule', rule: after.pick!.choices[0]! }).ok,
+    ).toBe(false);
+    expect(game.validateMove(after, 'p2', { type: 'pickRule', rule: 'aceBurn' }).ok).toBe(false);
+    const rule = after.pick!.choices[0]!;
+    const done = game.applyMove(after, 'p2', { type: 'pickRule', rule }, rng);
+    expect(game.isGameOver(done)).toBe(true);
+    expect(game.nextOptions!(done, { mode: 'party', rules: ['aceBurn'] })).toEqual({
+      mode: 'party',
+      rules: ['aceBurn', rule],
+    });
+  });
+
+  it('auto-play picks a rule for an absent winner, normal mode goes straight to the results', () => {
+    const s = finished({ mode: 'party' });
+    const after = game.applyMove(s, 'p1', { type: 'play', cards: [card(9)] }, rng);
+    const auto = game.autoMove!(after, 'p2', rng);
+    expect(auto.move.type).toBe('pickRule');
+    const normal = game.applyMove(finished(), 'p1', { type: 'play', cards: [card(9)] }, rng);
+    expect(normal.phase).toBe('over');
   });
 });

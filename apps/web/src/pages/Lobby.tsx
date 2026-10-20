@@ -189,6 +189,19 @@ export function Lobby({
           </ul>
         </section>
 
+        {ui?.LobbyOptions && (
+          <section aria-label="Game mode">
+            <SectionLabel>Game mode</SectionLabel>
+            <Card>
+              <ui.LobbyOptions
+                room={room}
+                isHost={isHost}
+                setOptions={(options) => void api.updateSettings({ options })}
+              />
+            </Card>
+          </section>
+        )}
+
         {isHost && limits && (
           <section aria-label="Settings">
             <SectionLabel>Settings</SectionLabel>

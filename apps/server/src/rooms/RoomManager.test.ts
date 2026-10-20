@@ -699,6 +699,7 @@ describe('computer players', () => {
   function humanMove(view: KView, me: string, jitter: () => number): unknown {
     const mine = view.players.find((p) => p.id === me)!;
     if (view.phase === 'swap') return { type: 'ready' };
+    if (view.phase === 'pick') return { type: 'pickRule', rule: view.pick!.choices[0]! };
     if (view.mustPickUp) return { type: 'pickup' }; // a too-low blind card is on the pile
     const zone = karma.activeZone(mine);
     if (zone === 'down') return { type: 'playDown', index: mine.faceDown.findIndex(Boolean) };
@@ -706,16 +707,16 @@ describe('computer players', () => {
       (c): c is number => c !== null,
     );
     const ranks = [...new Set(source.map(karma.rankOf))]
-      .filter((r) => karma.canPlayRank(view.pile, r))
+      .filter((r) => karma.canPlayRank(view.pile, r, view.rules))
       .sort((x, y) => (x === 10 ? 200 : x === 2 ? 100 : x) - (y === 10 ? 200 : y === 2 ? 100 : y));
     if (ranks.length === 0) return { type: 'pickup' };
     const rank = ranks.length > 1 && jitter() < 0.25 ? ranks[1] : ranks[0];
     return { type: 'play', cards: source.filter((c) => karma.rankOf(c) === rank) };
   }
 
-  function playOut(bots = 2, seed = 99) {
+  function playOut(bots = 2, seed = 99, options?: unknown) {
     const s = setup();
-    s.must(s.manager.create(a, { gameId: 'karma', bots, autoStart: true }));
+    s.must(s.manager.create(a, { gameId: 'karma', bots, autoStart: true, options }));
     const rng = createSeededRng(seed);
     const jitter = () => rng.int(1000) / 1000;
     for (let i = 0; i < 4000; i++) {
@@ -754,6 +755,27 @@ describe('computer players', () => {
     },
     120_000,
   );
+
+  it('party mode: the winner picks a rule that stays on for every next game of the room', () => {
+    const first = playOut(2, 7, { mode: 'party' });
+    const { manager, must } = first;
+    expect((first.room.game!.view as { rules: string[] }).rules).toEqual([]);
+    const lobby = must(manager.rematch(a.id));
+    const rules1 = (lobby.options as { rules: string[] }).rules;
+    expect(rules1).toHaveLength(1);
+    expect((lobby.options as { mode: string }).mode).toBe('party');
+    const again = must(manager.start(a.id));
+    expect((again.game!.view as { rules: string[] }).rules).toEqual(rules1);
+  });
+
+  it('epic mode starts with every rule on, normal mode with none', () => {
+    const epic = playOut(1, 3, { mode: 'epic' });
+    expect((epic.room.game!.view as { rules: string[] }).rules).toEqual(
+      karma.KARMA_RULES.map((r) => r.id),
+    );
+    const normal = playOut(1, 3);
+    expect((normal.room.game!.view as { rules: string[] }).rules).toEqual([]);
+  });
 
   it('a rematch removes the computer seats, keeps the setting, and brings them back on start', () => {
     const { manager, must } = playOut();

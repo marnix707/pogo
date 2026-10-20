@@ -70,6 +70,11 @@ export interface GameDefinition<State, Move, Options, PlayerView = State> {
    */
   settleMs?(state: State): number;
   /**
+   * The options for the next game in the same room once this one is over (e.g. rules the winner
+   * picked). Called on rematch.
+   */
+  nextOptions?(state: State, options: Options): Options;
+  /**
    * The game can be played against computer players. They are real seats driven by `autoMove`, so
    * set this only when `autoMove` plays a reasonable game (not just "any legal move").
    */

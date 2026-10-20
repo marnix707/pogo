@@ -15,6 +15,21 @@ async function playUntilResults(page: Page, limitMs = 200_000) {
     if (winner === 'true') sawWinnerReveal = true;
     if (Date.now() - started > limitMs)
       throw new Error('the game against the computer did not finish');
+    // Party mode: the winner of the game picks a rule (the others just wait).
+    // (One evaluate: the overlay can vanish between two separate calls.)
+    const pick = await page.evaluate(() =>
+      document.querySelector('[data-testid=rule-pick]')?.getAttribute('data-mine'),
+    );
+    if (pick !== undefined && pick !== null) {
+      if (pick === 'true')
+        await page
+          .locator('[data-testid^=rule-choice-]')
+          .first()
+          .click({ timeout: 3000 })
+          .catch(() => {});
+      else await page.waitForTimeout(100);
+      continue;
+    }
     // A burn flame must go away by itself (it once got stuck for the rest of the game).
     if (await page.getByTestId('burn-flash').isVisible())
       await expect(page.getByTestId('burn-flash')).toHaveCount(0, { timeout: 4000 });
@@ -177,5 +192,47 @@ test('Yatzy rooms have no computer setting', async ({ browser }) => {
   await me.page.getByTestId('home-new-yatzy').click();
   await expect(me.page.getByRole('button', { name: 'More Computer players' })).toHaveCount(0);
   await me.page.getByTestId('lobby-leave').click();
+  await me.context.close();
+});
+
+test('party mode: the winner picks a rule that applies to the next game; epic has every rule', async ({
+  browser,
+}) => {
+  test.setTimeout(300_000);
+  const me = await newPlayer(browser, 'Partier', 'fox');
+  const page = me.page;
+  page.setDefaultTimeout(15_000);
+  await page.getByTestId('home-game-karma').click();
+  await page.getByTestId('home-new-karma').click();
+  await page.getByRole('button', { name: 'More Computer players' }).click();
+  await page.getByTestId('karma-mode-party').click();
+  await expect(page.getByTestId('karma-mode-party')).toHaveAttribute('aria-pressed', 'true');
+  await page.getByTestId('lobby-start').click();
+  await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
+  await readyUp(page);
+  await playUntilResults(page);
+
+  // Back in the waiting room the new rule is listed, and it is on in the next game.
+  await page.getByTestId('rematch').click();
+  await expect(page.getByTestId('karma-active-rules').locator('li')).toHaveCount(1);
+  await page.getByTestId('lobby-start').click();
+  await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
+  await page.getByRole('button', { name: 'Rules' }).click();
+  await expect(page.getByTestId('rules-extra').locator('ul > li')).toHaveCount(1);
+  await me.context.close();
+});
+
+test('epic mode switches on every rule from the start', async ({ browser }) => {
+  const me = await newPlayer(browser, 'Epic', 'fox');
+  const page = me.page;
+  await page.getByTestId('home-game-karma').click();
+  await page.getByTestId('home-new-karma').click();
+  await page.getByRole('button', { name: 'More Computer players' }).click();
+  await page.getByTestId('karma-mode-epic').click();
+  await expect(page.getByTestId('karma-active-rules').locator('li')).toHaveCount(5);
+  await page.getByTestId('lobby-start').click();
+  await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
+  await page.getByRole('button', { name: 'Rules' }).click();
+  await expect(page.getByTestId('rules-extra').locator('ul > li')).toHaveCount(5);
   await me.context.close();
 });

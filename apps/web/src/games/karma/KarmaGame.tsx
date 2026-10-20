@@ -10,6 +10,7 @@ import type { GameUiProps } from '../types';
 import { KarmaRules } from './KarmaRules';
 import { DOUBLE_TAP_MS, planTap } from './selection';
 import { FourBurn } from './FourBurn';
+import { RulePick } from './RulePick';
 import { WinReveal } from './WinReveal';
 import { CardFlipContext, PlayingCard } from './PlayingCard';
 import type { FlipOrigin } from './PlayingCard';
@@ -631,7 +632,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     if (!playing) return;
     if (view.mustPickUp) return flashHint('Tap the pile to pick it up first');
     // Face-up cards can always be tried (a too-low one goes on the pile and you pick it up).
-    if (zone !== 'up' && !canPlayRank(pile, rankOf(card))) return;
+    if (zone !== 'up' && !canPlayRank(pile, rankOf(card), view.rules)) return;
     const zoneCards = zone === 'hand' ? hand : (mine?.faceUp ?? []).filter((c) => c !== null);
     const plan = planTap({
       zoneCards,
@@ -724,7 +725,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     playing &&
     pile.length > 0 &&
     (view.mustPickUp ||
-      (zone !== 'down' && !activeCards.some((c) => c !== null && canPlayRank(pile, rankOf(c)))));
+      (zone !== 'down' &&
+        !activeCards.some((c) => c !== null && canPlayRank(pile, rankOf(c), view.rules))));
 
   const urgent = secondsLeft !== null && secondsLeft <= 10;
   const shownHint =
@@ -931,11 +933,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                           onClick: () => tapCard(card),
                           selected: sel.includes(card),
                           dimmed:
-                            !canPlayRank(pile, rankOf(card)) &&
+                            !canPlayRank(pile, rankOf(card), view.rules) &&
                             (mine?.faceUp ?? []).some(
-                              (c) => c !== null && canPlayRank(pile, rankOf(c)),
+                              (c) => c !== null && canPlayRank(pile, rankOf(c), view.rules),
                             ),
-                          playable: canPlayRank(pile, rankOf(card)),
+                          playable: canPlayRank(pile, rankOf(card), view.rules),
                         };
                       }
                       return {};
@@ -1025,7 +1027,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                       style={{ marginTop: r === 0 ? 0 : `-${rowStep}px` }}
                     >
                       {row.map((c, i) => {
-                        const playable = canPlayRank(pile, rankOf(c));
+                        const playable = canPlayRank(pile, rankOf(c), view.rules);
                         return (
                           <PlayingCard
                             key={c}
@@ -1070,7 +1072,16 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         {fourBurn && <FourBurn cards={fourBurn} ms={FOUR_BURN_MS} />}
         {reveal && <WinReveal {...reveal} />}
 
-        <KarmaRules open={rulesOpen} onClose={() => setRulesOpen(false)} />
+        {view.phase === 'pick' && view.pick && !reveal && !fourBurn && !ghost && (
+          <RulePick
+            choices={view.pick.choices}
+            chooser={nameOf(view.pick.playerId)}
+            mine={view.pick.playerId === me}
+            onPick={(rule) => void send({ type: 'pickRule', rule })}
+          />
+        )}
+
+        <KarmaRules open={rulesOpen} onClose={() => setRulesOpen(false)} rules={view.rules} />
       </div>
     </CardFlipContext.Provider>
   );

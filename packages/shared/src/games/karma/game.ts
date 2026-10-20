@@ -9,7 +9,8 @@ import type {
 import type { Rng } from '../../game/rng';
 import { DECK_SIZE, cardLabel, rankOf, shuffledDeck, suitOf } from './cards';
 import type { Card } from './cards';
-import { HAND_SIZE, MAX_PLAYERS, MIN_PLAYERS, SLOTS } from './types';
+import { BIG_HAND_SIZE, HAND_SIZE, MAX_PLAYERS, MIN_PLAYERS, SLOTS } from './types';
+import { KARMA_RULES, PICK_CHOICES, hasRule, ruleById } from './rules';
 import type {
   KarmaEvent,
   KarmaMove,
@@ -49,10 +50,27 @@ export const karmaMoveSchema: z.ZodType<KarmaMove, z.ZodTypeDef, unknown> = z.di
         .max(SLOTS - 1),
     }),
     z.object({ type: z.literal('pickup') }),
+    z.object({ type: z.literal('pickRule'), rule: z.string().max(40) }),
   ],
 );
 
-const optionsSchema = z.object({}).strict() as z.ZodType<KarmaOptions, z.ZodTypeDef, unknown>;
+const optionsSchema = z
+  .object({
+    mode: z.enum(['normal', 'party', 'epic']).default('normal'),
+    rules: z.array(z.string().max(40)).max(KARMA_RULES.length).default([]),
+  })
+  .strict() as z.ZodType<KarmaOptions, z.ZodTypeDef, unknown>;
+
+/** Cards in a full hand. */
+export const handSizeFor = (rules: readonly string[] | undefined): number =>
+  hasRule(rules, 'bigHand') ? BIG_HAND_SIZE : HAND_SIZE;
+
+/** The rules a game starts with: none, all of them (epic) or the ones earned so far (party). */
+function rulesFor(options: KarmaOptions): string[] {
+  if (options.mode === 'epic') return KARMA_RULES.map((r) => r.id);
+  if (options.mode === 'party') return options.rules.filter((id) => ruleById(id));
+  return [];
+}
 
 const err = (error: string): MoveValidation => ({ ok: false, error });
 const OK: MoveValidation = { ok: true };
@@ -75,21 +93,28 @@ export function effectiveTop(pile: readonly Card[]): Card | undefined {
  * - After a 7 the next card must be 7 or LOWER (the "lower than or equal" variant): 3-7, a 2 or a 10.
  * - Otherwise the card must be equal to or higher than the top card.
  */
-export function canPlayRank(pile: readonly Card[], rank: number): boolean {
+export function canPlayRank(
+  pile: readonly Card[],
+  rank: number,
+  rules: readonly string[] = [],
+): boolean {
   if (rank === 2 || rank === 3 || rank === 10) return true;
+  const wild = hasRule(rules, 'sixesWild');
+  if (wild && rank === 6) return true;
   const top = effectiveTop(pile);
   if (top === undefined) return true;
   const topRank = rankOf(top);
-  if (topRank === 2) return true;
+  if (topRank === 2 || (wild && topRank === 6)) return true;
   if (topRank === 7) return rank <= 7;
   return rank >= topRank;
 }
 
 /** Four of a kind on top of the pile burns it. */
-function quartetOnTop(pile: readonly Card[]): boolean {
-  if (pile.length < 4) return false;
+function quartetOnTop(pile: readonly Card[], rules: readonly string[]): boolean {
+  const n = hasRule(rules, 'tripleBurn') ? 3 : 4;
+  if (pile.length < n) return false;
   const top = rankOf(pile[pile.length - 1] as Card);
-  return pile.slice(-4).every((c) => rankOf(c) === top);
+  return pile.slice(-n).every((c) => rankOf(c) === top);
 }
 
 type Zone = 'hand' | 'up' | 'down' | 'none';
@@ -134,17 +159,18 @@ export function findStarter(players: readonly KarmaPlayerState[]): number {
 
 // ---- game -----------------------------------------------------------------------------------
 
-function createInitialState(players: GamePlayer[], _options: KarmaOptions, rng: Rng): KarmaState {
+function createInitialState(players: GamePlayer[], options: KarmaOptions, rng: Rng): KarmaState {
   if (players.length < MIN_PLAYERS || players.length > MAX_PLAYERS) {
     throw new Error(`Karma needs ${MIN_PLAYERS}-${MAX_PLAYERS} players`);
   }
+  const rules = rulesFor(options);
   const deck = shuffledDeck(rng);
   const take = (n: number) => deck.splice(deck.length - n, n);
   const seats: KarmaPlayerState[] = players.map((p) => ({
     id: p.id,
     faceDown: take(SLOTS),
     faceUp: take(SLOTS),
-    hand: take(HAND_SIZE),
+    hand: take(handSizeFor(rules)),
     ready: false,
     out: false,
   }));
@@ -159,11 +185,21 @@ function createInitialState(players: GamePlayer[], _options: KarmaOptions, rng: 
     mustPickUp: false,
     eventSeq: 0,
     lastEvent: null,
+    mode: options.mode,
+    rules,
+    pick: null,
+    nextRules: rules,
   };
 }
 
 function validateMove(state: KarmaState, playerId: string, move: KarmaMove): MoveValidation {
   if (state.phase === 'over') return err('The game is over');
+  if (state.phase === 'pick') {
+    if (move.type !== 'pickRule') return err('The winner is choosing a rule');
+    if (state.pick?.playerId !== playerId) return err('Only the winner picks a rule');
+    return state.pick!.choices.includes(move.rule) ? OK : err('Pick one of the offered rules');
+  }
+  if (move.type === 'pickRule') return err('There is no rule to pick now');
   const idx = state.players.findIndex((p) => p.id === playerId);
   const me = state.players[idx];
   if (!me) return err('You are not in this game');
@@ -207,7 +243,7 @@ function validateMove(state: KarmaState, playerId: string, move: KarmaMove): Mov
       if (move.cards.some((c) => rankOf(c) !== rank)) return err('Play cards of the same rank');
       // Face-up cards may always be tried (like a blind card): a too-low one goes on the pile and
       // its owner has to pick the pile up. Only hand cards must be playable.
-      if (zone === 'hand' && !canPlayRank(state.pile, rank))
+      if (zone === 'hand' && !canPlayRank(state.pile, rank, state.rules))
         return err(
           rankOf(effectiveTop(state.pile) as Card) === 7
             ? 'After a 7 you must play 7 or lower, or a 2 or a 10'
@@ -292,24 +328,59 @@ function advance(state: KarmaState, idx: number, ev: KarmaEvent, goAgain: boolea
 function playToPile(state: KarmaState, idx: number, cards: Card[], kind: 'play' | 'blind') {
   const me = state.players[idx]!;
   state.pile.push(...cards);
-  const burn = rankOf(cards[0] as Card) === 10 || quartetOnTop(state.pile);
-  while (me.hand.length < HAND_SIZE && state.stock.length > 0)
+  const rank = rankOf(cards[0] as Card);
+  const burn =
+    rank === 10 ||
+    (rank === 14 && hasRule(state.rules, 'aceBurn')) ||
+    quartetOnTop(state.pile, state.rules);
+  const handSize = handSizeFor(state.rules);
+  while (me.hand.length < handSize && state.stock.length > 0)
     me.hand.push(state.stock.pop() as Card);
   if (burn) {
     state.burned += state.pile.length;
     state.pile = [];
   }
   // An 8 skips the next player (a burn takes priority: the same player leads again anyway).
-  const eights = !burn && rankOf(cards[0] as Card) === 8 ? cards.length : 0;
+  const eights =
+    !burn && (rank === 8 || (rank === 11 && hasRule(state.rules, 'jacksSkip'))) ? cards.length : 0;
   const ev = event(state, me.id, kind, cards, { burned: burn });
   advance(state, idx, ev, burn, eights);
 }
 
-function applyMove(state: KarmaState, playerId: string, move: KarmaMove, _rng: Rng): KarmaState {
+/** Party mode: when the game has ended its winner is offered some rules to add for the next one. */
+function offerRules(state: KarmaState, rng: Rng): KarmaState {
+  if (state.phase !== 'over' || state.mode !== 'party') return state;
+  const open = KARMA_RULES.map((r) => r.id).filter((id) => !state.rules.includes(id));
+  if (open.length === 0) return state;
+  for (let i = open.length - 1; i > 0; i--) {
+    const j = rng.int(i + 1);
+    [open[i], open[j]] = [open[j] as string, open[i] as string];
+  }
+  state.phase = 'pick';
+  state.pick = { playerId: state.finishOrder[0] as string, choices: open.slice(0, PICK_CHOICES) };
+  return state;
+}
+
+function applyMove(state: KarmaState, playerId: string, move: KarmaMove, rng: Rng): KarmaState {
+  const next = applyMoveInner(state, playerId, move, rng);
+  return next.phase === 'over' && move.type !== 'pickRule' ? offerRules(next, rng) : next;
+}
+
+function applyMoveInner(
+  state: KarmaState,
+  playerId: string,
+  move: KarmaMove,
+  _rng: Rng,
+): KarmaState {
   const check = validateMove(state, playerId, move);
   if (!check.ok) throw new Error(check.error);
 
   const s = structuredClone(state);
+  if (move.type === 'pickRule') {
+    s.nextRules = [...s.rules, move.rule];
+    s.phase = 'over';
+    return s;
+  }
   const idx = s.players.findIndex((p) => p.id === playerId);
   const me = s.players[idx]!;
 
@@ -343,7 +414,8 @@ function applyMove(state: KarmaState, playerId: string, move: KarmaMove, _rng: R
 
     case 'play': {
       const source = stateZone(me) === 'hand' ? me.hand : me.faceUp;
-      const tooLow = source !== me.hand && !canPlayRank(s.pile, rankOf(move.cards[0] as Card));
+      const tooLow =
+        source !== me.hand && !canPlayRank(s.pile, rankOf(move.cards[0] as Card), s.rules);
       for (const card of move.cards) {
         const at = source.indexOf(card);
         if (source === me.hand) me.hand.splice(at, 1);
@@ -363,7 +435,7 @@ function applyMove(state: KarmaState, playerId: string, move: KarmaMove, _rng: R
     case 'playDown': {
       const card = me.faceDown[move.index] as Card;
       me.faceDown[move.index] = null;
-      if (canPlayRank(s.pile, rankOf(card))) {
+      if (canPlayRank(s.pile, rankOf(card), s.rules)) {
         playToPile(s, idx, [card], 'blind');
       } else {
         // Too low: the card lies on the pile for everyone to see and its owner must pick the whole
@@ -397,11 +469,15 @@ function getPlayerView(state: KarmaState, playerId: string): KarmaView {
     finishOrder: [...state.finishOrder],
     mustPickUp: state.mustPickUp,
     lastEvent: state.lastEvent,
+    mode: state.mode,
+    rules: [...state.rules],
+    pick: state.pick,
   };
 }
 
 function getCurrentPlayers(state: KarmaState): string[] {
   if (state.phase === 'over') return [];
+  if (state.phase === 'pick') return [state.pick!.playerId];
   if (state.phase === 'swap') return state.players.filter((p) => !p.ready).map((p) => p.id);
   return [state.players[state.turn]!.id];
 }
@@ -447,7 +523,10 @@ function autoMove(state: KarmaState, playerId: string, rng: Rng): AutoMove<Karma
   const me = state.players.find((p) => p.id === playerId)!;
   let move: KarmaMove;
 
-  if (state.phase === 'swap') {
+  if (state.phase === 'pick') {
+    const choices = state.pick!.choices;
+    move = { type: 'pickRule', rule: choices[rng.int(choices.length)] as string };
+  } else if (state.phase === 'swap') {
     const swap = bestSwap(me);
     move = swap ? { type: 'swap', ...swap } : { type: 'ready' };
   } else {
@@ -458,7 +537,9 @@ function autoMove(state: KarmaState, playerId: string, rng: Rng): AutoMove<Karma
       move = { type: 'playDown', index: me.faceDown.findIndex((c) => c !== null) };
     } else {
       const source = (zone === 'hand' ? me.hand : me.faceUp).filter((c): c is Card => c !== null);
-      const ranks = [...new Set(source.map(rankOf))].filter((r) => canPlayRank(state.pile, r));
+      const ranks = [...new Set(source.map(rankOf))].filter((r) =>
+        canPlayRank(state.pile, r, state.rules),
+      );
       // Specials are worth keeping: 3..9, J..A ascending, then 2, then 10.
       const priority = (r: number) => (r === 10 ? 200 : r === 2 ? 100 : r);
       ranks.sort((a, b) => priority(a) - priority(b));
@@ -484,7 +565,8 @@ export const karmaGame: GameDefinition<KarmaState, KarmaMove, KarmaOptions, Karm
   minPlayers: MIN_PLAYERS,
   maxPlayers: MAX_PLAYERS,
   optionsSchema,
-  defaultOptions: {},
+  defaultOptions: { mode: 'normal', rules: [] },
+  nextOptions: (state, options) => ({ ...options, rules: state.nextRules }),
   moveSchema: karmaMoveSchema,
   createInitialState,
   validateMove,

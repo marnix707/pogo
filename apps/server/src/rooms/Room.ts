@@ -318,6 +318,9 @@ export class Room {
     if (this.status !== 'finished') return fail('The game is not finished');
     // Back to the waiting room: players who left and the computer players go away (the setting stays).
     this.members = this.members.filter((m) => !m.left && !m.bot);
+    // The game may carry something over to the next one (e.g. a rule the winner picked).
+    if (this.state && this.game.nextOptions)
+      this.options = this.game.nextOptions(this.state, this.options);
     this.state = undefined;
     this.results = undefined;
     this.status = 'lobby';

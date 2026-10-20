@@ -1,10 +1,35 @@
+import { karma } from '@pogo/shared';
 import { Sheet } from '../../components/ui';
 
 /** A short rules reminder, opened from the table. */
-export function KarmaRules({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function KarmaRules({
+  open,
+  onClose,
+  rules = [],
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** Extra rules in force in this game (party / epic mode). */
+  rules?: string[];
+}) {
   return (
     <Sheet open={open} onClose={onClose} title="How to play Karma">
       <ul className="flex max-h-[60dvh] flex-col gap-3 overflow-y-auto pr-1 text-sm leading-relaxed">
+        {rules.length > 0 && (
+          <li data-testid="rules-extra">
+            <b className="text-neon">Extra rules in this game:</b>
+            <ul className="mt-1 flex flex-col gap-1">
+              {rules.map((id) => {
+                const r = karma.ruleById(id);
+                return r ? (
+                  <li key={id}>
+                    {r.emoji} <b>{r.name}</b>: {r.description}
+                  </li>
+                ) : null;
+              })}
+            </ul>
+          </li>
+        )}
         <li>
           <b className="text-neon">Goal:</b> get rid of all your cards. The last player still
           holding cards loses.

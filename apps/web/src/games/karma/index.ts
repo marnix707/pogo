@@ -1,5 +1,6 @@
 import type { GameUi } from '../types';
 import { KarmaGame } from './KarmaGame';
+import { ModePicker } from './ModePicker';
 
 export const karmaUi: GameUi = {
   id: 'karma',
@@ -7,6 +8,7 @@ export const karmaUi: GameUi = {
   emoji: '🃏',
   tagline: 'Shed all your cards. Don’t be the last one left.',
   Component: KarmaGame,
+  LobbyOptions: ModePicker,
   hideScores: true, // the score is only a rank in Karma
   // The last card's win reveal (KarmaGame's WinReveal) must finish before the standings cover it.
   resultsDelayMs(room) {

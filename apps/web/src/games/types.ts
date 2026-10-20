@@ -18,6 +18,13 @@ export interface GameChrome {
   unread: number;
 }
 
+export interface LobbyOptionsProps {
+  room: RoomView;
+  isHost: boolean;
+  /** Replace the room's game options (host only; validated by the game on the server). */
+  setOptions: (options: unknown) => void;
+}
+
 /** What the web app needs to know about a game; one entry per game in games/registry.ts. */
 export interface GameUi {
   id: string;
@@ -25,6 +32,8 @@ export interface GameUi {
   emoji: string;
   tagline: string;
   Component: ComponentType<GameUiProps>;
+  /** Extra panel in the waiting room for game-specific options (e.g. a game mode). */
+  LobbyOptions?: ComponentType<LobbyOptionsProps>;
   /** The game draws its own top bar (leave, chat, settings) instead of the shared title bar. */
   ownHeader?: boolean;
   /** Hide the score column in the standings (for games where the score is just the rank). */
