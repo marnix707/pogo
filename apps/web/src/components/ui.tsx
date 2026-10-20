@@ -51,7 +51,7 @@ export function SectionLabel({ children, right }: { children: ReactNode; right?:
   );
 }
 
-/** Avatar as a dial: emoji inside a ring. */
+/** Avatar as a square tile: emoji on a slate plate with a dark outline. */
 export function Avatar({
   avatar,
   size = 'md',
@@ -65,7 +65,7 @@ export function Avatar({
   return (
     <span
       aria-hidden
-      className={`inline-flex shrink-0 items-center justify-center rounded-full border-2 border-neon bg-panel2 ring-2 ring-line ${sizes[size]} ${dim ? 'opacity-50 grayscale' : ''}`}
+      className={`inline-flex shrink-0 items-center justify-center rounded-[6px] border-2 border-neon bg-panel2 ring-2 ring-line ${sizes[size]} ${dim ? 'opacity-50 grayscale' : ''}`}
     >
       {avatarEmoji(avatar)}
     </span>

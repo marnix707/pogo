@@ -3,7 +3,8 @@ import type { FormEvent } from 'react';
 import type { PublicRoomSummary, PublicUser } from '@pogo/shared';
 import { InstallCard } from '../components/InstallCard';
 import { LogoMark } from '../components/icons';
-import { Avatar, Button, SectionLabel } from '../components/ui';
+import { AVATARS } from '@pogo/shared';
+import { Avatar, Button, SectionLabel, Sheet } from '../components/ui';
 import { TopBar } from '../components/TopBar';
 import { gameUis, getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
@@ -22,7 +23,7 @@ function OpenGame({
   return (
     <li data-testid={`open-game-${room.code}`} className="hud flex items-center gap-3 px-3 py-2.5">
       <span
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-neon bg-panel2 text-2xl"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px] border-2 border-neon bg-panel2 text-2xl"
         aria-hidden
       >
         {avatarEmoji(room.hostAvatar)}
@@ -64,13 +65,17 @@ export function Home({
   lobby,
   watchLobby,
   onSettings,
+  onAvatar,
 }: {
   user: PublicUser;
   api: RoomApi;
   lobby: PublicRoomSummary[] | null;
   watchLobby: () => () => void;
   onSettings: () => void;
+  /** Save a new icon for this player. */
+  onAvatar: (avatar: (typeof AVATARS)[number]) => Promise<void>;
 }) {
+  const [picking, setPicking] = useState(false);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<string>('all');
@@ -107,7 +112,16 @@ export function Home({
       <main className="flex flex-1 flex-col gap-6 px-4 pb-8 pt-2">
         {/* Who I am, and joining with a code, side by side */}
         <div className="hud flex items-center gap-3 p-3">
-          <Avatar avatar={user.avatar} size="lg" />
+          <button
+            type="button"
+            data-testid="home-avatar"
+            data-avatar={user.avatar}
+            aria-label="Change your icon"
+            onClick={() => setPicking(true)}
+            className="shrink-0 active:translate-y-px"
+          >
+            <Avatar avatar={user.avatar} size="lg" />
+          </button>
           <div className="min-w-0 flex-1">
             <div className="label text-muted">Pilot</div>
             <div className="truncate text-xl font-bold" data-testid="home-nickname">
@@ -217,6 +231,29 @@ export function Home({
           </div>
         </section>
       </main>
+
+      <Sheet open={picking} onClose={() => setPicking(false)} title="Pick your icon">
+        <div className="grid grid-cols-4 gap-3">
+          {AVATARS.map((a) => (
+            <button
+              type="button"
+              key={a}
+              data-testid={`pick-avatar-${a}`}
+              aria-label={a}
+              aria-pressed={user.avatar === a}
+              onClick={() => {
+                setPicking(false);
+                if (a !== user.avatar) void onAvatar(a);
+              }}
+              className={`flex aspect-square items-center justify-center rounded-[8px] border-2 text-4xl ring-2 ring-line transition active:translate-y-px ${
+                user.avatar === a ? 'border-neon bg-neon/20' : 'border-edge/40 bg-panel2'
+              }`}
+            >
+              {avatarEmoji(a)}
+            </button>
+          ))}
+        </div>
+      </Sheet>
     </div>
   );
 }

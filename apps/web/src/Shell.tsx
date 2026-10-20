@@ -6,6 +6,7 @@ import { SettingsSheet } from './components/SettingsSheet';
 import { useToast } from './components/Toast';
 import type { RoomApi } from './lib/api';
 import { haptic } from './lib/haptics';
+import { updateProfile } from './lib/session';
 import { useRealtime } from './lib/socket';
 import { play } from './lib/sound';
 import { GameScreen } from './pages/GameScreen';
@@ -20,7 +21,16 @@ const LEFT_MESSAGE = {
 } as const;
 
 /** Signed-in app: owns the realtime connection and routes by where the server says you are. */
-export function Shell({ session, onSignOut }: { session: AuthResponse; onSignOut: () => void }) {
+export function Shell({
+  session,
+  onUser,
+  onSignOut,
+}: {
+  session: AuthResponse;
+  /** The signed-in user changed (a new icon). */
+  onUser: (user: AuthResponse['user']) => void;
+  onSignOut: () => void;
+}) {
   const {
     connection,
     room,
@@ -100,6 +110,13 @@ export function Shell({ session, onSignOut }: { session: AuthResponse; onSignOut
         lobby={lobby}
         watchLobby={watchLobby}
         onSettings={openSettings}
+        onAvatar={async (avatar) => {
+          try {
+            onUser(await updateProfile(session.token, { nickname: session.user.nickname, avatar }));
+          } catch (e) {
+            toast.show((e as Error).message, 'error');
+          }
+        }}
       />
     );
   } else if (room.status === 'lobby') {

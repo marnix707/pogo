@@ -37,6 +37,7 @@ export function App() {
       ) : session ? (
         <Shell
           session={session}
+          onUser={(user) => setSession((s) => (s ? { ...s, user } : s))}
           onSignOut={() => {
             forgetSession();
             setSession(null);

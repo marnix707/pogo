@@ -164,3 +164,22 @@ test('the dashboard: join-by-code beside the name, open games, then the games; a
   await expect(page.getByTestId('sheet-backdrop')).toHaveCount(0);
   await me.context.close();
 });
+
+test('tapping your icon on Home opens a picker with square icons and saves the new one', async ({
+  browser,
+}) => {
+  const me = await newPlayer(browser, 'Iconic', 'fox');
+  const page = me.page;
+  await expect(page.getByTestId('home-avatar')).toHaveAttribute('data-avatar', 'fox');
+  await page.getByTestId('home-avatar').click();
+  const tile = page.getByTestId('pick-avatar-cat');
+  await expect(tile).toBeVisible();
+  const box = (await tile.boundingBox())!;
+  expect(Math.abs(box.width - box.height)).toBeLessThan(2); // square, not round-ish
+  await tile.click();
+  await expect(page.getByTestId('home-avatar')).toHaveAttribute('data-avatar', 'cat');
+  // It is saved on the server: still there after a reload.
+  await page.reload();
+  await expect(page.getByTestId('home-avatar')).toHaveAttribute('data-avatar', 'cat');
+  await me.context.close();
+});

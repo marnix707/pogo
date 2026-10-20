@@ -45,6 +45,21 @@ export async function createGuest(profile: ProfileInput): Promise<AuthResponse> 
   return body;
 }
 
+/** Save a new nickname/avatar for the signed-in guest. */
+export async function updateProfile(
+  token: string,
+  profile: ProfileInput,
+): Promise<AuthResponse['user']> {
+  const res = await fetch('/api/me', {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    body: JSON.stringify(profile),
+  });
+  const body = (await res.json()) as Pick<AuthResponse, 'user'> & { error?: string };
+  if (!res.ok) throw new Error(body.error ?? 'Could not save your icon');
+  return body.user;
+}
+
 export function forgetSession() {
   writeToken(null);
 }

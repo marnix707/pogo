@@ -61,7 +61,7 @@ export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) 
                 aria-label={a}
                 aria-pressed={avatar === a}
                 onClick={() => setAvatar(a)}
-                className={`flex aspect-square items-center justify-center rounded-full border-2 text-2xl transition ${
+                className={`flex aspect-square items-center justify-center rounded-[6px] border-2 text-2xl transition ${
                   avatar === a ? 'scale-110 border-accent bg-accent/25' : 'border-edge/40 bg-panel2'
                 }`}
               >
