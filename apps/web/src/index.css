@@ -76,6 +76,22 @@ body::after {
 }
 
 /* CRT layer (Settings > CRT effect): scanlines and a darkened edge. Never takes a tap. */
+/* Menu screens (Home, Lobby, sheets): their panel boxes (.hud) are gold-orange with dark navy text. The
+   tokens are re-pointed on the box itself, so everything inside follows and components need no changes;
+   things on the table outside a box, and the game tables, keep the blue-slate look. */
+.menu .hud,
+.hud.menu {
+  --c-panel: 253 162 0;
+  --c-panel2: 234 150 0;
+  --c-edge: 16 22 40;
+  --c-ink: 16 22 40;
+  --c-muted: 74 44 6;
+  --c-neon: 16 22 40;
+  --c-accent: 0 100 190;
+  --c-accentink: 253 253 253;
+  --c-dangertext: 122 21 16;
+}
+
 html.crt::after {
   content: '';
   position: fixed;

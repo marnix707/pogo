@@ -101,7 +101,7 @@ export function Lobby({
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col">
+    <div className="menu mx-auto flex min-h-dvh max-w-md flex-col">
       <main className="flex flex-1 flex-col gap-5 px-4 pb-8 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
         {/* One slim header card: back, game, Invite and settings. */}
         <Card className="hud-ticks !p-3">

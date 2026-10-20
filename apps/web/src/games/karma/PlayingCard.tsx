@@ -1,6 +1,7 @@
 import { createContext, useContext, useLayoutEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import { karma } from '@pogo/shared';
+import { PixelSuit } from './PixelSuit';
 
 /** Ink and suit colours of the card faces; LINE is the near-black outline (same as `--c-line`). */
 const INK = '#1e2b3d';
@@ -165,7 +166,7 @@ export function PlayingCard({
   const showFace = !faceDown && card !== undefined;
   const color = showFace && karma.isRedSuit(card) ? RED : INK;
   const rank = showFace ? karma.RANK_LABEL[karma.rankOf(card)] : '';
-  const suit = showFace ? karma.SUIT_SYMBOL[karma.suitOf(card)] : '';
+  const suit = showFace ? karma.suitOf(card) : 0;
   const compact = size < 6.6; // too small for corner indices: show a big centred rank + suit
 
   const content = showFace ? (
@@ -175,7 +176,7 @@ export function PlayingCard({
         style={{ color }}
       >
         <span className="text-[2.7em]">{rank}</span>
-        <span className="text-[2.3em]">{suit}</span>
+        <PixelSuit suit={suit} className="mt-[0.15em] text-[2.3em]" />
       </span>
     ) : (
       <>
@@ -184,20 +185,20 @@ export function PlayingCard({
           style={{ color }}
         >
           <span className="text-[1.4em]">{rank}</span>
-          <span className="text-[1.15em]">{suit}</span>
+          <PixelSuit suit={suit} className="mt-[0.1em] text-[1.15em]" />
         </span>
         <span
           className="absolute inset-0 flex items-center justify-center text-[2.1em] leading-none"
           style={{ color }}
         >
-          {suit}
+          <PixelSuit suit={suit} />
         </span>
         <span
           className="absolute bottom-[0.3em] right-[0.45em] flex rotate-180 flex-col items-center font-bold leading-none"
           style={{ color }}
         >
           <span className="text-[1.4em]">{rank}</span>
-          <span className="text-[1.15em]">{suit}</span>
+          <PixelSuit suit={suit} className="mt-[0.1em] text-[1.15em]" />
         </span>
       </>
     )

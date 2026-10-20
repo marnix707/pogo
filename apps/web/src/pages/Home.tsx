@@ -102,7 +102,7 @@ export function Home({
   const blocked = busy || !api.online;
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col">
+    <div className="menu mx-auto flex min-h-dvh max-w-md flex-col">
       <TopBar
         title="Po:go"
         subtitle="Play Online, GO!"
