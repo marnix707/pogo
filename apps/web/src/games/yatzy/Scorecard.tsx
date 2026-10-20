@@ -62,7 +62,7 @@ export function Scorecard({
           {UPPER_FACE[category] !== undefined && (
             <span
               aria-hidden
-              className="mr-1.5 inline-block h-2.5 w-2.5 rounded-[3px] align-baseline"
+              className="mr-1.5 inline-block h-2.5 w-2.5 rounded-[3px] align-baseline ring-1 ring-neon/60"
               style={{ backgroundColor: DIE_COLOR[UPPER_FACE[category]!] }}
             />
           )}

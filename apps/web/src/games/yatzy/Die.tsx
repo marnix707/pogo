@@ -10,16 +10,21 @@ const PIPS: Record<number, number[]> = {
   6: [0, 2, 3, 5, 6, 8],
 };
 
-/** Every face has its own colour, so a die is easy to match with its row in the scorecard. */
+/**
+ * Every face has its own colour from the app palette (pink, cyan, teal, purple, navy, pale cyan),
+ * so a die is easy to match with its row in the scorecard.
+ */
 export const DIE_COLOR: Record<number, string> = {
-  1: '#ff9b9b',
-  2: '#ffc27a',
-  3: '#fff07a',
-  4: '#8fe3a0',
-  5: '#86c8ff',
-  6: '#d2adff',
+  1: '#FF6BDE',
+  2: '#1FE0E0',
+  3: '#00A9AB',
+  4: '#5B29A7',
+  5: '#001850',
+  6: '#E9FFFF',
 };
-const BLANK = '#e9ffff';
+const BLANK = '#E9FFFF';
+/** The dark faces (purple, navy) need light pips and, for navy, a light outline. */
+const DARK_FACES = new Set([4, 5]);
 
 export function Die({
   index,
@@ -60,7 +65,11 @@ export function Die({
       disabled={!interactive}
       onClick={onToggle}
       className={`relative aspect-square w-full rounded-lg border-[3px] shadow-[0_3px_0_0_rgb(0_24_80/0.7)] transition-transform disabled:cursor-default ${
-        held ? '-translate-y-1.5 border-accent shadow-[0_4px_0_0_#b13d9c]' : 'border-[#001850]'
+        held
+          ? '-translate-y-1.5 border-accent shadow-[0_4px_0_0_#b13d9c]'
+          : face === 5
+            ? 'border-[#1FE0E0]'
+            : 'border-[#001850]'
       } ${rolling ? 'animate-dice-roll' : ''}`}
       style={{ backgroundColor: DIE_COLOR[face] ?? BLANK }}
     >
@@ -70,7 +79,9 @@ export function Die({
             key={cell}
             className={`aspect-square w-[78%] rounded-full ${
               pips.includes(cell)
-                ? 'bg-[#001850]'
+                ? DARK_FACES.has(face)
+                  ? 'bg-white'
+                  : 'bg-[#001850]'
                 : value === 0 && cell === 4
                   ? 'bg-[#001850]/15'
                   : ''
