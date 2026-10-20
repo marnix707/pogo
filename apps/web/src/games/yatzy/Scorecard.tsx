@@ -13,6 +13,8 @@ interface Props {
   currentIds: string[];
   /** Points each choosable category would score right now (only for the viewer). */
   preview: Partial<Record<Category, number>>;
+  /** The dice are still rolling: show "?" instead of the points. */
+  previewHidden?: boolean;
   selected: Category | null;
   onSelect: (category: Category) => void;
   /** Stretch the table to this height so the rows fill the space (it still grows if it must). */
@@ -29,6 +31,7 @@ export function Scorecard({
   me,
   currentIds,
   preview,
+  previewHidden = false,
   selected,
   onSelect,
   fillHeight,
@@ -97,7 +100,7 @@ export function Scorecard({
                       : 'border-dashed border-neon text-neon'
                   }`}
                 >
-                  {preview[category]}
+                  {previewHidden ? '?' : preview[category]}
                 </button>
               ) : (
                 <span className="text-muted/30">·</span>

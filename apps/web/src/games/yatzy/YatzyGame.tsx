@@ -71,18 +71,24 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
   // Animate (and rattle) whenever a roll lands, for every player watching.
   const rollKey = `${state.round}:${state.currentPlayerIndex}:${rolled ? state.rollsLeft : 'none'}`;
   const lastRollKey = useRef(rollKey);
+  // The scores the dice would give stay hidden ("?") until the dice have stopped rolling.
+  const [settledKey, setSettledKey] = useState(rollKey);
+  const settled = settledKey === rollKey;
   const rollingTimer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => {
     if (lastRollKey.current === rollKey) return;
     lastRollKey.current = rollKey;
-    if (!rolled) return;
+    clearTimeout(rollingTimer.current);
+    if (!rolled) return setSettledKey(rollKey);
     play('roll');
     if (myTurn) haptic('roll');
-    if (reducedMotion()) return;
+    if (reducedMotion()) return setSettledKey(rollKey);
     setRolling(state.held.map((h) => !h));
     // (Not cleared in the cleanup: kept-dice updates re-run this effect and must not cancel it.)
-    clearTimeout(rollingTimer.current);
-    rollingTimer.current = setTimeout(() => setRolling(NO_HOLDS), ROLL_ANIMATION_MS);
+    rollingTimer.current = setTimeout(() => {
+      setRolling(NO_HOLDS);
+      setSettledKey(rollKey);
+    }, ROLL_ANIMATION_MS);
   }, [rollKey, rolled, myTurn, state.held]);
   useEffect(() => () => clearTimeout(rollingTimer.current), []);
 
@@ -282,9 +288,11 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
           me={me}
           currentIds={game.currentPlayers}
           preview={preview}
+          previewHidden={!settled}
           selected={selected}
           fillHeight={fill}
           onSelect={(c) => {
+            if (!settled) return;
             setSelected(c);
             haptic('tap');
           }}
@@ -335,10 +343,10 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
                   data-testid="score-button"
                   variant="secondary"
                   className="min-h-11 flex-1 !px-3"
-                  disabled={busy || !selected}
+                  disabled={busy || !selected || !settled}
                   onClick={score}
                 >
-                  {selected ? `Score ${preview[selected]}` : rolled ? 'Pick a category' : 'Score'}
+                  {selected ? `Score ${settled ? preview[selected] : '?'}` : rolled ? 'Pick a category' : 'Score'}
                 </Button>
               </div>
             ) : (

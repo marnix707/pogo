@@ -17,6 +17,7 @@ async function playTurn(page: Page) {
   await page.getByTestId('roll-button').click();
   await expect(page.getByTestId('die-0')).not.toHaveAttribute('data-value', '0');
   const firstChoice = page.locator('[data-testid^="pick-"]').first();
+  await expect(firstChoice).not.toHaveText('?'); // the points show once the dice stopped rolling
   await firstChoice.click();
   await page.getByTestId('score-button').click();
 }
@@ -59,6 +60,7 @@ test('two players play a full Yatzy game, with a reconnect in the middle', async
   await expect(b.getByTestId('die-0')).toHaveAttribute('data-value', held!);
 
   // Alice finishes her turn; it becomes Bob's.
+  await expect(a.locator('[data-testid^="pick-"]').first()).not.toHaveText('?');
   await a.locator('[data-testid^="pick-"]').first().click();
   await a.getByTestId('score-button').click();
   await expect(b.getByTestId('turn-banner')).toHaveAttribute('data-my-turn', 'true');
