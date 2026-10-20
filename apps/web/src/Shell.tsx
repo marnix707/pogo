@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AuthResponse, Result, RoomSettingsInput } from '@pogo/shared';
+import { ChatBanner } from './components/ChatBanner';
 import { ConnectionBanner } from './components/ConnectionBanner';
 import { SettingsSheet } from './components/SettingsSheet';
 import { useToast } from './components/Toast';
@@ -129,6 +130,7 @@ export function Shell({ session, onSignOut }: { session: AuthResponse; onSignOut
   return (
     <>
       <ConnectionBanner connection={connection} />
+      {room && <ChatBanner key={room.code} messages={messages} me={session.user.id} />}
       {screen}
       <SettingsSheet
         open={settingsOpen}

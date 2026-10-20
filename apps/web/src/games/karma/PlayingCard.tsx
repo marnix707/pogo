@@ -38,6 +38,9 @@ if (typeof window !== 'undefined') {
   window.addEventListener('resize', () => lastBoxes.clear());
 }
 
+/** Forget where every card was (a new game starts: nothing may slide in from the previous one). */
+export const resetFlipBoxes = () => lastBoxes.clear();
+
 /** Cards that just unmounted; forgotten for good unless the same card is mounted again right away. */
 const gone = new Set<number>();
 

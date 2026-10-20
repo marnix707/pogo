@@ -144,3 +144,10 @@ Standalone Playwright project (own `package.json`/lockfile, not part of the pnpm
 
 1 Scaffold + Docker (done) · 2 Shared types/plug-in interface/Yatzy logic + tests (done) · 3 Realtime server (guests, rooms, reconnect) (done) · 4 Mobile Yatzy UI + e2e (done) · 5 Public lobby + chat (done) · 6 Accounts, stats, PWA (PWA install done early; accounts and stats still to do) · 7 Production Docker + deploy guide.
 Work one milestone at a time; at the end run tests, verify in Docker, commit, summarize, explain phone testing, wait for go-ahead.
+
+## Chat banner, reveal spoilers and new games (Karma)
+
+- `ChatBanner` (`components/ChatBanner.tsx`, mounted in `Shell`, `data-testid="chat-banner"`): a chat message from somebody else slides down from the top like a notification, as high as the header (`3.5rem` + safe area), one line cut off with `…` (`truncate`), 3.6s (`chat-banner` keyframes in `index.css`, off with reduced motion), tap to dismiss. History loaded on joining is not announced (only appended messages, or the first message of a fresh room).
+- While a card turns over (`reveal`, or the render before it is set: `revealPending`) `KarmaGame` shows **no turn information**: `myTurnShown`/`shownTurnId` keep the flipper as the current player, so the hand is dimmed, nothing is highlighted as playable and the turn ping waits; otherwise you could tell from your own turn whether the flip was too low (the flipper keeps the turn and must pick up) or fine.
+- The result sound of a last card and the winner's fanfare play when the card has finished turning (`TURN_MS`, `GameUi.ownFanfare`: `GameScreen` then stays silent; other games play it when the standings appear).
+- `GameScreen` mounts the game component with a key that changes every time the room goes to `playing` again, and `KarmaGame` clears the card position cache (`resetFlipBoxes`), so an instant rematch starts from a clean UI (state of the previous game, such as old selections or card positions, used to leak into the new one).

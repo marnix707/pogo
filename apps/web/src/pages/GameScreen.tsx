@@ -142,7 +142,11 @@ function ResultsPanel({
             <p className="label text-center text-muted">Almost there…</p>
           ) : isHost ? (
             <>
-              <Button data-testid="rematch" disabled={!api.online} onClick={() => void api.rematch()}>
+              <Button
+                data-testid="rematch"
+                disabled={!api.online}
+                onClick={() => void api.rematch()}
+              >
                 Play again
               </Button>
               {restarts && (
@@ -187,6 +191,13 @@ export function GameScreen({
 }) {
   const ui = getGameUi(room.gameId);
   const [confirmLeave, setConfirmLeave] = useState(false);
+  // Every new game (a rematch that starts at once) mounts the game afresh: no state of the last one.
+  const [game, setGame] = useState(0);
+  const [prevStatus, setPrevStatus] = useState(room.status);
+  if (prevStatus !== room.status) {
+    setPrevStatus(room.status);
+    if (room.status === 'playing') setGame((g) => g + 1);
+  }
   const [chatOpen, setChatOpen] = useState(false);
   const unread = messages.filter((m) => m.id > readUpTo && m.userId !== me).length;
 
@@ -199,7 +210,9 @@ export function GameScreen({
   const pendingResults = room.status === 'playing' ? (ui?.pendingResults?.(room) ?? null) : null;
   const ended = finished || pendingResults !== null;
   const panelRoom: RoomView =
-    pendingResults && room.game ? { ...room, game: { ...room.game, results: pendingResults } } : room;
+    pendingResults && room.game
+      ? { ...room, game: { ...room.game, results: pendingResults } }
+      : room;
 
   // Fanfare once when the game ends.
   const wasFinished = useRef(ended);
@@ -214,14 +227,19 @@ export function GameScreen({
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ended]);
+  // Fanfare once, when the standings appear (after the game's own final animation, e.g. a card turning).
+  const fanfared = useRef(ended && resultsShown);
   useEffect(() => {
-    if (ended && !wasFinished.current) {
+    if (!ended) fanfared.current = false;
+    else if (resultsShown && !fanfared.current) {
+      fanfared.current = true;
+      if (ui?.ownFanfare) return;
       const won = panelRoom.game?.results?.rankings.some((r) => r.rank === 1 && r.playerId === me);
       play(won ? 'win' : 'score');
       haptic(won ? 'success' : 'tap');
     }
     wasFinished.current = ended;
-  }, [ended, panelRoom.game?.results, me]);
+  }, [ended, resultsShown, panelRoom.game?.results, me]);
 
   if (!ui) {
     return (
@@ -274,6 +292,7 @@ export function GameScreen({
       )}
       <div className="min-h-0 flex-1">
         <ui.Component
+          key={game}
           room={room}
           me={me}
           sendMove={api.move}

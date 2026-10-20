@@ -11,13 +11,18 @@ export const karmaUi: GameUi = {
   Component: KarmaGame,
   LobbyOptions: ModePicker,
   playAgainRestarts: true,
+  ownFanfare: true, // the winner's fanfare plays when the last card has turned over (KarmaGame)
   // Party mode: the standings are already known while the winner picks a rule (RulePick, in the panel).
   pendingResults(room) {
     const view = room.game?.view as { phase?: string; finishOrder?: string[] } | undefined;
     if (view?.phase !== 'pick' || !view.finishOrder) return null;
     const n = view.finishOrder.length;
     return {
-      rankings: view.finishOrder.map((playerId, i) => ({ playerId, score: n - 1 - i, rank: i + 1 })),
+      rankings: view.finishOrder.map((playerId, i) => ({
+        playerId,
+        score: n - 1 - i,
+        rank: i + 1,
+      })),
     };
   },
   ResultsExtra: RulePick,

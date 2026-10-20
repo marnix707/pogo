@@ -11,7 +11,7 @@ import { KarmaRules } from './KarmaRules';
 import { DOUBLE_TAP_MS, planTap } from './selection';
 import { FourBurn } from './FourBurn';
 import { WinReveal } from './WinReveal';
-import { CardFlipContext, PlayingCard } from './PlayingCard';
+import { CardFlipContext, PlayingCard, resetFlipBoxes } from './PlayingCard';
 import type { FlipOrigin } from './PlayingCard';
 
 type Card = number;
@@ -47,6 +47,8 @@ export const handRowsFor = (n: number) =>
 const GHOST_MS = 1100;
 /** A face-down card is flipped in the middle of the screen for this long (the turn takes 3.12s, then it stays ~0.4s). */
 const BLIND_REVEAL_MS = 3560;
+/** The card turn itself (`win-turn` in index.css): sounds and the turn hand-over wait for it. */
+const TURN_MS = 3120;
 /** The winning / a later finisher's card: the turn plus a short hold. */
 const WIN_REVEAL_MS = 5200;
 const OUT_REVEAL_MS = 3700;
@@ -299,6 +301,8 @@ function describeEvent(
 }
 
 export function KarmaGame({ room, me, sendMove }: GameUiProps) {
+  // A new game starts with nothing remembered from the last one (positions of cards).
+  useState(resetFlipBoxes);
   const game = room.game!;
   const view = game.view as karma.KarmaView;
   const finished = room.status === 'finished';
@@ -330,9 +334,13 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const flameTimer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => () => clearTimeout(flameTimer.current), []);
   /** Someone just played their last card: reveal it with a flourish (confetti for the winner). */
-  const [reveal, setReveal] = useState<{ card: number; label: string; winner: boolean } | null>(
-    null,
-  );
+  const [reveal, setReveal] = useState<{
+    card: number;
+    label: string;
+    winner: boolean;
+    /** Who played the card that is turning over. */
+    by: string;
+  } | null>(null);
   const revealTimer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => () => clearTimeout(revealTimer.current), []);
   /** A beat after a reveal: moves stay locked until every animation has finished. */
@@ -394,7 +402,20 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     ghost ?? (hiddenOut.length > 0 ? pile.filter((c) => !hiddenOut.includes(c)) : pile);
   const hand = useMemo(() => [...(mine?.hand ?? [])].sort(byRankThenSuit), [mine?.hand]);
   const swapping = view.phase === 'swap' && !!mine && !mine.ready;
-  const playing = view.phase === 'play' && myTurn;
+  const lastSeq = useRef(view.lastEvent?.seq ?? 0);
+  // While a card is turning over nobody may see whose turn it is: after a flip the turn passes on
+  // (a card that fits) or stays with the flipper (too low: picks up the pile), and that is the answer.
+  // (`revealPending` covers the render in which the move has arrived but its reveal is not set yet.)
+  const newEvent = view.lastEvent;
+  const revealPending =
+    !!newEvent &&
+    newEvent.seq !== lastSeq.current &&
+    newEvent.cards.length > 0 &&
+    (newEvent.kind === 'blind' || newEvent.out);
+  const frozenBy = reveal ? reveal.by : revealPending ? newEvent!.playerId : null;
+  const myTurnShown = myTurn && frozenBy === null;
+  const shownTurnId = frozenBy ?? currentId;
+  const playing = view.phase === 'play' && myTurnShown;
 
   // Anchors for cards that arrive from somewhere that is not a card (deck, pile, a seat).
   const stockEl = useRef<HTMLDivElement>(null);
@@ -457,7 +478,6 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     previous: null,
   }));
   const before = useRef({ deadline: game.deadline });
-  const lastSeq = useRef(view.lastEvent?.seq ?? 0);
   useEffect(() => {
     const ev = view.lastEvent;
     if (!ev || ev.seq === lastSeq.current) return;
@@ -465,7 +485,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     // The same player is up again (an 8 with nobody else to skip to, or a burn): say so, and nudge
     // me with the turn sound, because "your turn" never switched off and on.
     const again = !ev.out && latest.current.currentId === ev.playerId;
-    if (again && ev.playerId === me) {
+    if (again && ev.playerId === me && ev.kind !== 'blind') {
       play('turn');
       haptic('tap');
     }
@@ -482,6 +502,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
       setReveal({
         card: ev.cards[ev.cards.length - 1] as Card,
         winner,
+        by: ev.playerId,
         label: winner ? (ev.playerId === me ? 'You win!' : `${name} wins!`) : `${name} is out`,
       });
       clearTimeout(revealTimer.current);
@@ -501,6 +522,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
       setReveal({
         card,
         winner: false,
+        by: ev.playerId,
         label: `${who} ${who === 'You' ? 'flip' : 'flips'} ${cardLabel(card)}${
           ev.failed ? ' · too low!' : ev.burned ? ' · burns 🔥' : ''
         }`,
@@ -522,6 +544,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         haptic(ev.burned ? 'success' : ev.failed || ev.pickedUp > 0 ? 'error' : 'tap');
     };
     const delayed = ev.kind === 'blind' && !ev.out;
+    // A last card turns over for TURN_MS first: its sound (and the winner's fanfare) waits for that.
+    const outDelayed = ev.out && ev.cards.length > 0;
     if (delayed) play('tap');
     // (The last card of a player has its own reveal, which must not be spoiled by this.)
     const showcase = ev.cards.length > 0 && ev.burned && !ev.out;
@@ -560,7 +584,16 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     clearTimeout(burnTimer.current);
     if (delayed) burnTimer.current = setTimeout(showBurn, BLIND_REVEAL_MS);
     else {
-      feedback();
+      if (outDelayed) {
+        const winnerOut = latest.current.finishOrder[0] === ev.playerId;
+        burnTimer.current = setTimeout(() => {
+          // The fanfare of the game's winner is played here, with the confetti (not in GameScreen).
+          if (winnerOut) {
+            play(ev.playerId === me ? 'win' : 'score');
+            haptic(ev.playerId === me ? 'success' : 'tap');
+          } else feedback();
+        }, TURN_MS);
+      } else feedback();
       showBurn();
     }
   }, [view.lastEvent, me]);
@@ -576,20 +609,20 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   // A gentle buzz when ten seconds are left on my turn.
   const warnedFor = useRef<number | null>(null);
   useEffect(() => {
-    if (myTurn && secondsLeft === 10 && warnedFor.current !== game.deadline) {
+    if (myTurnShown && secondsLeft === 10 && warnedFor.current !== game.deadline) {
       warnedFor.current = game.deadline;
       haptic('tap');
     }
-  }, [myTurn, secondsLeft, game.deadline]);
+  }, [myTurnShown, secondsLeft, game.deadline]);
 
-  const wasMyTurn = useRef(myTurn);
+  const wasMyTurn = useRef(myTurnShown);
   useEffect(() => {
-    if (myTurn && !wasMyTurn.current && view.phase === 'play') {
+    if (myTurnShown && !wasMyTurn.current && view.phase === 'play') {
       play('turn');
       haptic('tap');
     }
-    wasMyTurn.current = myTurn;
-  }, [myTurn, view.phase]);
+    wasMyTurn.current = myTurnShown;
+  }, [myTurnShown, view.phase]);
 
   // ---- interactions -------------------------------------------------------------------------
 
@@ -747,8 +780,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     !reveal &&
     pile.length > 0 &&
     (view.mustPickUp ||
-      (zone !== 'down' &&
-        !activeCards.some((c) => c !== null && canPlayRank(pile, rankOf(c)))));
+      (zone !== 'down' && !activeCards.some((c) => c !== null && canPlayRank(pile, rankOf(c)))));
 
   const urgent = secondsLeft !== null && secondsLeft <= 10;
   const shownHint =
@@ -802,7 +834,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
               key={p.id}
               player={p}
               member={member(p.id)}
-              current={p.id === currentId || (view.phase === 'swap' && !p.ready)}
+              current={p.id === shownTurnId || (view.phase === 'swap' && !p.ready)}
               finishRank={finishRank(p.id)}
               phase={view.phase}
               font={oppFont}
@@ -913,9 +945,9 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
               {notes.previous ? describeEvent(notes.previous.ev, nameOf, notes.previous) : ' '}
             </p>
             <p
-              className={`mt-1 min-h-[2.4em] text-xs font-semibold leading-snug ${myTurn ? 'text-onbg' : 'text-onbg/80'}`}
+              className={`mt-1 min-h-[2.4em] text-xs font-semibold leading-snug ${myTurnShown ? 'text-onbg' : 'text-onbg/80'}`}
               data-testid="karma-hint"
-              data-my-turn={myTurn}
+              data-my-turn={myTurnShown}
             >
               {shownHint}
             </p>
@@ -977,21 +1009,21 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                   {view.phase === 'play' && (
                     <div
                       data-testid="karma-timer"
-                      data-my-turn={myTurn}
+                      data-my-turn={myTurnShown}
                       data-seconds={secondsLeft}
                       className={`relative flex min-h-0 flex-[2] flex-col items-center justify-center overflow-hidden rounded-lg border-2 px-1 text-center ${
                         urgent ? 'animate-pulse border-danger text-danger' : 'border-edge/40'
                       }`}
                     >
                       <TimerDrain
-                        active={myTurn}
+                        active={myTurnShown}
                         deadline={game.deadline}
                         serverTime={room.serverTime}
                         totalSec={room.turnTimeSec}
                         urgent={urgent}
                       />
                       <p className="relative w-full break-words text-xl font-bold uppercase leading-tight tracking-wide">
-                        {myTurn ? 'Your turn' : nameOf(currentId ?? '').slice(0, 12)}
+                        {myTurnShown ? 'Your turn' : nameOf(shownTurnId ?? '').slice(0, 12)}
                       </p>
                     </div>
                   )}
@@ -1031,12 +1063,12 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                 className="flex w-full flex-col px-1 pb-1 pt-4"
                 data-testid="my-hand"
                 data-rows={rowCount}
-                data-dimmed={view.phase === 'play' && !myTurn}
+                data-dimmed={view.phase === 'play' && !myTurnShown}
                 style={{
                   minHeight: `${handFont * 7 + rowStep * (rowCount - 1) + 22}px`,
                   overflowX: 'clip',
                   // Not my turn: my hand dims a little, so it is obvious who is up.
-                  filter: view.phase === 'play' && !myTurn ? 'brightness(0.3)' : undefined,
+                  filter: view.phase === 'play' && !myTurnShown ? 'brightness(0.3)' : undefined,
                   transition: 'filter 200ms',
                 }}
               >
@@ -1092,7 +1124,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         )}
 
         {fourBurn && <FourBurn cards={fourBurn} ms={FOUR_BURN_MS} />}
-        {reveal && <WinReveal {...reveal} />}
+        {reveal && <WinReveal card={reveal.card} label={reveal.label} winner={reveal.winner} />}
 
         <KarmaRules open={rulesOpen} onClose={() => setRulesOpen(false)} rules={view.rules} />
       </div>

@@ -282,9 +282,27 @@ button {
   }
   .animate-dice-roll,
   .animate-pop,
-  .animate-slide-up {
+  .animate-slide-up,
+  .chat-banner {
     animation: none;
   }
+}
+
+/* A chat message slides down from the top, stays, and slides away again. */
+@keyframes chat-banner {
+  0% {
+    transform: translateY(-100%);
+  }
+  8%,
+  88% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-100%);
+  }
+}
+.chat-banner {
+  animation: chat-banner 3.6s cubic-bezier(0.22, 0.8, 0.3, 1) both;
 }
 
 @keyframes pile-pulse {
