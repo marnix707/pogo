@@ -205,7 +205,9 @@ function validateMove(state: KarmaState, playerId: string, move: KarmaMove): Mov
       }
       const rank = rankOf(move.cards[0] as Card);
       if (move.cards.some((c) => rankOf(c) !== rank)) return err('Play cards of the same rank');
-      if (!canPlayRank(state.pile, rank))
+      // Face-up cards may always be tried (like a blind card): a too-low one goes on the pile and
+      // its owner has to pick the pile up. Only hand cards must be playable.
+      if (zone === 'hand' && !canPlayRank(state.pile, rank))
         return err(
           rankOf(effectiveTop(state.pile) as Card) === 7
             ? 'After a 7 you must play 7 or lower, or a 2 or a 10'
@@ -341,10 +343,18 @@ function applyMove(state: KarmaState, playerId: string, move: KarmaMove, _rng: R
 
     case 'play': {
       const source = stateZone(me) === 'hand' ? me.hand : me.faceUp;
+      const tooLow = source !== me.hand && !canPlayRank(s.pile, rankOf(move.cards[0] as Card));
       for (const card of move.cards) {
         const at = source.indexOf(card);
         if (source === me.hand) me.hand.splice(at, 1);
         else me.faceUp[at] = null;
+      }
+      if (tooLow) {
+        // A too-low face-up card is turned onto the pile like a failed blind card: pick the pile up.
+        s.pile.push(...move.cards);
+        s.mustPickUp = true;
+        event(s, me.id, 'play', move.cards, { failed: true });
+        return s;
       }
       playToPile(s, idx, move.cards, 'play');
       return s;

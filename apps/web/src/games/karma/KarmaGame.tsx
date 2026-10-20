@@ -278,7 +278,8 @@ function describeEvent(
     const c = cardLabel(ev.cards[0] as Card);
     parts.push(ev.failed ? `${who} flipped ${c}, too low!` : `${who} flipped ${c}`);
   } else {
-    parts.push(`${who} played ${ev.cards.map(cardLabel).join(' ')}`);
+    const shown = ev.cards.map(cardLabel).join(' ');
+    parts.push(ev.failed ? `${who} tried ${shown}, too low!` : `${who} played ${shown}`);
   }
   if (ev.burned) parts.push('burned 🔥');
   if (extra.again) parts.push(who === 'You' ? 'go again' : 'plays again');
@@ -491,7 +492,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
       ev.burned && four.length === 4 && four.every((c) => rankOf(c) === rankOf(four[0] as Card));
     const holdMs = isFour ? FOUR_BURN_MS : GHOST_MS;
     if (showcase) {
-      setGhost(shown);
+      // (With the four-card overlay the pile behind it stays empty, or you would see a fifth card.)
+      setGhost(isFour ? [] : shown);
       clearTimeout(ghostTimer.current);
       ghostTimer.current = setTimeout(() => setGhost(null), holdMs);
     }
@@ -595,7 +597,10 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
    * Play); a card held once is tap-to-select, tap-again-to-deselect, quick double tap to play.
    */
   function tapCard(card: Card) {
-    if (!playing || !canPlayRank(pile, rankOf(card))) return;
+    if (!playing) return;
+    if (view.mustPickUp) return flashHint('Tap the pile to pick it up first');
+    // Face-up cards can always be tried (a too-low one goes on the pile and you pick it up).
+    if (zone !== 'up' && !canPlayRank(pile, rankOf(card))) return;
     const zoneCards = zone === 'hand' ? hand : (mine?.faceUp ?? []).filter((c) => c !== null);
     const plan = planTap({
       zoneCards,
@@ -696,7 +701,9 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     (mustPickUp
       ? view.mustPickUp
         ? 'Too low! Tap the pile to pick it up'
-        : 'Nothing you can play: tap the pile to pick it up'
+        : zone === 'up'
+          ? 'Nothing playable: try a face-up card, or tap the pile to pick it up'
+          : 'Nothing you can play: tap the pile to pick it up'
       : pileArmed
         ? 'Tap the pile again to pick it up'
         : hint);
@@ -892,7 +899,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                         return {
                           onClick: () => tapCard(card),
                           selected: sel.includes(card),
-                          dimmed: !canPlayRank(pile, rankOf(card)),
+                          dimmed:
+                            !canPlayRank(pile, rankOf(card)) &&
+                            (mine?.faceUp ?? []).some(
+                              (c) => c !== null && canPlayRank(pile, rankOf(c)),
+                            ),
                           playable: canPlayRank(pile, rankOf(card)),
                         };
                       }

@@ -762,6 +762,26 @@ describe('computer players', () => {
 });
 
 describe('face-up and face-down cards', () => {
+  it('a too-low face-up card can be tried: it lands on the pile and the pile must be picked up', () => {
+    const s = table([{ faceUp: [card(4), card(9), null] }, { hand: [card(9)] }], {
+      pile: [card(12)],
+    });
+    const flipped = move(s, 'p1', { type: 'play', cards: [card(4)] });
+    expect(flipped.pile).toEqual([card(12), card(4)]);
+    expect(flipped.mustPickUp).toBe(true);
+    expect(flipped.turn).toBe(0);
+    expect(flipped.lastEvent).toMatchObject({ kind: 'play', failed: true, cards: [card(4)] });
+    bad(flipped, 'p1', { type: 'play', cards: [card(9)] }, 'Pick up the pile first');
+    const after = move(flipped, 'p1', { type: 'pickup' });
+    expect(hand(after, 0)).toEqual([card(12), card(4)]);
+    expect(after.turn).toBe(1);
+  });
+
+  it('a hand card still has to be playable', () => {
+    const s = table([{ hand: [card(4)] }, {}], { pile: [card(12)] });
+    bad(s, 'p1', { type: 'play', cards: [card(4)] }, 'Too low');
+  });
+
   it('plays face-up cards once the hand is empty, never before', () => {
     const s = table([{ hand: [card(9)], faceUp: [card(10), null, null] }, {}]);
     bad(s, 'p1', { type: 'play', cards: [card(10)] }, 'hand cards first');

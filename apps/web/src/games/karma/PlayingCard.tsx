@@ -38,6 +38,9 @@ if (typeof window !== 'undefined') {
   window.addEventListener('resize', () => lastBoxes.clear());
 }
 
+/** Cards that just unmounted; forgotten for good unless the same card is mounted again right away. */
+const gone = new Set<number>();
+
 const MOVE_MS = 320;
 const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
@@ -78,6 +81,22 @@ export function PlayingCard({
 }) {
   const ref = useRef<HTMLElement>(null);
   const { enabled } = useContext(CardFlipContext);
+
+  // A card that leaves the screen (picked up into somebody's hidden hand, burned) must not keep an
+  // old position: when it shows up again it is a NEW arrival from its owner's seat / the deck, not a
+  // slide from wherever it was last seen. Moving between zones unmounts and mounts within one commit,
+  // so the position survives that (the mount below un-marks it before the timeout fires).
+  const flipId = flip?.id;
+  useLayoutEffect(() => {
+    if (flipId === undefined) return;
+    gone.delete(flipId);
+    return () => {
+      gone.add(flipId);
+      setTimeout(() => {
+        if (gone.delete(flipId)) lastBoxes.delete(flipId);
+      }, 0);
+    };
+  }, [flipId]);
 
   // FLIP: after every render, compare where this card is now with where it was last seen and,
   // if it moved (or just arrived from somewhere), slide it from there. Runs before paint.
