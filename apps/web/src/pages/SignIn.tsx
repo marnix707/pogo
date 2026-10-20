@@ -72,7 +72,7 @@ export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) 
         </fieldset>
 
         {error && (
-          <p role="alert" className="rounded-md bg-danger/20 px-4 py-2 font-medium text-danger">
+          <p role="alert" className="rounded-md bg-danger/20 px-4 py-2 font-medium text-dangertext">
             {error}
           </p>
         )}

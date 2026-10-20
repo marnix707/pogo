@@ -2,8 +2,11 @@ import { createContext, useContext, useLayoutEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import { karma } from '@pogo/shared';
 
-const NAVY = '#001850';
-const RED = '#c4168f';
+/** Ink and suit colours of the card faces; LINE is the near-black outline (same as `--c-line`). */
+const INK = '#1d2430';
+const RED = '#d6342c';
+const LINE = '#0b1417';
+const GOLD = '#eac058';
 
 /** Where a card was last seen on screen (viewport coordinates). */
 interface Box {
@@ -160,7 +163,7 @@ export function PlayingCard({
   });
 
   const showFace = !faceDown && card !== undefined;
-  const color = showFace && karma.isRedSuit(card) ? RED : NAVY;
+  const color = showFace && karma.isRedSuit(card) ? RED : INK;
   const rank = showFace ? karma.RANK_LABEL[karma.rankOf(card)] : '';
   const suit = showFace ? karma.SUIT_SYMBOL[karma.suitOf(card)] : '';
   const compact = size < 6.6; // too small for corner indices: show a big centred rank + suit
@@ -201,10 +204,13 @@ export function PlayingCard({
   ) : null;
 
   const faceStyle: CSSProperties = showFace
-    ? { background: '#eafefe', border: `0.2em solid ${NAVY}` }
+    ? { background: '#f4eedb', border: `0.2em solid ${LINE}` }
     : {
-        background: 'repeating-linear-gradient(45deg, #5B29A7 0 0.45em, #6b38bd 0.45em 0.9em)',
-        border: '0.2em solid #1FE0E0',
+        // The back: a diamond-patterned blue with a gold frame inside the dark outline.
+        background:
+          'repeating-linear-gradient(45deg, #2f55b3 0 0.45em, #284a9c 0.45em 0.9em), #2f55b3',
+        border: `0.2em solid ${LINE}`,
+        boxShadow: `inset 0 0 0 0.22em ${GOLD}`,
       };
 
   // The outer element is what moves (layout + FLIP); the inner one carries the visual state
@@ -217,13 +223,21 @@ export function PlayingCard({
   };
   const inner = (
     <span
-      className="absolute inset-0 rounded-[0.55em] transition-transform duration-150"
+      className={`absolute inset-0 rounded-[0.55em] transition-transform duration-150 ${
+        selected ? 'card-wobble' : ''
+      }`}
       style={{
         ...faceStyle,
         transform: `${selected ? 'translateY(-0.9em) ' : ''}rotate(${tilt}deg)`,
-        boxShadow: selected
-          ? '0 0 0 0.25em #FF6BDE, 0 0.3em 0 0.1em rgba(0,24,80,0.45)'
-          : '0 0.2em 0 0 rgba(0,24,80,0.35)',
+        // (The back keeps its gold frame as an inset shadow, so the lift shadow is added to it.)
+        boxShadow: [
+          faceStyle.boxShadow,
+          selected
+            ? `0 0 0 0.25em ${GOLD}, 0 0.3em 0 0.1em rgba(11,20,23,0.7)`
+            : '0 0.2em 0 0 rgba(11,20,23,0.6)',
+        ]
+          .filter(Boolean)
+          .join(', '),
         // Unavailable cards are dimmed by 70% (the same as my hand while it is not my turn).
         filter: dimmed ? 'brightness(0.3)' : undefined,
       }}

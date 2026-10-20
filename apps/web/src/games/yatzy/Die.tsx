@@ -11,18 +11,18 @@ const PIPS: Record<number, number[]> = {
 };
 
 /**
- * Every face has its own colour, so a die is easy to match with its row in the scorecard. Light
- * versions of the app palette (pink, coral, yellow, mint, cyan, lilac): the dice dock and the
- * scorecard are navy in both the teal and the dark theme, so all of them keep a contrast of 6:1 or
- * more against it, and the navy pips read at 6.7:1 or better on every face.
+ * Every face has its own colour, so a die is easy to match with its row in the scorecard. Light card-
+ * table colours (red, orange, gold, green, blue, purple): the dice dock and the scorecard are dark
+ * slate, so all of them keep a contrast of 5:1 or more against it, and the near-black pips read at
+ * 8:1 or better on every face.
  */
 export const DIE_COLOR: Record<number, string> = {
-  1: '#FF6BDE',
-  2: '#FF9A8B',
+  1: '#FF7A6E',
+  2: '#FFB35C',
   3: '#FFE066',
-  4: '#5EF2B8',
-  5: '#1FE0E0',
-  6: '#B79CFF',
+  4: '#6FE0A0',
+  5: '#6BB8FF',
+  6: '#C3A1FF',
 };
 const BLANK = '#e9ffff';
 
@@ -64,8 +64,8 @@ export function Die({
       aria-label={value ? `Die ${index + 1}: ${value}${held ? ', held' : ''}` : `Die ${index + 1}`}
       disabled={!interactive}
       onClick={onToggle}
-      className={`relative aspect-square w-full rounded-lg border-[3px] shadow-[0_3px_0_0_rgb(0_24_80/0.7)] transition-transform disabled:cursor-default ${
-        held ? '-translate-y-1.5 border-white shadow-[0_4px_0_0_#b13d9c]' : 'border-[#001850]'
+      className={`relative aspect-square w-full rounded-lg border-[3px] shadow-[0_4px_0_0_#0b1417] transition-transform disabled:cursor-default ${
+        held ? '-translate-y-1.5 border-neon shadow-[0_5px_0_0_#0b1417]' : 'border-[#0b1417]'
       } ${rolling ? 'animate-dice-roll' : ''}`}
       style={{ backgroundColor: DIE_COLOR[face] ?? BLANK }}
     >
@@ -75,9 +75,9 @@ export function Die({
             key={cell}
             className={`aspect-square w-[78%] rounded-full ${
               pips.includes(cell)
-                ? 'bg-[#001850]'
+                ? 'bg-[#0b1417]'
                 : value === 0 && cell === 4
-                  ? 'bg-[#001850]/15'
+                  ? 'bg-[#0b1417]/15'
                   : ''
             }`}
           />

@@ -28,7 +28,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           key={toast.id}
           role="status"
           data-testid="toast"
-          className={`animate-pop pointer-events-none fixed inset-x-4 bottom-28 z-50 mx-auto max-w-sm rounded-md border-2 px-4 py-3 text-center font-semibold shadow-lg ${
+          className={`animate-pop pointer-events-none fixed inset-x-4 bottom-28 z-50 mx-auto max-w-sm rounded-[10px] border-2 px-4 py-3 text-center font-semibold shadow-[0_4px_0_2px_rgb(var(--c-line))] ring-2 ring-line ${
             toast.kind === 'error'
               ? 'border-danger bg-danger text-white'
               : 'border-neon bg-panel text-ink'

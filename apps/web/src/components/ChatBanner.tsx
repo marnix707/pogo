@@ -35,7 +35,7 @@ export function ChatBanner({ messages, me }: { messages: ChatMessage[]; me: stri
       type="button"
       data-testid="chat-banner"
       onClick={() => setShown(null)}
-      className="chat-banner fixed inset-x-0 top-0 z-[60] flex h-[calc(env(safe-area-inset-top)+3.5rem)] items-center gap-3 border-b-2 border-neon bg-panel px-4 pt-[env(safe-area-inset-top)] text-left text-ink shadow-lg"
+      className="chat-banner fixed inset-x-0 top-0 z-[60] flex h-[calc(env(safe-area-inset-top)+3.5rem)] items-center gap-3 border-b-2 border-neon bg-panel px-4 pt-[env(safe-area-inset-top)] text-left text-ink shadow-[0_4px_0_0_rgb(var(--c-line))]"
     >
       <span className="shrink-0 text-2xl leading-none" aria-hidden>
         {avatarEmoji(shown.avatar)}

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { PlayingCard } from './PlayingCard';
 
-const CONFETTI = ['#FF6BDE', '#1FE0E0', '#5B29A7', '#00A9AB', '#FFFFFF', '#FFD84D'];
+const CONFETTI = ['#D6342C', '#4AA8FF', '#EAC058', '#6FE0A0', '#F4EEDB', '#9678E6'];
 
 const prefersReducedMotion = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;

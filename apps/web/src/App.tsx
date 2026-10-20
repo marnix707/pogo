@@ -27,7 +27,7 @@ export function App() {
         <p className="label p-8 text-center text-onbg">Loading…</p>
       ) : error ? (
         <div className="p-8 text-center">
-          <p className="mb-4 font-semibold text-danger">{error}</p>
+          <p className="mb-4 font-semibold text-dangertext">{error}</p>
           <button className="underline" onClick={() => window.location.reload()}>
             Try again
           </button>

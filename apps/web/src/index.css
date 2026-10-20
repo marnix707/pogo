@@ -20,8 +20,9 @@
   --c-accentink: 12 20 24;
   --c-neon: 234 192 88; /* highlights: gold */
   --c-lagoon: 61 140 110;
-  --c-grape: 150 120 230; /* "your turn" */
-  --c-danger: 224 56 48;
+  --c-grape: 110 84 200; /* "your turn" */
+  --c-danger: 224 56 48; /* red fills (white text) */
+  --c-dangertext: 255 120 108; /* red text on dark panels */
   --c-line: 11 20 23; /* the dark outline round things */
   --page-gradient: radial-gradient(130% 90% at 50% 0%, #1f5a49 0%, #124034 52%, #0a2a22 100%);
 }
@@ -251,6 +252,19 @@ button {
   border-radius: 1px;
   animation: confetti-fall 3s linear both;
 }
+/* A selected card sways a little (the individual `rotate` property composes with the inline transform). */
+@keyframes card-wobble {
+  from {
+    rotate: -1.6deg;
+  }
+  to {
+    rotate: 1.6deg;
+  }
+}
+.card-wobble {
+  animation: card-wobble 1.1s ease-in-out infinite alternate;
+}
+
 @keyframes card-float {
   0%,
   100% {
@@ -267,7 +281,8 @@ button {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .card-float {
+  .card-float,
+  .card-wobble {
     animation: none;
   }
   .win-card,

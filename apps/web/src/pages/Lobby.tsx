@@ -261,7 +261,7 @@ export function Lobby({
                 {isHost && m.id !== me && (
                   <button
                     onClick={() => void api.kick(m.id)}
-                    className="label min-h-10 rounded-md px-3 text-danger"
+                    className="label min-h-10 rounded-md px-3 text-dangertext"
                   >
                     Remove
                   </button>

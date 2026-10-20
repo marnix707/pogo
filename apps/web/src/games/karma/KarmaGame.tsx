@@ -1012,7 +1012,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                       data-my-turn={myTurnShown}
                       data-seconds={secondsLeft}
                       className={`relative flex min-h-0 flex-[2] flex-col items-center justify-center overflow-hidden rounded-lg border-2 px-1 text-center ${
-                        urgent ? 'animate-pulse border-danger text-danger' : 'border-edge/40'
+                        urgent ? 'animate-pulse border-danger text-dangertext' : 'border-edge/40'
                       }`}
                     >
                       <TimerDrain
