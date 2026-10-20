@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { AuthResponse } from '@pogo/shared';
 import { ToastProvider } from './components/Toast';
+import { TopoBackground } from './components/TopoBackground';
 import { unlockAudio } from './lib/sound';
 import { forgetSession, restoreSession } from './lib/session';
 import { Shell } from './Shell';
@@ -23,6 +24,7 @@ export function App() {
 
   return (
     <ToastProvider>
+      <TopoBackground />
       {loading ? (
         <p className="label p-8 text-center text-onbg">Loading…</p>
       ) : error ? (

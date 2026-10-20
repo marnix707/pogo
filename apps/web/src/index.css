@@ -54,7 +54,7 @@ body {
   overscroll-behavior-y: none;
 }
 
-/* The table: felt gradient, and a slowly turning red/blue/gold glow over it. */
+/* The table: felt gradient, and a soft red/blue/gold glow over it (the contour lines are a canvas, TopoBackground). */
 body::before,
 body::after {
   content: '';
@@ -67,19 +67,12 @@ body::before {
   background: var(--page-gradient);
 }
 body::after {
-  inset: -45%;
+  inset: 0;
   z-index: -1;
   background:
     radial-gradient(38% 38% at 30% 32%, rgb(230 70 90 / 0.42), transparent 70%),
     radial-gradient(42% 42% at 70% 64%, rgb(40 110 240 / 0.4), transparent 70%),
     radial-gradient(30% 30% at 56% 18%, rgb(255 190 60 / 0.2), transparent 70%);
-  animation: table-swirl 70s linear infinite;
-  will-change: transform;
-}
-@keyframes table-swirl {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 /* CRT layer (Settings > CRT effect): scanlines and a darkened edge. Never takes a tap. */
