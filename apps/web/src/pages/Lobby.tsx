@@ -103,8 +103,8 @@ export function Lobby({
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
       <main className="flex flex-1 flex-col gap-5 px-4 pb-8 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
-        {/* One header card: back, game, settings, and the room code (private lobbies) with Invite. */}
-        <Card className="hud-ticks flex flex-col gap-3 !p-3">
+        {/* One slim header card: back, game, Invite and settings. */}
+        <Card className="hud-ticks !p-3">
           <div className="flex items-center gap-3">
             <TileButton
               onClick={() => void api.leave()}
@@ -131,31 +131,17 @@ export function Lobby({
                 </span>
               </div>
             </div>
-            <TileButton onClick={onSettings} aria-label="Settings" data-testid="settings-button">
-              <SlidersIcon className="h-5 w-5" />
-            </TileButton>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            {/* Only a private lobby needs its code: a public one is found in the open games list. */}
-            {room.visibility === 'private' && (
-              <div className="min-w-0">
-                <div className="label text-muted">Room code</div>
-                <div
-                  data-testid="room-code"
-                  className="select-all text-3xl font-bold leading-tight tracking-[0.2em] text-neon"
-                >
-                  {room.code}
-                </div>
-              </div>
-            )}
             <Button
               variant="secondary"
               aria-label="Invite friends"
-              className={`min-h-11 !px-4 ${room.visibility === 'private' ? 'shrink-0' : 'w-full'}`}
+              className="min-h-10 shrink-0 !px-3"
               onClick={() => void share()}
             >
               Invite
             </Button>
+            <TileButton onClick={onSettings} aria-label="Settings" data-testid="settings-button">
+              <SlidersIcon className="h-5 w-5" />
+            </TileButton>
           </div>
         </Card>
 
@@ -163,6 +149,18 @@ export function Lobby({
           <section aria-label="Settings">
             <SectionLabel>Settings</SectionLabel>
             <Card className="flex flex-col gap-5">
+              {/* The code lives here, out of the way; only a private lobby needs it. */}
+              {room.visibility === 'private' && (
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-semibold">Room code</span>
+                  <span
+                    data-testid="room-code"
+                    className="select-all text-2xl font-bold tracking-[0.2em] text-neon"
+                  >
+                    {room.code}
+                  </span>
+                </div>
+              )}
               <Toggle
                 label="Public room"
                 hint="Show in the lobby so anyone can join"
