@@ -3,16 +3,19 @@ import { useSyncExternalStore } from 'react';
 export interface Settings {
   sound: boolean;
   vibration: boolean;
-  /** The CRT layer over the whole app: scanlines and a darkened edge. */
-  crt: boolean;
+  /** How strong the CRT layer over the whole app is (scanlines and a darkened edge), 0 = off .. 100. */
+  crt: number;
 }
 
 const KEY = 'pogo.settings';
-const defaults: Settings = { sound: true, vibration: true, crt: true };
+const defaults: Settings = { sound: true, vibration: true, crt: 0 };
 
 function load(): Settings {
   try {
-    return { ...defaults, ...(JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Settings>) };
+    const saved = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Settings>;
+    // (An earlier version stored the CRT effect as a switch: that is just "off" now.)
+    const crt = typeof saved.crt === 'number' ? Math.min(100, Math.max(0, saved.crt)) : 0;
+    return { ...defaults, ...saved, crt };
   } catch {
     return defaults;
   }
@@ -22,7 +25,9 @@ let current = load();
 const listeners = new Set<() => void>();
 
 function applyLook() {
-  document.documentElement.classList.toggle('crt', current.crt);
+  const root = document.documentElement;
+  root.classList.toggle('crt', current.crt > 0);
+  root.style.setProperty('--crt', String(current.crt / 100));
 }
 
 export function getSettings(): Settings {

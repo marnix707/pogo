@@ -183,3 +183,18 @@ test('tapping your icon on Home opens a picker with square icons and saves the n
   await expect(page.getByTestId('home-avatar')).toHaveAttribute('data-avatar', 'cat');
   await me.context.close();
 });
+
+test('the CRT effect is off by default and has a strength slider', async ({ browser }) => {
+  const me = await newPlayer(browser, 'Crt', 'fox');
+  const page = me.page;
+  await page.getByTestId('settings-button').click();
+  await expect(page.getByTestId('crt-value')).toHaveText('Off');
+  await expect(page.locator('html')).not.toHaveClass(/crt/);
+  await page.getByTestId('crt-slider').fill('50');
+  await expect(page.getByTestId('crt-value')).toHaveText('50%');
+  await expect(page.locator('html')).toHaveClass(/crt/);
+  await page.reload(); // saved
+  await page.getByTestId('settings-button').click();
+  await expect(page.getByTestId('crt-value')).toHaveText('50%');
+  await me.context.close();
+});

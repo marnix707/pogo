@@ -36,12 +36,28 @@ export function SettingsSheet({
           checked={settings.vibration}
           onChange={(vibration) => updateSettings({ vibration })}
         />
-        <Toggle
-          label="CRT effect"
-          hint="Scanlines and a dark screen edge"
-          checked={settings.crt}
-          onChange={(crt) => updateSettings({ crt })}
-        />
+        <label className="flex flex-col gap-2 py-2">
+          <span className="flex items-center justify-between font-semibold">
+            CRT effect
+            <span data-testid="crt-value" className="tabular-nums">
+              {settings.crt === 0 ? 'Off' : `${settings.crt}%`}
+            </span>
+          </span>
+          <span className="block text-sm font-normal text-muted">
+            Scanlines and a dark screen edge
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={settings.crt}
+            data-testid="crt-slider"
+            aria-label="CRT effect"
+            onChange={(e) => updateSettings({ crt: Number(e.target.value) })}
+            className="h-8 w-full accent-[#3cb4ff]"
+          />
+        </label>
         <InstallCard variant="settings" />
         <DisplayModeNote />
         <Button variant="secondary" onClick={onSignOut}>
