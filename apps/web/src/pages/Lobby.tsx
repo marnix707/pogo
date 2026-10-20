@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
 import { getGame } from '@pogo/shared';
 import type { ChatMessage, RoomView } from '@pogo/shared';
-import { ArrowLeftIcon, CrownIcon } from '../components/icons';
+import { ArrowLeftIcon, CrownIcon, SlidersIcon } from '../components/icons';
 import { ChatPanel } from '../components/ChatPanel';
 import { Avatar, Button, Card, SectionLabel, Toggle } from '../components/ui';
-import { TileButton, TopBar } from '../components/TopBar';
+import { TileButton } from '../components/TopBar';
 import { useToast } from '../components/Toast';
 import { getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
@@ -102,56 +102,63 @@ export function Lobby({
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
-      <TopBar
-        title={`${ui?.emoji ?? ''} ${room.gameName}`}
-        subtitle={
-          <span className="flex items-center gap-2">
-            Lobby
-            <span
-              data-testid="room-visibility"
-              className={`rounded border px-1.5 py-0.5 text-[9px] ${
-                room.visibility === 'public'
-                  ? 'border-accent text-accent'
-                  : 'border-edge/50 text-onbg/70'
-              }`}
+      <main className="flex flex-1 flex-col gap-5 px-4 pb-8 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
+        {/* One header card: back, game, settings, and the room code (private lobbies) with Invite. */}
+        <Card className="hud-ticks flex flex-col gap-3 !p-3">
+          <div className="flex items-center gap-3">
+            <TileButton
+              onClick={() => void api.leave()}
+              aria-label="Leave room"
+              data-testid="lobby-leave"
             >
-              {room.visibility === 'public' ? 'Public' : 'Private'}
-            </span>
-          </span>
-        }
-        // Only a private lobby needs its code: a public one is found in the open games list.
-        detail={
-          room.visibility === 'private' && (
-            <div
-              data-testid="room-code"
-              className="select-all text-2xl font-bold leading-tight tracking-[0.2em] text-neon"
-            >
-              {room.code}
+              <ArrowLeftIcon className="h-5 w-5" />
+            </TileButton>
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-xl font-bold uppercase leading-tight tracking-[0.12em]">
+                {ui?.emoji} {room.gameName}
+              </h1>
+              <div className="label flex items-center gap-2 text-[10px] text-muted">
+                Lobby
+                <span
+                  data-testid="room-visibility"
+                  className={`rounded border px-1.5 py-0.5 text-[9px] ${
+                    room.visibility === 'public'
+                      ? 'border-accent text-accent'
+                      : 'border-edge/50 text-muted'
+                  }`}
+                >
+                  {room.visibility === 'public' ? 'Public' : 'Private'}
+                </span>
+              </div>
             </div>
-          )
-        }
-        actions={
-          <Button
-            variant="secondary"
-            aria-label="Invite friends"
-            className="min-h-10 shrink-0 !px-3"
-            onClick={() => void share()}
-          >
-            Invite
-          </Button>
-        }
-        onSettings={onSettings}
-        left={
-          <TileButton
-            onClick={() => void api.leave()}
-            aria-label="Leave room"
-            data-testid="lobby-leave"
-          >
-            <ArrowLeftIcon className="h-5 w-5" />
-          </TileButton>
-        }
-      />
-      <main className="flex flex-1 flex-col gap-5 px-4 pb-8 pt-2">
+            <TileButton onClick={onSettings} aria-label="Settings" data-testid="settings-button">
+              <SlidersIcon className="h-5 w-5" />
+            </TileButton>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            {/* Only a private lobby needs its code: a public one is found in the open games list. */}
+            {room.visibility === 'private' && (
+              <div className="min-w-0">
+                <div className="label text-muted">Room code</div>
+                <div
+                  data-testid="room-code"
+                  className="select-all text-3xl font-bold leading-tight tracking-[0.2em] text-neon"
+                >
+                  {room.code}
+                </div>
+              </div>
+            )}
+            <Button
+              variant="secondary"
+              aria-label="Invite friends"
+              className={`min-h-11 !px-4 ${room.visibility === 'private' ? 'shrink-0' : 'w-full'}`}
+              onClick={() => void share()}
+            >
+              Invite
+            </Button>
+          </div>
+        </Card>
+
         {isHost && limits && (
           <section aria-label="Settings">
             <SectionLabel>Settings</SectionLabel>
