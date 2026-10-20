@@ -71,6 +71,9 @@ test('three players play a complete Karma game through the UI', async ({ browser
   for (const c of [alice, bob, cleo]) await c.context.close();
 });
 
+/** Mirrors handRowsFor in KarmaGame.tsx. */
+const rowsFor = (n: number) => (n <= 8 ? 1 : n <= 12 ? 2 : Math.max(3, Math.ceil(n / 8)));
+
 test('the lobby can be filtered by game', async ({ browser }) => {
   const watcher = await newPlayer(browser, 'Filterer', 'owl');
   const hostA = await newPlayer(browser, 'KarmaHost', 'fox');
@@ -369,7 +372,7 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
   for (const c of [alice, bob]) await c.context.close();
 });
 
-test('a very long hand (after picking up piles) wraps into rows of at most 12 and every card stays reachable', async ({
+test('a very long hand (after picking up piles) wraps into rows (2 from 9 cards, 3 from 13) and every card stays reachable', async ({
   browser,
 }) => {
   test.setTimeout(180_000);
@@ -412,12 +415,12 @@ test('a very long hand (after picking up piles) wraps into rows of at most 12 an
     if (!acted) await a.waitForTimeout(50);
   }
 
-  // More than 12 cards wrap into extra rows instead of scrolling: nothing is cut off at the sides.
+  // More than 8 cards wrap into extra rows instead of scrolling: nothing is cut off at the sides.
   const cards = a.locator('[data-testid^=hand-card-]');
   const count = await cards.count();
   expect(count).toBeGreaterThanOrEqual(26);
   const hand = a.getByTestId('my-hand');
-  await expect(hand).toHaveAttribute('data-rows', String(Math.ceil(count / 12)));
+  await expect(hand).toHaveAttribute('data-rows', String(rowsFor(count)));
   const viewport = a.viewportSize()!;
   const tops = new Map<number, number>();
   for (let i = 0; i < count; i++) {
@@ -427,8 +430,8 @@ test('a very long hand (after picking up piles) wraps into rows of at most 12 an
     const key = Math.round(box.y);
     tops.set(key, (tops.get(key) ?? 0) + 1);
   }
-  expect(tops.size).toBe(Math.ceil(count / 12));
-  for (const n of tops.values()) expect(n).toBeLessThanOrEqual(12);
+  expect(tops.size).toBe(rowsFor(count));
+  for (const n of tops.values()) expect(n).toBeLessThanOrEqual(8);
 
   // A "trial" click performs every actionability check (scroll into view, nothing covering the card at the
   // tap point) without actually tapping: it is how we know a thumb could reach every single card.

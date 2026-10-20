@@ -8,9 +8,11 @@ async function playUntilResults(page: Page, limitMs = 200_000) {
   const started = Date.now();
   let sawWinnerReveal = false;
   while (!(await page.getByTestId('results-panel').isVisible())) {
-    const reveal = page.getByTestId('win-reveal');
-    if ((await reveal.count()) > 0 && (await reveal.getAttribute('data-winner')) === 'true')
-      sawWinnerReveal = true;
+    // One evaluate, not count + getAttribute: reveals come and go (every face-down card has one).
+    const winner = await page.evaluate(() =>
+      document.querySelector('[data-testid=win-reveal]')?.getAttribute('data-winner'),
+    );
+    if (winner === 'true') sawWinnerReveal = true;
     if (Date.now() - started > limitMs)
       throw new Error('the game against the computer did not finish');
     // A burn flame must go away by itself (it once got stuck for the rest of the game).

@@ -17,6 +17,7 @@ export const yatzyMoveSchema: z.ZodType<YatzyMove, z.ZodTypeDef, unknown> = z.di
   'type',
   [
     z.object({ type: z.literal('roll'), held: z.array(z.boolean()).length(DICE_COUNT) }),
+    z.object({ type: z.literal('hold'), held: z.array(z.boolean()).length(DICE_COUNT) }),
     z.object({ type: z.literal('score'), category: categorySchema }),
   ],
 );
@@ -63,6 +64,12 @@ function validateMove(state: YatzyState, playerId: string, move: YatzyMove): Mov
   if (state.finished) return { ok: false, error: 'The game is over' };
   if (currentPlayer(state).id !== playerId) return { ok: false, error: 'Not your turn' };
 
+  if (move.type === 'hold') {
+    if (state.dice.length === 0) return { ok: false, error: 'Roll the dice first' };
+    if (state.rollsLeft <= 0) return { ok: false, error: 'No rolls left, pick a category' };
+    return { ok: true };
+  }
+
   if (move.type === 'roll') {
     if (state.rollsLeft <= 0) return { ok: false, error: 'No rolls left, pick a category' };
     if (move.held.length !== DICE_COUNT) return { ok: false, error: 'Invalid hold selection' };
@@ -81,6 +88,8 @@ function validateMove(state: YatzyState, playerId: string, move: YatzyMove): Mov
 function applyMove(state: YatzyState, playerId: string, move: YatzyMove, rng: Rng): YatzyState {
   const check = validateMove(state, playerId, move);
   if (!check.ok) throw new Error(check.error);
+
+  if (move.type === 'hold') return { ...state, held: [...move.held] };
 
   if (move.type === 'roll') {
     const firstRoll = state.dice.length === 0;
@@ -158,6 +167,7 @@ export const yatzyGame: GameDefinition<YatzyState, YatzyMove, YatzyOptions> = {
   optionsSchema,
   defaultOptions: {},
   moveSchema: yatzyMoveSchema,
+  isFreeMove: (move) => move.type === 'hold',
   createInitialState,
   validateMove,
   applyMove,

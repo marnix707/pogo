@@ -80,6 +80,29 @@ describe('rolling', () => {
     });
   });
 
+  it('shares holds before the next roll without using a roll', () => {
+    const rolled = play(start(), 'p1', ROLL, [1, 2, 3, 4, 5]);
+    const hold: YatzyMove = { type: 'hold', held: [true, false, true, false, false] };
+    expect(game.validateMove(rolled, 'p1', hold)).toEqual({ ok: true });
+    const after = play(rolled, 'p1', hold);
+    expect(after.held).toEqual([true, false, true, false, false]);
+    expect(after.rollsLeft).toBe(rolled.rollsLeft);
+    expect(after.dice).toEqual(rolled.dice);
+    expect(game.isFreeMove?.(hold)).toBe(true);
+    expect(game.isFreeMove?.(ROLL)).toBe(false);
+  });
+
+  it('rejects holds before the first roll, out of turn and with no rolls left', () => {
+    const hold: YatzyMove = { type: 'hold', held: none };
+    expect(game.validateMove(start(), 'p1', hold).ok).toBe(false);
+    const rolled = play(start(), 'p1', ROLL, [1, 2, 3, 4, 5]);
+    expect(game.validateMove(rolled, 'p2', hold).ok).toBe(false);
+    let s = rolled;
+    s = play(s, 'p1', ROLL, [1, 1, 1, 1, 1]);
+    s = play(s, 'p1', ROLL, [1, 1, 1, 1, 1]);
+    expect(game.validateMove(s, 'p1', hold).ok).toBe(false);
+  });
+
   it('rejects rolling when every die is held', () => {
     const s = play(start(), 'p1', ROLL, [1, 2, 3, 4, 5]);
     const all: YatzyMove = { type: 'roll', held: [true, true, true, true, true] };

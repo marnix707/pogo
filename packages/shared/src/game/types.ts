@@ -60,6 +60,11 @@ export interface GameDefinition<State, Move, Options, PlayerView = State> {
    */
   autoMove?(state: State, playerId: PlayerId, rng: Rng): AutoMove<Move>;
   /**
+   * A move that only shares information (e.g. which dice are kept): it does not restart the turn
+   * clock, so it cannot be used to stall.
+   */
+  isFreeMove?(move: Move): boolean;
+  /**
    * The game can be played against computer players. They are real seats driven by `autoMove`, so
    * set this only when `autoMove` plays a reasonable game (not just "any legal move").
    */

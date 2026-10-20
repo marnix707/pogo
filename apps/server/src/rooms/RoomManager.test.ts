@@ -273,6 +273,22 @@ describe('presence, reconnect and timers', () => {
     expect(s.lastRoom(b.id)?.game?.currentPlayers).toEqual([a.id]);
   });
 
+  it('a free move (sharing held dice) does not restart the turn clock', () => {
+    const s = setup();
+    const { code } = s.must(s.manager.create(a, { gameId: 'yatzy', turnTimeSec: 30 }));
+    s.must(s.manager.join(b, code));
+    s.must(s.manager.start(a.id));
+    s.must(s.manager.move(a.id, { type: 'roll', held: [false, false, false, false, false] }));
+    const before = s.lastRoom(a.id)!.game!.deadline;
+    vi.advanceTimersByTime(10_000);
+    s.must(s.manager.move(a.id, { type: 'hold', held: [true, false, false, false, false] }));
+    expect(s.lastRoom(b.id)!.game!.deadline).toBe(before);
+    expect((s.lastRoom(b.id)!.game!.view as { held: boolean[] }).held[0]).toBe(true);
+    // A real move does restart it.
+    s.must(s.manager.move(a.id, { type: 'roll', held: [true, false, false, false, false] }));
+    expect(s.lastRoom(b.id)!.game!.deadline).toBeGreaterThan(before!);
+  });
+
   it('cancels auto-play when the absent player returns in time', () => {
     const { manager, lastRoom } = started();
     manager.userDisconnected(a.id);

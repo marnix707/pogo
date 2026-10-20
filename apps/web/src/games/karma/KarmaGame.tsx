@@ -40,9 +40,13 @@ const MY_SLOT_OVERLAP = 0.7;
 const ACTION_COLUMN_PX = 96;
 
 /** More cards than this in my hand wrap into extra rows so every card stays visible and tappable. */
-const MAX_PER_ROW = 12;
+/** Hand layers: one row up to 8 cards, two up to 12, three from 13 (then 8 per row at most). */
+export const handRowsFor = (n: number) =>
+  n <= 8 ? 1 : n <= 12 ? 2 : Math.max(3, Math.ceil(n / 8));
 /** How long the cards of a burn or a failed blind card stay visible on the pile before it resolves. */
 const GHOST_MS = 1100;
+/** A face-down card is flipped in the middle of the screen for this long (the turn takes 2.6s). */
+const BLIND_REVEAL_MS = 3500;
 /** A four-of-a-kind burn gets a bigger show: the four cards side by side, dimmed table, then the fire. */
 const FOUR_BURN_MS = 2400;
 
@@ -313,6 +317,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const prevPile = useRef<Card[]>(view.pile);
   /** The last card of a player stays off the pile until its reveal is over (no spoilers behind it). */
   const [hiddenOut, setHiddenOut] = useState<Card[]>([]);
+  const burnTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(burnTimer.current), []);
   const [fourBurn, setFourBurn] = useState<Card[] | null>(null);
   const fourTimer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => () => clearTimeout(fourTimer.current), []);
@@ -475,6 +481,24 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         },
         winner ? 6800 : 3800,
       );
+    } else if (ev.kind === 'blind' && ev.cards.length > 0) {
+      // Every face-down card is turned over in the middle of the screen first (the same flip as the
+      // winning card), playable or not; the game carries on behind it afterwards.
+      const who = latest.current.nameOf(ev.playerId);
+      const card = ev.cards[0] as Card;
+      setReveal({
+        card,
+        winner: false,
+        label: `${who} ${who === 'You' ? 'flip' : 'flips'} ${cardLabel(card)}${
+          ev.failed ? ' · too low!' : ev.burned ? ' · burns 🔥' : ''
+        }`,
+      });
+      clearTimeout(revealTimer.current);
+      setHiddenOut(ev.cards);
+      revealTimer.current = setTimeout(() => {
+        setReveal(null);
+        setHiddenOut([]);
+      }, BLIND_REVEAL_MS);
     }
     setSel([]);
     setSelDown(null);
@@ -491,27 +515,33 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     const isFour =
       ev.burned && four.length === 4 && four.every((c) => rankOf(c) === rankOf(four[0] as Card));
     const holdMs = isFour ? FOUR_BURN_MS : GHOST_MS;
-    if (showcase) {
-      // (With the four-card overlay the pile behind it stays empty, or you would see a fifth card.)
-      setGhost(isFour ? [] : shown);
-      clearTimeout(ghostTimer.current);
-      ghostTimer.current = setTimeout(() => setGhost(null), holdMs);
-    }
-    if (isFour) {
-      // The overlay has its own fire emoji (burn-flash), so the pile flame is skipped.
-      setFourBurn(four);
-      clearTimeout(fourTimer.current);
-      fourTimer.current = setTimeout(() => setFourBurn(null), FOUR_BURN_MS);
-    } else if (ev.burned) {
-      // The timer lives in a ref, NOT in this effect's cleanup: the effect re-runs on every state
-      // push (lastEvent is a new object each time), and a cleanup would cancel the timer and leave
-      // the flame on screen for the rest of the game.
-      clearTimeout(flameTimer.current);
-      flameTimer.current = setTimeout(() => {
-        setFlame(true);
-        flameTimer.current = setTimeout(() => setFlame(false), 1500);
-      }, GHOST_MS);
-    }
+    const showBurn = () => {
+      if (showcase) {
+        // (With the four-card overlay the pile behind it stays empty, or you would see a fifth card.)
+        setGhost(isFour ? [] : shown);
+        clearTimeout(ghostTimer.current);
+        ghostTimer.current = setTimeout(() => setGhost(null), holdMs);
+      }
+      if (isFour) {
+        // The overlay has its own fire emoji (burn-flash), so the pile flame is skipped.
+        setFourBurn(four);
+        clearTimeout(fourTimer.current);
+        fourTimer.current = setTimeout(() => setFourBurn(null), FOUR_BURN_MS);
+      } else if (ev.burned) {
+        // The timer lives in a ref, NOT in this effect's cleanup: the effect re-runs on every state
+        // push (lastEvent is a new object each time), and a cleanup would cancel the timer and leave
+        // the flame on screen for the rest of the game.
+        clearTimeout(flameTimer.current);
+        flameTimer.current = setTimeout(() => {
+          setFlame(true);
+          flameTimer.current = setTimeout(() => setFlame(false), 1500);
+        }, GHOST_MS);
+      }
+    };
+    // After a face-down card's flip the burn plays out; otherwise at once.
+    clearTimeout(burnTimer.current);
+    if (ev.kind === 'blind' && !ev.out) burnTimer.current = setTimeout(showBurn, BLIND_REVEAL_MS);
+    else showBurn();
   }, [view.lastEvent, me]);
   // (after the effect above, so it still holds the pile from before the move when one arrives)
   useEffect(() => {
@@ -716,8 +746,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const selCount = selDown !== null ? 1 : sel.length;
 
   // The hand fans out: overlap just enough to fit its row, never hiding more than ~75% of a card.
-  // Past MAX_PER_ROW cards it wraps into extra rows (each overlapping the one above by half a card).
-  const rowCount = Math.max(1, Math.ceil(hand.length / MAX_PER_ROW));
+  // Past 8 cards it wraps into extra rows (each overlapping the one above by half a card).
+  const rowCount = handRowsFor(hand.length);
   const perRow = Math.ceil(hand.length / rowCount);
   const handRows = Array.from({ length: rowCount }, (_, r) =>
     hand.slice(r * perRow, (r + 1) * perRow),

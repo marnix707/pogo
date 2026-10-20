@@ -1,7 +1,8 @@
 import { yatzy } from '@pogo/shared';
 import type { RoomMemberView } from '@pogo/shared';
 import { avatarEmoji } from '../../lib/avatars';
-import { CATEGORY_HINT, CATEGORY_LABEL } from './labels';
+import { DIE_COLOR } from './Die';
+import { CATEGORY_HINT, CATEGORY_LABEL, UPPER_FACE } from './labels';
 
 type Category = yatzy.Category;
 
@@ -55,6 +56,13 @@ export function Scorecard({
             isSelected ? 'bg-accent/20' : 'bg-panel'
           }`}
         >
+          {UPPER_FACE[category] !== undefined && (
+            <span
+              aria-hidden
+              className="mr-1.5 inline-block h-2.5 w-2.5 rounded-[3px] align-baseline"
+              style={{ backgroundColor: DIE_COLOR[UPPER_FACE[category]!] }}
+            />
+          )}
           {CATEGORY_LABEL[category]}
           {CATEGORY_HINT[category] && (
             <span className="ml-1.5 text-[10px] font-medium text-muted">

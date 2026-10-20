@@ -10,6 +10,17 @@ const PIPS: Record<number, number[]> = {
   6: [0, 2, 3, 5, 6, 8],
 };
 
+/** Every face has its own colour, so a die is easy to match with its row in the scorecard. */
+export const DIE_COLOR: Record<number, string> = {
+  1: '#ff9b9b',
+  2: '#ffc27a',
+  3: '#fff07a',
+  4: '#8fe3a0',
+  5: '#86c8ff',
+  6: '#d2adff',
+};
+const BLANK = '#e9ffff';
+
 export function Die({
   index,
   value,
@@ -49,10 +60,9 @@ export function Die({
       disabled={!interactive}
       onClick={onToggle}
       className={`relative aspect-square w-full rounded-lg border-[3px] shadow-[0_3px_0_0_rgb(0_24_80/0.7)] transition-transform disabled:cursor-default ${
-        held
-          ? '-translate-y-1.5 border-accent bg-[#ffe6f8] shadow-[0_4px_0_0_#b13d9c]'
-          : 'border-[#001850] bg-[#e9ffff]'
+        held ? '-translate-y-1.5 border-accent shadow-[0_4px_0_0_#b13d9c]' : 'border-[#001850]'
       } ${rolling ? 'animate-dice-roll' : ''}`}
+      style={{ backgroundColor: DIE_COLOR[face] ?? BLANK }}
     >
       <span className="absolute inset-[14%] grid grid-cols-3 grid-rows-3 place-items-center">
         {Array.from({ length: 9 }, (_, cell) => (

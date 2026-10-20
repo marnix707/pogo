@@ -25,3 +25,13 @@ export const CATEGORY_HINT: Partial<Record<Category, string>> = {
   largeStraight: '40',
   yatzy: '50',
 };
+
+/** The die face each upper-section row is about (its colour matches the dice). */
+export const UPPER_FACE: Partial<Record<Category, number>> = {
+  ones: 1,
+  twos: 2,
+  threes: 3,
+  fours: 4,
+  fives: 5,
+  sixes: 6,
+};

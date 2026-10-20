@@ -338,8 +338,11 @@ export class Room {
     if (!check.ok) return fail(check.error);
 
     this.state = this.game.applyMove(this.state, userId, parsed.data, this.deps.rng);
-    this.nextAutoAt = null;
-    this.startTurnClock();
+    // A free move (sharing which dice are kept) must not buy more time.
+    if (!this.game.isFreeMove?.(parsed.data)) {
+      this.nextAutoAt = null;
+      this.startTurnClock();
+    }
     this.afterStateChange();
     return ok(null);
   }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { yatzy } from '@pogo/shared';
 import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
@@ -14,6 +14,7 @@ type Category = yatzy.Category;
 
 const ROLL_ANIMATION_MS = 550;
 const NO_HOLDS = [false, false, false, false, false];
+const IDENTITY = [0, 1, 2, 3, 4];
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
@@ -70,6 +71,7 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
   // Animate (and rattle) whenever a roll lands, for every player watching.
   const rollKey = `${state.round}:${state.currentPlayerIndex}:${rolled ? state.rollsLeft : 'none'}`;
   const lastRollKey = useRef(rollKey);
+  const rollingTimer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => {
     if (lastRollKey.current === rollKey) return;
     lastRollKey.current = rollKey;
@@ -78,9 +80,11 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
     if (myTurn) haptic('roll');
     if (reducedMotion()) return;
     setRolling(state.held.map((h) => !h));
-    const t = setTimeout(() => setRolling(NO_HOLDS), ROLL_ANIMATION_MS);
-    return () => clearTimeout(t);
+    // (Not cleared in the cleanup: kept-dice updates re-run this effect and must not cancel it.)
+    clearTimeout(rollingTimer.current);
+    rollingTimer.current = setTimeout(() => setRolling(NO_HOLDS), ROLL_ANIMATION_MS);
   }, [rollKey, rolled, myTurn, state.held]);
+  useEffect(() => () => clearTimeout(rollingTimer.current), []);
 
   // Ping when the turn passes to me.
   const wasMyTurn = useRef(myTurn);
@@ -110,6 +114,62 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
       play('score');
     }
   }
+
+  // Display order of the dice: after every roll the kept dice sit on the left and the freshly
+  // rolled ones on the right; it resets with the next turn.
+  const orderRef = useRef({ key: '', order: IDENTITY });
+  if (!rolled) orderRef.current = { key: '', order: IDENTITY };
+  else if (orderRef.current.key !== rollKey) {
+    const prev = orderRef.current.order;
+    orderRef.current = {
+      key: rollKey,
+      order: [...prev.filter((i) => state.held[i]), ...prev.filter((i) => !state.held[i])],
+    };
+  }
+  const order = orderRef.current.order;
+
+  // Kept dice slide to their new place on the left; new dice fly in from the right.
+  const dieEls = useRef(new Map<number, HTMLElement>());
+  const prevRects = useRef(new Map<number, DOMRect>());
+  const animatedKey = useRef('');
+  useLayoutEffect(() => {
+    const rects = new Map<number, DOMRect>();
+    dieEls.current.forEach((el, i) => rects.set(i, el.getBoundingClientRect()));
+    if (rolled && animatedKey.current !== rollKey) {
+      animatedKey.current = rollKey;
+      if (!reducedMotion()) {
+        let arrivals = 0;
+        for (const i of order) {
+          const el = dieEls.current.get(i);
+          const now = rects.get(i);
+          const before = prevRects.current.get(i);
+          if (!el || !now) continue;
+          if (state.held[i] && before && state.rollsLeft < yatzy.MAX_ROLLS - 1) {
+            const dx = before.left - now.left;
+            if (Math.abs(dx) > 1)
+              el.animate([{ transform: `translateX(${dx}px)` }, { transform: 'none' }], {
+                duration: 380,
+                easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)',
+              });
+          } else {
+            el.animate(
+              [
+                { transform: `translateX(${window.innerWidth - now.left}px)`, opacity: 0 },
+                { transform: 'none', opacity: 1 },
+              ],
+              {
+                duration: 520,
+                delay: arrivals++ * 70,
+                easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)',
+                fill: 'backwards',
+              },
+            );
+          }
+        }
+      }
+    }
+    prevRects.current = rects;
+  });
 
   const canHold = myTurn && rolled && state.rollsLeft > 0;
   const allHeld = held.every(Boolean);
@@ -235,20 +295,30 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
         <div className="border-t-2 border-edge/60 bg-panel px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 text-ink">
           <div className="mx-auto flex max-w-md flex-col gap-2">
             <div className="mx-auto grid w-full max-w-[22rem] grid-cols-5 gap-2.5 pt-1">
-              {Array.from({ length: yatzy.DICE_COUNT }, (_, i) => (
-                <Die
+              {order.map((i) => (
+                <div
                   key={i}
-                  index={i}
-                  value={state.dice[i] ?? 0}
-                  held={rolled && (displayHeld[i] ?? false)}
-                  rolling={rolling[i] ?? false}
-                  interactive={canHold}
-                  onToggle={() => {
-                    setHeld((h) => h.map((v, j) => (j === i ? !v : v)));
-                    haptic('tap');
-                    play('tap');
+                  ref={(el) => {
+                    if (el) dieEls.current.set(i, el);
+                    else dieEls.current.delete(i);
                   }}
-                />
+                >
+                  <Die
+                    index={i}
+                    value={state.dice[i] ?? 0}
+                    held={rolled && (displayHeld[i] ?? false)}
+                    rolling={rolling[i] ?? false}
+                    interactive={canHold}
+                    onToggle={() => {
+                      const next = held.map((v, j) => (j === i ? !v : v));
+                      setHeld(next);
+                      // Everybody sees which dice are kept right away, not only after the roll.
+                      void sendMove({ type: 'hold', held: next });
+                      haptic('tap');
+                      play('tap');
+                    }}
+                  />
+                </div>
               ))}
             </div>
             {myTurn ? (

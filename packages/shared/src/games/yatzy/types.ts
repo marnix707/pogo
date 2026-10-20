@@ -49,6 +49,10 @@ export interface YatzyState {
   finished: boolean;
 }
 
-export type YatzyMove = { type: 'roll'; held: boolean[] } | { type: 'score'; category: Category };
+export type YatzyMove =
+  | { type: 'roll'; held: boolean[] }
+  /** Tell everybody which dice are kept, before rolling (does not use up a roll or restart the clock). */
+  | { type: 'hold'; held: boolean[] }
+  | { type: 'score'; category: Category };
 
 export type YatzyOptions = Record<string, never>;
