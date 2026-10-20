@@ -450,7 +450,11 @@ export class Room {
     const candidates: number[] = [];
     if (this.turnDeadline !== null) candidates.push(this.turnDeadline);
     const current = this.currentMembers();
-    if (current.length > 0 && current.every((m) => this.isAbsent(m))) {
+    // Absent players are only played for when the game has a turn timer: with unlimited time nothing
+    // is ever played automatically (a dropped player can come back), except for people who left.
+    const autoForAbsent =
+      this.turnTimeSec > 0 ? current.every((m) => this.isAbsent(m)) : current.every((m) => m.left);
+    if (current.length > 0 && autoForAbsent) {
       const since = Math.max(this.turnStartedAt, ...current.map((m) => m.absentSince ?? 0));
       candidates.push(since + this.deps.limits.graceMs);
     }

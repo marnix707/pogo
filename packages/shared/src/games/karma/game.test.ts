@@ -246,36 +246,49 @@ describe('swap phase', () => {
 describe('who starts', () => {
   const players = (seats: SeatInit[]) => table(seats).players;
 
-  it('prefers a face-up 3 over a 3 in hand, regardless of seat', () => {
-    expect(findStarter(players([{ hand: [card(3)] }, { faceUp: [card(3), null, null] }, {}]))).toBe(
-      1,
-    );
-  });
-
-  it('uses a 3 in hand when no 3 is face up', () => {
-    expect(findStarter(players([{ hand: [card(9)] }, { hand: [card(3)] }]))).toBe(1);
-  });
-
-  it('breaks ties by seat order', () => {
+  it('the lowest ordinary card starts: a 4 before a 5, whether in hand or face up', () => {
     expect(
       findStarter(
-        players([{}, { faceUp: [card(3), null, null] }, { faceUp: [card(3, 1), null, null] }]),
+        players([{ hand: [card(9)] }, { faceUp: [card(5), null, null] }, { hand: [card(4)] }]),
       ),
-    ).toBe(1);
+    ).toBe(2);
+    expect(findStarter(players([{ hand: [card(6)] }, { faceUp: [card(5), null, null] }]))).toBe(1);
   });
 
-  it('falls back to the next rank up when nobody has a 3', () => {
+  it('2, 3 and 10 are specials and never start', () => {
     expect(
-      findStarter(players([{ hand: [card(9)] }, { hand: [card(4)] }, { hand: [card(6)] }])),
-    ).toBe(1);
+      findStarter(
+        players([
+          { hand: [card(2), card(3)] },
+          { hand: [card(10), card(14)] },
+          { hand: [card(9)] },
+        ]),
+      ),
+    ).toBe(2);
+  });
+
+  it('equal ranks are decided by suit: clubs, diamonds, hearts, spades', () => {
+    const four = (suit: number) => ({ hand: [card(4, suit)] });
+    // suits: 0 spades, 1 hearts, 2 diamonds, 3 clubs
+    expect(findStarter(players([four(0), four(1), four(2), four(3)]))).toBe(3);
+    expect(findStarter(players([four(0), four(1), four(2)]))).toBe(2);
+    expect(findStarter(players([four(0), four(1)]))).toBe(1);
+  });
+
+  it('a lower rank beats a lower suit', () => {
+    expect(findStarter(players([{ hand: [card(5, 3)] }, { hand: [card(4, 0)] }]))).toBe(1);
+  });
+
+  it('falls back to the first seat when only specials are out', () => {
+    expect(findStarter(players([{ hand: [card(3)] }, { hand: [card(10)] }]))).toBe(0);
   });
 
   it('is applied when the last player presses ready', () => {
     const s = table(
       [
         { hand: [card(9)], ready: true },
-        { faceUp: [card(3), null, null], ready: false },
-        { hand: [card(3)], ready: true },
+        { faceUp: [card(4), null, null], ready: false },
+        { hand: [card(5)], ready: true },
       ],
       { phase: 'swap' },
     );

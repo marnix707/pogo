@@ -7,7 +7,7 @@ import type {
   MoveValidation,
 } from '../../game/types';
 import type { Rng } from '../../game/rng';
-import { DECK_SIZE, cardLabel, rankOf, shuffledDeck } from './cards';
+import { DECK_SIZE, cardLabel, rankOf, shuffledDeck, suitOf } from './cards';
 import type { Card } from './cards';
 import { HAND_SIZE, MAX_PLAYERS, MIN_PLAYERS, SLOTS } from './types';
 import type {
@@ -110,15 +110,26 @@ export function activeZone(player: {
 
 const stateZone = (p: KarmaPlayerState): Zone => activeZone(p);
 
-/** Who leads: lowest rank (from 3 up) showing in a face-up slot, else in a hand; ties go to the earlier seat. */
+/** Suits from lowest to highest for the opening: clubs, diamonds, hearts, spades (suitOf: 0 = spades ... 3 = clubs). */
+const SUIT_ORDER = [3, 2, 1, 0];
+
+/**
+ * Who leads: the lowest ordinary card on the table (face-up cards and hands; 2, 3 and 10 are
+ * specials and do not count): 4 first, then 5 and so on up to the ace. Equal ranks are decided by
+ * suit: clubs, then diamonds, then hearts, then spades. With only specials around the first seat leads.
+ */
 export function findStarter(players: readonly KarmaPlayerState[]): number {
-  for (let rank = 3; rank <= 14; rank++) {
-    const up = players.findIndex((p) => p.faceUp.some((c) => c !== null && rankOf(c) === rank));
-    if (up >= 0) return up;
-    const inHand = players.findIndex((p) => p.hand.some((c) => rankOf(c) === rank));
-    if (inHand >= 0) return inHand;
-  }
-  return 0;
+  let best: { seat: number; key: number } | null = null;
+  players.forEach((p, seat) => {
+    for (const card of [...p.hand, ...p.faceUp]) {
+      if (card === null) continue;
+      const rank = rankOf(card);
+      if (rank === 2 || rank === 3 || rank === 10) continue;
+      const key = rank * 4 + SUIT_ORDER.indexOf(suitOf(card));
+      if (!best || key < best.key) best = { seat, key };
+    }
+  });
+  return best ? (best as { seat: number }).seat : 0;
 }
 
 // ---- game -----------------------------------------------------------------------------------

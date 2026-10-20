@@ -260,6 +260,19 @@ describe('presence, reconnect and timers', () => {
     expect(lastRoom(b.id)?.game?.currentPlayers).toEqual([b.id]);
   });
 
+  it('with unlimited turn time nothing is ever auto-played for a disconnected player', () => {
+    const s = setup();
+    const { code } = s.must(s.manager.create(a, { gameId: 'race', turnTimeSec: 0 }));
+    s.must(s.manager.join(b, code));
+    s.must(s.manager.start(a.id));
+    s.manager.userDisconnected(a.id);
+    vi.advanceTimersByTime(TTL / 2);
+    expect(s.lastRoom(b.id)?.game?.currentPlayers).toEqual([a.id]);
+    expect(s.lastRoom(b.id)?.game?.deadline).toBeNull();
+    s.manager.userConnected(a.id);
+    expect(s.lastRoom(b.id)?.game?.currentPlayers).toEqual([a.id]);
+  });
+
   it('cancels auto-play when the absent player returns in time', () => {
     const { manager, lastRoom } = started();
     manager.userDisconnected(a.id);
