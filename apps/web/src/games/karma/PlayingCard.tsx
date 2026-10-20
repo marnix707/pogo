@@ -188,7 +188,7 @@ export function PlayingCard({
           <PixelSuit suit={suit} className="mt-[0.1em] text-[1.15em]" />
         </span>
         <span
-          className="absolute inset-0 flex items-center justify-center text-[2.1em] leading-none"
+          className="absolute inset-0 flex items-center justify-center text-[1.6em] leading-none"
           style={{ color }}
         >
           <PixelSuit suit={suit} />
