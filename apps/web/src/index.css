@@ -226,8 +226,8 @@ button {
   position: relative;
   transform-style: preserve-3d;
   animation:
-    win-turn 2.6s cubic-bezier(0.22, 0.8, 0.3, 1) both,
-    win-glow 1.4s ease-in-out 2.6s infinite;
+    win-turn 3.12s cubic-bezier(0.22, 0.8, 0.3, 1) both,
+    win-glow 1.4s ease-in-out 3.12s infinite;
 }
 .win-face {
   position: absolute;
@@ -242,8 +242,8 @@ button {
   transform: rotateY(180deg);
 }
 .win-label {
-  /* Only once the card has finished turning over (win-turn is 2.6s). */
-  animation: win-label-in 0.5s ease-out 2.6s both;
+  /* Only once the card has finished turning over (win-turn is 3.12s). */
+  animation: win-label-in 0.5s ease-out 3.12s both;
 }
 .confetti {
   position: absolute;

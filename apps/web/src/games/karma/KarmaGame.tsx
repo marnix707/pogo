@@ -46,7 +46,7 @@ export const handRowsFor = (n: number) =>
 /** How long the cards of a burn or a failed blind card stay visible on the pile before it resolves. */
 const GHOST_MS = 1100;
 /** A face-down card is flipped in the middle of the screen for this long (the turn takes 2.6s). */
-const BLIND_REVEAL_MS = 3500;
+const BLIND_REVEAL_MS = 4000;
 /** A four-of-a-kind burn gets a bigger show: the four cards side by side, dimmed table, then the fire. */
 const FOUR_BURN_MS = 2400;
 
@@ -479,7 +479,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
           setReveal(null);
           setHiddenOut([]);
         },
-        winner ? 6800 : 3800,
+        winner ? 7300 : 4300,
       );
     } else if (ev.kind === 'blind' && ev.cards.length > 0) {
       // Every face-down card is turned over in the middle of the screen first (the same flip as the

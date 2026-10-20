@@ -497,8 +497,8 @@ export const karmaGame: GameDefinition<KarmaState, KarmaMove, KarmaOptions, Karm
   settleMs: (state) => {
     const ev = state.lastEvent;
     if (!ev) return 0;
-    if (ev.out) return state.finishOrder[0] === ev.playerId ? 6800 : 3800;
-    return ev.kind === 'blind' ? 3500 : 0;
+    if (ev.out) return state.finishOrder[0] === ev.playerId ? 7300 : 4300;
+    return ev.kind === 'blind' ? 4000 : 0;
   },
   supportsBots: true,
 };
