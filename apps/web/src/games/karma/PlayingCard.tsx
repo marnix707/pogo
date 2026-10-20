@@ -177,11 +177,11 @@ export function PlayingCard({
           className="absolute left-[0.45em] top-[0.3em] flex flex-col items-center font-bold leading-none"
           style={{ color }}
         >
-          <span className="text-[1.55em]">{rank}</span>
-          <span className="text-[1.4em]">{suit}</span>
+          <span className="text-[1.4em]">{rank}</span>
+          <span className="text-[1.15em]">{suit}</span>
         </span>
         <span
-          className="absolute inset-0 flex items-center justify-center text-[3em] leading-none"
+          className="absolute inset-0 flex items-center justify-center text-[2.1em] leading-none"
           style={{ color }}
         >
           {suit}
@@ -190,8 +190,8 @@ export function PlayingCard({
           className="absolute bottom-[0.3em] right-[0.45em] flex rotate-180 flex-col items-center font-bold leading-none"
           style={{ color }}
         >
-          <span className="text-[1.55em]">{rank}</span>
-          <span className="text-[1.4em]">{suit}</span>
+          <span className="text-[1.4em]">{rank}</span>
+          <span className="text-[1.15em]">{suit}</span>
         </span>
       </>
     )
