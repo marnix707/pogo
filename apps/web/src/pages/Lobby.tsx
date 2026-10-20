@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
 import { getGame } from '@pogo/shared';
 import type { ChatMessage, RoomView } from '@pogo/shared';
-import { CrownIcon } from '../components/icons';
+import { ArrowLeftIcon, CrownIcon } from '../components/icons';
 import { ChatPanel } from '../components/ChatPanel';
 import { Avatar, Button, Card, SectionLabel, Toggle } from '../components/ui';
-import { TopBar } from '../components/TopBar';
+import { TileButton, TopBar } from '../components/TopBar';
 import { useToast } from '../components/Toast';
 import { getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
@@ -106,6 +106,15 @@ export function Lobby({
         title={`${ui?.emoji ?? ''} ${room.gameName}`}
         subtitle="Waiting room"
         onSettings={onSettings}
+        left={
+          <TileButton
+            onClick={() => void api.leave()}
+            aria-label="Leave room"
+            data-testid="lobby-leave"
+          >
+            <ArrowLeftIcon className="h-5 w-5" />
+          </TileButton>
+        }
       />
       <main className="flex flex-1 flex-col gap-5 px-4 pb-8 pt-2">
         {/* Compact room code: the code on the left, the invite button on the right. */}
@@ -279,17 +288,6 @@ export function Lobby({
           <SectionLabel>Chat</SectionLabel>
           <ChatPanel messages={messages} me={me} online={api.online} onSend={api.sendChat} />
         </section>
-
-        <div className="mt-auto pt-2">
-          <Button
-            variant="ghost"
-            data-testid="lobby-leave"
-            className="w-full"
-            onClick={() => void api.leave()}
-          >
-            Leave room
-          </Button>
-        </div>
       </main>
     </div>
   );
