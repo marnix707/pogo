@@ -38,6 +38,8 @@ export interface GameUi {
   ownHeader?: boolean;
   /** Hide the score column in the standings (for games where the score is just the rank). */
   hideScores?: boolean;
+  /** "Play again" starts the next game at once; the results then also offer "Back to lobby". */
+  playAgainRestarts?: boolean;
   /** Wait this long after the game ends before showing the results (lets a final animation play). */
   resultsDelayMs?: (room: RoomView) => number;
   /** Optional custom headline for the results panel (default: "<winner> wins!"). */

@@ -1050,9 +1050,9 @@ describe('modes and rules', () => {
   it('normal mode has no rules, epic has all of them, party starts with the carried rules', () => {
     const make = (options: KarmaOptions) =>
       game.createInitialState(seat(3), options, createSeededRng(3));
-    expect(make({ mode: 'normal', rules: ['aceBurn'] }).rules).toEqual([]);
+    expect(make({ mode: 'normal', rules: ['bigHand'] }).rules).toEqual([]);
     expect(make({ mode: 'epic', rules: [] }).rules).toEqual(KARMA_RULES.map((r) => r.id));
-    expect(make({ mode: 'party', rules: ['aceBurn', 'nonsense'] }).rules).toEqual(['aceBurn']);
+    expect(make({ mode: 'party', rules: ['bigHand', 'nonsense'] }).rules).toEqual(['bigHand']);
   });
 
   it('the options schema defaults to normal', () => {
@@ -1069,50 +1069,59 @@ describe('modes and rules', () => {
     expect(s.players[0]!.hand).toHaveLength(4);
   });
 
-  it('jacks skip, aces burn, triples burn and sixes are wild when the rule is on', () => {
-    const jack = table([{ hand: [card(11)] }, { hand: [card(4)] }, { hand: [card(4)] }], {
-      rules: ['jacksSkip'],
-    });
-    expect(game.applyMove(jack, 'p1', { type: 'play', cards: [card(11)] }, rng).turn).toBe(2);
-    const ace = table([{ hand: [card(14), card(4)] }, { hand: [card(4)] }], {
-      rules: ['aceBurn'],
-      pile: [card(9)],
-    });
-    expect(game.applyMove(ace, 'p1', { type: 'play', cards: [card(14)] }, rng).pile).toEqual([]);
-    const triple = table([{ hand: [card(8, 2), card(4)] }, { hand: [card(4)] }], {
-      rules: ['tripleBurn'],
-      pile: [card(8), card(8, 1)],
-    });
-    expect(game.applyMove(triple, 'p1', { type: 'play', cards: [card(8, 2)] }, rng).pile).toEqual(
-      [],
-    );
-    expect(canPlayRank([card(12)], 6, ['sixesWild'])).toBe(true);
-    expect(canPlayRank([card(12)], 6)).toBe(false);
-    expect(canPlayRank([card(6)], 4, ['sixesWild'])).toBe(true);
+  it('the extra rules are big hand and 3 ate 9', () => {
+    expect(KARMA_RULES.map((r) => r.id)).toEqual(['bigHand', 'echoThree']);
   });
 
-  it('party: the winner is offered four rules that are not on yet, then picks one', () => {
-    const s = finished({ rules: ['aceBurn'], mode: 'party', nextRules: ['aceBurn'] });
+  it('3 ate 9: a 3 repeats the 8 beneath it (skips the next player again)', () => {
+    const seats = () => [
+      { hand: [card(3), card(3, 1), card(4)] },
+      { hand: [card(4)] },
+      { hand: [card(4)] },
+    ];
+    const on = table(seats(), { rules: ['echoThree'], pile: [card(8)] });
+    expect(game.applyMove(on, 'p1', { type: 'play', cards: [card(3)] }, rng).turn).toBe(2);
+    const off = table(seats(), { pile: [card(8)] });
+    expect(game.applyMove(off, 'p1', { type: 'play', cards: [card(3)] }, rng).turn).toBe(1);
+    // two 3s at once skip twice (p2 and p3), so p1 plays again
+    const two = table(seats(), { rules: ['echoThree'], pile: [card(8)] });
+    expect(
+      game.applyMove(two, 'p1', { type: 'play', cards: [card(3), card(3, 1)] }, rng).turn,
+    ).toBe(0);
+    // a 3 on a 3 on an 8 still sees the 8
+    const stacked = table(seats(), { rules: ['echoThree'], pile: [card(8), card(3, 2)] });
+    expect(game.applyMove(stacked, 'p1', { type: 'play', cards: [card(3)] }, rng).turn).toBe(2);
+    // not on other cards, and not on an empty pile
+    const nine = table(seats(), { rules: ['echoThree'], pile: [card(9)] });
+    expect(game.applyMove(nine, 'p1', { type: 'play', cards: [card(3)] }, rng).turn).toBe(1);
+    const empty = table(seats(), { rules: ['echoThree'], pile: [] });
+    expect(game.applyMove(empty, 'p1', { type: 'play', cards: [card(3)] }, rng).turn).toBe(1);
+  });
+
+  it('party: the winner switches a rule on or off, then the game is over', () => {
+    const s = finished({ rules: [], mode: 'party', nextRules: [] });
     // p1 plays the last card; p3 is the loser
     const after = game.applyMove(s, 'p1', { type: 'play', cards: [card(9)] }, rng);
     expect(after.phase).toBe('pick');
     expect(after.pick!.playerId).toBe('p2'); // p2 finished first
-    expect(after.pick!.choices).toHaveLength(4);
-    expect(after.pick!.choices).not.toContain('aceBurn');
+    expect(after.pick!.choices).toEqual(['bigHand', 'echoThree']);
     expect(game.isGameOver(after)).toBe(false);
     expect(game.getCurrentPlayers(after)).toEqual(['p2']);
-    // only the winner, only an offered rule
-    expect(
-      game.validateMove(after, 'p1', { type: 'pickRule', rule: after.pick!.choices[0]! }).ok,
-    ).toBe(false);
-    expect(game.validateMove(after, 'p2', { type: 'pickRule', rule: 'aceBurn' }).ok).toBe(false);
-    const rule = after.pick!.choices[0]!;
-    const done = game.applyMove(after, 'p2', { type: 'pickRule', rule }, rng);
-    expect(game.isGameOver(done)).toBe(true);
-    expect(game.nextOptions!(done, { mode: 'party', rules: ['aceBurn'] })).toEqual({
+    // only the winner, only a rule from the catalogue
+    expect(game.validateMove(after, 'p1', { type: 'pickRule', rule: 'bigHand' }).ok).toBe(false);
+    expect(game.validateMove(after, 'p2', { type: 'pickRule', rule: 'nonsense' }).ok).toBe(false);
+    const on = game.applyMove(after, 'p2', { type: 'pickRule', rule: 'bigHand' }, rng);
+    expect(game.isGameOver(on)).toBe(true);
+    expect(game.nextOptions!(on, { mode: 'party', rules: [] })).toEqual({
       mode: 'party',
-      rules: ['aceBurn', rule],
+      rules: ['bigHand'],
     });
+    // a rule that is on is switched off by the same pick
+    const withRule = finished({ rules: ['bigHand'], mode: 'party', nextRules: ['bigHand'] });
+    const pick = game.applyMove(withRule, 'p1', { type: 'play', cards: [card(9)] }, rng);
+    expect(pick.pick!.choices).toEqual(['bigHand', 'echoThree']);
+    const off = game.applyMove(pick, 'p2', { type: 'pickRule', rule: 'bigHand' }, rng);
+    expect(game.nextOptions!(off, { mode: 'party', rules: ['bigHand'] }).rules).toEqual([]);
   });
 
   it('auto-play picks a rule for an absent winner, normal mode goes straight to the results', () => {

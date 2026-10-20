@@ -313,7 +313,7 @@ export class Room {
     return ok(null);
   }
 
-  rematch(userId: string): Result<null> {
+  rematch(userId: string, toLobby = false): Result<null> {
     if (userId !== this.hostId) return fail('Only the host can start a rematch');
     if (this.status !== 'finished') return fail('The game is not finished');
     // Back to the waiting room: players who left and the computer players go away (the setting stays).
@@ -326,6 +326,7 @@ export class Room {
     this.status = 'lobby';
     this.turnDeadline = null;
     this.nextAutoAt = null;
+    if (!toLobby && this.game.restartOnRematch?.(this.options) && this.start(userId).ok) return ok(null);
     this.changed();
     return ok(null);
   }

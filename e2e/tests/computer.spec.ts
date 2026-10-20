@@ -104,8 +104,8 @@ test('a whole game against the computer, from one tap to the result, and a remat
   await expect(page.getByTestId('rank-2')).toBeVisible();
   await expect(panel.locator('h2')).toHaveText(/Karma got you|Robo is last/);
 
-  // Rematch: back to the waiting room with the computer still configured, and off we go again.
-  await page.getByTestId('rematch').click();
+  // Back to lobby: the waiting room with the computer still configured, and off we go again.
+  await page.getByTestId('back-to-lobby').click();
   await expect(page.getByTestId('lobby-start')).toHaveText('Start vs computer');
   await page.getByTestId('lobby-start').click();
   await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
@@ -212,10 +212,8 @@ test('party mode: the winner picks a rule that applies to the next game; epic ha
   await readyUp(page);
   await playUntilResults(page);
 
-  // Back in the waiting room the new rule is listed, and it is on in the next game.
+  // "Play again" starts the next game at once, with the rule the winner switched on.
   await page.getByTestId('rematch').click();
-  await expect(page.getByTestId('karma-active-rules').locator('li')).toHaveCount(1);
-  await page.getByTestId('lobby-start').click();
   await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
   await page.getByRole('button', { name: 'Rules' }).click();
   await expect(page.getByTestId('rules-extra').locator('ul > li')).toHaveCount(1);
@@ -229,10 +227,12 @@ test('epic mode switches on every rule from the start', async ({ browser }) => {
   await page.getByTestId('home-new-karma').click();
   await page.getByRole('button', { name: 'More Computer players' }).click();
   await page.getByTestId('karma-mode-epic').click();
-  await expect(page.getByTestId('karma-active-rules').locator('li')).toHaveCount(5);
+  await expect(page.getByTestId('karma-mode-bubble')).toContainText('Big hand');
+  await expect(page.getByTestId('karma-mode-bubble')).toContainText('3 ate 9');
+  await expect(page.getByTestId('karma-active-rules').locator('li')).toHaveCount(2);
   await page.getByTestId('lobby-start').click();
   await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
   await page.getByRole('button', { name: 'Rules' }).click();
-  await expect(page.getByTestId('rules-extra').locator('ul > li')).toHaveCount(5);
+  await expect(page.getByTestId('rules-extra').locator('ul > li')).toHaveCount(2);
   await me.context.close();
 });

@@ -63,7 +63,7 @@ export function Shell({ session, onSignOut }: { session: AuthResponse; onSignOut
       kick: (userId) => run(request('room:kick', { userId })),
       updateSettings: (patch: RoomSettingsInput) => run(request('room:settings', patch)),
       start: () => run(request('room:start', {})),
-      rematch: () => run(request('room:rematch', {})),
+      rematch: (toLobby) => run(request('room:rematch', { toLobby })),
       move: (move) => run(request('game:move', { move })),
     }),
     [online, request, run],

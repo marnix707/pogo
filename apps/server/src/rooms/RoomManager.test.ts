@@ -707,7 +707,7 @@ describe('computer players', () => {
       (c): c is number => c !== null,
     );
     const ranks = [...new Set(source.map(karma.rankOf))]
-      .filter((r) => karma.canPlayRank(view.pile, r, view.rules))
+      .filter((r) => karma.canPlayRank(view.pile, r))
       .sort((x, y) => (x === 10 ? 200 : x === 2 ? 100 : x) - (y === 10 ? 200 : y === 2 ? 100 : y));
     if (ranks.length === 0) return { type: 'pickup' };
     const rank = ranks.length > 1 && jitter() < 0.25 ? ranks[1] : ranks[0];
@@ -756,16 +756,18 @@ describe('computer players', () => {
     120_000,
   );
 
-  it('party mode: the winner picks a rule that stays on for every next game of the room', () => {
+  it('party mode: the winner switches a rule and "Play again" starts the next game with it', () => {
     const first = playOut(2, 7, { mode: 'party' });
     const { manager, must } = first;
     expect((first.room.game!.view as { rules: string[] }).rules).toEqual([]);
-    const lobby = must(manager.rematch(a.id));
-    const rules1 = (lobby.options as { rules: string[] }).rules;
-    expect(rules1).toHaveLength(1);
-    expect((lobby.options as { mode: string }).mode).toBe('party');
-    const again = must(manager.start(a.id));
-    expect((again.game!.view as { rules: string[] }).rules).toEqual(rules1);
+    const next = must(manager.rematch(a.id));
+    expect(next.status).toBe('playing');
+    expect((next.options as { mode: string }).mode).toBe('party');
+    // A computer winner picks at random, so only check that exactly one rule was switched on.
+    const rules = (next.game!.view as { rules: string[] }).rules;
+    expect(rules).toHaveLength(1);
+    expect((next.options as { rules: string[] }).rules).toEqual(rules);
+    expect(next.members.map((m) => m.nickname)).toEqual(['User1', 'Robo', 'Bolt']);
   });
 
   it('epic mode starts with every rule on, normal mode with none', () => {
@@ -777,9 +779,16 @@ describe('computer players', () => {
     expect((normal.room.game!.view as { rules: string[] }).rules).toEqual([]);
   });
 
-  it('a rematch removes the computer seats, keeps the setting, and brings them back on start', () => {
+  it('a rematch starts the next game at once, with new computer seats', () => {
     const { manager, must } = playOut();
-    const lobby = must(manager.rematch(a.id));
+    const next = must(manager.rematch(a.id));
+    expect(next.status).toBe('playing');
+    expect(next.members.map((m) => m.nickname)).toEqual(['User1', 'Robo', 'Bolt']);
+  });
+
+  it('a rematch to the lobby removes the computer seats, keeps the setting, and brings them back on start', () => {
+    const { manager, must } = playOut();
+    const lobby = must(manager.rematch(a.id, true));
     expect(lobby.status).toBe('lobby');
     expect(lobby.members.map((m) => m.id)).toEqual([a.id]);
     expect(lobby.bots).toBe(2);

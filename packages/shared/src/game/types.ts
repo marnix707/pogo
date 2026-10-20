@@ -75,6 +75,12 @@ export interface GameDefinition<State, Move, Options, PlayerView = State> {
    */
   nextOptions?(state: State, options: Options): Options;
   /**
+   * "Play again" starts the next game at once instead of going back to the waiting room (when it
+   * cannot start, e.g. too few players are left, the room is simply in the waiting room). The host
+   * can still ask for the waiting room (`toLobby`).
+   */
+  restartOnRematch?(options: Options): boolean;
+  /**
    * The game can be played against computer players. They are real seats driven by `autoMove`, so
    * set this only when `autoMove` plays a reasonable game (not just "any legal move").
    */

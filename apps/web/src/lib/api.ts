@@ -12,7 +12,7 @@ export interface RoomApi {
   kick(userId: string): Promise<Result<unknown>>;
   updateSettings(patch: RoomSettingsInput): Promise<Result<unknown>>;
   start(): Promise<Result<unknown>>;
-  rematch(): Promise<Result<unknown>>;
+  rematch(toLobby?: boolean): Promise<Result<unknown>>;
   move(move: unknown): Promise<Result<unknown>>;
   sendChat(text: string): Promise<Result<unknown>>;
   online: boolean;

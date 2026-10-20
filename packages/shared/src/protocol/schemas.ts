@@ -115,3 +115,7 @@ export type ChatSendInput = z.input<typeof chatSendSchema>;
 
 export const emptyPayloadSchema = z.object({}).passthrough();
 export type EmptyPayload = Record<string, never>;
+
+/** `toLobby`: skip the instant restart some games do on a rematch and wait in the waiting room. */
+export const rematchSchema = z.object({ toLobby: z.boolean().optional() });
+export type RematchInput = z.input<typeof rematchSchema>;

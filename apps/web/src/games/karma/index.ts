@@ -9,6 +9,7 @@ export const karmaUi: GameUi = {
   tagline: 'Shed all your cards. Don’t be the last one left.',
   Component: KarmaGame,
   LobbyOptions: ModePicker,
+  playAgainRestarts: true,
   hideScores: true, // the score is only a rank in Karma
   // The last card's win reveal (KarmaGame's WinReveal) must finish before the standings cover it.
   resultsDelayMs(room) {

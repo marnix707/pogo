@@ -516,9 +516,14 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     setSel([]);
     setSelDown(null);
     setPileArmed(false);
-    play(ev.burned ? 'score' : ev.failed || ev.pickedUp > 0 ? 'error' : 'tap');
-    if (ev.playerId === me)
-      haptic(ev.burned ? 'success' : ev.failed || ev.pickedUp > 0 ? 'error' : 'tap');
+    // The result sound / buzz of a face-down card waits for the end of its flip (else it spoils it).
+    const feedback = () => {
+      play(ev.burned ? 'score' : ev.failed || ev.pickedUp > 0 ? 'error' : 'tap');
+      if (ev.playerId === me)
+        haptic(ev.burned ? 'success' : ev.failed || ev.pickedUp > 0 ? 'error' : 'tap');
+    };
+    const delayed = ev.kind === 'blind' && !ev.out;
+    if (delayed) play('tap');
     // (The last card of a player has its own reveal, which must not be spoiled by this.)
     const showcase = ev.cards.length > 0 && ev.burned && !ev.out;
     const shown = showcase
@@ -529,6 +534,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
       ev.burned && four.length === 4 && four.every((c) => rankOf(c) === rankOf(four[0] as Card));
     const holdMs = isFour ? FOUR_BURN_MS : GHOST_MS;
     const showBurn = () => {
+      if (delayed) feedback();
       if (showcase) {
         // (With the four-card overlay the pile behind it stays empty, or you would see a fifth card.)
         setGhost(isFour ? [] : shown);
@@ -553,8 +559,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     };
     // After a face-down card's flip the burn plays out; otherwise at once.
     clearTimeout(burnTimer.current);
-    if (ev.kind === 'blind' && !ev.out) burnTimer.current = setTimeout(showBurn, BLIND_REVEAL_MS);
-    else showBurn();
+    if (delayed) burnTimer.current = setTimeout(showBurn, BLIND_REVEAL_MS);
+    else {
+      feedback();
+      showBurn();
+    }
   }, [view.lastEvent, me]);
   // (after the effect above, so it still holds the pile from before the move when one arrives)
   useEffect(() => {
@@ -644,7 +653,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     if (!playing) return;
     if (view.mustPickUp) return flashHint('Tap the pile to pick it up first');
     // Face-up cards can always be tried (a too-low one goes on the pile and you pick it up).
-    if (zone !== 'up' && !canPlayRank(pile, rankOf(card), view.rules)) return;
+    if (zone !== 'up' && !canPlayRank(pile, rankOf(card))) return;
     const zoneCards = zone === 'hand' ? hand : (mine?.faceUp ?? []).filter((c) => c !== null);
     const plan = planTap({
       zoneCards,
@@ -733,12 +742,14 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   // Nothing in my active cards can be played, so picking up is the only move: the player must tap the pile
   // (the pile pulses and one tap takes it). Picking up voluntarily is still possible by tapping the pile twice.
   const activeCards = zone === 'hand' ? hand : zone === 'up' ? (mine?.faceUp ?? []) : [];
+  // (Not while a flipped face-down card is still turning over: the pulsing pile would give away that it was too low.)
   const mustPickUp =
     playing &&
+    !reveal &&
     pile.length > 0 &&
     (view.mustPickUp ||
       (zone !== 'down' &&
-        !activeCards.some((c) => c !== null && canPlayRank(pile, rankOf(c), view.rules))));
+        !activeCards.some((c) => c !== null && canPlayRank(pile, rankOf(c)))));
 
   const urgent = secondsLeft !== null && secondsLeft <= 10;
   const shownHint =
@@ -945,11 +956,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                           onClick: () => tapCard(card),
                           selected: sel.includes(card),
                           dimmed:
-                            !canPlayRank(pile, rankOf(card), view.rules) &&
+                            !canPlayRank(pile, rankOf(card)) &&
                             (mine?.faceUp ?? []).some(
-                              (c) => c !== null && canPlayRank(pile, rankOf(c), view.rules),
+                              (c) => c !== null && canPlayRank(pile, rankOf(c)),
                             ),
-                          playable: canPlayRank(pile, rankOf(card), view.rules),
+                          playable: canPlayRank(pile, rankOf(card)),
                         };
                       }
                       return {};
@@ -1039,7 +1050,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                       style={{ marginTop: r === 0 ? 0 : `-${rowStep}px` }}
                     >
                       {row.map((c, i) => {
-                        const playable = canPlayRank(pile, rankOf(c), view.rules);
+                        const playable = canPlayRank(pile, rankOf(c));
                         return (
                           <PlayingCard
                             key={c}
@@ -1087,6 +1098,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         {view.phase === 'pick' && view.pick && !reveal && !fourBurn && !ghost && (
           <RulePick
             choices={view.pick.choices}
+            active={view.rules}
             chooser={nameOf(view.pick.playerId)}
             mine={view.pick.playerId === me}
             onPick={(rule) => void send({ type: 'pickRule', rule })}

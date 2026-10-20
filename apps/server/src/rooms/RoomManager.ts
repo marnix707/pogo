@@ -231,10 +231,10 @@ export class RoomManager {
     return result.ok ? ok(room.view(userId)) : result;
   }
 
-  rematch(userId: string): Result<RoomView> {
+  rematch(userId: string, toLobby = false): Result<RoomView> {
     const room = this.roomFor(userId);
     if (!room) return fail('You are not in a room');
-    const result = room.rematch(userId);
+    const result = room.rematch(userId, toLobby);
     return result.ok ? ok(room.view(userId)) : result;
   }
 

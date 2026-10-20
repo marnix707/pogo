@@ -5,6 +5,7 @@ import {
   APP_NAME,
   chatSendSchema,
   emptyPayloadSchema,
+  rematchSchema,
   gameMoveEnvelopeSchema,
   roomCreateSchema,
   roomJoinSchema,
@@ -114,7 +115,7 @@ export function registerSocketHandlers({ io, manager, users, tokens, log }: Deps
     route('room:kick', roomKickSchema, (p) => manager.kick(user.id, p.userId));
     route('room:settings', roomSettingsSchema, (p) => manager.updateSettings(user.id, p));
     route('room:start', emptyPayloadSchema, () => manager.start(user.id));
-    route('room:rematch', emptyPayloadSchema, () => manager.rematch(user.id));
+    route('room:rematch', rematchSchema, (p) => manager.rematch(user.id, p.toLobby));
     route('room:quickplay', roomQuickplaySchema, (p) => manager.quickPlay(user, p.gameId));
     route('chat:send', chatSendSchema, (p) =>
       chatAllowed(user.id)

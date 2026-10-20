@@ -2,8 +2,8 @@
  * Game modes and the catalogue of extra rules.
  *
  * - normal: the base rules only.
- * - party: every time a game ends, its winner picks one of four rules (offered from the catalogue,
- *   never one that is already on); the chosen rules apply to every next game in the room.
+ * - party: every time a game ends, its winner switches one extra rule on or off; the rules that
+ *   are on apply to every next game in the room.
  * - epic: every rule in the catalogue is on from the first game.
  *
  * To add a rule: add an entry to KARMA_RULES and give it an effect in game.ts (look for `hasRule`).
@@ -16,9 +16,9 @@ export const KARMA_MODES: { id: KarmaMode; name: string; emoji: string; blurb: s
     id: 'party',
     name: 'Party',
     emoji: '🎉',
-    blurb: 'The winner of each game picks a new rule for all next games.',
+    blurb: 'After each game the winner switches an extra rule on or off for all next games.',
   },
-  { id: 'epic', name: 'Epic', emoji: '🔥', blurb: 'Every extra rule is on from the start.' },
+  { id: 'epic', name: 'Epic', emoji: '🔥', blurb: 'Every extra rule is on from the start of every game:' },
 ];
 
 export interface KarmaRule {
@@ -30,39 +30,18 @@ export interface KarmaRule {
 
 export const KARMA_RULES: readonly KarmaRule[] = [
   {
-    id: 'jacksSkip',
-    name: 'Jacks skip',
-    emoji: '🦘',
-    description: 'A jack skips the next player, just like an 8.',
-  },
-  {
-    id: 'tripleBurn',
-    name: 'Triple burn',
-    emoji: '🧨',
-    description: 'Three of a kind on top of the pile burns it.',
-  },
-  {
-    id: 'aceBurn',
-    name: 'Ace burns',
-    emoji: '🅰️',
-    description: 'An ace burns the pile, like a 10.',
-  },
-  {
-    id: 'sixesWild',
-    name: 'Wild sixes',
-    emoji: '🎲',
-    description: 'A 6 goes on anything, and anything goes on a 6.',
-  },
-  {
     id: 'bigHand',
     name: 'Big hand',
     emoji: '🖐️',
     description: 'Everybody holds four cards in their hand instead of three.',
   },
+  {
+    id: 'echoThree',
+    name: '3 ate 9',
+    emoji: '3️⃣',
+    description: 'A 3 repeats the card beneath it: a 3 on an 8 skips the next player again.',
+  },
 ];
-
-/** How many rules the winner chooses from in party mode. */
-export const PICK_CHOICES = 4;
 
 export const ruleById = (id: string): KarmaRule | undefined => KARMA_RULES.find((r) => r.id === id);
 

@@ -1,6 +1,7 @@
 import type { GameResults } from '../game/types';
 import type {
   EmptyPayload,
+  RematchInput,
   ChatSendInput,
   GameMoveInput,
   RoomQuickplayInput,
@@ -108,7 +109,7 @@ export interface ClientToServerEvents {
   'room:kick': (payload: RoomKickInput, ack: Ack<null>) => void;
   'room:settings': (payload: RoomSettingsInput, ack: Ack<RoomView>) => void;
   'room:start': (payload: EmptyPayload, ack: Ack<RoomView>) => void;
-  'room:rematch': (payload: EmptyPayload, ack: Ack<RoomView>) => void;
+  'room:rematch': (payload: RematchInput, ack: Ack<RoomView>) => void;
   'room:quickplay': (payload: RoomQuickplayInput, ack: Ack<RoomView>) => void;
   'game:move': (payload: GameMoveInput, ack: Ack<null>) => void;
   'lobby:subscribe': (payload: EmptyPayload, ack: Ack<PublicRoomSummary[]>) => void;

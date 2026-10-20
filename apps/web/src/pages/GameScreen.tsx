@@ -23,12 +23,15 @@ function ResultsPanel({
   api,
   title,
   showScores = true,
+  restarts = false,
 }: {
   room: RoomView;
   me: string;
   api: RoomApi;
   title?: string;
   showScores?: boolean;
+  /** "Play again" restarts at once, so the waiting room needs its own button. */
+  restarts?: boolean;
 }) {
   const results = room.game?.results;
   if (!results) return null;
@@ -123,9 +126,21 @@ function ResultsPanel({
 
         <div className="mt-auto flex flex-col gap-3">
           {isHost ? (
-            <Button data-testid="rematch" disabled={!api.online} onClick={() => void api.rematch()}>
-              Play again
-            </Button>
+            <>
+              <Button data-testid="rematch" disabled={!api.online} onClick={() => void api.rematch()}>
+                Play again
+              </Button>
+              {restarts && (
+                <Button
+                  variant="secondary"
+                  data-testid="back-to-lobby"
+                  disabled={!api.online}
+                  onClick={() => void api.rematch(true)}
+                >
+                  Back to lobby
+                </Button>
+              )}
+            </>
           ) : (
             <p className="label text-center text-muted">Waiting for the host to start a rematch…</p>
           )}
@@ -257,6 +272,7 @@ export function GameScreen({
           api={api}
           title={ui.resultsTitle?.(room, me)}
           showScores={!ui.hideScores}
+          restarts={ui.playAgainRestarts}
         />
       )}
 
