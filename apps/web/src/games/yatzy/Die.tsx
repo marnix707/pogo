@@ -10,14 +10,19 @@ const PIPS: Record<number, number[]> = {
   6: [0, 2, 3, 5, 6, 8],
 };
 
-/** Every face has its own colour, so a die is easy to match with its row in the scorecard. */
+/**
+ * Every face has its own colour, so a die is easy to match with its row in the scorecard. Light
+ * versions of the app palette (pink, coral, yellow, mint, cyan, lilac): the dice dock and the
+ * scorecard are navy in both the teal and the dark theme, so all of them keep a contrast of 6:1 or
+ * more against it, and the navy pips read at 6.7:1 or better on every face.
+ */
 export const DIE_COLOR: Record<number, string> = {
-  1: '#ff9b9b',
-  2: '#ffc27a',
-  3: '#fff07a',
-  4: '#8fe3a0',
-  5: '#86c8ff',
-  6: '#d2adff',
+  1: '#FF6BDE',
+  2: '#FF9A8B',
+  3: '#FFE066',
+  4: '#5EF2B8',
+  5: '#1FE0E0',
+  6: '#B79CFF',
 };
 const BLANK = '#e9ffff';
 
@@ -60,7 +65,7 @@ export function Die({
       disabled={!interactive}
       onClick={onToggle}
       className={`relative aspect-square w-full rounded-lg border-[3px] shadow-[0_3px_0_0_rgb(0_24_80/0.7)] transition-transform disabled:cursor-default ${
-        held ? '-translate-y-1.5 border-accent shadow-[0_4px_0_0_#b13d9c]' : 'border-[#001850]'
+        held ? '-translate-y-1.5 border-white shadow-[0_4px_0_0_#b13d9c]' : 'border-[#001850]'
       } ${rolling ? 'animate-dice-roll' : ''}`}
       style={{ backgroundColor: DIE_COLOR[face] ?? BLANK }}
     >
