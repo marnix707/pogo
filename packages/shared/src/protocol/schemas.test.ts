@@ -35,8 +35,8 @@ describe('room schemas', () => {
     expect(roomCodeSchema.safeParse('x').success).toBe(false);
   });
 
-  it('defaults visibility to private and bounds numbers', () => {
-    expect(roomCreateSchema.parse({ gameId: 'yatzy' }).visibility).toBe('private');
+  it('defaults visibility to public and bounds numbers', () => {
+    expect(roomCreateSchema.parse({ gameId: 'yatzy' }).visibility).toBe('public');
     expect(roomCreateSchema.safeParse({ gameId: 'yatzy', maxPlayers: 0 }).success).toBe(false);
     expect(roomCreateSchema.safeParse({ gameId: 'yatzy', turnTimeSec: 9999 }).success).toBe(false);
   });
@@ -62,7 +62,7 @@ describe('chat schema', () => {
 describe('computer player settings', () => {
   it('accepts bots and autoStart when creating a room', () => {
     const parsed = roomCreateSchema.parse({ gameId: 'karma', bots: 2, autoStart: true });
-    expect(parsed).toMatchObject({ bots: 2, autoStart: true, visibility: 'private' });
+    expect(parsed).toMatchObject({ bots: 2, autoStart: true, visibility: 'public' });
   });
 
   it('bounds the number of bots', () => {
