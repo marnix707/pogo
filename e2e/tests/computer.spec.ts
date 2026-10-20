@@ -3,9 +3,14 @@ import type { Page } from '@playwright/test';
 import { readyUp, newPlayer, snapshot, takeTurn } from './karma-helpers';
 
 /** Plays my turns (the computer plays its own) until the results are on screen. */
+/** Plays until the standings show; returns whether the winner's last-card reveal was seen on the way. */
 async function playUntilResults(page: Page, limitMs = 200_000) {
   const started = Date.now();
+  let sawWinnerReveal = false;
   while (!(await page.getByTestId('results-panel').isVisible())) {
+    const reveal = page.getByTestId('win-reveal');
+    if ((await reveal.count()) > 0 && (await reveal.getAttribute('data-winner')) === 'true')
+      sawWinnerReveal = true;
     if (Date.now() - started > limitMs)
       throw new Error('the game against the computer did not finish');
     // A burn flame must go away by itself (it once got stuck for the rest of the game).
@@ -21,6 +26,7 @@ async function playUntilResults(page: Page, limitMs = 200_000) {
       .poll(async () => (await snapshot(page)).event, { timeout: 10_000 })
       .not.toBe(s.event);
   }
+  return sawWinnerReveal;
 }
 
 test('Karma offers "Play the computer" with 1-4 opponents; Yatzy does not', async ({ browser }) => {
@@ -65,7 +71,7 @@ test('a whole game against the computer, from one tap to the result, and a remat
   await readyUp(page);
   await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'play');
 
-  await playUntilResults(page);
+  const sawWinnerReveal = await playUntilResults(page);
 
   // Both of us are in the standings, and the headline says who came last.
   const panel = page.getByTestId('results-panel');
@@ -74,8 +80,10 @@ test('a whole game against the computer, from one tap to the result, and a remat
   await expect(page.getByTestId('rank-1')).toBeVisible();
   // The burn flame (🔥 over the pile) is a short animation; it must never stay stuck on screen.
   await expect(page.getByTestId('burn-flash')).toHaveCount(0, { timeout: 5000 });
-  // Whoever went out first got the last-card reveal with confetti (it lets taps through).
-  await expect(page.getByTestId('win-reveal')).toHaveAttribute('data-winner', 'true');
+  // Whoever went out first got the last-card reveal with confetti, and it was done before the
+  // standings covered the screen.
+  expect(sawWinnerReveal).toBe(true);
+  await expect(page.getByTestId('win-reveal')).toHaveCount(0);
   await expect(page.getByTestId('rank-2')).toBeVisible();
   await expect(panel.locator('h2')).toHaveText(/Karma got you|Robo is last/);
 
