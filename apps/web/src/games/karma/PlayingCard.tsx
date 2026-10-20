@@ -4,7 +4,7 @@ import { karma } from '@pogo/shared';
 
 /** Ink and suit colours of the card faces; LINE is the near-black outline (same as `--c-line`). */
 const INK = '#1d2430';
-const RED = '#d6342c';
+const RED = '#e8342a';
 const LINE = '#0b1417';
 const GOLD = '#eac058';
 
@@ -208,7 +208,7 @@ export function PlayingCard({
     : {
         // The back: a diamond-patterned blue with a gold frame inside the dark outline.
         background:
-          'repeating-linear-gradient(45deg, #2f55b3 0 0.45em, #284a9c 0.45em 0.9em), #2f55b3',
+          'repeating-linear-gradient(45deg, #2a6af0 0 0.45em, #2257d4 0.45em 0.9em), #2a6af0',
         border: `0.2em solid ${LINE}`,
         boxShadow: `inset 0 0 0 0.22em ${GOLD}`,
       };

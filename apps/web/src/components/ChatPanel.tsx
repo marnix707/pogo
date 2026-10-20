@@ -100,7 +100,7 @@ export function ChatPanel({
         <button
           data-testid="chat-send"
           disabled={!online || sending || text.trim().length === 0}
-          className="min-h-11 rounded-[8px] bg-accent px-4 text-sm font-bold uppercase tracking-[0.1em] text-accentink ring-2 ring-line shadow-[0_4px_0_0_#2a6fb0] active:translate-y-[2px] disabled:opacity-40"
+          className="min-h-11 rounded-[8px] bg-accent px-4 text-sm font-bold uppercase tracking-[0.1em] text-accentink ring-2 ring-line shadow-[0_4px_0_0_#0067b8] active:translate-y-[2px] disabled:opacity-40"
         >
           Send
         </button>

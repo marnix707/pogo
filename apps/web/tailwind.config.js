@@ -21,6 +21,7 @@ export default {
         neon: token('neon'), // cyan: highlights, outlines
         lagoon: token('lagoon'), // teal
         grape: token('grape'), // purple
+        orange: token('orange'),
         danger: token('danger'),
         dangertext: token('dangertext'),
         line: token('line'), // the near-black outline round panels and buttons

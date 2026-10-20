@@ -9,22 +9,23 @@
   (bg-panel/90). Same token names as before, so every component keeps working.
 */
 :root {
-  --c-page: 18 64 52; /* felt */
+  --c-page: 30 100 80; /* felt */
   --c-panel: 43 56 61; /* slate panels */
   --c-panel2: 30 40 44; /* nested surfaces, inputs */
   --c-edge: 125 150 158; /* panel inner line */
   --c-ink: 244 246 240; /* text on panels */
   --c-muted: 168 186 190; /* secondary text on panels */
   --c-onbg: 244 246 240; /* text directly on the felt */
-  --c-accent: 74 168 255; /* primary action: blue */
+  --c-accent: 0 157 255; /* primary action: vivid blue */
   --c-accentink: 12 20 24;
-  --c-neon: 234 192 88; /* highlights: gold */
-  --c-lagoon: 61 140 110;
-  --c-grape: 110 84 200; /* "your turn" */
-  --c-danger: 224 56 48; /* red fills (white text) */
+  --c-neon: 245 184 40; /* highlights: gold */
+  --c-lagoon: 61 170 130;
+  --c-orange: 255 154 0; /* secondary highlight */
+  --c-grape: 124 88 236; /* "your turn" */
+  --c-danger: 232 56 46; /* red fills (white text) */
   --c-dangertext: 255 120 108; /* red text on dark panels */
   --c-line: 11 20 23; /* the dark outline round things */
-  --page-gradient: radial-gradient(130% 90% at 50% 0%, #1f5a49 0%, #124034 52%, #0a2a22 100%);
+  --page-gradient: radial-gradient(130% 90% at 50% 0%, #2f8068 0%, #1e6450 52%, #124a39 100%);
 }
 
 html {
@@ -59,9 +60,9 @@ body::after {
   inset: -45%;
   z-index: -1;
   background:
-    radial-gradient(38% 38% at 30% 32%, rgb(200 64 84 / 0.3), transparent 70%),
-    radial-gradient(42% 42% at 70% 64%, rgb(64 96 210 / 0.28), transparent 70%),
-    radial-gradient(30% 30% at 56% 18%, rgb(240 190 90 / 0.14), transparent 70%);
+    radial-gradient(38% 38% at 30% 32%, rgb(230 70 90 / 0.42), transparent 70%),
+    radial-gradient(42% 42% at 70% 64%, rgb(40 110 240 / 0.4), transparent 70%),
+    radial-gradient(30% 30% at 56% 18%, rgb(255 190 60 / 0.2), transparent 70%);
   animation: table-swirl 70s linear infinite;
   will-change: transform;
 }
