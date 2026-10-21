@@ -12,7 +12,7 @@ import type { UserStore } from './auth/userStore';
 import { registerAccountRoutes } from './http/accountRoutes';
 import { registerAdminRoutes } from './http/adminRoutes';
 import { registerAuthRoutes } from './http/authRoutes';
-import { createLogMailer, createSmtpMailer } from './mail/mailer';
+import { createBrevoMailer, createLogMailer, createSmtpMailer } from './mail/mailer';
 import type { Mailer } from './mail/mailer';
 import { recordFinishedGame } from './stats/record';
 import { registerStatic } from './http/static';
@@ -87,7 +87,17 @@ export async function buildApp(deps: AppDeps) {
   registerAccountRoutes(app, {
     users: deps.users,
     tokens,
-    mailer: deps.mailer ?? (useLog ? logMailer : createSmtpMailer(config.smtpUrl, config.mailFrom)),
+    mailer:
+      deps.mailer ??
+      (useLog
+        ? logMailer
+        : config.mailMode === 'brevo'
+          ? createBrevoMailer(
+              config.brevoApiKey,
+              config.mailFrom,
+              config.publicBaseUrl && `${config.publicBaseUrl}/mail-hero.png`,
+            )
+          : createSmtpMailer(config.smtpUrl, config.mailFrom)),
     secret: config.jwtSecret,
     bans,
     adminEmails: config.adminEmails,

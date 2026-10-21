@@ -59,6 +59,11 @@ services:
         sync: false
       - key: SMTP_PASSWORD
         sync: false
+      # Render's free tier blocks outgoing SMTP: use MAIL_MODE=brevo with the API key from Brevo.
+      - key: BREVO_API_KEY
+        sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
       - key: MAIL_FROM
         value: 'POGO <no-reply@example.com>'
 

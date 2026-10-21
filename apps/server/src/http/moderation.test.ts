@@ -20,6 +20,8 @@ const config = (profanityFilter: boolean) => ({
   profanityFilter,
   botDelayMs: 1000,
   mailMode: 'log' as const,
+  brevoApiKey: '',
+  publicBaseUrl: '',
   smtpUrl: '',
   mailFrom: 'test',
 });

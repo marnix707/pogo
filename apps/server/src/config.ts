@@ -16,13 +16,17 @@ const schema = z.object({
   GUEST_SIGNUP_LIMIT_PER_MIN: z.coerce.number().int().min(1).default(10),
   PROFANITY_FILTER: z.enum(['on', 'off']).default('on'),
   BOT_DELAY_MS: z.coerce.number().int().min(0).default(1000),
-  MAIL_MODE: z.enum(['log', 'smtp']).default('log'),
+  MAIL_MODE: z.enum(['log', 'smtp', 'brevo']).default('log'),
   SMTP_HOST: z.string().default(''),
   SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(465),
   SMTP_USER: z.string().default(''),
   SMTP_PASSWORD: z.string().default(''),
   /** Optional all-in-one alternative to the four above (e.g. smtps://user:pass@host:465); wins when set. */
   SMTP_URL: z.string().default(''),
+  /** API key for `MAIL_MODE=brevo` (Brevo's HTTPS API; hosts such as Render block outgoing SMTP). */
+  BREVO_API_KEY: z.string().default(''),
+  /** Public address of the site (no trailing slash); the mail artwork is loaded from it in brevo mode. */
+  PUBLIC_BASE_URL: z.string().default(''),
   MAIL_FROM: z.string().default('POGO <no-reply@pogo.local>'),
   /** Comma separated emails that become admin when they register or log in. */
   ADMIN_EMAILS: z.string().default(''),
@@ -72,8 +76,10 @@ export interface AppConfig {
   profanityFilter: boolean;
   /** How long a computer player "thinks" before each move. */
   botDelayMs: number;
-  /** `log` prints emailed codes to the server log (dev); `smtp` sends them through `smtpUrl`. */
-  mailMode: 'log' | 'smtp';
+  /** `log` prints emailed codes to the server log (dev); `smtp` sends them through `smtpUrl`, `brevo` through Brevo's HTTPS API. */
+  mailMode: 'log' | 'smtp' | 'brevo';
+  brevoApiKey: string;
+  publicBaseUrl: string;
   smtpUrl: string;
   mailFrom: string;
   /** Lowercase emails that become admin on register/login (optional in tests). */
@@ -90,6 +96,8 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   const env = schema.parse(source);
   if (env.MAIL_MODE === 'smtp' && !smtpUrlFrom(env))
     throw new Error('MAIL_MODE=smtp needs SMTP_HOST (plus SMTP_PORT, SMTP_USER, SMTP_PASSWORD)');
+  if (env.MAIL_MODE === 'brevo' && !env.BREVO_API_KEY)
+    throw new Error('MAIL_MODE=brevo needs BREVO_API_KEY');
   const origins = list(env.CORS_ORIGINS);
   return {
     nodeEnv: env.NODE_ENV,
@@ -109,6 +117,8 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     profanityFilter: env.PROFANITY_FILTER === 'on',
     botDelayMs: env.BOT_DELAY_MS,
     mailMode: env.MAIL_MODE,
+    brevoApiKey: env.BREVO_API_KEY,
+    publicBaseUrl: env.PUBLIC_BASE_URL.replace(/\/+$/, ''),
     smtpUrl: smtpUrlFrom(env),
     mailFrom: env.MAIL_FROM,
     adminEmails: list(env.ADMIN_EMAILS).map((e) => e.toLowerCase()),

@@ -51,6 +51,8 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_URL: ${SMTP_URL:-}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
       # Emails that become admin (admin panel) when they register or log in.
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       MAIL_FROM: ${MAIL_FROM:-POGO <no-reply@pogo.local>}
