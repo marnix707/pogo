@@ -3,7 +3,7 @@
  * Games are realtime, so nothing live is ever cached: /api and /socket.io always go to the network.
  * Bump VERSION to drop old caches.
  */
-const VERSION = 'pogo-v5';
+const VERSION = 'pogo-v6';
 const SHELL = [
   '/',
   '/manifest.webmanifest',

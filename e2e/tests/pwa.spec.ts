@@ -29,7 +29,7 @@ test('the page advertises a fullscreen home-screen app with working icons', asyn
   );
 
   const manifest = await (await request.get('/manifest.webmanifest')).json();
-  expect(manifest).toMatchObject({ name: 'Po:go', display: 'standalone', start_url: '/' });
+  expect(manifest).toMatchObject({ name: 'POGO', display: 'standalone', start_url: '/' });
   for (const icon of manifest.icons as { src: string; type: string }[]) {
     const res = await request.get(icon.src);
     expect(res.status(), icon.src).toBe(200);

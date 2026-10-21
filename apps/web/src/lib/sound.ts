@@ -20,6 +20,13 @@ function audio(): AudioContext | undefined {
   }
 }
 
+/** True while the browser still refuses sound (nothing has been tapped yet); false when it is muted anyway. */
+export function audioLocked(): boolean {
+  if (!getSettings().sound) return false;
+  const c = audio();
+  return !!c && c.state !== 'running';
+}
+
 /** Browsers only allow audio after a user gesture: call from the first tap. */
 export function unlockAudio() {
   audio();

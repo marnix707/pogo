@@ -16,12 +16,12 @@ function IosSteps() {
         <b className="text-neon">2.</b> Scroll down and tap <b>Add to Home Screen</b>.
       </li>
       <li>
-        <b className="text-neon">3.</b> Tap <b>Add</b>. Open Po:go from your home screen: it runs
+        <b className="text-neon">3.</b> Tap <b>Add</b>. Open POGO from your home screen: it runs
         fullscreen, without the browser bars.
       </li>
       <li className="rounded-md bg-panel2 p-3 text-muted">
         <b className="text-ink">Still opens with browser bars?</b> iPhone keeps the settings an icon
-        had on the day you added it, so delete the old Po:go icon (hold it, Remove App) and add it
+        had on the day you added it, so delete the old POGO icon (hold it, Remove App) and add it
         again.{' '}
         {iosThirdPartyBrowser ? (
           <>
@@ -69,7 +69,7 @@ export function InstallCard({ variant }: { variant: 'banner' | 'settings' }) {
       <div className="flex flex-col gap-2 py-2" data-testid="install-settings">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="font-semibold">Install Po:go</div>
+            <div className="font-semibold">Install POGO</div>
             <div className="text-sm text-muted">Add it to your home screen to play fullscreen</div>
           </div>
           {action}
@@ -85,7 +85,7 @@ export function InstallCard({ variant }: { variant: 'banner' | 'settings' }) {
         <LogoMark className="h-10 w-10 shrink-0" />
         <div className="min-w-0 flex-1">
           <div className="font-bold leading-tight">Play fullscreen</div>
-          <div className="text-xs leading-snug text-muted">Add Po:go to your home screen</div>
+          <div className="text-xs leading-snug text-muted">Add POGO to your home screen</div>
         </div>
         {action}
         <button

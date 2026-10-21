@@ -47,7 +47,7 @@ services:
       # Emailed codes: `log` prints them in the server log (dev); `smtp` needs SMTP_URL.
       MAIL_MODE: ${MAIL_MODE:-log}
       SMTP_URL: ${SMTP_URL:-}
-      MAIL_FROM: ${MAIL_FROM:-Po:go <no-reply@pogo.local>}
+      MAIL_FROM: ${MAIL_FROM:-POGO <no-reply@pogo.local>}
       CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING:-true}
     ports:
       - '${SERVER_PORT:-3000}:3000'

@@ -23,8 +23,8 @@ const manifest = JSON.parse(manifestRaw) as {
 
 describe('web app manifest', () => {
   it('opens as a standalone (fullscreen) app from the home screen', () => {
-    expect(manifest.name).toBe('Po:go');
-    expect(manifest.short_name).toBe('Po:go');
+    expect(manifest.name).toBe('POGO');
+    expect(manifest.short_name).toBe('POGO');
     expect(manifest.display).toBe('standalone');
     expect(manifest.start_url).toBe('/');
     expect(manifest.scope).toBe('/');
@@ -50,7 +50,7 @@ describe('index.html', () => {
     expect(indexHtml).toContain('rel="manifest" href="/manifest.webmanifest"');
     expect(indexHtml).toContain('name="apple-mobile-web-app-capable" content="yes"');
     expect(indexHtml).toContain('name="mobile-web-app-capable" content="yes"');
-    expect(indexHtml).toContain('name="apple-mobile-web-app-title" content="Po:go"');
+    expect(indexHtml).toContain('name="apple-mobile-web-app-title" content="POGO"');
     expect(indexHtml).toContain('rel="apple-touch-icon" href="/apple-touch-icon.png"');
   });
 

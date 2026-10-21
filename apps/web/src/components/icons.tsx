@@ -49,11 +49,11 @@ export const CrownIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-/** The Po:go app icon (Pogo on a yellow tile, pixel art from assets/icons/icon.svg). */
+/** The POGO app icon (Pogo on a yellow tile, pixel art from assets/icons/icon.svg). */
 export const LogoMark = ({ className }: { className?: string }) => (
   <img
     src={iconUrl}
-    alt="Po:go"
+    alt="POGO"
     className={className}
     style={{ imageRendering: 'pixelated' }}
     draggable={false}

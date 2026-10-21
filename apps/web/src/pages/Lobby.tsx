@@ -87,8 +87,8 @@ export function Lobby({
     try {
       if (navigator.share) {
         await navigator.share({
-          title: 'Join my Po:go game',
-          text: `Join me on Po:go! Code: ${room.code}`,
+          title: 'Join my POGO game',
+          text: `Join me on POGO! Code: ${room.code}`,
           url: link,
         });
         return;

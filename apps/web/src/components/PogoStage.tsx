@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { playSfx } from '../lib/sfx';
+import { audioLocked, unlockAudio } from '../lib/sound';
 import sideData from '../assets/sprites/animation-side/pogo-side-animation.json';
 import frontData from '../assets/sprites/animation/pogo-animation.json';
 import wordmarkUrl from '../assets/sprites/brand/wordmark-yellow.svg';
@@ -96,9 +97,25 @@ export function PogoStage({ onLanded, scale }: { onLanded: () => void; scale: nu
   const { intro, loop } = useMemo(buildTimeline, []);
   const skip = introDone();
   const [i, setI] = useState(skip ? intro.length : 0);
+  // Browsers refuse sound until the first tap, so a fresh visit waits for one ("tap to start")
+  // and the whole intro, jump sounds included, is heard from the first hop.
+  const [started, setStarted] = useState(() => skip || !audioLocked());
+  useEffect(() => {
+    if (started) return;
+    const go = () => {
+      unlockAudio();
+      setStarted(true);
+    };
+    window.addEventListener('pointerdown', go, { once: true });
+    window.addEventListener('keydown', go, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', go);
+      window.removeEventListener('keydown', go);
+    };
+  }, [started]);
 
   useEffect(() => {
-    if (reducedMotion()) return;
+    if (reducedMotion() || !started) return;
     let cancelled = false;
     let t: ReturnType<typeof setTimeout>;
     let n = skip ? intro.length : 0;
@@ -120,7 +137,7 @@ export function PogoStage({ onLanded, scale }: { onLanded: () => void; scale: nu
       clearTimeout(t);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [started]);
 
   const step: Step = reducedMotion()
     ? { view: 'front', frame: 'pogo_extend', ms: 0, x: 0, y: 0, fx: [] }
@@ -164,6 +181,11 @@ export function PogoStage({ onLanded, scale }: { onLanded: () => void; scale: nu
           );
         }),
       )}
+      {!started && (
+        <p className="label absolute inset-x-0 bottom-0 animate-pulse text-center text-onbg">
+          Tap to start
+        </p>
+      )}
       {step.fx.map((fx, k) => {
         const [w, h] = FX_SIZE[fx.name] ?? [32, 4];
         return (
@@ -179,7 +201,7 @@ export function Wordmark({ shown, width }: { shown: boolean; width: number }) {
   return (
     <img
       src={wordmarkUrl}
-      alt="Po:go"
+      alt="POGO"
       data-testid="home-wordmark"
       className={shown ? 'wordmark-in' : 'opacity-0'}
       style={{ width, imageRendering: 'pixelated' }}

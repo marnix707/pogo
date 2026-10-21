@@ -18,7 +18,7 @@ const schema = z.object({
   BOT_DELAY_MS: z.coerce.number().int().min(0).default(1000),
   MAIL_MODE: z.enum(['log', 'smtp']).default('log'),
   SMTP_URL: z.string().default(''),
-  MAIL_FROM: z.string().default('Po:go <no-reply@pogo.local>'),
+  MAIL_FROM: z.string().default('POGO <no-reply@pogo.local>'),
 });
 
 export interface AppConfig {

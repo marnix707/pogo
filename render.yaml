@@ -54,7 +54,7 @@ services:
       - key: SMTP_URL
         sync: false
       - key: MAIL_FROM
-        value: 'Po:go <no-reply@example.com>'
+        value: 'POGO <no-reply@example.com>'
 
       # Gameplay timings (same defaults as .env.example)
       - key: TURN_TIME_SEC

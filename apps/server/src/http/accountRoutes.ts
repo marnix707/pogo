@@ -82,8 +82,8 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
     });
     await mailer.send({
       to: email,
-      subject: purpose === 'register' ? 'Your Po:go code' : 'Reset your Po:go password',
-      text: `Your Po:go code is ${code}. It is valid for 10 minutes. If you did not ask for it, ignore this email.`,
+      subject: purpose === 'register' ? 'Your POGO code' : 'Reset your POGO password',
+      text: `Your POGO code is ${code}. It is valid for 10 minutes. If you did not ask for it, ignore this email.`,
     });
   }
 
