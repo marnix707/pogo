@@ -1,5 +1,7 @@
+import { createElement } from 'react';
 import type { GameUi } from '../types';
 import { KarmaGame } from './KarmaGame';
+import { KarmaRules } from './KarmaRules';
 import { ModePicker } from './ModePicker';
 import { RulePick } from './RulePick';
 
@@ -10,6 +12,12 @@ export const karmaUi: GameUi = {
   tagline: 'Shed all your cards. Don’t be the last one left.',
   Component: KarmaGame,
   LobbyOptions: ModePicker,
+  Rules: ({ open, onClose, room }) =>
+    createElement(KarmaRules, {
+      open,
+      onClose,
+      rules: (room.game?.view as { rules?: string[] } | undefined)?.rules,
+    }),
   playAgainRestarts: true,
   ownFanfare: true, // the winner's fanfare plays when the last card has turned over (KarmaGame)
   // Party mode: the standings are already known while the winner picks a rule (RulePick, in the panel).

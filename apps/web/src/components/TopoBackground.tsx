@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import { makeNoise, topoFrame } from '../lib/topo';
 
 const FRAME_MS = 1000 / 24;
+/** Animation speed relative to real time (0.5 = half speed). */
+const SPEED = 0.5;
 /** Dark blue lines: thin ones, and heavier index lines (like the contour lines of a map). */
 const MINOR = 'rgba(10, 26, 56, 0.4)';
 const MAJOR = 'rgba(10, 26, 56, 0.62)';
@@ -60,7 +62,7 @@ export function TopoBackground() {
       raf = requestAnimationFrame(loop);
       if (now - last < FRAME_MS) return;
       last = now;
-      paint(now / 1000);
+      paint((now / 1000) * SPEED);
     };
     const start = () => {
       if (!still && !raf) raf = requestAnimationFrame(loop);
@@ -71,12 +73,12 @@ export function TopoBackground() {
     };
     const onResize = () => {
       size();
-      paint(performance.now() / 1000);
+      paint((performance.now() / 1000) * SPEED);
     };
     const onVisibility = () => (document.hidden ? stop() : start());
 
     size();
-    paint(still ? 12 : performance.now() / 1000);
+    paint(still ? 12 : (performance.now() / 1000) * SPEED);
     start();
     window.addEventListener('resize', onResize);
     document.addEventListener('visibilitychange', onVisibility);
@@ -97,4 +99,3 @@ export function TopoBackground() {
     />
   );
 }
-

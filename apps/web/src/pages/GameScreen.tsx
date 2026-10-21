@@ -199,6 +199,7 @@ export function GameScreen({
     if (room.status === 'playing') setGame((g) => g + 1);
   }
   const [chatOpen, setChatOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const unread = messages.filter((m) => m.id > readUpTo && m.userId !== me).length;
 
   // While the chat sheet is open, new messages are read immediately.
@@ -254,28 +255,40 @@ export function GameScreen({
     <div className="mx-auto flex h-dvh max-w-lg flex-col">
       {!ui.ownHeader && (
         <TopBar
-          title={`${ui.emoji} ${ui.name}`}
+          title={ui.name}
           subtitle={`Room ${room.code}`}
           onSettings={onSettings}
           actions={
-            <TileButton
-              small
-              onClick={() => setChatOpen(true)}
-              aria-label={unread > 0 ? `Chat, ${unread} unread` : 'Chat'}
-              data-testid="chat-open"
-            >
-              <span className="relative">
-                <ChatIcon className="h-5 w-5" />
-                {unread > 0 && (
-                  <span
-                    data-testid="chat-badge"
-                    className="absolute -right-2.5 -top-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-accentink"
-                  >
-                    {unread > 9 ? '9+' : unread}
-                  </span>
-                )}
-              </span>
-            </TileButton>
+            <>
+              {ui.Rules && (
+                <TileButton
+                  small
+                  onClick={() => setRulesOpen(true)}
+                  aria-label="Rules"
+                  data-testid="rules-open"
+                >
+                  <span className="text-lg font-bold leading-none">?</span>
+                </TileButton>
+              )}
+              <TileButton
+                small
+                onClick={() => setChatOpen(true)}
+                aria-label={unread > 0 ? `Chat, ${unread} unread` : 'Chat'}
+                data-testid="chat-open"
+              >
+                <span className="relative">
+                  <ChatIcon className="h-5 w-5" />
+                  {unread > 0 && (
+                    <span
+                      data-testid="chat-badge"
+                      className="absolute -right-2.5 -top-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-accentink"
+                    >
+                      {unread > 9 ? '9+' : unread}
+                    </span>
+                  )}
+                </span>
+              </TileButton>
+            </>
           }
           compact
           left={
@@ -318,6 +331,7 @@ export function GameScreen({
         />
       )}
 
+      {ui.Rules && <ui.Rules open={rulesOpen} onClose={() => setRulesOpen(false)} room={room} />}
       <Sheet open={chatOpen} onClose={() => setChatOpen(false)} title={`Chat · Room ${room.code}`}>
         <ChatPanel
           messages={messages}

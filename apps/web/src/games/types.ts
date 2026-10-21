@@ -34,6 +34,8 @@ export interface GameUi {
   Component: ComponentType<GameUiProps>;
   /** Extra panel in the lobby for game-specific options (e.g. a game mode). */
   LobbyOptions?: ComponentType<LobbyOptionsProps>;
+  /** Rules sheet, opened from a Rules button in the shared title bar. */
+  Rules?: ComponentType<{ open: boolean; onClose: () => void; room: RoomView }>;
   /** The game draws its own top bar (leave, chat, settings) instead of the shared title bar. */
   ownHeader?: boolean;
   /** Hide the score column in the standings (for games where the score is just the rank). */

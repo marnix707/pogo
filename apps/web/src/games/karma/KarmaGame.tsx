@@ -7,7 +7,6 @@ import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
 import { useCountdown } from '../../lib/useCountdown';
 import type { GameUiProps } from '../types';
-import { KarmaRules } from './KarmaRules';
 import { DOUBLE_TAP_MS, planTap } from './selection';
 import { FourBurn } from './FourBurn';
 import { WinReveal } from './WinReveal';
@@ -317,7 +316,6 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const [swapHand, setSwapHand] = useState<Card | null>(null);
   const [swapUp, setSwapUp] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
-  const [rulesOpen, setRulesOpen] = useState(false);
   const [flame, setFlame] = useState(false);
   /** A burn / failed blind card resolves at once on the server; keep the played cards on the pile a moment. */
   const [ghost, setGhost] = useState<Card[] | null>(null);
@@ -936,31 +934,34 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
           </div>
 
           <div className="min-w-0 flex-1">
-            <p
-              className="label min-h-[2.6em] text-[10px] font-bold leading-snug text-onbg"
+            <div
+              className="flex flex-col gap-1.5"
               data-testid="karma-event"
               data-seq={notes.current?.ev.seq ?? ''}
               aria-live="polite"
             >
-              {notes.previous ? describeEvent(notes.previous.ev, nameOf, notes.previous) : ' '}
-            </p>
+              <p
+                className="min-h-[1.25em] text-sm font-bold leading-tight text-onbg"
+                data-testid="karma-event-current"
+              >
+                {notes.current && !reveal && !revealPending
+                  ? describeEvent(notes.current.ev, nameOf, notes.current)
+                  : ' '}
+              </p>
+              <p
+                className="min-h-[1.25em] text-xs font-medium leading-tight text-onbg/60"
+                data-testid="karma-event-previous"
+              >
+                {notes.previous ? describeEvent(notes.previous.ev, nameOf, notes.previous) : ' '}
+              </p>
+            </div>
             <p
-              className={`mt-1 min-h-[2.4em] text-xs font-semibold leading-snug ${myTurnShown ? 'text-onbg' : 'text-onbg/80'}`}
+              className={`mt-2 min-h-[2.4em] text-xs font-semibold leading-snug ${myTurnShown ? 'text-onbg' : 'text-onbg/80'}`}
               data-testid="karma-hint"
               data-my-turn={myTurnShown}
             >
               {shownHint}
             </p>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setRulesOpen(true);
-              }}
-              aria-label="Rules"
-              className="label mt-2 rounded-md border-2 border-onbg/40 px-2 py-1 text-[10px] text-onbg"
-            >
-              Rules ?
-            </button>
           </div>
         </div>
 
@@ -1125,8 +1126,6 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
 
         {fourBurn && <FourBurn cards={fourBurn} ms={FOUR_BURN_MS} />}
         {reveal && <WinReveal card={reveal.card} label={reveal.label} winner={reveal.winner} />}
-
-        <KarmaRules open={rulesOpen} onClose={() => setRulesOpen(false)} rules={view.rules} />
       </div>
     </CardFlipContext.Provider>
   );
