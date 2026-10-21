@@ -1,5 +1,6 @@
 import { randomInt } from 'node:crypto';
 import type {
+  AdminRoomRow,
   AnyGameDefinition,
   ChatMessage,
   LeaveReason,
@@ -213,6 +214,23 @@ export class RoomManager {
     if (!room) return ok(null);
     room.leave(userId);
     return ok(null);
+  }
+
+  /** Staff removal: the player is taken out of whatever room they are in (shown as "kicked"). */
+  evict(userId: string): boolean {
+    const room = this.roomFor(userId);
+    if (!room) return false;
+    room.leave(userId, 'kicked');
+    return true;
+  }
+
+  roomCodeOf(userId: string): string | null {
+    return this.roomOfUser.get(userId) ?? null;
+  }
+
+  /** Every room, for the admin panel. */
+  listAll(): AdminRoomRow[] {
+    return [...this.rooms.values()].map((r) => r.adminSummary());
   }
 
   kick(hostId: string, targetId: string): Result<null> {

@@ -3,6 +3,7 @@ import type { Server, Socket } from 'socket.io';
 import type { z } from 'zod';
 import {
   APP_NAME,
+  isStaff,
   chatSendSchema,
   emptyPayloadSchema,
   rematchSchema,
@@ -14,6 +15,8 @@ import {
   roomSettingsSchema,
 } from '@pogo/shared';
 import type { ClientToServerEvents, PublicUser, Result, ServerToClientEvents } from '@pogo/shared';
+import { banMessage } from '../admin/moderation';
+import type { BanList } from '../admin/moderation';
 import type { TokenService } from '../auth/tokens';
 import type { UserStore } from '../auth/userStore';
 import type { RoomManager } from '../rooms/RoomManager';
@@ -23,6 +26,7 @@ export interface SocketData {
   user: PublicUser;
 }
 
+type PogoSocket = Parameters<Parameters<PogoServer['use']>[0]>[0];
 export type PogoServer = Server<ClientToServerEvents, ServerToClientEvents, object, SocketData>;
 
 export const userChannel = (userId: string) => `user:${userId}`;
@@ -38,16 +42,39 @@ interface Deps {
   manager: RoomManager;
   users: UserStore;
   tokens: TokenService;
+  bans: BanList;
+  /** Read the client address from X-Forwarded-For (behind the host's proxy). */
+  trustProxy: boolean;
   log: FastifyBaseLogger;
 }
 
-export function registerSocketHandlers({ io, manager, users, tokens, log }: Deps): void {
+function socketIp(socket: Socket | PogoSocket, trustProxy: boolean): string | null {
+  const forwarded = socket.handshake.headers['x-forwarded-for'];
+  const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim();
+  return (trustProxy && first) || socket.handshake.address || null;
+}
+
+export function registerSocketHandlers({
+  io,
+  manager,
+  users,
+  tokens,
+  bans,
+  trustProxy,
+  log,
+}: Deps): void {
   io.use(async (socket, next) => {
     const token: unknown = socket.handshake.auth?.token;
     const userId = typeof token === 'string' ? await tokens.verify(token) : null;
     const user = userId ? await users.get(userId) : null;
     if (!user) return next(new Error('unauthorized'));
+    // Banned accounts (and, except for staff, banned IP addresses) are turned away.
+    const ip = socketIp(socket, trustProxy);
+    const ban = bans.forUser(user.id) ?? (isStaff(user) ? null : bans.forIp(ip));
+    if (ban)
+      return next(Object.assign(new Error('banned'), { data: { message: banMessage(ban) } }));
     socket.data.user = user;
+    void users.touch(user.id, ip);
     next();
   });
 

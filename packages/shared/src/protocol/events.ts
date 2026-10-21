@@ -25,6 +25,10 @@ export interface PublicUser {
   isGuest: boolean;
   /** Only in your own profile. */
   email?: string;
+  /** Staff powers (admin panel); absent = a normal player. */
+  role?: 'user' | 'moderator' | 'admin';
+  /** Developer: "(dev)" is shown behind the name everywhere. */
+  isDev?: boolean;
 }
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: string };

@@ -5,9 +5,12 @@ import { Server } from 'socket.io';
 import { APP_NAME, getGame, maskProfanity } from '@pogo/shared';
 import type { AnyGameDefinition, Rng } from '@pogo/shared';
 import type { AppConfig } from './config';
+import { BanList, banMessage, createMemoryModerationStore } from './admin/moderation';
+import type { ModerationStore } from './admin/moderation';
 import { createTokenService } from './auth/tokens';
 import type { UserStore } from './auth/userStore';
 import { registerAccountRoutes } from './http/accountRoutes';
+import { registerAdminRoutes } from './http/adminRoutes';
 import { registerAuthRoutes } from './http/authRoutes';
 import { createLogMailer, createSmtpMailer } from './mail/mailer';
 import type { Mailer } from './mail/mailer';
@@ -29,6 +32,8 @@ export interface AppDeps {
   botMs?: number;
   /** Sends the emailed codes. Default: from `config.mailMode` (log in dev, SMTP in production). */
   mailer?: Mailer;
+  /** Bans and the staff log. Default: in memory (tests). */
+  moderation?: ModerationStore;
   logger?: boolean | object;
 }
 
@@ -52,6 +57,19 @@ export async function buildApp(deps: AppDeps) {
   });
 
   const tokens = createTokenService(config.jwtSecret);
+  const moderation = deps.moderation ?? createMemoryModerationStore();
+  const bans = new BanList(moderation);
+  await bans.load();
+
+  // A banned account is shut out of the whole API with its token (IP bans are checked where a
+  // person arrives: guest signup, login and the socket handshake).
+  app.addHook('onRequest', async (req, reply) => {
+    const header = req.headers.authorization;
+    if (!header?.startsWith('Bearer ') || !req.url.startsWith('/api/')) return;
+    const userId = await tokens.verify(header.slice(7));
+    const ban = userId ? bans.forUser(userId) : null;
+    if (ban) return reply.code(403).send({ error: banMessage(ban), banned: true });
+  });
 
   // Liveness for the host's health probes: never touches the database (keeps Neon asleep).
   app.get('/api/livez', async () => ({ ok: true }));
@@ -62,6 +80,7 @@ export async function buildApp(deps: AppDeps) {
   registerAuthRoutes(app, deps.users, tokens, {
     guestLimitPerMin: config.guestSignupLimitPerMin,
     rejectProfaneNicknames: config.profanityFilter,
+    bans,
   });
   const logMailer = createLogMailer((line) => app.log.info(line));
   const useLog = !deps.mailer && config.mailMode === 'log';
@@ -70,6 +89,8 @@ export async function buildApp(deps: AppDeps) {
     tokens,
     mailer: deps.mailer ?? (useLog ? logMailer : createSmtpMailer(config.smtpUrl, config.mailFrom)),
     secret: config.jwtSecret,
+    bans,
+    adminEmails: config.adminEmails,
     limitScale: config.isProd ? 1 : 100,
     // Handy for tests and local development; never in production.
     devMailbox: useLog && !config.isProd ? logMailer : undefined,
@@ -122,7 +143,30 @@ export async function buildApp(deps: AppDeps) {
     },
   });
 
-  registerSocketHandlers({ io, manager, users: deps.users, tokens, log: app.log });
+  registerSocketHandlers({
+    io,
+    manager,
+    users: deps.users,
+    tokens,
+    bans,
+    trustProxy: config.isProd,
+    log: app.log,
+  });
+  registerAdminRoutes(app, {
+    users: deps.users,
+    tokens,
+    bans,
+    moderation,
+    manager,
+    disconnectUser: (userId) => io.in(userChannel(userId)).disconnectSockets(true),
+    isOnline: (userId) => (io.sockets.adapter.rooms.get(userChannel(userId))?.size ?? 0) > 0,
+  });
+
+  // The first admin(s) from ADMIN_EMAILS get the role at start-up too (not only at their next login).
+  for (const email of config.adminEmails ?? []) {
+    const found = await deps.users.getByEmail(email);
+    if (found && found.user.role !== 'admin') await deps.users.setRole(found.user.id, 'admin');
+  }
 
   return {
     app,

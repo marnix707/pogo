@@ -17,6 +17,12 @@ model User {
   passwordHash String?
   registeredAt DateTime?
   createdAt    DateTime      @default(now())
+  /// 'user' | 'moderator' | 'admin' (admin panel powers)
+  role         String        @default("user")
+  /// Developer tag: "(dev)" is shown behind the name.
+  isDev        Boolean       @default(false)
+  lastIp       String?
+  lastSeenAt   DateTime?
   image        UserImage?
   results      GameResult[]
 }
@@ -61,4 +67,35 @@ model GameResult {
   @@unique([userId, matchId])
   @@index([gameId, score])
   @@index([userId, gameId])
+}
+
+/// A ban on an account and/or an IP address. expiresAt null = permanent; revokedAt = lifted early.
+model Ban {
+  id        String    @id @default(uuid())
+  userId    String?
+  nickname  String
+  ip        String?
+  reason    String
+  byId      String
+  byName    String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+  revokedAt DateTime?
+
+  @@index([userId])
+  @@index([ip])
+}
+
+/// What staff did (bans, kicks, role changes), newest last.
+model AuditLog {
+  id         String   @id @default(uuid())
+  at         DateTime @default(now())
+  actorId    String
+  actorName  String
+  action     String
+  targetId   String?
+  targetName String
+  detail     String
+
+  @@index([at])
 }

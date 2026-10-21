@@ -13,6 +13,10 @@ import type { AuthResponse } from '@pogo/shared';
 import type { ZodTypeAny, z } from 'zod';
 import { hashCode, hashPassword, newCode, verifyPassword } from '../auth/passwords';
 import type { TokenService } from '../auth/tokens';
+import { isStaff } from '@pogo/shared';
+import type { PublicUser } from '@pogo/shared';
+import { banMessage } from '../admin/moderation';
+import type { BanList } from '../admin/moderation';
 import type { CodePurpose, UserStore } from '../auth/userStore';
 import { codeMail } from '../mail/template';
 import type { LogMailer, Mailer } from '../mail/mailer';
@@ -35,6 +39,10 @@ export interface AccountDeps {
   now?: () => number;
   /** Multiplies the per-minute request limits (tests and local development are far busier than production). */
   limitScale?: number;
+  /** Bans: a banned account cannot log in (an IP ban also stops everyone but staff). */
+  bans?: BanList;
+  /** Emails that become admin when they register or log in (the first admin of a new install). */
+  adminEmails?: string[];
 }
 
 function imageKind(buf: Buffer): string | null {
@@ -62,6 +70,12 @@ const safeEqual = (a: string, b: string) => {
 
 export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
   const { users, tokens, mailer } = deps;
+  /** The first admin: a listed email gets the admin role as soon as it registers or logs in. */
+  const withBootstrapRole = async (user: PublicUser): Promise<PublicUser> => {
+    if (user.role === 'admin' || !user.email || !deps.adminEmails?.includes(user.email))
+      return user;
+    return (await users.setRole(user.id, 'admin')) ?? user;
+  };
   const now = deps.now ?? Date.now;
   const tight = (max: number) => ({
     config: { rateLimit: { max: max * (deps.limitScale ?? 1), timeWindow: '1 minute' } },
@@ -123,7 +137,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
     if (result === 'taken')
       return reply.code(409).send({ error: 'That email already has an account' });
     if (!result) return reply.code(404).send({ error: 'Not signed in' });
-    return { user: result };
+    return { user: await withBootstrapRole(result) };
   });
 
   app.post('/api/auth/login', tight(10), async (req, reply) => {
@@ -134,7 +148,10 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
     if (!found || !found.passwordHash || !ok) {
       return reply.code(401).send({ error: 'Wrong email or password' });
     }
-    const body: AuthResponse = { token: await tokens.sign(found.user.id), user: found.user };
+    const user = await withBootstrapRole(found.user);
+    const ban = deps.bans?.forUser(user.id) ?? (isStaff(user) ? null : deps.bans?.forIp(req.ip));
+    if (ban) return reply.code(403).send({ error: banMessage(ban), banned: true });
+    const body: AuthResponse = { token: await tokens.sign(user.id), user };
     return body;
   });
 

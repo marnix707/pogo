@@ -1,5 +1,6 @@
-import { BOT_AVATAR, BOT_NAMES, botId } from '@pogo/shared';
+import { BOT_AVATAR, BOT_NAMES, botId, displayName } from '@pogo/shared';
 import type {
+  AdminRoomRow,
   AnyGameDefinition,
   ChatMessage,
   GameResults,
@@ -218,7 +219,7 @@ export class Room {
     const message: ChatMessage = {
       id: this.nextMessageId++,
       userId,
-      nickname: member.user.nickname,
+      nickname: displayName(member.user),
       avatar: member.user.avatar,
       text: this.deps.maskText(text),
       at: this.deps.now(),
@@ -247,11 +248,29 @@ export class Room {
       code: this.code,
       gameId: this.game.id,
       gameName: this.game.name,
-      hostNickname: host?.user.nickname ?? '',
+      hostNickname: host ? displayName(host.user) : '',
       hostAvatar: host?.user.avatar ?? '',
       players: this.memberCount,
       maxPlayers: this.maxPlayers,
       createdAt: this.createdAt,
+    };
+  }
+
+  /** Everything the admin panel shows about this room. */
+  adminSummary(): AdminRoomRow {
+    return {
+      code: this.code,
+      gameId: this.game.id,
+      status: this.status,
+      visibility: this.visibility,
+      members: this.members
+        .filter((m) => !m.left)
+        .map((m) => ({
+          id: m.user.id,
+          nickname: displayName(m.user),
+          bot: !!m.bot,
+          connected: m.connected,
+        })),
     };
   }
 
@@ -306,7 +325,7 @@ export class Room {
     this.members.push(...this.makeBots());
     const players = this.members.map((m) => ({
       id: m.user.id,
-      nickname: m.user.nickname,
+      nickname: displayName(m.user),
       avatar: m.user.avatar,
     }));
     if (players.length < this.game.minPlayers) {
@@ -586,7 +605,7 @@ export class Room {
       status: this.status,
       members: this.members.map((m) => ({
         id: m.user.id,
-        nickname: m.user.nickname,
+        nickname: displayName(m.user),
         avatar: m.user.avatar,
         connected: m.connected && !m.left,
         left: m.left,

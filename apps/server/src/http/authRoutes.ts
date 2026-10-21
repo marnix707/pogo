@@ -1,6 +1,8 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { containsProfanity, profileSchema } from '@pogo/shared';
 import type { AuthResponse, PublicUser } from '@pogo/shared';
+import { banMessage } from '../admin/moderation';
+import type { BanList } from '../admin/moderation';
 import type { TokenService } from '../auth/tokens';
 import type { UserStore } from '../auth/userStore';
 
@@ -19,7 +21,11 @@ export function registerAuthRoutes(
   app: FastifyInstance,
   users: UserStore,
   tokens: TokenService,
-  options: { guestLimitPerMin: number; rejectProfaneNicknames: boolean },
+  options: {
+    guestLimitPerMin: number;
+    rejectProfaneNicknames: boolean;
+    bans?: BanList;
+  },
 ) {
   // Guest signup: pick a nickname + avatar, get a signed token to keep in localStorage.
   app.post(
@@ -33,6 +39,9 @@ export function registerAuthRoutes(
       if (options.rejectProfaneNicknames && containsProfanity(parsed.data.nickname)) {
         return reply.code(400).send({ error: 'Please pick a different nickname' });
       }
+      // A banned IP cannot start over as a new guest.
+      const ban = options.bans?.forIp(req.ip);
+      if (ban) return reply.code(403).send({ error: banMessage(ban), banned: true });
       const user = await users.createGuest(parsed.data);
       const body: AuthResponse = { token: await tokens.sign(user.id), user };
       return reply.code(201).send(body);

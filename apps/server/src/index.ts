@@ -1,5 +1,6 @@
 import { APP_NAME } from '@pogo/shared';
 import { buildApp } from './app';
+import { createPrismaModerationStore } from './admin/moderation';
 import { createPrismaUserStore } from './auth/userStore';
 import { loadConfig } from './config';
 import { prisma } from './db';
@@ -11,6 +12,7 @@ async function main() {
   const { app, close } = await buildApp({
     config,
     users: createPrismaUserStore(prisma),
+    moderation: createPrismaModerationStore(prisma),
     rng: cryptoRng,
     healthCheck: async () => {
       await prisma.$queryRaw`SELECT 1`;

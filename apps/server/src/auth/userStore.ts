@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
-import type { PublicUser } from '@pogo/shared';
+import { displayName } from '@pogo/shared';
+import type { PublicUser, Role } from '@pogo/shared';
 
 export interface EmailCodeRecord {
   codeHash: string;
@@ -46,6 +47,14 @@ export interface StoredImage {
   version: number;
 }
 
+/** A user as the admin panel sees them. */
+export interface StaffUserRecord {
+  user: PublicUser;
+  createdAt: number;
+  lastSeenAt: number | null;
+  lastIp: string | null;
+}
+
 export interface UserStore {
   createGuest(profile: { nickname: string; avatar: string }): Promise<PublicUser>;
   get(id: string): Promise<PublicUser | null>;
@@ -70,6 +79,15 @@ export interface UserStore {
   deleteCode(email: string, purpose: CodePurpose): Promise<void>;
   passwordHashOf(id: string): Promise<string | null>;
   delete(id: string): Promise<void>;
+
+  // ---- admin ----
+  /** Find players by nickname or email (newest first); an empty query lists the most recently seen. */
+  search(query: string, limit: number): Promise<StaffUserRecord[]>;
+  setRole(id: string, role: Role): Promise<PublicUser | null>;
+  setDev(id: string, isDev: boolean): Promise<PublicUser | null>;
+  /** Remember when and from where the player was last seen (for IP bans). */
+  touch(id: string, ip: string | null): Promise<void>;
+  lastIpOf(id: string): Promise<string | null>;
 
   // ---- avatar picture ----
   setImage(id: string, image: { mime: string; data: Buffer }): Promise<PublicUser | null>;
@@ -111,12 +129,16 @@ export function createPrismaUserStore(prisma: PrismaClient): UserStore {
     avatar: string;
     isGuest: boolean;
     email?: string | null;
+    role?: string;
+    isDev?: boolean;
   }): PublicUser => ({
     id: u.id,
     nickname: u.nickname,
     avatar: u.avatar,
     isGuest: u.isGuest,
     ...(u.email ? { email: u.email } : {}),
+    ...(u.role === 'moderator' || u.role === 'admin' ? { role: u.role } : {}),
+    ...(u.isDev ? { isDev: true } : {}),
   });
   const find = async (id: string) => {
     const user = await prisma.user.findUnique({ where: { id } });
@@ -198,6 +220,51 @@ export function createPrismaUserStore(prisma: PrismaClient): UserStore {
       await prisma.user.deleteMany({ where: { id } });
     },
 
+    async search(query, limit) {
+      const q = query.trim();
+      const rows = await prisma.user.findMany({
+        where: q
+          ? {
+              OR: [
+                { nickname: { contains: q, mode: 'insensitive' } },
+                { email: { contains: q.toLowerCase() } },
+                { id: q },
+              ],
+            }
+          : {},
+        orderBy: [{ lastSeenAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
+        take: limit,
+      });
+      return rows.map((u) => ({
+        user: toPublic(u),
+        createdAt: u.createdAt.getTime(),
+        lastSeenAt: u.lastSeenAt?.getTime() ?? null,
+        lastIp: u.lastIp,
+      }));
+    },
+    async setRole(id, role) {
+      try {
+        return toPublic(await prisma.user.update({ where: { id }, data: { role } }));
+      } catch {
+        return null;
+      }
+    },
+    async setDev(id, isDev) {
+      try {
+        return toPublic(await prisma.user.update({ where: { id }, data: { isDev } }));
+      } catch {
+        return null;
+      }
+    },
+    async touch(id, ip) {
+      await prisma.user
+        .update({ where: { id }, data: { lastSeenAt: new Date(), ...(ip ? { lastIp: ip } : {}) } })
+        .catch(() => undefined);
+    },
+    async lastIpOf(id) {
+      return (await prisma.user.findUnique({ where: { id } }))?.lastIp ?? null;
+    },
+
     async setImage(id, image) {
       try {
         const row = await prisma.userImage.upsert({
@@ -206,7 +273,10 @@ export function createPrismaUserStore(prisma: PrismaClient): UserStore {
           update: { ...image, version: { increment: 1 }, updatedAt: new Date() },
         });
         return toPublic(
-          await prisma.user.update({ where: { id }, data: { avatar: imageAvatar(id, row.version) } }),
+          await prisma.user.update({
+            where: { id },
+            data: { avatar: imageAvatar(id, row.version) },
+          }),
         );
       } catch {
         return null;
@@ -262,7 +332,7 @@ export function createPrismaUserStore(prisma: PrismaClient): UserStore {
       return grouped
         .map((g) => ({
           userId: g.userId,
-          nickname: userMap.get(g.userId)?.nickname ?? '?',
+          nickname: userMap.get(g.userId) ? displayName(userMap.get(g.userId)!) : '?',
           avatar: userMap.get(g.userId)?.avatar ?? 'fox',
           games: g._count._all,
           wins: winMap.get(g.userId) ?? 0,
@@ -301,11 +371,16 @@ export function createMemoryUserStore(): UserStore {
   const codes = new Map<string, EmailCodeRecord>();
   const images = new Map<string, StoredImage>();
   const results: (ResultRow & { playedAt: number })[] = [];
+  const meta = new Map<
+    string,
+    { createdAt: number; lastSeenAt: number | null; ip: string | null }
+  >();
   const codeKey = (email: string, purpose: string) => `${purpose}:${email}`;
   return {
     async createGuest(profile) {
       const user: PublicUser = { id: randomUUID(), isGuest: true, ...profile };
       users.set(user.id, user);
+      meta.set(user.id, { createdAt: Date.now(), lastSeenAt: null, ip: null });
       return user;
     },
     get: async (id) => users.get(id) ?? null,
@@ -347,11 +422,53 @@ export function createMemoryUserStore(): UserStore {
     passwordHashOf: async (id) => passwords.get(id) ?? null,
     async delete(id) {
       users.delete(id);
+      meta.delete(id);
       passwords.delete(id);
       images.delete(id);
       for (let i = results.length - 1; i >= 0; i--)
         if (results[i]!.userId === id) results.splice(i, 1);
     },
+
+    async search(query, limit) {
+      const q = query.trim().toLowerCase();
+      return [...users.values()]
+        .filter(
+          (u) =>
+            !q ||
+            u.nickname.toLowerCase().includes(q) ||
+            u.email?.includes(q) ||
+            u.id === query.trim(),
+        )
+        .map((user) => {
+          const m = meta.get(user.id) ?? { createdAt: 0, lastSeenAt: null, ip: null };
+          return { user, createdAt: m.createdAt, lastSeenAt: m.lastSeenAt, lastIp: m.ip };
+        })
+        .sort((a, b) => (b.lastSeenAt ?? b.createdAt) - (a.lastSeenAt ?? a.createdAt))
+        .slice(0, limit);
+    },
+    async setRole(id, role) {
+      const existing = users.get(id);
+      if (!existing) return null;
+      const { role: _old, ...rest } = existing;
+      const updated: PublicUser = role === 'user' ? rest : { ...rest, role };
+      users.set(id, updated);
+      return updated;
+    },
+    async setDev(id, isDev) {
+      const existing = users.get(id);
+      if (!existing) return null;
+      const { isDev: _old, ...rest } = existing;
+      const updated: PublicUser = isDev ? { ...rest, isDev: true } : rest;
+      users.set(id, updated);
+      return updated;
+    },
+    async touch(id, ip) {
+      const m = meta.get(id);
+      if (!m) return;
+      m.lastSeenAt = Date.now();
+      if (ip) m.ip = ip;
+    },
+    lastIpOf: async (id) => meta.get(id)?.ip ?? null,
 
     async setImage(id, image) {
       const existing = users.get(id);
@@ -398,7 +515,7 @@ export function createMemoryUserStore(): UserStore {
           const u = users.get(id)!;
           return {
             userId: id,
-            nickname: u.nickname,
+            nickname: displayName(u),
             avatar: u.avatar,
             games: mine.length,
             wins: mine.filter((r) => r.rank === 1).length,
