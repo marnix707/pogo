@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { CHAT_MAX_LENGTH } from '@pogo/shared';
 import type { ChatMessage, Result } from '@pogo/shared';
-import { AvatarFace } from './AvatarFace';
+import { Avatar } from './ui';
 import { haptic } from '../lib/haptics';
 
 /** Message list + input. Used inline in the lobby and inside a sheet during games. */
@@ -59,18 +59,17 @@ export function ChatPanel({
               <div
                 key={m.id}
                 data-testid="chat-message"
-                className={`flex max-w-[88%] items-end gap-2 ${mine ? 'flex-row-reverse self-end' : 'self-start'}`}
+                className={`flex max-w-[92%] items-start gap-2 ${mine ? 'flex-row-reverse self-end' : 'self-start'}`}
               >
-                {!mine && (
-                  <span
-                    aria-hidden
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-edge/60 bg-panel2 text-sm"
-                  >
-                    <AvatarFace avatar={m.avatar} />
+                {/* The icon sits on the outer edge, a square two text lines high. */}
+                <Avatar avatar={m.avatar} size="chat" />
+                <div
+                  className={`flex min-w-0 flex-col gap-0.5 ${mine ? 'items-end' : 'items-start'}`}
+                >
+                  {/* The pixel font has no bold weight, so a 1px shadow of the same colour thickens it. */}
+                  <span className="text-sm font-bold leading-5 [text-shadow:1px_0_0_currentColor]">
+                    {m.nickname}
                   </span>
-                )}
-                <div className={mine ? 'text-right' : ''}>
-                  {!mine && <div className="label mb-0.5 text-[9px] text-muted">{m.nickname}</div>}
                   <div
                     className={`inline-block break-words rounded-md px-3 py-1.5 text-left text-sm ${
                       mine ? 'bg-accent text-accentink' : 'bg-panel2 text-ink'

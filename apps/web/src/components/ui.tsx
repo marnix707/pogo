@@ -60,10 +60,16 @@ export function Avatar({
   dim = false,
 }: {
   avatar: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'chat' | 'md' | 'lg';
   dim?: boolean;
 }) {
-  const sizes = { sm: 'h-7 w-7 text-base', md: 'h-11 w-11 text-2xl', lg: 'h-16 w-16 text-4xl' };
+  const sizes = {
+    sm: 'h-7 w-7 text-base',
+    // Two lines of chat text high (the name line and the first message line).
+    chat: 'h-10 w-10 text-xl',
+    md: 'h-11 w-11 text-2xl',
+    lg: 'h-16 w-16 text-4xl',
+  };
   return (
     <span
       aria-hidden
