@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Browser } from '@playwright/test';
+import { readyAll } from './karma-helpers';
 
 // Set by docker-compose from PROFANITY_FILTER (the dev server's filter setting).
 const filterOn = process.env.PROFANITY_FILTER !== 'off';
@@ -46,7 +47,7 @@ test('public games show up live in the lobby, can be joined from it, and quick m
 
   // Joining from the list puts the watcher into the room; the list entry updates for others.
   await listing.getByRole('button', { name: 'Join' }).click();
-  await expect(w.getByTestId('lobby-waiting')).toContainText('Hosty');
+  await expect(w.getByTestId('member-Hosty')).toBeVisible();
   await expect(h.getByTestId('member-Watcher')).toBeVisible();
 
   // A third player joins from the list too.
@@ -57,7 +58,7 @@ test('public games show up live in the lobby, can be joined from it, and quick m
     .filter({ hasText: "Hosty's game" })
     .getByRole('button', { name: 'Join' })
     .click();
-  await expect(third.page.getByTestId('lobby-waiting')).toBeVisible();
+  await expect(third.page.getByTestId('lobby-ready')).toBeVisible();
   await expect(h.getByTestId('member-Quicky')).toBeVisible();
   await expect(h.getByTestId('player-count')).toHaveText('3 / 6');
 
@@ -69,9 +70,7 @@ test('public games show up live in the lobby, can be joined from it, and quick m
   await third.context.close();
 });
 
-test('players chat in the lobby and during the game; profanity is masked', async ({
-  browser,
-}) => {
+test('players chat in the lobby and during the game; profanity is masked', async ({ browser }) => {
   const alice = await newPlayer(browser, 'Alice', 'fox');
   const bob = await newPlayer(browser, 'Bob', 'cat');
   const [a, b] = [alice.page, bob.page];
@@ -83,7 +82,7 @@ test('players chat in the lobby and during the game; profanity is masked', async
   await b.getByTestId('home-join').click();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
-  await expect(b.getByTestId('lobby-waiting')).toBeVisible();
+  await expect(b.getByTestId('lobby-ready')).toBeVisible();
 
   // Waiting-room chat, both directions.
   await a.getByTestId('chat-input').fill('hello Bob!');
@@ -101,7 +100,7 @@ test('players chat in the lobby and during the game; profanity is masked', async
   ).toBeVisible();
 
   // Start the game: the chat moves into a sheet behind a button, and keeps its history.
-  await a.getByTestId('lobby-start').click();
+  await readyAll(a, b);
   await expect(a.getByTestId('turn-banner')).toBeVisible();
   await expect(b.getByTestId('turn-banner')).toBeVisible();
   await expect(b.getByTestId('chat-badge')).toHaveCount(0);
@@ -173,7 +172,7 @@ test('the landing page: logo + name on top with leaderboard, profile and setting
   // Play lists the games; tapping one goes straight to its lobby (no menu in between).
   await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
-  await expect(page.getByTestId('lobby-start')).toBeVisible();
+  await expect(page.getByTestId('lobby-ready')).toBeVisible();
   await expect(page.getByTestId('sheet-backdrop')).toHaveCount(0);
   await me.context.close();
 });

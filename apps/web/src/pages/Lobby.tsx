@@ -8,6 +8,7 @@ import { TileButton } from '../components/TopBar';
 import { useToast } from '../components/Toast';
 import { getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
+import { useCountdown } from '../lib/useCountdown';
 
 const TIMER_CHOICES = [
   { value: 0, label: 'Off' },
@@ -74,6 +75,9 @@ export function Lobby({
 }) {
   const toast = useToast();
   const isHost = room.hostId === me;
+  const iAmReady = !!room.members.find((m) => m.id === me)?.ready;
+  const readyCount = room.members.filter((m) => m.ready).length;
+  const secondsToStart = useCountdown(room.startsAt, room.serverTime);
   const ui = getGameUi(room.gameId);
   const limits = getGame(room.gameId);
   // Same naming as the server's makeBots: the first free names from the list.
@@ -81,7 +85,6 @@ export function Lobby({
   const freeNames = BOT_NAMES.filter((n) => !taken.has(n.toLowerCase()));
   const botSeats = Array.from({ length: room.bots }, (_, i) => freeNames[i] ?? `Bot ${i + 1}`);
   const link = `${window.location.origin}/?join=${room.code}`;
-  const host = room.members.find((m) => m.id === room.hostId);
 
   // The chat is on screen here, so everything counts as read.
   useEffect(markRead, [markRead, messages.length]);
@@ -247,15 +250,12 @@ export function Lobby({
                     {m.id === me && <span className="font-normal text-muted"> (you)</span>}
                   </div>
                   <div className="label flex items-center gap-1.5 text-[10px] text-muted">
-                    {m.id === room.hostId ? (
+                    {m.id === room.hostId && (
                       <>
-                        <CrownIcon className="h-3.5 w-3.5 text-accent" /> Host
+                        <CrownIcon className="h-3.5 w-3.5 text-accent" /> Host ·
                       </>
-                    ) : m.connected ? (
-                      'Ready'
-                    ) : (
-                      'Reconnecting…'
                     )}
+                    {!m.connected ? 'Reconnecting…' : m.ready ? 'Ready ✓' : 'Not ready'}
                   </div>
                 </div>
                 {isHost && m.id !== me && (
@@ -301,25 +301,29 @@ export function Lobby({
         data-testid="lobby-bar"
       >
         <div className="pointer-events-auto mx-auto flex max-w-md flex-col gap-1">
-          {isHost ? (
-            <Button
-              data-testid="lobby-start"
-              disabled={!api.online || room.members.length + room.bots < room.minPlayers}
-              onClick={() => void api.start()}
+          <p className="label text-center text-onbg" data-testid="lobby-ready-count">
+            Ready {readyCount}/{room.members.length}
+            {room.members.length + room.bots < room.minPlayers &&
+              ` · Need ${room.minPlayers} players`}
+          </p>
+          {secondsToStart !== null && (
+            <p
+              className="text-center text-xl font-bold text-neon"
+              data-testid="lobby-countdown"
+              aria-live="polite"
             >
-              {room.members.length + room.bots < room.minPlayers
-                ? `Need ${room.minPlayers} players`
-                : room.members.length === 1
-                  ? room.bots > 0
-                    ? 'Start vs computer'
-                    : 'Start solo game'
-                  : 'Start game'}
-            </Button>
-          ) : (
-            <p className="label text-center text-onbg" data-testid="lobby-waiting">
-              Waiting for {host?.nickname ?? 'the host'} to start…
+              Starting in {secondsToStart}…
             </p>
           )}
+          <Button
+            data-testid="lobby-ready"
+            variant={iAmReady ? 'secondary' : 'primary'}
+            aria-pressed={iAmReady}
+            disabled={!api.online}
+            onClick={() => void api.ready(!iAmReady)}
+          >
+            {iAmReady ? (secondsToStart !== null ? 'Cancel' : 'Ready ✓ · tap to cancel') : 'Ready'}
+          </Button>
           <Button
             variant="ghost"
             data-testid="lobby-back"

@@ -23,6 +23,7 @@ const open: Client[] = [];
 
 beforeAll(async () => {
   const { app, close } = await buildApp({
+    startCountdownMs: 50,
     config: {
       nodeEnv: 'test',
       isProd: false,
@@ -161,9 +162,11 @@ describe('sockets', () => {
     expect(joined.ok).toBe(true);
     await A.until((r) => r?.members.length === 2);
 
-    // Only the host can start
-    expect((await call((ack) => B.client.emit('room:start', {}, ack))).ok).toBe(false);
-    expect((await call((ack) => A.client.emit('room:start', {}, ack))).ok).toBe(true);
+    // Nobody starts by hand: the game starts by itself once everybody is ready.
+    expect((await call((ack) => A.client.emit('room:ready', { ready: true }, ack))).ok).toBe(true);
+    await new Promise((r) => setTimeout(r, 120));
+    expect(A.box.latest?.status).toBe('lobby'); // Bob is not ready yet
+    expect((await call((ack) => B.client.emit('room:ready', { ready: true }, ack))).ok).toBe(true);
     const playing = await B.until((r) => r?.status === 'playing');
     expect(playing?.game?.currentPlayers).toEqual([ua.user.id]);
 

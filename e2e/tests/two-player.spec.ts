@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Browser, Page } from '@playwright/test';
+import { readyAll } from './karma-helpers';
 
 async function newPlayer(browser: Browser, nickname: string, avatar: string) {
   const context = await browser.newContext();
@@ -36,13 +37,17 @@ test('two players play a full Yatzy game, with a reconnect in the middle', async
   await b.getByTestId('home-join').click();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
-  await expect(b.getByTestId('lobby-waiting')).toContainText('Alice');
+  await expect(b.getByTestId('member-Alice')).toBeVisible();
   await expect(a.getByTestId('player-count')).toHaveText('2 / 6');
   await expect(a.getByTestId('member-Bob')).toBeVisible();
 
-  // Only the host can start.
-  await expect(b.getByTestId('lobby-start')).toHaveCount(0);
-  await a.getByTestId('lobby-start').click();
+  // Nobody starts by hand: the game starts by itself once both are ready (after a countdown).
+  await a.getByTestId('lobby-ready').click();
+  await expect(a.getByTestId('lobby-ready-count')).toHaveText('Ready 1/2');
+  await expect(b.getByTestId('member-Alice')).toContainText('Ready');
+  await b.getByTestId('lobby-ready').click();
+  await expect(a.getByTestId('lobby-countdown')).toBeVisible();
+  await expect(a.getByTestId('turn-banner')).toBeVisible({ timeout: 15_000 });
   await expect(a.getByTestId('turn-banner')).toHaveAttribute('data-my-turn', 'true');
   await expect(b.getByTestId('turn-banner')).toHaveAttribute('data-my-turn', 'false');
   await expect(b.getByTestId('turn-banner')).toContainText("Alice's turn");
@@ -92,8 +97,8 @@ test('two players play a full Yatzy game, with a reconnect in the middle', async
 
   // Rematch returns both to the lobby.
   await a.getByTestId('rematch').click();
-  await expect(a.getByTestId('lobby-start')).toBeVisible();
-  await expect(b.getByTestId('lobby-waiting')).toBeVisible();
+  await expect(a.getByTestId('lobby-ready')).toBeVisible();
+  await expect(b.getByTestId('lobby-ready')).toBeVisible();
 
   await alice.context.close();
   await bob.context.close();
@@ -140,7 +145,7 @@ test('the Yatzy scorecard, dice and buttons fit one phone screen without vertica
   await page.getByTestId('signin-submit').click();
   await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-yatzy').click();
-  await page.getByTestId('lobby-start').click();
+  await readyAll(page);
   await page.getByTestId('roll-button').click();
   await expect(page.getByTestId('die-0')).not.toHaveAttribute('data-value', '0');
 

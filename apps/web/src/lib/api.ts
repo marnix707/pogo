@@ -11,7 +11,8 @@ export interface RoomApi {
   leave(): Promise<Result<unknown>>;
   kick(userId: string): Promise<Result<unknown>>;
   updateSettings(patch: RoomSettingsInput): Promise<Result<unknown>>;
-  start(): Promise<Result<unknown>>;
+  /** Lobby: press or release Ready; the game starts by itself when everybody is ready. */
+  ready(ready: boolean): Promise<Result<unknown>>;
   rematch(toLobby?: boolean): Promise<Result<unknown>>;
   move(move: unknown): Promise<Result<unknown>>;
   sendChat(text: string): Promise<Result<unknown>>;

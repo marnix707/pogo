@@ -12,6 +12,7 @@ import {
   roomJoinSchema,
   roomKickSchema,
   roomQuickplaySchema,
+  roomReadySchema,
   roomSettingsSchema,
 } from '@pogo/shared';
 import type { ClientToServerEvents, PublicUser, Result, ServerToClientEvents } from '@pogo/shared';
@@ -141,7 +142,7 @@ export function registerSocketHandlers({
     route('room:leave', emptyPayloadSchema, () => manager.leave(user.id));
     route('room:kick', roomKickSchema, (p) => manager.kick(user.id, p.userId));
     route('room:settings', roomSettingsSchema, (p) => manager.updateSettings(user.id, p));
-    route('room:start', emptyPayloadSchema, () => manager.start(user.id));
+    route('room:ready', roomReadySchema, (p) => manager.setReady(user.id, p.ready));
     route('room:rematch', rematchSchema, (p) => manager.rematch(user.id, p.toLobby));
     route('room:quickplay', roomQuickplaySchema, (p) => manager.quickPlay(user, p.gameId));
     route('chat:send', chatSendSchema, (p) =>

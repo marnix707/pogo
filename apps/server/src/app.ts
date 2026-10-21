@@ -30,6 +30,8 @@ export interface AppDeps {
   autoStepMs?: number;
   /** How long computer players think before moving. */
   botMs?: number;
+  /** Countdown between everybody ready and the game starting (default 3s; tests shorten it). */
+  startCountdownMs?: number;
   /** Sends the emailed codes. Default: from `config.mailMode` (log in dev, SMTP in production). */
   mailer?: Mailer;
   /** Bans and the staff log. Default: in memory (tests). */
@@ -136,6 +138,7 @@ export async function buildApp(deps: AppDeps) {
       emptyTtlMs: config.roomTtlMs,
       autoStepMs: deps.autoStepMs ?? 1200,
       botMs: deps.botMs ?? config.botDelayMs,
+      startCountdownMs: deps.startCountdownMs,
     },
     defaultTurnTimeSec: config.turnTimeSec,
     maskText: config.profanityFilter ? maskProfanity : (text) => text,

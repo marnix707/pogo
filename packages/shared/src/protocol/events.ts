@@ -2,6 +2,7 @@ import type { GameResults } from '../game/types';
 import type {
   EmptyPayload,
   RematchInput,
+  RoomReadyInput,
   ChatSendInput,
   GameMoveInput,
   RoomQuickplayInput,
@@ -46,6 +47,8 @@ export interface RoomMemberView {
   left: boolean;
   /** A computer player. */
   bot: boolean;
+  /** Pressed Ready in the lobby (computer players always are). */
+  ready: boolean;
 }
 
 export interface RoomGameView {
@@ -71,6 +74,8 @@ export interface RoomView {
   turnTimeSec: number;
   status: RoomStatus;
   members: RoomMemberView[];
+  /** Server time (ms) at which the game starts by itself (everybody is ready), or null. */
+  startsAt: number | null;
   game?: RoomGameView;
   serverTime: number;
 }
@@ -115,7 +120,7 @@ export interface ClientToServerEvents {
   'room:leave': (payload: EmptyPayload, ack: Ack<null>) => void;
   'room:kick': (payload: RoomKickInput, ack: Ack<null>) => void;
   'room:settings': (payload: RoomSettingsInput, ack: Ack<RoomView>) => void;
-  'room:start': (payload: EmptyPayload, ack: Ack<RoomView>) => void;
+  'room:ready': (payload: RoomReadyInput, ack: Ack<RoomView>) => void;
   'room:rematch': (payload: RematchInput, ack: Ack<RoomView>) => void;
   'room:quickplay': (payload: RoomQuickplayInput, ack: Ack<RoomView>) => void;
   'game:move': (payload: GameMoveInput, ack: Ack<null>) => void;

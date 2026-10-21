@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { STRIP, readyUp, newPlayer, snapshot, takeTurn } from './karma-helpers';
+import { STRIP, readyAll, readyUp, newPlayer, snapshot, takeTurn } from './karma-helpers';
 
 test('three players play a complete Karma game through the UI', async ({ browser }) => {
   test.setTimeout(240_000);
@@ -20,7 +20,7 @@ test('three players play a complete Karma game through the UI', async ({ browser
     await p.getByTestId('home-join-submit').click();
   }
   await expect(alice.page.getByTestId('player-count')).toHaveText('3 / 5');
-  await alice.page.getByTestId('lobby-start').click();
+  await readyAll(...pages);
 
   // Swap phase: everyone acts at once. Alice swaps a hand card with a face-up card, then all get ready.
   for (const p of pages)
@@ -67,7 +67,7 @@ test('three players play a complete Karma game through the UI', async ({ browser
 
   // "Back to lobby" goes back to the lobby ("Play again" restarts at once).
   await alice.page.getByTestId('back-to-lobby').click();
-  await expect(alice.page.getByTestId('lobby-start')).toBeVisible();
+  await expect(alice.page.getByTestId('lobby-ready')).toBeVisible();
 
   for (const c of [alice, bob, cleo]) await c.context.close();
 });
@@ -155,7 +155,7 @@ test('cards slide when swapped and when played to the pile (unless motion is red
     await p.getByTestId('home-join-code').fill(code);
     await p.getByTestId('home-join-submit').click();
   }
-  await alice.page.getByTestId('lobby-start').click();
+  await readyAll(...pages);
   for (const p of pages)
     await expect(p.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
   await alice.page.waitForTimeout(300); // let the "first paint, no animation" window pass
@@ -213,7 +213,7 @@ test('tap selects, tapping again deselects, the Play button plays; Ready button 
   await b.getByTestId('home-join').click();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
-  await a.getByTestId('lobby-start').click();
+  await readyAll(a, b);
   for (const p of [a, b])
     await expect(p.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
 
@@ -315,7 +315,7 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
   await b.getByTestId('home-join').click();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
-  await a.getByTestId('lobby-start').click();
+  await readyAll(a, b);
   const tableCardWidth = async (p: Page) => (await p.getByTestId('my-up-0').boundingBox())!.width;
   const swapWidth = await tableCardWidth(a);
   for (const p of [a, b]) await readyUp(p);
@@ -399,7 +399,7 @@ test.fixme('a very long hand (after picking up piles) wraps into rows and every 
   await b.getByTestId('home-join').click();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
-  await a.getByTestId('lobby-start').click();
+  await readyAll(a, b);
   for (const p of [a, b]) await readyUp(p);
   for (const p of [a, b])
     await expect(p.getByTestId('karma-game')).toHaveAttribute('data-phase', 'play');

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Browser, Page } from '@playwright/test';
+import { readyAll } from './karma-helpers';
 
 async function newPlayer(browser: Browser, nickname: string) {
   const context = await browser.newContext();
@@ -74,7 +75,7 @@ test('a guest who finishes a solo Yatzy game is nudged to register', async ({ br
   const page = me.page;
   await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-yatzy').click();
-  await page.getByTestId('lobby-start').click();
+  await readyAll(page);
   for (let turn = 0; turn < 13; turn++) {
     await page.getByTestId('roll-button').click();
     await expect(page.getByTestId('die-0')).not.toHaveAttribute('data-value', '0');

@@ -22,6 +22,8 @@ export interface RoomLimits {
   autoStepMs: number;
   /** How long a computer player "thinks" before each move. */
   botMs: number;
+  /** Pause between everybody being ready and the game starting (default START_COUNTDOWN_MS). */
+  startCountdownMs?: number;
 }
 
 export interface RoomDeps {
@@ -58,6 +60,8 @@ export interface FinishedGame {
 }
 
 const CHAT_HISTORY_LIMIT = 100;
+/** After the last person is ready, the game starts this long later (anybody can cancel by un-readying). */
+export const START_COUNTDOWN_MS = 3000;
 
 interface Member {
   user: PublicUser;
@@ -67,6 +71,8 @@ interface Member {
   absentSince: number | null;
   /** A computer player: no socket, moves by itself. */
   bot?: boolean;
+  /** Pressed Ready in the lobby. */
+  ready?: boolean;
 }
 
 export interface RoomInit {
@@ -115,6 +121,8 @@ export class Room {
   /** When the game state last changed (computer players wait a moment after it). */
   private lastChangeAt = 0;
   private timer: ReturnType<typeof setTimeout> | undefined;
+  /** When the lobby starts the game by itself (everybody ready), or null. */
+  private startAt: number | null = null;
   private destroyed = false;
 
   constructor(
@@ -310,13 +318,47 @@ export class Room {
     this.options = options;
     if (patch.visibility !== undefined) this.visibility = patch.visibility;
     if (patch.turnTimeSec !== undefined) this.turnTimeSec = patch.turnTimeSec;
+    // Everybody has to confirm the new settings again.
+    for (const m of this.members) m.ready = false;
     this.changed();
     return ok(null);
   }
 
+  /** Lobby: press or release Ready. When everybody is ready a short countdown starts the game. */
+  setReady(userId: string, ready: boolean): Result<null> {
+    if (this.status !== 'lobby') return fail('The game has already started');
+    const member = this.members.find((m) => m.user.id === userId && !m.left && !m.bot);
+    if (!member) return fail('You are not in this room');
+    member.ready = ready;
+    this.changed();
+    return ok(null);
+  }
+
+  /** Everybody present is ready and there are enough players (computer players count as seats). */
+  private canAutoStart(): boolean {
+    if (this.status !== 'lobby') return false;
+    const people = this.members.filter((m) => !m.bot && !m.left);
+    if (people.length === 0) return false;
+    return (
+      people.every((m) => m.connected && m.ready) &&
+      people.length + this.bots >= this.game.minPlayers
+    );
+  }
+
+  private evaluateStart(): void {
+    if (this.canAutoStart()) this.startAt ??= this.deps.now() + (this.deps.limits.startCountdownMs ?? START_COUNTDOWN_MS);
+    else this.startAt = null;
+  }
+
+  /** Host-only start (used by the "play the computer" create flow and tests; the lobby uses Ready). */
   start(userId: string): Result<null> {
     if (userId !== this.hostId) return fail('Only the host can start the game');
+    return this.begin();
+  }
+
+  private begin(): Result<null> {
     if (this.status !== 'lobby') return fail('The game has already started');
+    this.startAt = null;
     if (this.bots > 0 && !this.game.supportsBots) {
       return fail(`${this.game.name} cannot be played against the computer`);
     }
@@ -352,6 +394,7 @@ export class Room {
     if (this.status !== 'finished') return fail('The game is not finished');
     // Back to the waiting room: players who left and the computer players go away (the setting stays).
     this.members = this.members.filter((m) => !m.left && !m.bot);
+    for (const m of this.members) m.ready = false;
     // The game may carry something over to the next one (e.g. a rule the winner picked).
     if (this.state && this.game.nextOptions)
       this.options = this.game.nextOptions(this.state, this.options);
@@ -536,6 +579,7 @@ export class Room {
         }
       }
     }
+    if (this.status === 'lobby' && this.startAt !== null) wakes.push(this.startAt);
     const botAt = this.botDue();
     if (botAt !== null) wakes.push(botAt);
     const action = this.actionDeadline();
@@ -577,6 +621,15 @@ export class Room {
       }
     }
 
+    if (this.status === 'lobby' && this.startAt !== null && now >= this.startAt) {
+      if (this.canAutoStart() && this.begin().ok) return;
+      // Could not start after all (e.g. someone dropped out): everybody has to ready up again.
+      for (const m of this.members) m.ready = false;
+      this.startAt = null;
+      this.changed();
+      return;
+    }
+
     const botAt = this.botDue();
     if (botAt !== null && now >= botAt) {
       this.playBots();
@@ -610,7 +663,9 @@ export class Room {
         connected: m.connected && !m.left,
         left: m.left,
         bot: !!m.bot,
+        ready: !!m.bot || !!m.ready,
       })),
+      startsAt: this.status === 'lobby' ? this.startAt : null,
       serverTime: this.deps.now(),
     };
     if (this.status === 'lobby') return base;
@@ -630,6 +685,7 @@ export class Room {
 
   /** Push fresh state to everyone present and re-arm timers. Call after any change. */
   private changed(): void {
+    if (this.status === 'lobby') this.evaluateStart();
     this.broadcast();
     this.schedule();
     this.deps.onChange(this);

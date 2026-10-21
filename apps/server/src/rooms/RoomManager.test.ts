@@ -800,3 +800,89 @@ describe('computer players', () => {
     expect(again.members.map((m) => m.nickname)).toEqual(['User1', 'Robo', 'Bolt']);
   });
 });
+
+describe('ready and auto start', () => {
+  const COUNTDOWN = 3_000;
+  const twoInLobby = (game = 'race') => {
+    const t = setup();
+    const room = t.must(t.manager.create(a, { gameId: game }));
+    t.must(t.manager.join(b, room.code));
+    return { ...t, code: room.code };
+  };
+
+  it('does not start until everybody is ready, then starts after the countdown', () => {
+    const { manager, lastRoom, must } = twoInLobby();
+    must(manager.setReady(a.id, true));
+    vi.advanceTimersByTime(60_000);
+    expect(lastRoom(a.id)?.status).toBe('lobby');
+    expect(lastRoom(a.id)?.startsAt).toBeNull();
+
+    must(manager.setReady(b.id, true));
+    const countdown = lastRoom(a.id);
+    expect(countdown?.members.map((m) => m.ready)).toEqual([true, true]);
+    expect(countdown!.startsAt! - countdown!.serverTime).toBe(COUNTDOWN);
+    vi.advanceTimersByTime(COUNTDOWN - 1);
+    expect(lastRoom(a.id)?.status).toBe('lobby');
+    vi.advanceTimersByTime(1);
+    expect(lastRoom(a.id)?.status).toBe('playing');
+  });
+
+  it('un-readying during the countdown cancels it', () => {
+    const { manager, lastRoom, must } = twoInLobby();
+    must(manager.setReady(a.id, true));
+    must(manager.setReady(b.id, true));
+    vi.advanceTimersByTime(1_000);
+    must(manager.setReady(b.id, false));
+    expect(lastRoom(a.id)?.startsAt).toBeNull();
+    vi.advanceTimersByTime(30_000);
+    expect(lastRoom(a.id)?.status).toBe('lobby');
+  });
+
+  it('a settings change resets everyone, and nobody can start by hand any more', () => {
+    const { manager, lastRoom, must } = twoInLobby();
+    must(manager.setReady(a.id, true));
+    must(manager.setReady(b.id, true));
+    must(manager.updateSettings(a.id, { turnTimeSec: 60 }));
+    expect(lastRoom(a.id)?.members.some((m) => m.ready)).toBe(false);
+    expect(lastRoom(a.id)?.startsAt).toBeNull();
+    vi.advanceTimersByTime(30_000);
+    expect(lastRoom(a.id)?.status).toBe('lobby');
+  });
+
+  it('a newcomer is not ready, so a running countdown stops', () => {
+    const { manager, lastRoom, must, code } = twoInLobby();
+    must(manager.setReady(a.id, true));
+    must(manager.setReady(b.id, true));
+    must(manager.join(c, code));
+    expect(lastRoom(a.id)?.startsAt).toBeNull();
+  });
+
+  it('starts when the only person who was not ready leaves', () => {
+    const { manager, lastRoom, must } = twoInLobby('yatzy'); // (Yatzy can be played alone)
+    must(manager.setReady(a.id, true));
+    manager.leave(b.id);
+    vi.advanceTimersByTime(COUNTDOWN);
+    expect(lastRoom(a.id)?.status).toBe('playing');
+  });
+
+  it('never starts below the minimum number of players; computers count as seats', () => {
+    const t = setup();
+    const room = t.must(t.manager.create(a, { gameId: 'karma' }));
+    t.must(t.manager.setReady(a.id, true));
+    vi.advanceTimersByTime(60_000);
+    expect(t.lastRoom(a.id)?.status).toBe('lobby');
+    t.must(t.manager.updateSettings(a.id, { bots: 1 }));
+    t.must(t.manager.setReady(a.id, true));
+    vi.advanceTimersByTime(COUNTDOWN);
+    expect(t.lastRoom(a.id)?.status).toBe('playing');
+    expect(room.code).toBeTruthy();
+  });
+
+  it('only works in the lobby', () => {
+    const { manager } = twoInLobby();
+    manager.setReady(a.id, true);
+    manager.setReady(b.id, true);
+    vi.advanceTimersByTime(COUNTDOWN);
+    expect(manager.setReady(a.id, false).ok).toBe(false);
+  });
+});

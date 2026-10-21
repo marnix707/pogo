@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { readyAll } from './karma-helpers';
 
 // The other specs use reduced motion (no tutorial); this one plays it for real.
 test('Karma tutorial shows on the first game only, can be skipped and replayed from the rules', async ({
@@ -18,7 +19,7 @@ test('Karma tutorial shows on the first game only, can be skipped and replayed f
   await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
   await page.getByRole('button', { name: 'More Computer players' }).click();
-  await page.getByTestId('lobby-start').click();
+  await readyAll(page);
 
   const tutorial = page.getByTestId('karma-tutorial');
   await expect(tutorial).toBeVisible();

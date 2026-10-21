@@ -16,6 +16,13 @@ export async function newPlayer(browser: Browser, nickname: string, avatar: stri
 // Cards in the fanned hand overlap, so tap the visible left strip, like a thumb would.
 export const STRIP = { position: { x: 6, y: 14 } };
 
+/** Lobby: everybody presses Ready; the game starts by itself after the countdown. */
+export async function readyAll(...pages: Page[]) {
+  for (const p of pages) await p.getByTestId('lobby-ready').click();
+  for (const p of pages)
+    await expect(p.getByTestId('lobby-ready')).toHaveCount(0, { timeout: 15_000 });
+}
+
 /** Press the Ready button (swap phase). */
 export async function readyUp(page: Page) {
   await page.getByTestId('karma-ready').click();

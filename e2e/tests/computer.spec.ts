@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { readyUp, newPlayer, snapshot, takeTurn } from './karma-helpers';
+import { readyAll, readyUp, newPlayer, snapshot, takeTurn } from './karma-helpers';
 
 /** Plays my turns (the computer plays its own) until the results are on screen. */
 /** Plays until the standings show; returns whether the winner's last-card reveal was seen on the way. */
@@ -58,18 +58,17 @@ test('a game tap opens the lobby: Yatzy can start solo, Karma needs 2 and offers
   const more = page.getByRole('button', { name: 'More Computer players' });
   await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-yatzy').click();
-  await expect(page.getByTestId('lobby-start')).toHaveText('Start solo game');
-  await expect(page.getByTestId('lobby-start')).toBeEnabled();
+  await expect(page.getByTestId('lobby-ready-count')).toHaveText('Ready 0/1');
+  await expect(page.getByTestId('lobby-ready')).toBeEnabled();
   await expect(more).toHaveCount(0);
   await page.getByTestId('lobby-leave').click();
 
   await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
-  await expect(page.getByTestId('lobby-start')).toContainText('Need 2 players');
-  await expect(page.getByTestId('lobby-start')).toBeDisabled();
+  await expect(page.getByTestId('lobby-ready-count')).toContainText('Need 2 players');
   for (let i = 0; i < 4; i++) await more.click();
   await expect(more).toBeDisabled(); // Karma seats at most 5 in total
-  await expect(page.getByTestId('lobby-start')).toHaveText('Start vs computer');
+  await expect(page.getByTestId('lobby-ready-count')).toHaveText('Ready 0/1');
   await page.getByTestId('lobby-leave').click();
   await me.context.close();
 });
@@ -87,7 +86,7 @@ test('a whole game against the computer, from one tap to the result, and a remat
 
   for (let i = 0; i < 1; i++)
     await page.getByRole('button', { name: 'More Computer players' }).click();
-  await page.getByTestId('lobby-start').click();
+  await readyAll(page);
 
   // Into the game: the computer sits at the table under its own name.
   await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
@@ -117,8 +116,8 @@ test('a whole game against the computer, from one tap to the result, and a remat
 
   // Back to lobby: the lobby with the computer still configured, and off we go again.
   await page.getByTestId('back-to-lobby').click();
-  await expect(page.getByTestId('lobby-start')).toHaveText('Start vs computer');
-  await page.getByTestId('lobby-start').click();
+  await expect(page.getByTestId('lobby-ready-count')).toHaveText('Ready 0/1');
+  await readyAll(page);
   await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
   await expect(page.getByTestId('seat-bot:1')).toContainText('Robo');
 
@@ -140,7 +139,7 @@ test('a four-player game against three computers ends with the ranking: 1st to 4
   await page.getByTestId('home-game-karma').click();
   for (let i = 0; i < 3; i++)
     await page.getByRole('button', { name: 'More Computer players' }).click();
-  await page.getByTestId('lobby-start').click();
+  await readyAll(page);
   await expect(page.getByTestId('seat-status-bot:3')).toHaveText('Ready ✓', { timeout: 20_000 });
   await readyUp(page);
   await playUntilResults(page);
@@ -167,7 +166,7 @@ test('with several computers the whole table fills up, each with its own name', 
   await page.getByTestId('home-game-karma').click();
   for (let i = 0; i < 3; i++)
     await page.getByRole('button', { name: 'More Computer players' }).click();
-  await page.getByTestId('lobby-start').click();
+  await readyAll(page);
   await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
   for (const [i, name] of ['Robo', 'Bolt', 'Pixel'].entries()) {
     await expect(page.getByTestId(`seat-bot:${i + 1}`)).toContainText(name);
@@ -186,13 +185,11 @@ test('a host can add a computer player in the lobby', async ({ browser }) => {
   await page.getByTestId('home-game-karma').click();
 
   // Karma needs two players; alone it cannot start...
-  await expect(page.getByTestId('lobby-start')).toBeDisabled();
-  await expect(page.getByTestId('lobby-start')).toContainText('Need 2 players');
+  await expect(page.getByTestId('lobby-ready-count')).toContainText('Need 2 players');
   // ...until a computer is added.
   await page.getByRole('button', { name: 'More Computer players' }).click();
-  await expect(page.getByTestId('lobby-start')).toHaveText('Start vs computer');
-  await expect(page.getByTestId('lobby-start')).toBeEnabled();
-  await page.getByTestId('lobby-start').click();
+  await expect(page.getByTestId('lobby-ready-count')).toHaveText('Ready 0/1');
+  await readyAll(page);
   await expect(page.getByTestId('seat-bot:1')).toContainText('Robo');
   await page.getByTestId('leave-game').click();
   await page.getByRole('dialog').getByRole('button', { name: 'Leave game' }).click();
@@ -220,7 +217,7 @@ test('party mode: the winner picks a rule that applies to the next game; epic ha
   await page.getByRole('button', { name: 'More Computer players' }).click();
   await page.getByTestId('karma-mode-party').click();
   await expect(page.getByTestId('karma-mode-party')).toHaveAttribute('aria-pressed', 'true');
-  await page.getByTestId('lobby-start').click();
+  await readyAll(page);
   await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
   await readyUp(page);
   await playUntilResults(page);
@@ -244,7 +241,7 @@ test('epic mode switches on every rule from the start', async ({ browser }) => {
   await page.getByTestId('karma-rule-echoThree').click();
   await expect(page.getByTestId('karma-rule-bubble')).toContainText('repeats the card beneath');
   await expect(page.getByTestId('karma-active-rules').locator('li')).toHaveCount(2);
-  await page.getByTestId('lobby-start').click();
+  await readyAll(page);
   await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
   await page.getByRole('button', { name: 'Rules' }).click();
   await expect(page.getByTestId('rules-extra').locator('ul > li')).toHaveCount(2);
