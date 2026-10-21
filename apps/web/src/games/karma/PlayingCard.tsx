@@ -1,12 +1,8 @@
 import { createContext, useContext, useLayoutEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import { karma } from '@pogo/shared';
-import { PixelSuit } from './PixelSuit';
+import { cardBackUrl, cardFaceUrl } from './cardArt';
 
-/** Ink and suit colours of the card faces; LINE is the near-black outline (same as `--c-line`). */
-const INK = '#1e2b3d';
-const RED = '#c14139';
-const LINE = '#101628';
 const GOLD = '#fda200';
 
 /** Where a card was last seen on screen (viewport coordinates). */
@@ -164,86 +160,37 @@ export function PlayingCard({
   });
 
   const showFace = !faceDown && card !== undefined;
-  const color = showFace && karma.isRedSuit(card) ? RED : INK;
-  const rank = showFace ? karma.RANK_LABEL[karma.rankOf(card)] : '';
-  const suit = showFace ? karma.suitOf(card) : 0;
-  const compact = size < 6.6; // too small for corner indices: show a big centred rank + suit
-
-  const content = showFace ? (
-    compact ? (
-      <span
-        className="flex h-full w-full flex-col items-center justify-center font-bold leading-none"
-        style={{ color }}
-      >
-        <span className="text-[2.7em]">{rank}</span>
-        <PixelSuit suit={suit} className="mt-[0.15em] text-[2.3em]" />
-      </span>
-    ) : (
-      <>
-        <span
-          className="absolute left-[0.45em] top-[0.3em] flex flex-col items-center font-bold leading-none"
-          style={{ color }}
-        >
-          <span className="text-[1.4em]">{rank}</span>
-          <PixelSuit suit={suit} className="mt-[0.1em] text-[1.15em]" />
-        </span>
-        <span
-          className="absolute inset-0 flex items-center justify-center text-[1.6em] leading-none"
-          style={{ color }}
-        >
-          <PixelSuit suit={suit} />
-        </span>
-        <span
-          className="absolute bottom-[0.3em] right-[0.45em] flex rotate-180 flex-col items-center font-bold leading-none"
-          style={{ color }}
-        >
-          <span className="text-[1.4em]">{rank}</span>
-          <PixelSuit suit={suit} className="mt-[0.1em] text-[1.15em]" />
-        </span>
-      </>
-    )
-  ) : null;
-
-  const faceStyle: CSSProperties = showFace
-    ? { background: '#f7f1e4', border: `0.2em solid ${LINE}` }
-    : {
-        // The back: a diamond-patterned blue with a gold frame inside the dark outline.
-        background:
-          'repeating-linear-gradient(45deg, #009cfd 0 0.45em, #008be3 0.45em 0.9em), #009cfd',
-        border: `0.2em solid ${LINE}`,
-        boxShadow: `inset 0 0 0 0.22em ${GOLD}`,
-      };
 
   // The outer element is what moves (layout + FLIP); the inner one carries the visual state
-  // (lift when selected, tilt, shadow) so those never register as "the card moved".
+  // (lift when selected, tilt, shadow) so those never register as "the card moved". The artwork
+  // has its own outline and rounded corners, so the shadow and the selection outline are
+  // drop-shadow filters that follow its shape (not a box).
   const outerStyle: CSSProperties = {
     fontSize: `${size}px`,
     width: '5em',
     height: '7em',
     ...style,
   };
+  const outline = selected
+    ? `drop-shadow(0.15em 0 0 ${GOLD}) drop-shadow(-0.15em 0 0 ${GOLD}) drop-shadow(0 0.15em 0 ${GOLD}) drop-shadow(0 -0.15em 0 ${GOLD}) drop-shadow(0 0.3em 0 rgba(16,22,40,0.7))`
+    : 'drop-shadow(0 0.2em 0 rgba(16,22,40,0.6))';
   const inner = (
     <span
-      className={`absolute inset-0 rounded-[0.55em] transition-transform duration-150 ${
-        selected ? 'card-wobble' : ''
-      }`}
+      className={`absolute inset-0 transition-transform duration-150 ${selected ? 'card-wobble' : ''}`}
       style={{
-        ...faceStyle,
         transform: `${selected ? 'translateY(-0.9em) ' : ''}rotate(${tilt}deg)`,
-        // (The back keeps its gold frame as an inset shadow, so the lift shadow is added to it.)
-        boxShadow: [
-          faceStyle.boxShadow,
-          selected
-            ? `0 0 0 0.25em ${GOLD}, 0 0.3em 0 0.1em rgba(16,22,40,0.7)`
-            : '0 0.2em 0 0 rgba(16,22,40,0.6)',
-        ]
-          .filter(Boolean)
-          .join(', '),
         // Unavailable cards are dimmed by 70% (the same as my hand while it is not my turn).
-        filter: dimmed ? 'brightness(0.3)' : undefined,
+        filter: `${dimmed ? 'brightness(0.3) ' : ''}${outline}`,
       }}
     >
-      {content}
+      <img
+        src={showFace ? cardFaceUrl(card) : cardBackUrl}
+        alt=""
+        draggable={false}
+        className="h-full w-full"
+        // Pixel art stays sharp when enlarged; downscaled below its native 45px it needs smoothing.
+        style={{ imageRendering: size * 5 >= 45 ? 'pixelated' : 'auto' }}
+      />
     </span>
   );
 

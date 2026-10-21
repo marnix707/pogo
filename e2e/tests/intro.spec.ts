@@ -14,7 +14,9 @@ test('opening: the stick waits alone, Pogo lands, then the wordmark and menu sli
   await page.getByTestId('signin-submit').click();
   await expect(page.getByTestId('pogo-stage')).toBeVisible();
   await page.screenshot({ path: 'test-results/intro-0-start.png' });
-  await expect(page.getByTestId('home-play')).toBeInViewport({ ratio: 0.01 }).catch(() => undefined);
+  await expect(page.getByTestId('home-play'))
+    .toBeInViewport({ ratio: 0.01 })
+    .catch(() => undefined);
   await page.waitForTimeout(1500);
   await page.screenshot({ path: 'test-results/intro-1-hopping.png' });
   await expect(page.getByTestId('home-wordmark')).toHaveClass(/wordmark-in/, { timeout: 15_000 });
