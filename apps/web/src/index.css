@@ -467,3 +467,30 @@ html.results-open {
 html.results-open .safe-top-scrim {
   background: rgb(var(--c-panel));
 }
+
+/* Home intro: the POGO letters pop in from nothing, then breathe by 5%. */
+@keyframes wordmark-pop {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+@keyframes wordmark-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+.wordmark-in {
+  animation:
+    wordmark-pop 480ms cubic-bezier(0.2, 1.2, 0.4, 1) both,
+    wordmark-breathe 3.6s ease-in-out 480ms infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wordmark-in { animation: none; }
+}
+/* Menu pieces that slide in from the top / bottom when Pogo lands. */
+.slide-top, .slide-bottom {
+  transition: transform 600ms cubic-bezier(0.2, 0.9, 0.3, 1.1), opacity 400ms;
+}
+.slide-top[data-in='false'] { transform: translateY(-160%); opacity: 0; pointer-events: none; }
+.slide-bottom[data-in='false'] { transform: translateY(160%); opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) {
+  .slide-top, .slide-bottom { transition: none; }
+}

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { AVATARS, AuthResponse, PublicRoomSummary, PublicUser } from '@pogo/shared';
+import { PogoStage, Wordmark, introDone } from '../components/PogoStage';
 import { InstallCard } from '../components/InstallCard';
 import { ArrowLeftIcon, LogoMark, SlidersIcon, TrophyIcon } from '../components/icons';
-import { RaisedColon } from '../components/Brand';
 import { LeaderboardSheet } from '../components/LeaderboardSheet';
 import { ProfileSheet } from '../components/ProfileSheet';
 import type { ProfileMode } from '../components/ProfileSheet';
@@ -103,6 +103,8 @@ export function Home({
     return () => window.removeEventListener('popstate', onPop);
   }, []);
   const swipe = useRef<{ x: number; y: number } | null>(null);
+  // Opening animation: the menu only slides in when Pogo lands on his stick (once per page load).
+  const [landed, setLanded] = useState(introDone);
   const [profileOpen, setProfileOpen] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
   const [profileMode, setProfileMode] = useState<ProfileMode>('main');
@@ -129,6 +131,10 @@ export function Home({
     if (code.trim().length >= 4) void run(api.join(code));
   }
 
+  // Whole-number pixel scales that fit the free height (wordmark above the stage).
+  const short = typeof window !== 'undefined' && window.innerHeight < 700;
+  const stageScale = short ? { frog: 4, word: 6 } : { frog: 5, word: 8 };
+
   const blocked = busy || !api.online;
 
   return (
@@ -147,14 +153,12 @@ export function Home({
         if (t.clientX - start.x > 70 && Math.abs(t.clientY - start.y) < 60) back();
       }}
     >
-      <header className="flex items-center gap-2.5 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
+      <header
+        data-in={landed}
+        className="slide-top flex items-center gap-2.5 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+1.25rem)]"
+      >
         <LogoMark className="h-11 w-11 shrink-0" />
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-xl font-bold uppercase leading-tight tracking-[0.12em] text-onbg">
-            <RaisedColon text="Po:go" />
-          </h1>
-          <div className="label truncate text-[10px] text-onbg/70">Play Online, GO!</div>
-        </div>
+        <div className="min-w-0 flex-1" />
         <TileButton
           onClick={() => setBoardOpen(true)}
           aria-label="Leaderboard"
@@ -183,8 +187,12 @@ export function Home({
       <main className="flex flex-1 flex-col gap-5 px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-3">
         {screen === 'menu' && (
           <>
-            <InstallCard variant="banner" />
-            <div className="mt-auto flex flex-col gap-4">
+            {landed && <InstallCard variant="banner" />}
+            <div className="flex flex-1 flex-col items-center justify-center gap-3">
+              <Wordmark shown={landed} width={stageScale.word * 29} />
+              <PogoStage scale={stageScale.frog} onLanded={() => setLanded(true)} />
+            </div>
+            <div data-in={landed} className="slide-bottom flex flex-col gap-4">
               <Button
                 data-testid="home-play"
                 className="!min-h-24 !text-3xl"
@@ -201,7 +209,7 @@ export function Home({
                 Join
               </Button>
             </div>
-            <p className="label text-center text-onbg/70">
+            <p data-in={landed} className="slide-bottom label text-center text-onbg/70">
               Playing as{' '}
               <span data-testid="home-nickname" className="text-onbg">
                 {user.nickname}
