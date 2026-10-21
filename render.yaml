@@ -73,7 +73,7 @@ services:
 
       # Gameplay timings (same defaults as .env.example)
       - key: TURN_TIME_SEC
-        value: '90'
+        value: '30'
       - key: DISCONNECT_GRACE_SEC
         value: '20'
       - key: ROOM_TTL_SEC

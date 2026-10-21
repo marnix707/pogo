@@ -36,7 +36,7 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       HOST_LAN_IPS: ${HOST_LAN_IPS:-}
-      TURN_TIME_SEC: ${TURN_TIME_SEC:-90}
+      TURN_TIME_SEC: ${TURN_TIME_SEC:-30}
       DISCONNECT_GRACE_SEC: ${DISCONNECT_GRACE_SEC:-20}
       ROOM_TTL_SEC: ${ROOM_TTL_SEC:-600}
       # Generous in dev so repeated e2e runs don't trip it; production default is 10.
