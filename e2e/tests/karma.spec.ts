@@ -72,9 +72,6 @@ test('three players play a complete Karma game through the UI', async ({ browser
   for (const c of [alice, bob, cleo]) await c.context.close();
 });
 
-/** Mirrors handRowsFor in KarmaGame.tsx. */
-const rowsFor = (n: number) => (n <= 8 ? 1 : n <= 12 ? 2 : Math.max(3, Math.ceil(n / 8)));
-
 test('the lobby can be filtered by game', async ({ browser }) => {
   const watcher = await newPlayer(browser, 'Filterer', 'owl');
   const hostA = await newPlayer(browser, 'KarmaHost', 'fox');
@@ -385,7 +382,7 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
 });
 
 // Needs voluntary pickups, which the UI no longer offers (pickup only when nothing can be played).
-test.fixme('a very long hand (after picking up piles) wraps into rows (2 from 9 cards, 3 from 13) and every card stays reachable', async ({
+test.fixme('a very long hand (after picking up piles) wraps into rows and every card stays reachable', async ({
   browser,
 }) => {
   test.setTimeout(180_000);
@@ -429,12 +426,13 @@ test.fixme('a very long hand (after picking up piles) wraps into rows (2 from 9 
     if (!acted) await a.waitForTimeout(50);
   }
 
-  // More than 8 cards wrap into extra rows instead of scrolling: nothing is cut off at the sides.
+  // A hand this long wraps into extra rows instead of scrolling: nothing is cut off at the sides.
   const cards = a.locator('[data-testid^=hand-card-]');
   const count = await cards.count();
   expect(count).toBeGreaterThanOrEqual(26);
   const hand = a.getByTestId('my-hand');
-  await expect(hand).toHaveAttribute('data-rows', String(rowsFor(count)));
+  // (Rows follow the 30% visible rule of handLayout.ts, unit-tested there.)
+  expect(Number(await hand.getAttribute('data-rows'))).toBeGreaterThanOrEqual(2);
   const viewport = a.viewportSize()!;
   const tops = new Map<number, number>();
   for (let i = 0; i < count; i++) {

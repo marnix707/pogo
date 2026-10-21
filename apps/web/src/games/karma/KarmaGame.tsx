@@ -9,6 +9,7 @@ import { useCountdown } from '../../lib/useCountdown';
 import type { GameUiProps } from '../types';
 import { DOUBLE_TAP_MS, planTap } from './selection';
 import { FourBurn } from './FourBurn';
+import { handLayout } from './handLayout';
 import { WinReveal } from './WinReveal';
 import {
   KarmaTutorial,
@@ -44,10 +45,6 @@ const MY_SLOT_OVERLAP = 0.7;
 /** Width of the timer + buttons column beside my table cards (w-[5.5rem] + gap). */
 const ACTION_COLUMN_PX = 96;
 
-/** More cards than this in my hand wrap into extra rows so every card stays visible and tappable. */
-/** Hand layers: one row up to 8 cards, two up to 12, three from 13 (then 8 per row at most). */
-export const handRowsFor = (n: number) =>
-  n <= 8 ? 1 : n <= 12 ? 2 : Math.max(3, Math.ceil(n / 8));
 /** How long the cards of a burn or a failed blind card stay visible on the pile before it resolves. */
 const GHOST_MS = 1100;
 /** A face-down card is flipped in the middle of the screen for this long (the turn takes 3.12s, then it stays ~0.4s). */
@@ -900,24 +897,21 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const finishRank = (id: string) => view.finishOrder.indexOf(id) + 1;
   const selCount = selDown !== null ? 1 : sel.length;
 
-  // The hand fans out: overlap just enough to fit its row, never hiding more than ~75% of a card.
-  // Past 8 cards it wraps into extra rows (each overlapping the one above by half a card).
-  const rowCount = handRowsFor(hand.length);
-  const perRow = Math.ceil(hand.length / rowCount);
+  // The hand fans out: cards overlap but always show at least MIN_VISIBLE of their width
+  // (handLayout.ts); when a row would show less, another row is added (each overlapping the one
+  // above by half a card).
+  const layout = handLayout(hand.length, handWidth, myFont);
+  const rowCount = layout.rows;
+  const perRow = layout.perRow;
   const handRows = Array.from({ length: rowCount }, (_, r) =>
     hand.slice(r * perRow, (r + 1) * perRow),
   );
   // After a pickup my new cards fly out of the pile one by one (quicker when there are many).
   const flingStep = Math.min(90, 700 / Math.max(1, hand.length));
   const flinging = lastEvent?.playerId === me && lastEvent.kind === 'pickup';
-  const handFont = myFont * (rowCount > 1 ? 0.85 : 1);
+  const handFont = layout.font;
   const cardW = handFont * 5;
   const rowStep = handFont * 7 * 0.5;
-  const stripFor = (n: number) =>
-    Math.max(
-      cardW * 0.24,
-      Math.min(cardW * 0.5, n > 1 ? (handWidth - 8 - cardW) / (n - 1) : cardW * 0.5),
-    );
 
   return (
     <CardFlipContext.Provider value={flipContext}>
@@ -1173,7 +1167,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                 }}
               >
                 {handRows.map((row, r) => {
-                  const strip = stripFor(row.length);
+                  const strip = layout.strip;
                   return (
                     <div
                       key={r}

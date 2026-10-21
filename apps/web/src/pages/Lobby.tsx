@@ -118,10 +118,9 @@ export function Lobby({
             </TileButton>
             <div className="min-w-0 flex-1">
               <h1 className="truncate text-xl font-bold uppercase leading-tight tracking-[0.12em]">
-                {ui?.emoji} {room.gameName}
+                {room.gameName}
               </h1>
               <div className="label flex items-center gap-2 text-[10px] text-muted">
-                Lobby
                 <span
                   data-testid="room-visibility"
                   className={`rounded border px-1.5 py-0.5 text-[9px] ${
