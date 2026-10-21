@@ -24,11 +24,21 @@ test('Karma tutorial shows on the first game only, can be skipped and replayed f
   await expect(tutorial).toBeVisible();
   await page.screenshot({ path: 'test-results/tutorial-1.png' });
   await expect(page.getByTestId('tutorial-caption')).toContainText('floating');
+  // Nothing advances by itself: still on step 0 a while later.
+  await page.waitForTimeout(3000);
+  await expect(tutorial).toHaveAttribute('data-step', '0');
+  // Next goes one step (not one chapter); so does a tap anywhere on the screen.
   await page.getByTestId('tutorial-next').click();
+  await expect(tutorial).toHaveAttribute('data-step', '1');
+  await expect(tutorial).toHaveAttribute('data-scene', '0');
+  await page.mouse.click(200, 120);
+  await expect(tutorial).toHaveAttribute('data-step', '2');
+  await page.getByTestId('tutorial-next').click();
+  await page.getByTestId('tutorial-next').click(); // step 4: the second scene starts
   await expect(tutorial).toHaveAttribute('data-scene', '1');
-  await page.getByTestId('tutorial-next').click();
-  await page.getByTestId('tutorial-next').click();
   await page.screenshot({ path: 'test-results/tutorial-4.png' });
+  for (let i = 0; i < 7; i++) await page.getByTestId('tutorial-next').click();
+  await expect(tutorial).toHaveAttribute('data-step', '11');
   await page.getByTestId('tutorial-next').click(); // "Got it!"
   await expect(tutorial).toHaveCount(0);
 

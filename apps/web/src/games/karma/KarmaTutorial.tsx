@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Button } from '../../components/ui';
 import { cardFaceUrl } from './cardArt';
@@ -62,7 +62,6 @@ interface Phase {
   arrow?: Arrow;
   /** A mock button on the stage. */
   button?: { label: string; pressed?: boolean; x: number; y: number };
-  ms: number;
 }
 interface Scene {
   title: string;
@@ -112,24 +111,20 @@ function swapScene(): Scene {
           'The three floating cards are your table cards. You can swap them for cards from your hand.',
         sprites: base(false),
         arrow: arrowAbove(COLS[1]!, FACE_UP_Y),
-        ms: 2600,
       },
       {
         caption: 'Tap a card in your hand…',
         sprites: base(false, { hand: 1 }),
         arrow: arrowUnder(COLS[1]!, HAND_Y),
-        ms: 1800,
       },
       {
         caption: '…then tap the floating card you want to trade it for.',
         sprites: base(false, { hand: 1, up: 1 }),
         arrow: arrowAbove(COLS[1]!, FACE_UP_Y),
-        ms: 1800,
       },
       {
         caption: 'They swap! Strong cards (K, A, 2, 10) are best kept on the table.',
         sprites: base(true),
-        ms: 2600,
       },
     ],
   };
@@ -151,13 +146,11 @@ function readyScene(): Scene {
         sprites: table,
         button: { label: 'Ready', x: 100, y: 170 },
         arrow: { x: 150, y: 170 - 34, dir: 'down' },
-        ms: 2200,
       },
       {
         caption: 'When everybody is ready, the game starts.',
         sprites: table,
         button: { label: 'Ready', pressed: true, x: 100, y: 170 },
-        ms: 2000,
       },
     ],
   };
@@ -187,18 +180,15 @@ function singleScene(): Scene {
         caption: 'On your turn, play a card as high as the top card of the pile, or higher.',
         sprites: [pile(card(6, 3)), ...hand()],
         arrow: arrowAbove(PILE.x, PILE.y),
-        ms: 2600,
       },
       {
         caption: 'Double-tap a card to throw it right away.',
         sprites: [pile(card(6, 3)), ...hand({ lift: true })],
         arrow: arrowUnder(COLS[1]!, HAND_Y),
-        ms: 2000,
       },
       {
         caption: 'Boom, it lands on the pile!',
         sprites: [pile(card(6, 3)), ...hand({ play: true })],
-        ms: 2000,
       },
     ],
   };
@@ -235,20 +225,17 @@ function multiScene(): Scene {
         caption: 'Holding more cards of the same rank? You can throw them together.',
         sprites: [pile(card(6, 3)), ...hand()],
         arrow: arrowUnder(COLS[2]!, HAND_Y),
-        ms: 2400,
       },
       {
         caption: 'Tap one: they are all selected. Then press Play.',
         sprites: [pile(card(6, 3)), ...hand({ sel: true })],
         button: play(),
         arrow: { x: 150, y: 250 - 34, dir: 'down' },
-        ms: 2200,
       },
       {
         caption: 'Both cards go on the pile. Nothing to play? Tap the pile to pick it up.',
         sprites: [pile(card(6, 3)), ...hand({ play: true })],
         button: play(true),
-        ms: 2800,
       },
     ],
   };
@@ -310,29 +297,18 @@ function MiniCard({ s }: { s: Sprite }) {
  * several). Self-contained, so it never depends on where the real cards are.
  */
 export function KarmaTutorial({ onDone }: { onDone: () => void }) {
-  const [scene, setScene] = useState(0);
-  const [phase, setPhase] = useState(0);
+  // One step at a time, no timers: every tap on the screen (or on Next) goes to the next step,
+  // crossing into the next scene when a scene is out of steps.
+  const [step, setStep] = useState(0);
+  let scene = 0;
+  let phase = step;
+  while (phase >= SCENES[scene]!.phases.length) phase -= SCENES[scene++]!.phases.length;
   const current = SCENES[scene]!;
   const p = current.phases[phase]!;
-  const last = scene === SCENES.length - 1;
+  const total = SCENES.reduce((n, sc) => n + sc.phases.length, 0);
+  const last = step === total - 1;
 
-  // Move on after the phase's time; the last scene replays until the player closes it.
-  useEffect(() => {
-    const t = setTimeout(() => {
-      if (phase < current.phases.length - 1) setPhase(phase + 1);
-      else if (!last) {
-        setScene(scene + 1);
-        setPhase(0);
-      } else setPhase(0);
-    }, p.ms);
-    return () => clearTimeout(t);
-  }, [scene, phase, current, p.ms, last]);
-
-  const next = () => {
-    if (last) return onDone();
-    setScene(scene + 1);
-    setPhase(0);
-  };
+  const next = () => (last ? onDone() : setStep(step + 1));
 
   return (
     <div
@@ -340,7 +316,9 @@ export function KarmaTutorial({ onDone }: { onDone: () => void }) {
       aria-label="How to play Karma"
       data-testid="karma-tutorial"
       data-scene={scene}
-      className="fixed inset-0 z-[80] flex flex-col items-center justify-center gap-3 bg-black/[.97] px-4 text-center text-white"
+      data-step={step}
+      onClick={next}
+      className="fixed inset-0 cursor-pointer z-[80] flex flex-col items-center justify-center gap-3 bg-black/[.97] px-4 text-center text-white"
     >
       <p className="label text-neon">
         {current.title} · {scene + 1}/{SCENES.length}
@@ -382,6 +360,8 @@ export function KarmaTutorial({ onDone }: { onDone: () => void }) {
         {p.caption}
       </p>
 
+      <p className="label text-xs text-white/60">Tap anywhere to continue</p>
+
       <div className="flex gap-1.5" aria-hidden>
         {SCENES.map((_, i) => (
           <span
@@ -393,11 +373,24 @@ export function KarmaTutorial({ onDone }: { onDone: () => void }) {
 
       <div className="mt-1 flex gap-3">
         {!last && (
-          <Button data-testid="tutorial-skip" variant="ghost" onClick={onDone}>
+          <Button
+            data-testid="tutorial-skip"
+            variant="ghost"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDone();
+            }}
+          >
             Skip
           </Button>
         )}
-        <Button data-testid="tutorial-next" onClick={next}>
+        <Button
+          data-testid="tutorial-next"
+          onClick={(e) => {
+            e.stopPropagation();
+            next();
+          }}
+        >
           {last ? 'Got it!' : 'Next'}
         </Button>
       </div>
