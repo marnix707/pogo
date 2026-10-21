@@ -15,7 +15,7 @@ import { play } from '../lib/sound';
 const MEDALS = ['🥇', '🥈', '🥉'];
 
 /** Podium bar heights (rem) for 1st, 2nd and 3rd, and when each rises. */
-const PODIUM_HEIGHT = ['9rem', '6.5rem', '5rem'];
+const PODIUM_HEIGHT = ['5.25rem', '3.75rem', '2.75rem'];
 const PODIUM_DELAY = ['1.1s', '0.55s', '0s'];
 
 /** The final standings: a podium for the top three, a list for everybody else. Full screen and scrollable. */
@@ -44,6 +44,11 @@ function ResultsPanel({
   sendMove: GameUiProps['sendMove'];
 }) {
   const Extra = extra;
+  // The status-bar strip and the home-indicator area outside the panel take its colour (see .results-open).
+  useEffect(() => {
+    document.documentElement.classList.add('results-open');
+    return () => document.documentElement.classList.remove('results-open');
+  }, []);
   const results = room.game?.results;
   if (!results) return null;
   const isHost = room.hostId === me;
@@ -59,13 +64,13 @@ function ResultsPanel({
       data-testid="results-panel"
       className="animate-slide-up fixed inset-0 z-40 overflow-y-auto bg-panel text-ink"
     >
-      <div className="mx-auto flex min-h-full max-w-lg flex-col gap-5 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+1.5rem)]">
-        <h2 className="text-center text-2xl font-bold uppercase tracking-[0.12em]">
+      <div className="mx-auto flex min-h-full max-w-lg flex-col gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+0.75rem)]">
+        <h2 className="text-center text-xl font-bold uppercase tracking-[0.12em]">
           {title ??
             (iWon ? '🎉 You won!' : `🏆 ${nameOf(best?.playerId ?? '')?.nickname ?? ''} wins!`)}
         </h2>
 
-        <ol className="flex items-end justify-center gap-2 pt-2" data-testid="podium">
+        <ol className="flex items-end justify-center gap-2" data-testid="podium">
           {podium.map((i) => {
             const r = rankings[i]!;
             const m = nameOf(r.playerId);
@@ -78,11 +83,11 @@ function ResultsPanel({
                 className="flex min-w-0 flex-1 flex-col items-center"
               >
                 <div
-                  className="podium-top flex w-full flex-col items-center gap-0.5 pb-1.5"
+                  className="podium-top flex w-full flex-col items-center pb-1"
                   style={{ animationDelay: `calc(${PODIUM_DELAY[i]} + 0.5s)` }}
                 >
-                  <span className="text-3xl leading-none">{MEDALS[r.rank - 1] ?? r.rank}</span>
-                  <span className="text-3xl leading-none" aria-hidden>
+                  <span className="text-2xl leading-none">{MEDALS[r.rank - 1] ?? r.rank}</span>
+                  <span className="text-2xl leading-none" aria-hidden>
                     {avatarEmoji(m?.avatar ?? '')}
                   </span>
                   <span
@@ -96,8 +101,12 @@ function ResultsPanel({
                   )}
                 </div>
                 <div
-                  className={`podium-bar flex w-full items-start justify-center rounded-t-lg border-2 border-b-0 pt-2 text-3xl font-bold ${
-                    mine ? 'border-accent bg-accent/25' : 'border-edge/50 bg-panel2'
+                  className={`podium-bar flex w-full items-start justify-center rounded-t-lg border-2 border-b-0 pt-1 text-2xl font-bold ${
+                    i === 0
+                      ? 'border-neon bg-neon text-accentink'
+                      : mine
+                        ? 'border-accent bg-accent/25'
+                        : 'border-edge/50 bg-panel2'
                   }`}
                   style={{ height: PODIUM_HEIGHT[i], animationDelay: PODIUM_DELAY[i] }}
                 >

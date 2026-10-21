@@ -459,3 +459,11 @@ button {
 .info-bubble {
   animation: info-bubble-in 180ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
 }
+
+/* While the results are open the strips outside the panel (status bar, home indicator) match its colour. */
+html.results-open {
+  background: rgb(var(--c-panel));
+}
+html.results-open .safe-top-scrim {
+  background: rgb(var(--c-panel));
+}

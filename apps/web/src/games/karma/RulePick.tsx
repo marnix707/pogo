@@ -1,6 +1,32 @@
 import { karma } from '@pogo/shared';
 import type { GameUiProps } from '../types';
 
+/** A chunky pixel switch (stepped corners, hard shadow): green ON with the knob right, red OFF with it left. */
+function PixelToggle({ on }: { on: boolean }) {
+  const steps =
+    'polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px))';
+  return (
+    <span
+      aria-hidden
+      className="relative block h-8 w-[3.75rem] shrink-0"
+      style={{ filter: 'drop-shadow(0 3px 0 rgb(0 0 0 / 0.55))' }}
+    >
+      <span
+        className={`absolute inset-0 flex items-center px-2 text-[10px] font-bold ${
+          on ? 'justify-start bg-[#74cca8] text-[#0c1424]' : 'justify-end bg-[#c14139] text-white'
+        }`}
+        style={{ clipPath: steps }}
+      >
+        {on ? 'ON' : 'OFF'}
+      </span>
+      <span
+        className="absolute top-1 h-6 w-6 bg-white transition-[left] duration-150"
+        style={{ clipPath: steps, left: on ? 'calc(100% - 1.75rem)' : '0.25rem' }}
+      />
+    </span>
+  );
+}
+
 /**
  * Party mode, shown in the results panel under the standings: the winner switches one extra rule on
  * or off for the next games; everybody else sees who is choosing, with the rules blacked out so it
@@ -35,20 +61,21 @@ export function RulePick({ room, me, sendMove }: GameUiProps) {
                 data-testid={`rule-choice-${id}`}
                 data-active={on}
                 disabled={!mine}
+                aria-pressed={on}
                 onClick={() => void sendMove({ type: 'pickRule', rule: id })}
-                className={`hud flex w-full items-center gap-3 rounded-lg border-2 p-3 text-left transition-[filter] ${
+                className={`hud flex w-full items-center gap-2.5 rounded-lg border-2 px-2.5 py-2 text-left transition-[filter] ${
                   mine
                     ? 'border-neon bg-panel active:scale-95'
                     : 'border-edge/20 bg-panel brightness-[0.2] grayscale'
                 }`}
               >
-                <span className="text-3xl leading-none">{rule.emoji}</span>
-                <span className="flex-1">
-                  <span className="block font-bold">{rule.name}</span>
-                  <span className="block text-xs text-muted">{rule.description}</span>
-                </span>
-                <span className="label shrink-0 rounded-full border border-edge/40 px-2.5 py-0.5 text-xs">
-                  {on ? 'On · switch off' : 'Off · switch on'}
+                <span className="text-2xl leading-none">{rule.emoji}</span>
+                <PixelToggle on={on} />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-bold leading-tight">{rule.name}</span>
+                  <span className="block text-[11px] leading-tight text-muted">
+                    {rule.description}
+                  </span>
                 </span>
               </button>
             </li>
