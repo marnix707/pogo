@@ -66,7 +66,7 @@ export function RulePick({ room, me, sendMove }: GameUiProps) {
                 className={`hud flex w-full items-center gap-2.5 rounded-lg border-2 px-2.5 py-2 text-left transition-[filter] ${
                   mine
                     ? 'border-neon bg-panel active:scale-95'
-                    : 'border-edge/20 bg-panel brightness-[0.2] grayscale'
+                    : 'border-edge/30 bg-panel opacity-60 grayscale'
                 }`}
               >
                 <span className="text-2xl leading-none">{rule.emoji}</span>

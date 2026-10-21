@@ -23,23 +23,26 @@ function Stepper({
   min,
   max,
   onChange,
+  disabled = false,
 }: {
   label: string;
   value: number;
   min: number;
   max: number;
   onChange: (v: number) => void;
+  /** Shown but greyed out (only the host changes it). */
+  disabled?: boolean;
 }) {
   const btn =
     'flex h-12 w-12 items-center justify-center rounded-md border-2 border-neon text-2xl font-bold text-neon disabled:border-edge/30 disabled:text-muted/40';
   return (
-    <div className="flex items-center justify-between">
+    <div className={`flex items-center justify-between ${disabled ? 'opacity-50' : ''}`}>
       <span className="font-semibold">{label}</span>
       <div className="flex items-center gap-3">
         <button
           className={btn}
           aria-label={`Fewer ${label}`}
-          disabled={value <= min}
+          disabled={disabled || value <= min}
           onClick={() => onChange(value - 1)}
         >
           −
@@ -48,7 +51,7 @@ function Stepper({
         <button
           className={btn}
           aria-label={`More ${label}`}
-          disabled={value >= max}
+          disabled={disabled || value >= max}
           onClick={() => onChange(value + 1)}
         >
           +
@@ -160,7 +163,7 @@ export function Lobby({
         </Card>
 
         {/* Block 1: the game mode (when the game has one) with the turn timer underneath. */}
-        {(ui?.LobbyOptions || (isHost && limits)) && (
+        {(ui?.LobbyOptions || limits) && (
           <section aria-label="Game settings">
             <SectionLabel>{ui?.LobbyOptions ? 'Game mode' : 'Settings'}</SectionLabel>
             <Card className="flex flex-col gap-5">
@@ -171,7 +174,7 @@ export function Lobby({
                   setOptions={(options) => void api.updateSettings({ options })}
                 />
               )}
-              {isHost && limits && (
+              {limits && (
                 <div className="flex items-center gap-3">
                   <div className="shrink-0 font-semibold">Turn timer</div>
                   <div className="grid flex-1 grid-cols-4 gap-1.5" data-testid="turn-timer">
@@ -179,8 +182,9 @@ export function Lobby({
                       <button
                         key={t.value}
                         aria-pressed={room.turnTimeSec === t.value}
+                        disabled={!isHost}
                         onClick={() => void api.updateSettings({ turnTimeSec: t.value })}
-                        className={`min-h-11 rounded-md border-2 px-0 text-sm font-bold ${
+                        className={`min-h-11 rounded-md border-2 px-0 text-sm font-bold disabled:opacity-50 ${
                           room.turnTimeSec === t.value
                             ? 'border-accent bg-accent text-accentink'
                             : 'border-edge/40 text-muted'
@@ -197,11 +201,12 @@ export function Lobby({
         )}
 
         {/* Block 2: public or private; a public lobby shows its code under the switch. */}
-        {isHost && limits && (
+        {limits && (
           <section aria-label="Visibility">
             <Card>
               <Toggle
                 label="Public room"
+                disabled={!isHost}
                 checked={room.visibility === 'public'}
                 onChange={(isPublic) =>
                   void api.updateSettings({ visibility: isPublic ? 'public' : 'private' })
@@ -212,11 +217,12 @@ export function Lobby({
         )}
 
         {/* Block 3: computer players. The table size is simply the game's maximum. */}
-        {isHost && limits?.supportsBots && (
+        {limits?.supportsBots && (
           <section aria-label="Computer players">
             <Card>
               <Stepper
                 label="Computer players"
+                disabled={!isHost}
                 value={room.bots}
                 min={0}
                 max={limits.maxPlayers - room.members.length}

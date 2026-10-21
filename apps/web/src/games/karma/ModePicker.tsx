@@ -71,7 +71,7 @@ export function ModePicker({ room, isHost, setOptions }: LobbyOptionsProps) {
                 if (isHost && mode !== m.id) setOptions({ mode: m.id });
                 toggle(`mode:${m.id}`);
               }}
-              className={`min-h-14 w-full rounded-md border-2 text-sm font-bold ${
+              className={`min-h-14 w-full rounded-md border-2 text-sm font-bold ${isHost ? '' : 'opacity-50'} ${
                 mode === m.id
                   ? 'border-accent bg-accent text-accentink'
                   : 'border-edge/40 text-muted'
@@ -100,7 +100,7 @@ export function ModePicker({ room, isHost, setOptions }: LobbyOptionsProps) {
                 <button
                   data-testid={`karma-rule-${id}`}
                   onClick={() => toggle(`rule:${id}`)}
-                  className="rounded-full border border-edge/40 px-2.5 py-1 text-xs"
+                  className={`rounded-full border border-edge/40 px-2.5 py-1 text-xs ${isHost ? '' : 'opacity-50'}`}
                 >
                   {r.emoji} {r.name}
                 </button>

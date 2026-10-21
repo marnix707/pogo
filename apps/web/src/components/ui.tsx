@@ -151,18 +151,22 @@ export function Toggle({
   hint,
   checked,
   onChange,
+  disabled = false,
 }: {
   label: string;
   hint?: ReactNode;
   checked: boolean;
   onChange: (value: boolean) => void;
+  /** Shown but greyed out and not tappable (e.g. a setting only the host can change). */
+  disabled?: boolean;
 }) {
   return (
     <button
       role="switch"
       aria-checked={checked}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
-      className="flex min-h-12 w-full items-center justify-between gap-4 text-left font-semibold"
+      className="flex min-h-12 w-full items-center justify-between gap-4 text-left font-semibold disabled:opacity-50"
     >
       <span>
         {label}

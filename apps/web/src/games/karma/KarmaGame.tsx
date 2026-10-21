@@ -1214,11 +1214,18 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                   {swapping && (
                     <Button
                       data-testid="karma-ready"
-                      className="!min-h-0 flex-1 !text-xl !leading-tight"
+                      className="relative !min-h-0 flex-1 overflow-hidden !text-xl !leading-tight"
                       disabled={busy}
                       onClick={() => void getReady()}
                     >
-                      Ready
+                      {/* The swap phase has a clock too: the same draining bar as the turn timer. */}
+                      <TimerDrain
+                        deadline={game.deadline}
+                        serverTime={room.serverTime}
+                        totalSec={room.turnTimeSec}
+                        urgent={urgent}
+                      />
+                      <span className="relative">Ready</span>
                     </Button>
                   )}
                   {view.phase === 'play' && (
