@@ -131,6 +131,8 @@ test('cards slide when swapped and when played to the pile (unless motion is red
   // The suite runs with reduced motion; this test wants the real thing.
   const make = async (name: string, avatar: string, reduce: 'reduce' | 'no-preference') => {
     const context = await browser.newContext({ reducedMotion: reduce });
+    // With motion the first-game tutorial would cover the table: mark it as already seen.
+    await context.addInitScript(() => localStorage.setItem('pogo.karmaTutorialSeen', '1'));
     const page = await context.newPage();
     await page.goto('/');
     await page.getByTestId('signin-nickname').fill(name);
