@@ -9,9 +9,56 @@ datasource db {
 }
 
 model User {
+  id           String        @id @default(uuid())
+  nickname     String
+  avatar       String
+  isGuest      Boolean       @default(true)
+  email        String?       @unique
+  passwordHash String?
+  registeredAt DateTime?
+  createdAt    DateTime      @default(now())
+  image        UserImage?
+  results      GameResult[]
+}
+
+/// An uploaded profile picture (small, resized by the client). Stored here because the host has no disk.
+model UserImage {
+  userId    String   @id
+  mime      String
+  data      Bytes
+  version   Int      @default(1)
+  updatedAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// A one-time emailed code (stored hashed) for registering or resetting a password.
+model EmailCode {
   id        String   @id @default(uuid())
-  nickname  String
-  avatar    String
-  isGuest   Boolean  @default(true)
+  email     String
+  purpose   String
+  codeHash  String
+  userId    String?
+  attempts  Int      @default(0)
+  expiresAt DateTime
   createdAt DateTime @default(now())
+
+  @@unique([email, purpose])
+}
+
+/// One row per human player per finished game.
+model GameResult {
+  id       String   @id @default(uuid())
+  userId   String
+  matchId  String
+  gameId   String
+  rank     Int
+  score    Int
+  players  Int
+  bots     Int
+  playedAt DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, matchId])
+  @@index([gameId, score])
+  @@index([userId, gameId])
 }

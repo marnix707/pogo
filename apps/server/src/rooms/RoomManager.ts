@@ -13,7 +13,7 @@ import type {
 } from '@pogo/shared';
 import { roomCreateSchema } from '@pogo/shared';
 import { Room } from './Room';
-import type { RoomLimits } from './Room';
+import type { FinishedGame, RoomLimits } from './Room';
 
 // No 0/O/1/I/L: codes are read aloud and typed on phones.
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -35,6 +35,8 @@ export interface RoomManagerDeps {
   emitHistory(userId: string, messages: ChatMessage[]): void;
   /** The set of public rooms (or their contents) may have changed. */
   onLobbyChanged(): void;
+  /** A game ended (stats are recorded here). */
+  onGameFinished(finished: FinishedGame): void;
   now?: () => number;
 }
 
@@ -81,6 +83,7 @@ export class RoomManager {
         emitChat: this.deps.emitChat,
         emitHistory: this.deps.emitHistory,
         onChange: () => this.deps.onLobbyChanged(),
+        onGameFinished: (finished) => this.deps.onGameFinished(finished),
         onMemberGone: (room, userId, reason) => {
           if (this.roomOfUser.get(userId) === room.code) this.roomOfUser.delete(userId);
           this.deps.emit(userId, null, reason);

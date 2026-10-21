@@ -7,7 +7,11 @@ import type { AnyGameDefinition, Rng } from '@pogo/shared';
 import type { AppConfig } from './config';
 import { createTokenService } from './auth/tokens';
 import type { UserStore } from './auth/userStore';
+import { registerAccountRoutes } from './http/accountRoutes';
 import { registerAuthRoutes } from './http/authRoutes';
+import { createLogMailer, createSmtpMailer } from './mail/mailer';
+import type { Mailer } from './mail/mailer';
+import { recordFinishedGame } from './stats/record';
 import { registerStatic } from './http/static';
 import { RoomManager } from './rooms/RoomManager';
 import { LOBBY_CHANNEL, registerSocketHandlers, userChannel } from './socket/handlers';
@@ -23,6 +27,8 @@ export interface AppDeps {
   autoStepMs?: number;
   /** How long computer players think before moving. */
   botMs?: number;
+  /** Sends the emailed codes. Default: from `config.mailMode` (log in dev, SMTP in production). */
+  mailer?: Mailer;
   logger?: boolean | object;
 }
 
@@ -56,6 +62,17 @@ export async function buildApp(deps: AppDeps) {
   registerAuthRoutes(app, deps.users, tokens, {
     guestLimitPerMin: config.guestSignupLimitPerMin,
     rejectProfaneNicknames: config.profanityFilter,
+  });
+  const logMailer = createLogMailer((line) => app.log.info(line));
+  const useLog = !deps.mailer && config.mailMode === 'log';
+  registerAccountRoutes(app, {
+    users: deps.users,
+    tokens,
+    mailer: deps.mailer ?? (useLog ? logMailer : createSmtpMailer(config.smtpUrl, config.mailFrom)),
+    secret: config.jwtSecret,
+    limitScale: config.isProd ? 1 : 100,
+    // Handy for tests and local development; never in production.
+    devMailbox: useLog && !config.isProd ? logMailer : undefined,
   });
   if (config.webDistDir) await registerStatic(app, config.webDistDir);
 
@@ -98,6 +115,11 @@ export async function buildApp(deps: AppDeps) {
       io.to(userChannel(userId)).emit('chat:history', messages);
     },
     onLobbyChanged: scheduleLobbyBroadcast,
+    onGameFinished: (finished) => {
+      recordFinishedGame(deps.users, finished).catch((err) =>
+        app.log.error({ err }, 'could not record game results'),
+      );
+    },
   });
 
   registerSocketHandlers({ io, manager, users: deps.users, tokens, log: app.log });

@@ -41,6 +41,19 @@ export interface RoomDeps {
   maskText(text: string): string;
   /** Something about the room changed (the public lobby list may need refreshing). */
   onChange(room: Room): void;
+  /** A game just ended: one entry per human player (computer players are not included). */
+  onGameFinished(finished: FinishedGame): void;
+}
+
+export interface FinishedGame {
+  gameId: string;
+  /** Unique per game played (a room's rematches get their own). */
+  matchId: string;
+  results: GameResults;
+  /** Human players only. */
+  humans: string[];
+  players: number;
+  bots: number;
 }
 
 const CHAT_HISTORY_LIMIT = 100;
@@ -94,6 +107,7 @@ export class Room {
   private readonly banned = new Set<string>();
   private state: unknown;
   private results: GameResults | undefined;
+  private gameNo = 0;
   private turnStartedAt = 0;
   private turnDeadline: number | null = null;
   private nextAutoAt: number | null = null;
@@ -306,6 +320,7 @@ export class Room {
 
     this.state = this.game.createInitialState(players, this.options, this.deps.rng);
     this.results = undefined;
+    this.gameNo += 1;
     this.status = 'playing';
     this.nextAutoAt = null;
     this.startTurnClock();
@@ -326,7 +341,8 @@ export class Room {
     this.status = 'lobby';
     this.turnDeadline = null;
     this.nextAutoAt = null;
-    if (!toLobby && this.game.restartOnRematch?.(this.options) && this.start(userId).ok) return ok(null);
+    if (!toLobby && this.game.restartOnRematch?.(this.options) && this.start(userId).ok)
+      return ok(null);
     this.changed();
     return ok(null);
   }
@@ -365,10 +381,27 @@ export class Room {
     if (this.game.isGameOver(this.state)) {
       this.results = this.game.getResults(this.state);
       this.status = 'finished';
+      this.reportFinished(this.results);
       this.turnDeadline = null;
       this.nextAutoAt = null;
     }
     this.changed();
+  }
+
+  private reportFinished(results: GameResults): void {
+    const humans = this.members.filter((m) => !m.bot).map((m) => m.user.id);
+    try {
+      this.deps.onGameFinished({
+        gameId: this.game.id,
+        matchId: `${this.code}-${this.gameNo}`,
+        results,
+        humans,
+        players: this.members.length,
+        bots: this.members.length - humans.length,
+      });
+    } catch {
+      // Recording stats must never break a game.
+    }
   }
 
   /** Auto-play for current players whose time ran out or who are absent. */

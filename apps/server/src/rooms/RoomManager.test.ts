@@ -36,6 +36,7 @@ function setup(maskText: (text: string) => string = maskProfanity) {
     emitChat: (userId, message) => chats.set(userId, [...(chats.get(userId) ?? []), message]),
     emitHistory: (userId, messages) =>
       histories.set(userId, [...(histories.get(userId) ?? []), messages]),
+    onGameFinished: () => {},
     onLobbyChanged: () => {
       lobby.changes++;
     },

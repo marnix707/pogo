@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { PublicRoomSummary, PublicUser } from '@pogo/shared';
 import { InstallCard } from '../components/InstallCard';
@@ -77,6 +77,22 @@ export function Home({
   onProfile: (profile: { nickname: string; avatar: (typeof AVATARS)[number] }) => Promise<void>;
 }) {
   const [screen, setScreen] = useState<'menu' | 'play' | 'join'>('menu');
+  // Play / Join are history entries, so the phone's back gesture or button returns to the menu
+  // (instead of leaving the app), and an edge swipe does the same inside an installed app.
+  const open = (next: 'play' | 'join') => {
+    history.pushState({ pogo: next }, '');
+    setScreen(next);
+  };
+  const back = () => {
+    if (history.state?.pogo) history.back();
+    else setScreen('menu');
+  };
+  useEffect(() => {
+    const onPop = () => setScreen((history.state?.pogo as 'play' | 'join' | undefined) ?? 'menu');
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  const swipe = useRef<{ x: number; y: number } | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
   const [name, setName] = useState(user.nickname);
@@ -106,7 +122,21 @@ export function Home({
   const blocked = busy || !api.online;
 
   return (
-    <div className="menu mx-auto flex min-h-dvh max-w-md flex-col">
+    <div
+      className="menu mx-auto flex min-h-dvh max-w-md flex-col"
+      onTouchStart={(e) => {
+        const t = e.touches[0];
+        // Only a swipe that starts at the left screen edge counts.
+        swipe.current = t && t.clientX < 28 ? { x: t.clientX, y: t.clientY } : null;
+      }}
+      onTouchEnd={(e) => {
+        const start = swipe.current;
+        const t = e.changedTouches[0];
+        swipe.current = null;
+        if (!start || !t || screen === 'menu') return;
+        if (t.clientX - start.x > 70 && Math.abs(t.clientY - start.y) < 60) back();
+      }}
+    >
       <header className="flex items-center gap-2.5 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
         <LogoMark className="h-11 w-11 shrink-0" />
         <div className="min-w-0 flex-1">
@@ -140,15 +170,15 @@ export function Home({
         </TileButton>
       </header>
 
-      <main className="flex flex-1 flex-col gap-5 px-4 pb-8 pt-3">
+      <main className="flex flex-1 flex-col gap-5 px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-3">
         {screen === 'menu' && (
           <>
             <InstallCard variant="banner" />
-            <div className="mt-6 flex flex-col gap-4">
+            <div className="mt-auto flex flex-col gap-4">
               <Button
                 data-testid="home-play"
                 className="!min-h-24 !text-3xl"
-                onClick={() => setScreen('play')}
+                onClick={() => open('play')}
               >
                 Play
               </Button>
@@ -156,7 +186,7 @@ export function Home({
                 data-testid="home-join"
                 variant="secondary"
                 className="!min-h-24 !text-3xl"
-                onClick={() => setScreen('join')}
+                onClick={() => open('join')}
               >
                 Join
               </Button>
@@ -174,7 +204,7 @@ export function Home({
           <button
             type="button"
             data-testid="home-back"
-            onClick={() => setScreen('menu')}
+            onClick={back}
             className="label flex items-center gap-2 self-start text-onbg"
           >
             <ArrowLeftIcon className="h-4 w-4" /> Back

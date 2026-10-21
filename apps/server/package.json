@@ -10,7 +10,7 @@
     "test": "vitest run --passWithNoTests",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node20 --format=esm --sourcemap --outfile=dist/index.js --external:fastify --external:@fastify/* --external:socket.io --external:@prisma/client --external:jose --external:zod"
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node20 --format=esm --sourcemap --outfile=dist/index.js --external:fastify --external:@fastify/* --external:socket.io --external:@prisma/client --external:jose --external:nodemailer --external:zod"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
@@ -20,12 +20,14 @@
     "@prisma/client": "^5.22.0",
     "fastify": "^5.1.0",
     "jose": "^5.9.6",
+    "nodemailer": "^6.9.16",
     "prisma": "^5.22.0",
     "socket.io": "^4.8.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20.17.6",
+    "@types/nodemailer": "^6.4.17",
     "esbuild": "^0.24.0",
     "pino-pretty": "^13.0.0",
     "socket.io-client": "^4.8.1",

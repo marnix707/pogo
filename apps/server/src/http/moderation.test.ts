@@ -19,6 +19,9 @@ const config = (profanityFilter: boolean) => ({
   guestSignupLimitPerMin: 1000,
   profanityFilter,
   botDelayMs: 1000,
+  mailMode: 'log' as const,
+  smtpUrl: '',
+  mailFrom: 'test',
 });
 
 const build = (profanityFilter: boolean) =>

@@ -16,6 +16,9 @@ const schema = z.object({
   GUEST_SIGNUP_LIMIT_PER_MIN: z.coerce.number().int().min(1).default(10),
   PROFANITY_FILTER: z.enum(['on', 'off']).default('on'),
   BOT_DELAY_MS: z.coerce.number().int().min(0).default(1000),
+  MAIL_MODE: z.enum(['log', 'smtp']).default('log'),
+  SMTP_URL: z.string().default(''),
+  MAIL_FROM: z.string().default('Po:go <no-reply@pogo.local>'),
 });
 
 export interface AppConfig {
@@ -42,6 +45,10 @@ export interface AppConfig {
   profanityFilter: boolean;
   /** How long a computer player "thinks" before each move. */
   botDelayMs: number;
+  /** `log` prints emailed codes to the server log (dev); `smtp` sends them through `smtpUrl`. */
+  mailMode: 'log' | 'smtp';
+  smtpUrl: string;
+  mailFrom: string;
 }
 
 const list = (value: string) =>
@@ -70,5 +77,8 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     guestSignupLimitPerMin: env.GUEST_SIGNUP_LIMIT_PER_MIN,
     profanityFilter: env.PROFANITY_FILTER === 'on',
     botDelayMs: env.BOT_DELAY_MS,
+    mailMode: env.MAIL_MODE,
+    smtpUrl: env.SMTP_URL,
+    mailFrom: env.MAIL_FROM,
   };
 }

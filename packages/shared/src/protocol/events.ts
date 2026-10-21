@@ -20,8 +20,11 @@ export interface HelloMessage {
 export interface PublicUser {
   id: string;
   nickname: string;
+  /** `fox`..., or `img:<version>` for an uploaded picture. */
   avatar: string;
   isGuest: boolean;
+  /** Only in your own profile. */
+  email?: string;
 }
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -120,4 +123,24 @@ export interface ClientToServerEvents {
 export interface AuthResponse {
   token: string;
   user: PublicUser;
+}
+
+/** One game's numbers for a player (GET /api/me/stats). */
+export interface GameStatsView {
+  gameId: string;
+  games: number;
+  wins: number;
+  bestScore: number;
+  avgRank: number;
+  /** The latest result is the player's best score (and not their first game). */
+  lastIsBest: boolean;
+}
+
+export interface LeaderboardRow {
+  userId: string;
+  nickname: string;
+  avatar: string;
+  games: number;
+  wins: number;
+  bestScore: number;
 }

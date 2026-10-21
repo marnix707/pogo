@@ -39,6 +39,37 @@ export const nicknameSchema = z
       .max(NICKNAME_MAX, `Nickname can be at most ${NICKNAME_MAX} characters`),
   );
 
+export const emailSchema = z
+  .string()
+  .max(254)
+  .transform((v) => v.trim().toLowerCase())
+  .pipe(z.string().email('Please enter a valid email address'));
+export const PASSWORD_MIN = 8;
+export const passwordSchema = z
+  .string()
+  .min(PASSWORD_MIN, `Password must be at least ${PASSWORD_MIN} characters`)
+  .max(200);
+export const codeSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{6}$/, 'Enter the 6-digit code');
+
+export const registerStartSchema = z.object({ email: emailSchema });
+export const registerVerifySchema = z.object({
+  email: emailSchema,
+  code: codeSchema,
+  password: passwordSchema,
+});
+export const loginSchema = z.object({ email: emailSchema, password: z.string().min(1).max(200) });
+export const resetStartSchema = z.object({ email: emailSchema });
+export const resetVerifySchema = z.object({
+  email: emailSchema,
+  code: codeSchema,
+  password: passwordSchema,
+});
+export const mergeSchema = z.object({ guestToken: z.string().min(10).max(2000) });
+export const deleteAccountSchema = z.object({ password: z.string().min(1).max(200) });
+
 export const profileSchema = z.object({
   nickname: nicknameSchema,
   avatar: z.enum(AVATARS),
