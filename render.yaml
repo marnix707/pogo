@@ -47,6 +47,15 @@ services:
       - key: BOT_DELAY_MS
         value: '1000'
 
+      # Emailed codes for registering. 'log' only prints them in the server log (no mail is sent);
+      # switch to 'smtp' and set SMTP_URL (e.g. smtps://user:pass@smtp.example.com) in the dashboard.
+      - key: MAIL_MODE
+        value: log
+      - key: SMTP_URL
+        sync: false
+      - key: MAIL_FROM
+        value: 'Po:go <no-reply@example.com>'
+
       # Gameplay timings (same defaults as .env.example)
       - key: TURN_TIME_SEC
         value: '90'
