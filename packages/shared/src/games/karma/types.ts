@@ -99,6 +99,14 @@ export interface KarmaPlayerView {
   out: boolean;
 }
 
+/** Once the game is decided, what the player who is left holds is shown to everyone. */
+export interface KarmaLeftovers {
+  playerId: string;
+  hand: Card[];
+  /** The real face-down cards (null = already played). */
+  faceDown: (Card | null)[];
+}
+
 export interface KarmaView {
   phase: KarmaPhase;
   players: KarmaPlayerView[];
@@ -112,4 +120,6 @@ export interface KarmaView {
   mode: KarmaMode;
   rules: string[];
   pick: KarmaPick | null;
+  /** The loser's remaining cards, only once the finish order is complete (never during play). */
+  leftovers: KarmaLeftovers | null;
 }

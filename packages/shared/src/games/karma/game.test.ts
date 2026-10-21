@@ -207,6 +207,46 @@ describe('player views (hidden information)', () => {
   });
 });
 
+describe('what the loser still holds is shown once the game is over', () => {
+  const t = () =>
+    table(
+      [
+        { hand: [card(5)] },
+        {
+          hand: [card(9), card(3)],
+          faceUp: [card(12), null, null],
+          faceDown: [card(6), null, card(14)],
+        },
+      ],
+      { pile: [card(2)] },
+    );
+
+  it('is hidden while the game is on', () => {
+    expect(game.getPlayerView(t(), 'p1').leftovers).toBeNull();
+    expect(game.getPlayerView(t(), 'p2').leftovers).toBeNull();
+  });
+
+  it('shows the real remaining cards of the last player, to everybody', () => {
+    const over = move(t(), 'p1', { type: 'play', cards: [card(5)] });
+    expect(over.phase).toBe('over');
+    for (const viewer of ['p1', 'p2']) {
+      expect(game.getPlayerView(over, viewer).leftovers).toEqual({
+        playerId: 'p2',
+        hand: [card(9), card(3)],
+        faceDown: [card(6), null, card(14)],
+      });
+    }
+  });
+
+  it('is empty when nobody has cards left', () => {
+    const none = table([{ out: true }, { out: true }], {
+      phase: 'over',
+      finishOrder: ['p1', 'p2'],
+    });
+    expect(game.getPlayerView(none, 'p1').leftovers).toBeNull();
+  });
+});
+
 describe('swap phase', () => {
   const swapState = () => {
     const s = table(

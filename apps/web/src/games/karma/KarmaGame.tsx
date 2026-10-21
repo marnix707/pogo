@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { karma } from '@pogo/shared';
 import type { RoomMemberView } from '@pogo/shared';
 import { Button, TimerDrain } from '../../components/ui';
@@ -10,6 +11,7 @@ import type { GameUiProps } from '../types';
 import { DOUBLE_TAP_MS, planTap } from './selection';
 import { FourBurn } from './FourBurn';
 import { handLayout } from './handLayout';
+import { REVEAL_FLIP_MS, leftoverCount, revealPlan } from './reveal';
 import { WinReveal } from './WinReveal';
 import {
   KarmaTutorial,
@@ -69,6 +71,45 @@ const boxOf = (el: Element | null | undefined) => {
   return { left: r.left, top: r.top, width: r.width, height: r.height };
 };
 
+/** A card that is turned over in place: the back shrinks to a line, then the face grows back. */
+function FlipReveal({
+  card,
+  size,
+  delay,
+  className = '',
+  style,
+  testId,
+}: {
+  card: Card;
+  size: number;
+  /** ms until the turn starts. */
+  delay: number;
+  className?: string;
+  style?: CSSProperties;
+  testId?: string;
+}) {
+  return (
+    <span
+      className={`relative inline-block shrink-0 ${className}`}
+      style={{ width: size * 5, height: size * 7, ...style }}
+      data-testid={testId}
+    >
+      <PlayingCard
+        faceDown
+        size={size}
+        className="card-back-out absolute left-0 top-0"
+        style={{ animationDelay: `${delay}ms` }}
+      />
+      <PlayingCard
+        card={card}
+        size={size}
+        className="card-face-in absolute left-0 top-0"
+        style={{ animationDelay: `${delay + REVEAL_FLIP_MS / 2}ms` }}
+      />
+    </span>
+  );
+}
+
 /** Three columns: a face-down card with a face-up card lying on top of it. */
 function TableSlots({
   faceUp,
@@ -79,6 +120,8 @@ function TableSlots({
   idPrefix,
   upState,
   downState,
+  revealDown,
+  revealAt,
 }: {
   faceUp: (Card | null)[];
   faceDown: boolean[];
@@ -99,6 +142,9 @@ function TableSlots({
     float?: boolean;
   };
   downState?: (slot: number) => { onClick?: () => void; selected?: boolean };
+  /** The game is over: the real face-down cards, turned over at `revealAt[slot]` ms. */
+  revealDown?: (Card | null)[];
+  revealAt?: (number | null)[];
 }) {
   const offset = font * 2.2;
   const columnGap = overlapEm ? -font * overlapEm : font * 0.6;
@@ -119,7 +165,16 @@ function TableSlots({
               marginLeft: slot === 0 ? 0 : `${columnGap}px`,
             }}
           >
-            {down && (
+            {down && revealDown?.[slot] != null && revealAt?.[slot] != null && (
+              <FlipReveal
+                card={revealDown[slot] as Card}
+                size={font}
+                delay={revealAt[slot] as number}
+                className="absolute left-0 top-0"
+                testId={idPrefix ? `${idPrefix}-revealed-${slot}` : undefined}
+              />
+            )}
+            {down && !(revealDown?.[slot] != null && revealAt?.[slot] != null) && (
               <PlayingCard
                 faceDown
                 size={font}
@@ -162,12 +217,17 @@ function HandFan({
   count,
   cardFont,
   maxWidth,
+  faces,
+  revealAt,
 }: {
   id: string;
   count: number;
   cardFont: number;
   /** The fan squeezes its cards together to stay within this width. */
   maxWidth: number;
+  /** The game is over: the real cards, turned over at `revealAt[i]` ms. */
+  faces?: Card[];
+  revealAt?: number[];
 }) {
   const cardW = cardFont * 5;
   const strip =
@@ -182,14 +242,24 @@ function HandFan({
       aria-label={`${count} cards in hand`}
       style={{ minHeight: `${cardFont * 7}px` }}
     >
-      {Array.from({ length: count }, (_, i) => (
-        <PlayingCard
-          key={i}
-          faceDown
-          size={cardFont}
-          style={{ marginLeft: i === 0 ? 0 : `-${cardW - strip}px` }}
-        />
-      ))}
+      {Array.from({ length: count }, (_, i) =>
+        faces?.[i] !== undefined && revealAt?.[i] !== undefined ? (
+          <FlipReveal
+            key={i}
+            card={faces[i] as Card}
+            size={cardFont}
+            delay={revealAt[i] as number}
+            style={{ marginLeft: i === 0 ? 0 : `-${cardW - strip}px` }}
+          />
+        ) : (
+          <PlayingCard
+            key={i}
+            faceDown
+            size={cardFont}
+            style={{ marginLeft: i === 0 ? 0 : `-${cardW - strip}px` }}
+          />
+        ),
+      )}
     </div>
   );
 }
@@ -205,6 +275,7 @@ function Seat({
   endgame,
   beside,
   pickedUp,
+  leftovers,
   seatRef,
 }: {
   player: karma.KarmaPlayerView;
@@ -220,8 +291,12 @@ function Seat({
   beside: boolean;
   /** This player just picked up the pile: how many cards (flashes the seat). */
   pickedUp: number | null;
+  /** What the loser still holds once the game is decided (turned over on their seat). */
+  leftovers?: karma.KarmaLeftovers | null;
   seatRef: (el: HTMLDivElement | null) => void;
 }) {
+  const shown = leftovers && leftovers.playerId === player.id ? leftovers : null;
+  const plan = shown ? revealPlan(shown) : null;
   const status = pickedUp
     ? `Picked up ${pickedUp}!`
     : player.out
@@ -254,6 +329,8 @@ function Seat({
           font={font}
           overlapEm={overlap ? 1.1 : 0}
           floatAll={endgame && !player.out}
+          revealDown={shown?.faceDown}
+          revealAt={plan?.down}
         />
         {beside && player.handCount > 0 && (
           <HandFan
@@ -261,6 +338,8 @@ function Seat({
             count={player.handCount}
             cardFont={font * 0.5}
             maxWidth={font * 8}
+            faces={shown?.hand}
+            revealAt={plan?.hand}
           />
         )}
       </div>
@@ -270,6 +349,8 @@ function Seat({
           count={player.handCount}
           cardFont={Math.max(2, font * 0.3)}
           maxWidth={font * (overlap ? 12.8 : 16.2)}
+          faces={shown?.hand}
+          revealAt={plan?.hand}
         />
       )}
       <div
@@ -893,6 +974,9 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const endgame = !!mine && view.phase === 'play' && view.stockCount === 0 && hand.length === 0;
   const tableFont = view.phase === 'swap' || endgame ? tableBig : tableBig * 0.62;
 
+  // The game is decided: if I am the one left, my face-down cards are turned over too.
+  const myLeft = view.leftovers && view.leftovers.playerId === me ? view.leftovers : null;
+  const myPlan = myLeft ? revealPlan(myLeft) : null;
   const opponents = view.players.filter((p) => p.id !== me);
   const finishRank = (id: string) => view.finishOrder.indexOf(id) + 1;
   const selCount = selDown !== null ? 1 : sel.length;
@@ -933,6 +1017,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
               overlap={opponentCount >= 3}
               beside={opponentCount === 1}
               pickedUp={pickup?.id === p.id ? pickup.n : null}
+              leftovers={view.leftovers}
               endgame={view.phase === 'play' && view.stockCount === 0 && p.handCount === 0}
               seatRef={(el) => {
                 if (el) seatEls.current.set(p.id, el);
@@ -1058,7 +1143,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
           </div>
         </div>
 
-        {mine && !finished && (
+        {mine && (
           <div className="border-t-2 border-edge/60 bg-panel px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-3 text-ink">
             <div className="mx-auto flex max-w-md flex-col gap-1">
               <div className="flex items-stretch gap-2">
@@ -1095,6 +1180,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                         ? { onClick: () => tapDown(slot), selected: selDown === slot }
                         : {}
                     }
+                    revealDown={myLeft?.faceDown}
+                    revealAt={myPlan?.down}
                   />
                 </div>
                 {/* Timer and Play fill all the room the table cards leave (they sit to the left), in

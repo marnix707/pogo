@@ -295,6 +295,18 @@ button {
   animation: card-float 1.8s ease-in-out infinite;
 }
 
+/* End of a Karma game: the loser's cards turn over in place (back shrinks away, face grows in). */
+@keyframes card-back-out {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+@keyframes card-face-in {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.card-back-out { animation: card-back-out 0.225s ease-in both; }
+.card-face-in { animation: card-face-in 0.225s ease-out both; }
+
 @keyframes tutorial-arrow {
   0%,
   100% {
@@ -328,6 +340,13 @@ button {
   .win-card,
   .win-label,
   .confetti,
+  .card-back-out {
+    animation: none !important;
+    opacity: 0;
+  }
+  .card-face-in {
+    animation: none !important;
+  }
   .res-head,
   .res-row,
   .res-bottom,

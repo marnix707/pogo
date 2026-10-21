@@ -4,6 +4,7 @@ import { KarmaGame } from './KarmaGame';
 import { KarmaRules } from './KarmaRules';
 import { ModePicker } from './ModePicker';
 import { RulePick } from './RulePick';
+import { leftoverCount, revealTotalMs } from './reveal';
 
 export const karmaUi: GameUi = {
   id: 'karma',
@@ -41,11 +42,14 @@ export const karmaUi: GameUi = {
       | {
           lastEvent?: { out: boolean; kind: string; playerId: string } | null;
           finishOrder: string[];
+          leftovers?: { hand: number[]; faceDown: (number | null)[] } | null;
         }
       | undefined;
+    // After a blind last card, the card's own reveal first; then the loser turns over what is left.
     const ev = view?.lastEvent;
-    if (!ev?.out || ev.kind !== 'blind') return 0;
-    return view!.finishOrder[0] === ev.playerId ? 5500 : 4000;
+    const blind =
+      ev?.out && ev.kind === 'blind' ? (view!.finishOrder[0] === ev.playerId ? 5500 : 4000) : 0;
+    return blind + revealTotalMs(leftoverCount(view?.leftovers));
   },
   resultsTitle(room, me) {
     const results = room.game?.results?.rankings;

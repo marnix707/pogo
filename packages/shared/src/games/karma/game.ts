@@ -448,6 +448,11 @@ function getPlayerView(state: KarmaState, playerId: string): KarmaView {
     ready: p.ready,
     out: p.out,
   }));
+  // The game is decided: the player who is left shows everything they still hold (turned over in the UI).
+  const decided = state.phase === 'over' || state.phase === 'pick';
+  const left = decided
+    ? state.players.find((p) => !p.out && (p.hand.length > 0 || p.faceDown.some((c) => c !== null)))
+    : undefined;
   return {
     phase: state.phase,
     players,
@@ -461,6 +466,9 @@ function getPlayerView(state: KarmaState, playerId: string): KarmaView {
     mode: state.mode,
     rules: [...state.rules],
     pick: state.pick,
+    leftovers: left
+      ? { playerId: left.id, hand: [...left.hand], faceDown: [...left.faceDown] }
+      : null,
   };
 }
 
