@@ -5,7 +5,7 @@ import { haptic } from '../lib/haptics';
 import { play } from '../lib/sound';
 import { CloseIcon } from './icons';
 
-type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
+type Variant = 'primary' | 'secondary' | 'danger' | 'gold' | 'ghost';
 
 const VARIANTS: Record<Variant, string> = {
   primary:
@@ -14,6 +14,8 @@ const VARIANTS: Record<Variant, string> = {
     'border-2 border-neon/70 bg-panel2 text-neon ring-2 ring-line shadow-[0_5px_0_0_rgb(var(--c-line))] active:translate-y-[3px] active:shadow-[0_2px_0_0_rgb(var(--c-line))]',
   danger:
     'bg-danger text-white ring-2 ring-line shadow-[0_5px_0_0_#8c2b26,0_5px_0_2px_rgb(var(--c-line))] active:translate-y-[3px] active:shadow-[0_2px_0_0_#8c2b26,0_2px_0_2px_rgb(var(--c-line))]',
+  // Gold-orange fill (the highlight colour) with dark text: the Home "Play" button.
+  gold: 'bg-neon text-accentink ring-2 ring-line shadow-[0_5px_0_0_#b36f00,0_5px_0_2px_rgb(var(--c-line))] active:translate-y-[3px] active:shadow-[0_2px_0_0_#b36f00,0_2px_0_2px_rgb(var(--c-line))]',
   ghost: 'bg-transparent text-onbg/80',
 };
 
@@ -145,7 +147,7 @@ export function Toggle({
   onChange,
 }: {
   label: string;
-  hint?: string;
+  hint?: ReactNode;
   checked: boolean;
   onChange: (value: boolean) => void;
 }) {

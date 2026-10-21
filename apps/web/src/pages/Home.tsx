@@ -196,6 +196,7 @@ export function Home({
             <div data-in={landed} className="slide-bottom flex flex-col gap-4">
               <Button
                 data-testid="home-play"
+                variant="gold"
                 className="!min-h-24 !text-3xl"
                 onClick={() => open('play')}
               >
