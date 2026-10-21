@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AuthResponse, Result, RoomSettingsInput } from '@pogo/shared';
 import { ChatBanner } from './components/ChatBanner';
+import { markIntroSeen } from './components/PogoStage';
 import { ConnectionBanner } from './components/ConnectionBanner';
 import { SettingsSheet } from './components/SettingsSheet';
 import { useToast } from './components/Toast';
@@ -78,7 +79,7 @@ export function Shell({
       leave: () => run(request('room:leave', {})),
       kick: (userId) => run(request('room:kick', { userId })),
       updateSettings: (patch: RoomSettingsInput) => run(request('room:settings', patch)),
-      start: () => run(request('room:start', {})),
+      ready: (ready) => run(request('room:ready', { ready })),
       rematch: (toLobby) => run(request('room:rematch', { toLobby })),
       move: (move) => run(request('game:move', { move })),
     }),
@@ -104,6 +105,11 @@ export function Shell({
 
   const [registerOpen, setRegisterOpen] = useState(false);
   const openSettings = () => setSettingsOpen(true);
+
+  // Going into a game room counts as having seen the opening animation (it never replays on return).
+  useEffect(() => {
+    if (room) markIntroSeen();
+  }, [room]);
 
   let screen;
   if (banned) {

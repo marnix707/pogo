@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { displayName } from '@pogo/shared';
 import type { AVATARS, AuthResponse, PublicRoomSummary, PublicUser } from '@pogo/shared';
-import { PogoStage, Wordmark, introDone } from '../components/PogoStage';
+import { PogoStage, Wordmark, introDone, markIntroSeen } from '../components/PogoStage';
 import { InstallCard } from '../components/InstallCard';
-import { ArrowLeftIcon, LogoMark, SlidersIcon, TrophyIcon } from '../components/icons';
+import { ArrowLeftIcon, SlidersIcon, TrophyIcon } from '../components/icons';
 import { LeaderboardSheet } from '../components/LeaderboardSheet';
 import { ProfileSheet } from '../components/ProfileSheet';
 import type { ProfileMode } from '../components/ProfileSheet';
@@ -91,6 +91,7 @@ export function Home({
   // Play / Join are history entries, so the phone's back gesture or button returns to the menu
   // (instead of leaving the app), and an edge swipe does the same inside an installed app.
   const open = (next: 'play' | 'join') => {
+    markIntroSeen();
     history.pushState({ pogo: next }, '');
     setScreen(next);
   };
@@ -134,7 +135,9 @@ export function Home({
 
   // Whole-number pixel scales that fit the free height (wordmark above the stage).
   const short = typeof window !== 'undefined' && window.innerHeight < 700;
-  const stageScale = short ? { frog: 2.8, word: 8 } : { frog: 3.5, word: 10 };
+  // (toad +25% and wordmark +10% over the first version: 2.8/3.5 and 8/10); short screens shrink with the height
+  const fit = short ? window.innerHeight / 700 : 1;
+  const stageScale = short ? { frog: 3.5 * fit, word: 8.8 * fit } : { frog: 4.375, word: 11 };
 
   const blocked = busy || !api.online;
 
@@ -158,7 +161,6 @@ export function Home({
         data-in={landed}
         className="slide-top flex items-center gap-2.5 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+1.25rem)]"
       >
-        <LogoMark className="h-11 w-11 shrink-0" />
         <div className="min-w-0 flex-1" />
         <TileButton
           onClick={() => setBoardOpen(true)}
@@ -189,7 +191,9 @@ export function Home({
         {screen === 'menu' && (
           <>
             {landed && <InstallCard variant="banner" />}
-            <div className="flex flex-1 flex-col items-center justify-center pb-20">
+            <div
+              className={`flex flex-1 flex-col items-center justify-center ${short ? 'pb-6' : 'pb-20 pt-8'}`}
+            >
               <Wordmark shown={landed} width={stageScale.word * 30} />
               <PogoStage scale={stageScale.frog} onLanded={() => setLanded(true)} />
             </div>
@@ -197,7 +201,7 @@ export function Home({
               <Button
                 data-testid="home-play"
                 variant="gold"
-                className="!min-h-24 !text-3xl"
+                className={`${short ? '!min-h-[4.25rem]' : '!min-h-24'} !text-3xl`}
                 onClick={() => open('play')}
               >
                 Play
@@ -205,7 +209,7 @@ export function Home({
               <Button
                 data-testid="home-join"
                 variant="secondary"
-                className="!min-h-24 !text-3xl"
+                className={`${short ? '!min-h-[4.25rem]' : '!min-h-24'} !text-3xl`}
                 onClick={() => open('join')}
               >
                 Join

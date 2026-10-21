@@ -87,9 +87,17 @@ function buildTimeline(): { intro: Step[]; loop: Step[] } {
 const reducedMotion = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/** The intro plays once per page load; coming back to the menu shows the frog already bouncing. */
+/**
+ * The intro plays once per page load. Leaving the menu on purpose (`markIntroSeen`: entering a game
+ * room, opening Play or Join) counts as having seen it, even mid-intro, so coming back never replays
+ * it. (A mere unmount does not count: the menu also remounts briefly while connecting.)
+ */
 let introPlayed = false;
 export const introDone = () => introPlayed || reducedMotion();
+/** Call when the player leaves the menu on purpose (enters a game room, opens Play or Join). */
+export const markIntroSeen = () => {
+  introPlayed = true;
+};
 
 /** Bounces after landing before he rests; after that he only jumps when tapped. */
 const AUTO_BOUNCES = 3;
@@ -202,7 +210,7 @@ export function PogoStage({ onLanded, scale }: { onLanded: () => void; scale: nu
         }),
       )}
       {!started && (
-        <p className="label absolute inset-x-0 bottom-0 animate-pulse text-center text-onbg">
+        <p className="label absolute inset-x-0 -top-10 animate-pulse text-center text-onbg">
           Tap to start
         </p>
       )}
