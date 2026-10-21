@@ -201,6 +201,7 @@ function Seat({
   overlap,
   endgame,
   beside,
+  pickedUp,
   seatRef,
 }: {
   player: karma.KarmaPlayerView;
@@ -214,15 +215,19 @@ function Seat({
   endgame: boolean;
   /** Room for the hand fan next to the table cards (one opponent); otherwise it goes underneath. */
   beside: boolean;
+  /** This player just picked up the pile: how many cards (flashes the seat). */
+  pickedUp: number | null;
   seatRef: (el: HTMLDivElement | null) => void;
 }) {
-  const status = player.out
-    ? `Out · #${finishRank}`
-    : phase === 'swap'
-      ? player.ready
-        ? 'Ready ✓'
-        : 'Swapping…'
-      : `${member?.bot ? 'CPU · ' : ''}${player.handCount} in hand`;
+  const status = pickedUp
+    ? `Picked up ${pickedUp}!`
+    : player.out
+      ? `Out · #${finishRank}`
+      : phase === 'swap'
+        ? player.ready
+          ? 'Ready ✓'
+          : 'Swapping…'
+        : `${member?.bot ? 'CPU · ' : ''}${player.handCount} in hand`;
   return (
     <div
       ref={seatRef}
@@ -231,7 +236,7 @@ function Seat({
       data-endgame={endgame}
       className={`hud flex min-w-0 flex-1 flex-col items-center gap-1 px-1 py-1.5 ${
         current ? '!border-accent' : ''
-      } ${endgame && !player.out ? 'animate-pulse !border-neon' : ''} ${player.out ? 'opacity-60' : ''} ${member && !member.connected ? 'grayscale' : ''}`}
+      } ${pickedUp ? 'animate-pulse !border-danger bg-danger/30' : ''} ${endgame && !player.out ? 'animate-pulse !border-neon' : ''} ${player.out ? 'opacity-60' : ''} ${member && !member.connected ? 'grayscale' : ''}`}
     >
       <div className="flex w-full items-center justify-center gap-1">
         <span className="text-sm" aria-hidden>
@@ -340,6 +345,10 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     by: string;
   } | null>(null);
   const revealTimer = useRef<ReturnType<typeof setTimeout>>();
+  /** Who just picked up the pile (flashes their seat for a moment). */
+  const [pickup, setPickup] = useState<{ id: string; n: number } | null>(null);
+  const pickupTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(pickupTimer.current), []);
   useEffect(() => () => clearTimeout(revealTimer.current), []);
   /** A beat after a reveal: moves stay locked until every animation has finished. */
   const [settling, setSettling] = useState(false);
@@ -531,6 +540,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         setReveal(null);
         setHiddenOut([]);
       }, BLIND_REVEAL_MS);
+    }
+    if (ev.kind === 'pickup') {
+      setPickup({ id: ev.playerId, n: ev.pickedUp });
+      clearTimeout(pickupTimer.current);
+      pickupTimer.current = setTimeout(() => setPickup(null), 2500);
     }
     setSel([]);
     setSelDown(null);
@@ -838,6 +852,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
               font={oppFont}
               overlap={opponentCount >= 3}
               beside={opponentCount === 1}
+              pickedUp={pickup?.id === p.id ? pickup.n : null}
               endgame={view.phase === 'play' && view.stockCount === 0 && p.handCount === 0}
               seatRef={(el) => {
                 if (el) seatEls.current.set(p.id, el);
@@ -941,7 +956,9 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
               aria-live="polite"
             >
               <p
-                className="min-h-[1.25em] text-sm font-bold leading-tight text-onbg"
+                className={`min-h-[1.25em] text-sm font-bold leading-tight ${
+                  notes.current?.ev.kind === 'pickup' ? 'text-danger' : 'text-onbg'
+                }`}
                 data-testid="karma-event-current"
               >
                 {notes.current && !reveal && !revealPending
