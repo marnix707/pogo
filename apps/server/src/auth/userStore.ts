@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
-import { displayName } from '@pogo/shared';
+import { BOT_AVATAR, displayName } from '@pogo/shared';
 import type { PublicUser, Role } from '@pogo/shared';
 
 export interface EmailCodeRecord {
@@ -134,7 +134,8 @@ export function createPrismaUserStore(prisma: PrismaClient): UserStore {
   }): PublicUser => ({
     id: u.id,
     nickname: u.nickname,
-    avatar: u.avatar,
+    // The robot is for computer players only; accounts that picked it earlier get the fox.
+    avatar: u.avatar === BOT_AVATAR ? 'fox' : u.avatar,
     isGuest: u.isGuest,
     ...(u.email ? { email: u.email } : {}),
     ...(u.role === 'moderator' || u.role === 'admin' ? { role: u.role } : {}),

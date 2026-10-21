@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { getGame } from '@pogo/shared';
+import { BOT_AVATAR, BOT_NAMES, getGame } from '@pogo/shared';
 import type { ChatMessage, RoomView } from '@pogo/shared';
 import { ArrowLeftIcon, CrownIcon, SlidersIcon } from '../components/icons';
 import { ChatPanel } from '../components/ChatPanel';
@@ -12,9 +12,8 @@ import type { RoomApi } from '../lib/api';
 const TIMER_CHOICES = [
   { value: 0, label: 'Off' },
   { value: 30, label: '30s' },
-  { value: 60, label: '1m' },
+  { value: 60, label: '60s' },
   { value: 90, label: '90s' },
-  { value: 120, label: '2m' },
 ];
 
 function Stepper({
@@ -77,6 +76,10 @@ export function Lobby({
   const isHost = room.hostId === me;
   const ui = getGameUi(room.gameId);
   const limits = getGame(room.gameId);
+  // Same naming as the server's makeBots: the first free names from the list.
+  const taken = new Set(room.members.map((m) => m.nickname.toLowerCase()));
+  const freeNames = BOT_NAMES.filter((n) => !taken.has(n.toLowerCase()));
+  const botSeats = Array.from({ length: room.bots }, (_, i) => freeNames[i] ?? `Bot ${i + 1}`);
   const link = `${window.location.origin}/?join=${room.code}`;
   const host = room.members.find((m) => m.id === room.hostId);
 
@@ -145,79 +148,80 @@ export function Lobby({
           </div>
         </Card>
 
-        {isHost && limits && (
-          <section aria-label="Settings">
-            <SectionLabel>Settings</SectionLabel>
+        {/* Block 1: the game mode (when the game has one) with the turn timer underneath. */}
+        {(ui?.LobbyOptions || (isHost && limits)) && (
+          <section aria-label="Game settings">
+            <SectionLabel>{ui?.LobbyOptions ? 'Game mode' : 'Settings'}</SectionLabel>
             <Card className="flex flex-col gap-5">
+              {ui?.LobbyOptions && (
+                <ui.LobbyOptions
+                  room={room}
+                  isHost={isHost}
+                  setOptions={(options) => void api.updateSettings({ options })}
+                />
+              )}
+              {isHost && limits && (
+                <div className="flex items-center gap-3">
+                  <div className="shrink-0 font-semibold">Turn timer</div>
+                  <div className="grid flex-1 grid-cols-4 gap-1.5" data-testid="turn-timer">
+                    {TIMER_CHOICES.map((t) => (
+                      <button
+                        key={t.value}
+                        aria-pressed={room.turnTimeSec === t.value}
+                        onClick={() => void api.updateSettings({ turnTimeSec: t.value })}
+                        className={`min-h-11 rounded-md border-2 px-0 text-sm font-bold ${
+                          room.turnTimeSec === t.value
+                            ? 'border-accent bg-accent text-accentink'
+                            : 'border-edge/40 text-muted'
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </Card>
+          </section>
+        )}
+
+        {/* Block 2: public or private; a public lobby shows its code under the switch. */}
+        {isHost && limits && (
+          <section aria-label="Visibility">
+            <Card>
               <Toggle
                 label="Public room"
-                hint="Show in the lobby so anyone can join"
+                hint={
+                  room.visibility === 'public' ? (
+                    <span
+                      data-testid="room-code"
+                      // Selecting the code to copy it must not flip the switch around it.
+                      onClick={(e) => e.stopPropagation()}
+                      className="select-all text-2xl font-bold tracking-[0.2em] text-neon"
+                    >
+                      {room.code}
+                    </span>
+                  ) : undefined
+                }
                 checked={room.visibility === 'public'}
                 onChange={(isPublic) =>
                   void api.updateSettings({ visibility: isPublic ? 'public' : 'private' })
                 }
               />
-              {/* Under the switch: a public lobby shows its code, a private one hides it. */}
-              {room.visibility === 'public' && (
-                <div className="-mt-2 flex items-center justify-between gap-3">
-                  <span className="font-semibold">Room code</span>
-                  <span
-                    data-testid="room-code"
-                    className="select-all text-2xl font-bold tracking-[0.2em] text-neon"
-                  >
-                    {room.code}
-                  </span>
-                </div>
-              )}
-              {limits.supportsBots && (
-                <Stepper
-                  label="Computer players"
-                  value={room.bots}
-                  min={0}
-                  max={limits.maxPlayers - room.members.length}
-                  onChange={(bots) => void api.updateSettings({ bots })}
-                />
-              )}
-              {limits.maxPlayers > limits.minPlayers && (
-                <Stepper
-                  label="Max players"
-                  value={room.maxPlayers}
-                  min={Math.max(limits.minPlayers, room.members.length)}
-                  max={limits.maxPlayers}
-                  onChange={(maxPlayers) => void api.updateSettings({ maxPlayers })}
-                />
-              )}
-              <div>
-                <div className="mb-2 font-semibold">Turn timer</div>
-                <div className="grid grid-cols-5 gap-2">
-                  {TIMER_CHOICES.map((t) => (
-                    <button
-                      key={t.value}
-                      aria-pressed={room.turnTimeSec === t.value}
-                      onClick={() => void api.updateSettings({ turnTimeSec: t.value })}
-                      className={`min-h-11 rounded-md border-2 text-sm font-bold ${
-                        room.turnTimeSec === t.value
-                          ? 'border-accent bg-accent text-accentink'
-                          : 'border-edge/40 text-muted'
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </Card>
           </section>
         )}
 
-        {ui?.LobbyOptions && (
-          <section aria-label="Game mode">
-            <SectionLabel>Game mode</SectionLabel>
+        {/* Block 3: computer players. The table size is simply the game's maximum. */}
+        {isHost && limits?.supportsBots && (
+          <section aria-label="Computer players">
             <Card>
-              <ui.LobbyOptions
-                room={room}
-                isHost={isHost}
-                setOptions={(options) => void api.updateSettings({ options })}
+              <Stepper
+                label="Computer players"
+                value={room.bots}
+                min={0}
+                max={limits.maxPlayers - room.members.length}
+                onChange={(bots) => void api.updateSettings({ bots })}
               />
             </Card>
           </section>
@@ -227,7 +231,7 @@ export function Lobby({
           <SectionLabel
             right={
               <span data-testid="player-count" className="text-onbg">
-                {room.members.length} / {room.maxPlayers}
+                {room.members.length + room.bots} / {room.maxPlayers}
               </span>
             }
           >
@@ -266,6 +270,20 @@ export function Lobby({
                     Remove
                   </button>
                 )}
+              </li>
+            ))}
+            {/* Computer players take a seat when the game starts; they already show here. */}
+            {botSeats.map((name, i) => (
+              <li
+                key={`bot-${i}`}
+                data-testid={`bot-seat-${i + 1}`}
+                className="hud flex items-center gap-3 px-3 py-2.5"
+              >
+                <Avatar avatar={BOT_AVATAR} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-bold">{name}</div>
+                  <div className="label text-[10px] text-muted">Computer</div>
+                </div>
               </li>
             ))}
           </ul>

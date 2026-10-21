@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+/** The icons a person can pick. The robot is reserved for computer players (`BOT_AVATAR`). */
 export const AVATARS = [
   'fox',
   'cat',
@@ -7,7 +8,6 @@ export const AVATARS = [
   'frog',
   'owl',
   'octopus',
-  'robot',
   'unicorn',
   'penguin',
   'lion',
