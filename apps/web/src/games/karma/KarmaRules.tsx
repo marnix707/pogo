@@ -1,5 +1,6 @@
 import { karma } from '@pogo/shared';
-import { Sheet } from '../../components/ui';
+import { Button, Sheet } from '../../components/ui';
+import { TUTORIAL_EVENT } from './KarmaTutorial';
 
 /** A short rules reminder, opened from the table. */
 export function KarmaRules({
@@ -14,6 +15,17 @@ export function KarmaRules({
 }) {
   return (
     <Sheet open={open} onClose={onClose} title="How to play Karma">
+      <Button
+        data-testid="rules-tutorial"
+        variant="secondary"
+        className="mb-3 w-full"
+        onClick={() => {
+          onClose();
+          window.dispatchEvent(new Event(TUTORIAL_EVENT));
+        }}
+      >
+        Watch the tutorial
+      </Button>
       <ul className="flex max-h-[60dvh] flex-col gap-3 overflow-y-auto pr-1 text-sm leading-relaxed">
         {rules.length > 0 && (
           <li data-testid="rules-extra">

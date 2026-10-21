@@ -295,6 +295,31 @@ button {
   animation: card-float 1.8s ease-in-out infinite;
 }
 
+@keyframes tutorial-arrow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(8px);
+  }
+}
+.tutorial-arrow {
+  animation: tutorial-arrow 0.7s ease-in-out infinite;
+}
+.tutorial-arrow[data-dir='up'] {
+  animation-name: tutorial-arrow-up;
+}
+@keyframes tutorial-arrow-up {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .card-float,
   .card-wobble {

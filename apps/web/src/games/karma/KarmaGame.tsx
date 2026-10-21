@@ -10,6 +10,12 @@ import type { GameUiProps } from '../types';
 import { DOUBLE_TAP_MS, planTap } from './selection';
 import { FourBurn } from './FourBurn';
 import { WinReveal } from './WinReveal';
+import {
+  KarmaTutorial,
+  TUTORIAL_EVENT,
+  markTutorialSeen,
+  shouldShowTutorial,
+} from './KarmaTutorial';
 import { CardFlipContext, PlayingCard, resetFlipBoxes } from './PlayingCard';
 import type { FlipOrigin } from './PlayingCard';
 
@@ -386,6 +392,17 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const [swapHand, setSwapHand] = useState<Card | null>(null);
   const [swapUp, setSwapUp] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  // First Karma game ever: a short tutorial over the swap phase. The rules sheet can replay it.
+  const [tutorial, setTutorial] = useState(() => view.phase === 'swap' && shouldShowTutorial());
+  useEffect(() => {
+    const open = () => setTutorial(true);
+    window.addEventListener(TUTORIAL_EVENT, open);
+    return () => window.removeEventListener(TUTORIAL_EVENT, open);
+  }, []);
+  const closeTutorial = () => {
+    markTutorialSeen();
+    setTutorial(false);
+  };
   const [flame, setFlame] = useState(false);
   /** A burn / failed blind card resolves at once on the server; keep the played cards on the pile a moment. */
   const [ghost, setGhost] = useState<Card[] | null>(null);
@@ -1216,6 +1233,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
             onDone={() => setPeek(null)}
           />
         )}
+        {tutorial && <KarmaTutorial onDone={closeTutorial} />}
         {fourBurn && <FourBurn cards={fourBurn} ms={FOUR_BURN_MS} />}
         {reveal && <WinReveal card={reveal.card} label={reveal.label} winner={reveal.winner} />}
       </div>
