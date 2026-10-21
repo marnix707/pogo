@@ -133,7 +133,7 @@ export function Home({
 
   // Whole-number pixel scales that fit the free height (wordmark above the stage).
   const short = typeof window !== 'undefined' && window.innerHeight < 700;
-  const stageScale = short ? { frog: 4, word: 6 } : { frog: 5, word: 8 };
+  const stageScale = short ? { frog: 2.8, word: 8 } : { frog: 3.5, word: 10 };
 
   const blocked = busy || !api.online;
 
@@ -188,8 +188,8 @@ export function Home({
         {screen === 'menu' && (
           <>
             {landed && <InstallCard variant="banner" />}
-            <div className="flex flex-1 flex-col items-center justify-center gap-3">
-              <Wordmark shown={landed} width={stageScale.word * 29} />
+            <div className="flex flex-1 flex-col items-center justify-center">
+              <Wordmark shown={landed} width={stageScale.word * 30} />
               <PogoStage scale={stageScale.frog} onLanded={() => setLanded(true)} />
             </div>
             <div data-in={landed} className="slide-bottom flex flex-col gap-4">

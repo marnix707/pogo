@@ -465,12 +465,12 @@ html.results-open .safe-top-scrim {
 
 /* Home intro: the POGO letters pop in from nothing, then breathe by 5%. */
 @keyframes wordmark-pop {
-  from { transform: scale(0); }
-  to { transform: scale(1); }
+  from { transform: rotate(-10deg) scale(0); }
+  to { transform: rotate(-10deg) scale(1); }
 }
 @keyframes wordmark-breathe {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  0%, 100% { transform: rotate(-10deg) scale(1); }
+  50% { transform: rotate(-10deg) scale(1.05); }
 }
 .wordmark-in {
   animation:
