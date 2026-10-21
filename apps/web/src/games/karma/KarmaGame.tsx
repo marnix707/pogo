@@ -11,7 +11,7 @@ import type { GameUiProps } from '../types';
 import { planTap } from './selection';
 import { FourBurn } from './FourBurn';
 import { handLayout } from './handLayout';
-import { REVEAL_FLIP_MS, leftoverCount, revealPlan } from './reveal';
+import { REVEAL_FLIP_MS, leftoverCount, revealPlan, revealStartMs } from './reveal';
 import { WinReveal } from './WinReveal';
 import {
   KarmaTutorial,
@@ -276,6 +276,7 @@ function Seat({
   beside,
   pickedUp,
   leftovers,
+  leftoverStart,
   seatRef,
 }: {
   player: karma.KarmaPlayerView;
@@ -293,10 +294,12 @@ function Seat({
   pickedUp: number | null;
   /** What the loser still holds once the game is decided (turned over on their seat). */
   leftovers?: karma.KarmaLeftovers | null;
+  /** ms after the end of the game at which the first leftover card turns. */
+  leftoverStart?: number;
   seatRef: (el: HTMLDivElement | null) => void;
 }) {
   const shown = leftovers && leftovers.playerId === player.id ? leftovers : null;
-  const plan = shown ? revealPlan(shown) : null;
+  const plan = shown ? revealPlan(shown, leftoverStart) : null;
   const status = pickedUp
     ? `Picked up ${pickedUp}!`
     : player.out
@@ -969,8 +972,9 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const tableFont = view.phase === 'swap' || endgame ? tableBig : tableBig * 0.62;
 
   // The game is decided: if I am the one left, my face-down cards are turned over too.
+  const leftoverStart = revealStartMs(!!view.lastEvent?.out && view.lastEvent.kind === 'blind');
   const myLeft = view.leftovers && view.leftovers.playerId === me ? view.leftovers : null;
-  const myPlan = myLeft ? revealPlan(myLeft) : null;
+  const myPlan = myLeft ? revealPlan(myLeft, leftoverStart) : null;
   const opponents = view.players.filter((p) => p.id !== me);
   const finishRank = (id: string) => view.finishOrder.indexOf(id) + 1;
   const selCount = selDown !== null ? 1 : sel.length;
@@ -1016,6 +1020,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
               beside={opponentCount === 1}
               pickedUp={pickup?.id === p.id ? pickup.n : null}
               leftovers={view.leftovers}
+              leftoverStart={leftoverStart}
               endgame={view.phase === 'play' && view.stockCount === 0 && p.handCount === 0}
               seatRef={(el) => {
                 if (el) seatEls.current.set(p.id, el);

@@ -304,8 +304,8 @@ button {
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }
 }
-.card-back-out { animation: card-back-out 0.225s ease-in both; }
-.card-face-in { animation: card-face-in 0.225s ease-out both; }
+.card-back-out { animation: card-back-out 0.35s ease-in both; }
+.card-face-in { animation: card-face-in 0.35s ease-out both; }
 
 @keyframes tutorial-arrow {
   0%,

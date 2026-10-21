@@ -14,10 +14,11 @@ function Bubble({
   align?: 'left' | 'center' | 'right';
   children: React.ReactNode;
 }) {
-  const place =
-    align === 'left' ? 'left-0' : align === 'right' ? 'right-0' : 'left-1/2 -translate-x-1/2';
-  const arrow =
-    align === 'left' ? 'left-6' : align === 'right' ? 'right-6' : 'left-1/2 -translate-x-1/2';
+  // Centering uses a negative margin, not a translate: the bubble's slide-in animation sets
+  // `transform` (and keeps its last frame), which would cancel a translate and push the bubble to
+  // the right, under the next button.
+  const place = align === 'left' ? 'left-0' : align === 'right' ? 'right-0' : 'left-1/2 -ml-28';
+  const arrow = align === 'left' ? 'left-6' : align === 'right' ? 'right-6' : 'left-1/2 -ml-1.5';
   return (
     <div
       role="status"

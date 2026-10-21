@@ -133,17 +133,29 @@ export function Home({
     if (code.trim().length >= 4) void run(api.join(code));
   }
 
-  // Whole-number pixel scales that fit the free height (wordmark above the stage).
-  const short = typeof window !== 'undefined' && window.innerHeight < 700;
-  // (toad +25% and wordmark +10% over the first version: 2.8/3.5 and 8/10); short screens shrink with the height
-  const fit = short ? window.innerHeight / 700 : 1;
-  const stageScale = short ? { frog: 3.5 * fit, word: 8.8 * fit } : { frog: 4.375, word: 11 };
+  // The wordmark and toad fill the free height between the header and the buttons: measure it and
+  // scale both down (never up) so the whole menu always fits the screen without scrolling.
+  const stageBox = useRef<HTMLDivElement>(null);
+  const [stageH, setStageH] = useState(0);
+  useEffect(() => {
+    const el = stageBox.current;
+    if (!el) return;
+    const measure = () => setStageH(el.clientHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [screen]);
+  /** Height (px) the wordmark + toad group needs at full size (toad 4.375, wordmark 11). */
+  const STAGE_NEED = 340;
+  const fit = stageH > 0 ? Math.min(1, stageH / STAGE_NEED) : 1;
+  const stageScale = { frog: 4.375 * fit, word: 11 * fit };
 
   const blocked = busy || !api.online;
 
   return (
     <div
-      className="menu mx-auto flex min-h-dvh max-w-md flex-col"
+      className={`menu mx-auto flex max-w-md flex-col ${screen === 'menu' ? 'h-dvh overflow-hidden' : 'min-h-dvh'}`}
       onTouchStart={(e) => {
         const t = e.touches[0];
         // Only a swipe that starts at the left screen edge counts.
@@ -187,12 +199,13 @@ export function Home({
         </TileButton>
       </header>
 
-      <main className="flex flex-1 flex-col gap-5 px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-3">
+      <main className="flex min-h-0 flex-1 flex-col gap-4 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-1">
         {screen === 'menu' && (
           <>
             {landed && <InstallCard variant="banner" />}
             <div
-              className={`flex flex-1 flex-col items-center justify-center ${short ? 'pb-6' : 'pb-20 pt-8'}`}
+              ref={stageBox}
+              className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden pb-4"
             >
               <Wordmark shown={landed} width={stageScale.word * 30} />
               <PogoStage scale={stageScale.frog} onLanded={() => setLanded(true)} />
@@ -201,7 +214,7 @@ export function Home({
               <Button
                 data-testid="home-play"
                 variant="gold"
-                className={`${short ? '!min-h-[4.25rem]' : '!min-h-24'} !text-3xl`}
+                className="!min-h-[clamp(3.5rem,10dvh,6rem)] !text-3xl"
                 onClick={() => open('play')}
               >
                 Play
@@ -209,7 +222,7 @@ export function Home({
               <Button
                 data-testid="home-join"
                 variant="secondary"
-                className={`${short ? '!min-h-[4.25rem]' : '!min-h-24'} !text-3xl`}
+                className="!min-h-[clamp(3.5rem,10dvh,6rem)] !text-3xl"
                 onClick={() => open('join')}
               >
                 Join
