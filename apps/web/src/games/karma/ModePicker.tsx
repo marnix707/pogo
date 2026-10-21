@@ -44,8 +44,10 @@ function Bubble({
 export function ModePicker({ room, isHost, setOptions }: LobbyOptionsProps) {
   const options = (room.options ?? {}) as { mode?: karma.KarmaMode; rules?: string[] };
   const mode = options.mode ?? 'normal';
-  const rules =
+  // The rules that are on; Party and Epic list every rule (the ones that are off are greyed out).
+  const active =
     mode === 'epic' ? KARMA_RULES.map((r) => r.id) : mode === 'party' ? (options.rules ?? []) : [];
+  const listed = mode === 'normal' ? [] : KARMA_RULES.map((r) => r.id);
   const [shown, setShown] = useState<string | null>(null);
   const toggle = (key: string) => setShown((s) => (s === key ? null : key));
 
@@ -68,7 +70,12 @@ export function ModePicker({ room, isHost, setOptions }: LobbyOptionsProps) {
               data-testid={`karma-mode-${m.id}`}
               aria-pressed={mode === m.id}
               onClick={() => {
-                if (isHost && mode !== m.id) setOptions({ mode: m.id });
+                // Choosing a mode shows no bubble; tapping the chosen mode again shows (and hides) it.
+                if (isHost && mode !== m.id) {
+                  setOptions({ mode: m.id });
+                  setShown(null);
+                  return;
+                }
                 toggle(`mode:${m.id}`);
               }}
               className={`min-h-14 w-full rounded-md border-2 text-sm font-bold ${isHost ? '' : 'opacity-50'} ${
@@ -91,16 +98,20 @@ export function ModePicker({ room, isHost, setOptions }: LobbyOptionsProps) {
           </div>
         ))}
       </div>
-      {rules.length > 0 && (
+      {listed.length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-1.5" data-testid="karma-active-rules">
-          {rules.map((id) => {
+          {listed.map((id) => {
             const r = karma.ruleById(id);
+            const on = active.includes(id);
             return r ? (
               <li key={id} className="relative">
                 <button
                   data-testid={`karma-rule-${id}`}
+                  data-active={on}
                   onClick={() => toggle(`rule:${id}`)}
-                  className={`rounded-full border border-edge/40 px-2.5 py-1 text-xs ${isHost ? '' : 'opacity-50'}`}
+                  className={`rounded-full border border-edge/40 px-2.5 py-1 text-xs ${
+                    !on ? 'opacity-35' : isHost ? '' : 'opacity-60'
+                  }`}
                 >
                   {r.emoji} {r.name}
                 </button>

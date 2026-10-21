@@ -115,7 +115,7 @@ test('a whole game against the computer, from one tap to the result, and a remat
   await expect(panel.locator('h2')).toHaveText(/Karma got you|Robo is last/);
 
   // Back to lobby: the lobby with the computer still configured, and off we go again.
-  await page.getByTestId('back-to-lobby').click();
+  await page.getByTestId('results-lobby').click();
   await expect(page.getByTestId('lobby-ready-count')).toHaveText('Ready 0/1');
   await readyAll(page);
   await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
@@ -152,7 +152,7 @@ test('a four-player game against three computers ends with the ranking: 1st to 4
   await expect(page.getByTestId('rank-4')).toBeVisible();
   await expect(page.getByTestId('results-panel')).toContainText('Quad');
   // Both buttons are reachable on a phone screen.
-  await expect(page.getByTestId('rematch')).toBeInViewport();
+  await expect(page.getByTestId('results-lobby')).toBeInViewport();
   await expect(page.getByTestId('results-leave')).toBeInViewport();
   await me.context.close();
 });
@@ -222,8 +222,9 @@ test('party mode: the winner picks a rule that applies to the next game; epic ha
   await readyUp(page);
   await playUntilResults(page);
 
-  // "Play again" starts the next game at once, with the rule the winner switched on.
-  await page.getByTestId('rematch').click();
+  // "Lobby" goes back to the lobby; the next game starts with the rule the winner switched on.
+  await page.getByTestId('results-lobby').click();
+  await readyAll(page);
   await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
   await page.getByRole('button', { name: 'Rules' }).click();
   await expect(page.getByTestId('rules-extra').locator('ul > li')).toHaveCount(1);

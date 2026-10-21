@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MIN_VISIBLE, WRAP_SCALE, handLayout, maxPerRow } from './handLayout';
+import { MAX_VISIBLE, MIN_VISIBLE, WRAP_SCALE, handLayout, maxPerRow } from './handLayout';
 
 const FONT = 18; // card = 90px wide
 
@@ -39,9 +39,17 @@ describe('handLayout', () => {
     expect(handLayout(30, 390, FONT).font).toBeCloseTo(FONT * WRAP_SCALE);
   });
 
-  it('spreads a sparse hand no wider than half a card per step', () => {
-    const l = handLayout(3, 390, FONT);
-    expect(l.strip).toBeCloseTo(FONT * 5 * 0.5);
+  it('spreads a sparse hand to fill the width, with a gap up to MAX_VISIBLE of a card', () => {
+    const cardW = FONT * 5;
+    const three = handLayout(3, 390, FONT);
+    // 3 cards: spread across (almost) the whole row, edge padding kept
+    const free = 390 - 8 - 12;
+    expect(cardW + 2 * three.strip).toBeGreaterThan(free * 0.9);
+    expect(cardW + 2 * three.strip).toBeLessThanOrEqual(free);
+    // a very wide screen never scatters cards further apart than MAX_VISIBLE
+    expect(handLayout(3, 900, FONT).strip).toBeCloseTo(cardW * MAX_VISIBLE);
+    // more cards = less spread
+    expect(handLayout(6, 390, FONT).strip).toBeLessThan(three.strip);
   });
 
   it('handles an empty hand', () => {

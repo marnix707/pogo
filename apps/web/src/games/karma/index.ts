@@ -19,7 +19,6 @@ export const karmaUi: GameUi = {
       onClose,
       rules: (room.game?.view as { rules?: string[] } | undefined)?.rules,
     }),
-  playAgainRestarts: true,
   ownFanfare: true, // the winner's fanfare plays when the last card has turned over (KarmaGame)
   // Party mode: the standings are already known while the winner picks a rule (RulePick, in the panel).
   pendingResults(room) {

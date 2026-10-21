@@ -122,6 +122,7 @@ function TableSlots({
   downState,
   revealDown,
   revealAt,
+  spread = false,
 }: {
   faceUp: (Card | null)[];
   faceDown: boolean[];
@@ -145,12 +146,19 @@ function TableSlots({
   /** The game is over: the real face-down cards, turned over at `revealAt[slot]` ms. */
   revealDown?: (Card | null)[];
   revealAt?: (number | null)[];
+  /**
+   * Endgame (my hand is empty): only the columns that still hold a card, centred in the row with a
+   * gap between them, so two columns recentre and a third one appearing slides back in.
+   */
+  spread?: boolean;
 }) {
   const offset = font * 2.2;
-  const columnGap = overlapEm ? -font * overlapEm : font * 0.6;
+  const columnGap = spread ? font * 0.9 : overlapEm ? -font * overlapEm : font * 0.6;
+  // (In the spread layout columns without any card are left out and the rest is centred.)
+  const slots = [0, 1, 2].filter((slot) => !spread || faceUp[slot] != null || faceDown[slot]);
   return (
-    <div className="flex">
-      {[0, 1, 2].map((slot) => {
+    <div className={spread ? 'flex w-full justify-center' : 'flex'}>
+      {slots.map((slot, pos) => {
         const up = faceUp[slot] ?? null;
         const down = faceDown[slot] ?? false;
         const upProps = up !== null ? upState?.(up, slot) : undefined;
@@ -162,7 +170,7 @@ function TableSlots({
             style={{
               width: `${font * 5}px`,
               height: `${font * 7 + offset}px`,
-              marginLeft: slot === 0 ? 0 : `${columnGap}px`,
+              marginLeft: pos === 0 ? 0 : `${columnGap}px`,
             }}
           >
             {down && revealDown?.[slot] != null && revealAt?.[slot] != null && (
@@ -181,6 +189,8 @@ function TableSlots({
                 float={floatAll}
                 className="absolute left-0 top-0"
                 testId={idPrefix ? `${idPrefix}-down-${slot}` : undefined}
+                // (my face-down cards get a stand-in id so they slide between the dock and the hand row)
+                flip={idPrefix === 'my' ? { id: -1 - slot } : undefined}
                 onClick={downProps?.onClick}
                 selected={downProps?.selected}
               />
@@ -995,6 +1005,47 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const cardW = handFont * 5;
   const rowStep = handFont * 7 * 0.5;
 
+  // My table cards (three columns). With an empty hand (the endgame) they are drawn spread out in the
+  // hand row instead, and slide back up when cards come into my hand again.
+  const mySlots = (spread: boolean, font: number) =>
+    mine ? (
+      <TableSlots
+        faceUp={mine.faceUp}
+        faceDown={mine.faceDown}
+        font={font}
+        overlapEm={MY_SLOT_OVERLAP}
+        idPrefix="my"
+        spread={spread}
+        upState={(card, slot) => {
+          if (swapping)
+            return {
+              onClick: () => tapSwapUp(slot),
+              selected: swapUp === slot,
+              float: true,
+            };
+          if (playing && zone === 'up') {
+            return {
+              onClick: () => tapCard(card),
+              selected: sel.includes(card),
+              dimmed:
+                !canPlayRank(pile, rankOf(card)) &&
+                (mine?.faceUp ?? []).some((c) => c !== null && canPlayRank(pile, rankOf(c))),
+              playable: canPlayRank(pile, rankOf(card)),
+            };
+          }
+          return {};
+        }}
+        downState={(slot) =>
+          playing && zone === 'down'
+            ? { onClick: () => tapDown(slot), selected: selDown === slot }
+            : {}
+        }
+        revealDown={myLeft?.faceDown}
+        revealAt={myPlan?.down}
+      />
+    ) : null;
+  const egFont = Math.min(myFont, (handWidth - 8 - 24) / 16.8);
+
   return (
     <CardFlipContext.Provider value={flipContext}>
       <div
@@ -1150,43 +1201,9 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
           <div className="border-t-2 border-edge/60 bg-panel px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-3 text-ink">
             <div className="mx-auto flex max-w-md flex-col gap-1">
               <div className="flex items-stretch gap-2">
-                <div className="flex shrink-0 justify-start">
-                  <TableSlots
-                    faceUp={mine.faceUp}
-                    faceDown={mine.faceDown}
-                    font={tableFont}
-                    overlapEm={MY_SLOT_OVERLAP}
-                    idPrefix="my"
-                    upState={(card, slot) => {
-                      if (swapping)
-                        return {
-                          onClick: () => tapSwapUp(slot),
-                          selected: swapUp === slot,
-                          float: true,
-                        };
-                      if (playing && zone === 'up') {
-                        return {
-                          onClick: () => tapCard(card),
-                          selected: sel.includes(card),
-                          dimmed:
-                            !canPlayRank(pile, rankOf(card)) &&
-                            (mine?.faceUp ?? []).some(
-                              (c) => c !== null && canPlayRank(pile, rankOf(c)),
-                            ),
-                          playable: canPlayRank(pile, rankOf(card)),
-                        };
-                      }
-                      return {};
-                    }}
-                    downState={(slot) =>
-                      playing && zone === 'down'
-                        ? { onClick: () => tapDown(slot), selected: selDown === slot }
-                        : {}
-                    }
-                    revealDown={myLeft?.faceDown}
-                    revealAt={myPlan?.down}
-                  />
-                </div>
+                {!endgame && (
+                  <div className="flex shrink-0 justify-start">{mySlots(false, tableFont)}</div>
+                )}
                 {/* Timer and Play fill all the room the table cards leave (they sit to the left), in
                     a fixed 2 : 3 split so nothing moves between turns. */}
                 <div className="flex min-w-[5.5rem] flex-1 flex-col gap-2">
@@ -1256,13 +1273,16 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                 data-rows={rowCount}
                 data-dimmed={view.phase === 'play' && !myTurnShown}
                 style={{
-                  minHeight: `${handFont * 7 + rowStep * (rowCount - 1) + 22}px`,
+                  minHeight: endgame
+                    ? `${egFont * 9.2 + 22}px`
+                    : `${handFont * 7 + rowStep * (rowCount - 1) + 22}px`,
                   overflowX: 'clip',
                   // Not my turn: my hand dims a little, so it is obvious who is up.
                   filter: view.phase === 'play' && !myTurnShown ? 'brightness(0.3)' : undefined,
                   transition: 'filter 200ms',
                 }}
               >
+                {endgame && mySlots(true, egFont)}
                 {handRows.map((row, r) => {
                   const strip = layout.strip;
                   return (
@@ -1285,7 +1305,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                             }}
                             selected={swapping ? swapHand === c : sel.includes(c)}
                             dimmed={playing && zone === 'hand' && !playable}
-                            style={{ marginLeft: i === 0 ? 0 : `-${cardW - strip}px` }}
+                            // (strip > cardW = a gap; negative = overlap)
+                            style={{ marginLeft: i === 0 ? 0 : strip - cardW }}
                             flip={{
                               id: c,
                               origin: handOrigin,

@@ -346,7 +346,8 @@ export class Room {
   }
 
   private evaluateStart(): void {
-    if (this.canAutoStart()) this.startAt ??= this.deps.now() + (this.deps.limits.startCountdownMs ?? START_COUNTDOWN_MS);
+    if (this.canAutoStart())
+      this.startAt ??= this.deps.now() + (this.deps.limits.startCountdownMs ?? START_COUNTDOWN_MS);
     else this.startAt = null;
   }
 
@@ -390,7 +391,10 @@ export class Room {
   }
 
   rematch(userId: string, toLobby = false): Result<null> {
-    if (userId !== this.hostId) return fail('Only the host can start a rematch');
+    // Anybody in the room can take everyone back to the lobby; only the host restarts at once.
+    if (!this.members.some((m) => m.user.id === userId && !m.left && !m.bot))
+      return fail('You are not in this room');
+    if (!toLobby && userId !== this.hostId) return fail('Only the host can start a rematch');
     if (this.status !== 'finished') return fail('The game is not finished');
     // Back to the waiting room: players who left and the computer players go away (the setting stays).
     this.members = this.members.filter((m) => !m.left && !m.bot);

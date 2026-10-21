@@ -197,10 +197,13 @@ describe('playing', () => {
     expect(done.game?.results?.rankings[0]).toMatchObject({ playerId: a.id, rank: 1 });
     expect(manager.move(b.id, { type: 'step' }).ok).toBe(false);
 
+    // Only the host restarts at once; anybody can take everybody back to the lobby (Ready resets).
     expect(manager.rematch(b.id).ok).toBe(false);
-    const again = must(manager.rematch(a.id));
+    const again = must(manager.rematch(b.id, true));
     expect(again.status).toBe('lobby');
     expect(again.game).toBeUndefined();
+    expect(again.members.every((m) => !m.ready)).toBe(true);
+    expect(lastRoom(a.id)?.status).toBe('lobby');
   });
 
   it("won't let a player in a running game start another room", () => {

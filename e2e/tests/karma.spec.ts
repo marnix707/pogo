@@ -65,8 +65,8 @@ test('three players play a complete Karma game through the UI', async ({ browser
   expect(headlines.filter((h) => h?.includes('Karma got you'))).toHaveLength(1);
   expect(headlines.filter((h) => h?.includes('is last'))).toHaveLength(2);
 
-  // "Back to lobby" goes back to the lobby ("Play again" restarts at once).
-  await alice.page.getByTestId('back-to-lobby').click();
+  // "Lobby" takes everybody back to the lobby (Ready starts the next game).
+  await alice.page.getByTestId('results-lobby').click();
   await expect(alice.page.getByTestId('lobby-ready')).toBeVisible();
 
   for (const c of [alice, bob, cleo]) await c.context.close();

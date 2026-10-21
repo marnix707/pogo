@@ -33,7 +33,6 @@ function ResultsPanel({
   api,
   title,
   showScores = true,
-  restarts = false,
   pending = false,
   extra,
   sendMove,
@@ -45,8 +44,6 @@ function ResultsPanel({
   api: RoomApi;
   title?: string;
   showScores?: boolean;
-  /** "Play again" restarts at once, so the lobby needs its own button. */
-  restarts?: boolean;
   /** The game still needs something from the players: no rematch buttons yet. */
   pending?: boolean;
   /** Confetti for the winner of a game with more than one player (games with their own fanfare skip it). */
@@ -95,8 +92,13 @@ function ResultsPanel({
             {headline}
           </h2>
 
-          {/* The standings sit in the middle of the free space between headline and the lower group. */}
-          <ol className="my-auto flex flex-col gap-2" data-testid="standings">
+          {/* The standings sit in the middle of the free space between the headline and the lower
+              group; with an extra section (Karma's rule pick) they stay up top and that section is
+              centred between the last player and the buttons instead. */}
+          <ol
+            className={`flex flex-col gap-2 ${Extra ? 'mt-2' : 'my-auto'}`}
+            data-testid="standings"
+          >
             {rankings.map((r, i) => {
               const m = nameOf(r.playerId);
               const isMe = r.playerId === me;
@@ -126,7 +128,11 @@ function ResultsPanel({
             })}
           </ol>
 
-          {Extra && <Extra room={room} me={me} sendMove={sendMove} />}
+          {Extra && (
+            <div className="my-auto">
+              <Extra room={room} me={me} sendMove={sendMove} />
+            </div>
+          )}
 
           {account?.isGuest && !pending && (
             <div className="res-row" style={delay(rowsDone + 0.2)}>
@@ -144,38 +150,25 @@ function ResultsPanel({
           >
             {pending ? (
               <p className="label text-center text-muted">Almost there…</p>
-            ) : isHost ? (
-              <>
-                <Button
-                  data-testid="rematch"
-                  disabled={!api.online}
-                  onClick={() => void api.rematch()}
-                >
-                  Play again
-                </Button>
-                {restarts && (
-                  <Button
-                    variant="secondary"
-                    data-testid="back-to-lobby"
-                    disabled={!api.online}
-                    onClick={() => void api.rematch(true)}
-                  >
-                    Back to lobby
-                  </Button>
-                )}
-              </>
             ) : (
-              <p className="label text-center text-muted">
-                Waiting for the host to start a rematch…
-              </p>
+              <>
+                {/* Lobby takes everybody back to the room's lobby (Ready starts the next game). */}
+                <Button
+                  data-testid="results-lobby"
+                  disabled={!api.online}
+                  onClick={() => void api.rematch(true)}
+                >
+                  Lobby
+                </Button>
+                <Button
+                  variant="secondary"
+                  data-testid="results-leave"
+                  onClick={() => void api.leave()}
+                >
+                  Exit
+                </Button>
+              </>
             )}
-            <Button
-              variant="secondary"
-              data-testid="results-leave"
-              onClick={() => void api.leave()}
-            >
-              Leave room
-            </Button>
           </div>
         </div>
       </div>
@@ -347,7 +340,6 @@ export function GameScreen({
           extra={ui.ResultsExtra}
           title={ui.resultsTitle?.(panelRoom, me)}
           showScores={!ui.hideScores}
-          restarts={ui.playAgainRestarts}
           account={account}
           confetti={!ui.ownFanfare}
         />

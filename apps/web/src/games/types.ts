@@ -42,8 +42,6 @@ export interface GameUi {
   hideScores?: boolean;
   /** The game plays the end-of-game fanfare itself (GameScreen then stays silent). */
   ownFanfare?: boolean;
-  /** "Play again" starts the next game at once; the results then also offer "Back to lobby". */
-  playAgainRestarts?: boolean;
   /** Wait this long after the game ends before showing the results (lets a final animation play). */
   resultsDelayMs?: (room: RoomView) => number;
   /**
