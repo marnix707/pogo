@@ -304,6 +304,71 @@ function describeEvent(
   return parts.join(' · ');
 }
 
+/** The last two moves laid out in the middle of the table; a tap anywhere sends the cards back to the pile. */
+function PeekOverlay({
+  from,
+  rows,
+  onDone,
+}: {
+  from: { x: number; y: number };
+  rows: { label: string; ev: { ev: karma.KarmaEvent } | null; text: string }[];
+  onDone: () => void;
+}) {
+  const [phase, setPhase] = useState<'in' | 'open' | 'out'>('in');
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => setPhase('open')));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  const close = () => {
+    if (phase === 'out') return;
+    setPhase('out');
+    setTimeout(onDone, 280);
+  };
+  // Cards start (and end) at the pile: offset from the centre of the overlay.
+  const r = ref.current?.getBoundingClientRect();
+  const dx = r ? from.x - (r.left + r.width / 2) : 0;
+  const dy = r ? from.y - (r.top + r.height / 2) : 0;
+  const hidden = phase !== 'open';
+  return (
+    <div
+      ref={ref}
+      data-testid="pile-peek"
+      className={`absolute inset-0 z-30 flex items-center justify-center bg-black/60 transition-opacity duration-300 motion-reduce:transition-none ${hidden ? 'opacity-0' : 'opacity-100'}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        close();
+      }}
+    >
+      <div
+        className="flex flex-col items-center gap-6 px-4 transition-transform duration-300 ease-out motion-reduce:transition-none"
+        style={{
+          transform: hidden ? `translate(${dx}px, ${dy}px) scale(0.3)` : 'none',
+        }}
+      >
+        {rows.map((row) => (
+          <div key={row.label} className="flex flex-col items-center gap-2">
+            <span className="label text-[10px] text-onbg/70">{row.label}</span>
+            <div className="flex min-h-[7rem] items-center justify-center gap-1.5">
+              {row.ev && row.ev.ev.cards.length > 0 ? (
+                row.ev.ev.cards.map((c) => <PlayingCard key={c} card={c as Card} size={13} />)
+              ) : (
+                <span className="text-4xl" aria-hidden>
+                  {row.ev ? '🫳' : '—'}
+                </span>
+              )}
+            </div>
+            <span className="text-center text-sm font-bold text-onbg">
+              {row.text || 'No move yet'}
+            </span>
+          </div>
+        ))}
+        <span className="label text-[10px] text-onbg/60">Tap anywhere to put them back</span>
+      </div>
+    </div>
+  );
+}
+
 export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   // A new game starts with nothing remembered from the last one (positions of cards).
   useState(resetFlipBoxes);
@@ -357,8 +422,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     const t = setTimeout(() => setSettling(false), SETTLE_MS);
     return () => clearTimeout(t);
   }, [reveal]);
-  /** The pile was tapped once: tap it again to pick it up. */
-  const [pileArmed, setPileArmed] = useState(false);
+  /** The pile was tapped: shows the last two moves (cards fly out of the pile; any tap puts them back). */
+  const [peek, setPeek] = useState<{ x: number; y: number } | null>(null);
   /** A short message that temporarily replaces the hint (e.g. after tapping the deck). */
   const [flash, setFlash] = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -405,8 +470,6 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
 
   const zone = mine ? activeZone(mine) : 'none';
   const pile = view.pile;
-  const shownPile =
-    ghost ?? (hiddenOut.length > 0 ? pile.filter((c) => !hiddenOut.includes(c)) : pile);
   const hand = useMemo(() => [...(mine?.hand ?? [])].sort(byRankThenSuit), [mine?.hand]);
   const swapping = view.phase === 'swap' && !!mine && !mine.ready;
   const lastSeq = useRef(view.lastEvent?.seq ?? 0);
@@ -418,7 +481,10 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     !!newEvent &&
     newEvent.seq !== lastSeq.current &&
     newEvent.cards.length > 0 &&
-    (newEvent.kind === 'blind' || newEvent.out);
+    newEvent.kind === 'blind';
+  // A face-down or last card stays off the pile from the very render its move arrives until its flip is over.
+  const offPile = revealPending ? [...hiddenOut, ...newEvent!.cards] : hiddenOut;
+  const shownPile = ghost ?? (offPile.length > 0 ? pile.filter((c) => !offPile.includes(c)) : pile);
   const frozenBy = reveal ? reveal.by : revealPending ? newEvent!.playerId : null;
   const myTurnShown = myTurn && frozenBy === null;
   const shownTurnId = frozenBy ?? currentId;
@@ -452,6 +518,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     if (
       !lastEvent ||
       lastEvent.kind === 'pickup' ||
+      lastEvent.kind === 'blind' ||
       lastEvent.out ||
       !lastEvent.cards.includes(card)
     )
@@ -503,7 +570,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         before.current.deadline !== null && latest.current.now >= before.current.deadline - 300,
     };
     setNotes((n) => ({ current: note, previous: n.current }));
-    if (ev.out && ev.cards.length > 0) {
+    // Only a face-down table card is turned over (also when it is a player's last card).
+    if (ev.out && ev.kind === 'blind') {
       const winner = latest.current.finishOrder[0] === ev.playerId;
       const name = latest.current.nameOf(ev.playerId);
       setReveal({
@@ -541,6 +609,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         setHiddenOut([]);
       }, BLIND_REVEAL_MS);
     }
+    setPeek(null);
     if (ev.kind === 'pickup') {
       setPickup({ id: ev.playerId, n: ev.pickedUp });
       clearTimeout(pickupTimer.current);
@@ -548,7 +617,6 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     }
     setSel([]);
     setSelDown(null);
-    setPileArmed(false);
     // The result sound / buzz of a face-down card waits for the end of its flip (else it spoils it).
     const feedback = () => {
       play(ev.burned ? 'score' : ev.failed || ev.pickedUp > 0 ? 'error' : 'tap');
@@ -556,11 +624,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         haptic(ev.burned ? 'success' : ev.failed || ev.pickedUp > 0 ? 'error' : 'tap');
     };
     const delayed = ev.kind === 'blind' && !ev.out;
-    // A last card turns over for TURN_MS first: its sound (and the winner's fanfare) waits for that.
-    const outDelayed = ev.out && ev.cards.length > 0;
+    // A last face-down card turns over for TURN_MS first: its sound (and the winner's fanfare) waits for that.
+    const outDelayed = ev.out && ev.kind === 'blind';
     if (delayed) play('tap');
     // (The last card of a player has its own reveal, which must not be spoiled by this.)
-    const showcase = ev.cards.length > 0 && ev.burned && !ev.out;
+    const showcase = ev.cards.length > 0 && ev.burned && !outDelayed;
     const shown = showcase
       ? [...prevPile.current.filter((c) => !ev.cards.includes(c)), ...ev.cards]
       : [];
@@ -605,6 +673,10 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
             haptic(ev.playerId === me ? 'success' : 'tap');
           } else feedback();
         }, TURN_MS);
+      } else if (ev.out && latest.current.finishOrder[0] === ev.playerId) {
+        // A last card from hand or face-up: no flip, the fanfare plays at once.
+        play(ev.playerId === me ? 'win' : 'score');
+        haptic(ev.playerId === me ? 'success' : 'tap');
       } else feedback();
       showBurn();
     }
@@ -711,7 +783,6 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     }
     haptic('tap');
     setSelDown(null);
-    setPileArmed(false);
     setSel(plan.cards);
   }
 
@@ -723,12 +794,10 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     }
     haptic('tap');
     setSel([]);
-    setPileArmed(false);
     setSelDown(selDown === slot ? null : slot);
   }
 
   function clearSelection() {
-    setPileArmed(false);
     setSel([]);
     setSelDown(null);
     setSwapHand(null);
@@ -736,20 +805,20 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   }
 
   function pickUpPile() {
-    setPileArmed(false);
     void send({ type: 'pickup' });
   }
 
-  /** Tap the pile once to select it, again to pick it up (two taps so it cannot happen by accident). */
+  /** Tap the pile: pick it up when nothing can be played, otherwise look at the last two moves. */
   function tapPile() {
     if (view.phase !== 'play') return flashHint('Nothing to pick up yet');
-    if (!myTurn) return flashHint('Wait for your turn');
     if (pile.length === 0) return flashHint('The pile is empty');
-    if (pileArmed || mustPickUp) return pickUpPile();
+    if (mustPickUp && myTurn) return pickUpPile();
+    if (reveal || !notes.current) return;
     haptic('tap');
     setSel([]);
     setSelDown(null);
-    setPileArmed(true);
+    const r = pileEl.current?.getBoundingClientRect();
+    setPeek(r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : { x: 0, y: 0 });
   }
 
   /** There is no manual drawing in Karma: you refill to three cards after playing. */
@@ -784,7 +853,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   }
 
   // Nothing in my active cards can be played, so picking up is the only move: the player must tap the pile
-  // (the pile pulses and one tap takes it). Picking up voluntarily is still possible by tapping the pile twice.
+  // (the pile pulses and one tap takes it). Picking up is never voluntary.
   const activeCards = zone === 'hand' ? hand : zone === 'up' ? (mine?.faceUp ?? []) : [];
   // (Not while a flipped face-down card is still turning over: the pulsing pile would give away that it was too low.)
   const mustPickUp =
@@ -803,9 +872,9 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         : zone === 'up'
           ? 'Nothing playable: try a face-up card, or tap the pile to pick it up'
           : 'Nothing you can play: tap the pile to pick it up'
-      : pileArmed
-        ? 'Tap the pile again to pick it up'
-        : hint);
+      : hint);
+
+  const describe = (n: Note | null) => (n ? describeEvent(n.ev, nameOf, n) : '');
 
   const endgame = !!mine && view.phase === 'play' && view.stockCount === 0 && hand.length === 0;
   const tableFont = view.phase === 'swap' || endgame ? tableBig : tableBig * 0.62;
@@ -894,20 +963,16 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
               ref={pileEl}
               data-testid="pile"
               data-count={pile.length}
-              data-armed={pileArmed}
               data-must-pick={mustPickUp}
               className={`relative ${mustPickUp ? 'pile-pulse' : ''}`}
               role="button"
-              aria-label="Pile: tap twice to pick up"
+              aria-label="Pile: tap to see the last two moves"
               onClick={(e) => {
                 e.stopPropagation();
                 tapPile();
               }}
               style={{ width: `${pileFont * 6.2}px`, height: `${pileFont * 7}px` }}
             >
-              {pileArmed && (
-                <span className="pointer-events-none absolute inset-0 rounded-xl ring-4 ring-neon" />
-              )}
               {shownPile.length === 0 ? (
                 <div
                   className="absolute left-1/2 top-0 -translate-x-1/2 rounded-[0.55em] border-2 border-dashed border-onbg/40"
@@ -942,8 +1007,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                 </span>
               )}
               <span className="label absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-onbg">
-                {pileArmed ? 'Tap to pick up' : `Pile ${shownPile.length}`}
-                {!pileArmed && view.burned > 0 && ` · 🔥 ${view.burned}`}
+                {`Pile ${shownPile.length}`}
+                {view.burned > 0 && ` · 🔥 ${view.burned}`}
               </span>
             </div>
           </div>
@@ -1141,6 +1206,16 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
           </div>
         )}
 
+        {peek && (
+          <PeekOverlay
+            from={peek}
+            rows={[
+              { label: 'Now', ev: notes.current, text: describe(notes.current) },
+              { label: 'Before', ev: notes.previous, text: describe(notes.previous) },
+            ]}
+            onDone={() => setPeek(null)}
+          />
+        )}
         {fourBurn && <FourBurn cards={fourBurn} ms={FOUR_BURN_MS} />}
         {reveal && <WinReveal card={reveal.card} label={reveal.label} winner={reveal.winner} />}
       </div>

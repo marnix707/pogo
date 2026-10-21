@@ -38,9 +38,13 @@ export const karmaUi: GameUi = {
   // The last card's win reveal (KarmaGame's WinReveal) must finish before the standings cover it.
   resultsDelayMs(room) {
     const view = room.game?.view as
-      { lastEvent?: { out: boolean; playerId: string } | null; finishOrder: string[] } | undefined;
+      | {
+          lastEvent?: { out: boolean; kind: string; playerId: string } | null;
+          finishOrder: string[];
+        }
+      | undefined;
     const ev = view?.lastEvent;
-    if (!ev?.out) return 0;
+    if (!ev?.out || ev.kind !== 'blind') return 0;
     return view!.finishOrder[0] === ev.playerId ? 5500 : 4000;
   },
   resultsTitle(room, me) {

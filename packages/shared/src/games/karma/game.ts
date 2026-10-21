@@ -404,8 +404,7 @@ function applyMoveInner(
 
     case 'play': {
       const source = stateZone(me) === 'hand' ? me.hand : me.faceUp;
-      const tooLow =
-        source !== me.hand && !canPlayRank(s.pile, rankOf(move.cards[0] as Card));
+      const tooLow = source !== me.hand && !canPlayRank(s.pile, rankOf(move.cards[0] as Card));
       for (const card of move.cards) {
         const at = source.indexOf(card);
         if (source === me.hand) me.hand.splice(at, 1);
@@ -527,9 +526,7 @@ function autoMove(state: KarmaState, playerId: string, rng: Rng): AutoMove<Karma
       move = { type: 'playDown', index: me.faceDown.findIndex((c) => c !== null) };
     } else {
       const source = (zone === 'hand' ? me.hand : me.faceUp).filter((c): c is Card => c !== null);
-      const ranks = [...new Set(source.map(rankOf))].filter((r) =>
-        canPlayRank(state.pile, r),
-      );
+      const ranks = [...new Set(source.map(rankOf))].filter((r) => canPlayRank(state.pile, r));
       // Specials are worth keeping: 3..9, J..A ascending, then 2, then 10.
       const priority = (r: number) => (r === 10 ? 200 : r === 2 ? 100 : r);
       ranks.sort((a, b) => priority(a) - priority(b));
@@ -572,8 +569,9 @@ export const karmaGame: GameDefinition<KarmaState, KarmaMove, KarmaOptions, Karm
     const ev = state.lastEvent;
     if (!ev) return 0;
     // The client's reveal (turn + short hold) plus the beat it waits afterwards (KarmaGame SETTLE_MS).
-    if (ev.out) return state.finishOrder[0] === ev.playerId ? 5600 : 4100;
-    return ev.kind === 'blind' ? 3960 : 0;
+    // Only face-down cards are turned over; a last card from hand or face-up needs no wait.
+    if (ev.out && ev.kind === 'blind') return state.finishOrder[0] === ev.playerId ? 5600 : 4100;
+    return ev.kind === 'blind' && !ev.out ? 3960 : 0;
   },
   supportsBots: true,
 };
