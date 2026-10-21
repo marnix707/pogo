@@ -13,13 +13,19 @@ import { AvatarFace } from '../components/AvatarFace';
 import { haptic } from '../lib/haptics';
 import { play } from '../lib/sound';
 
-const MEDALS = ['🥇', '🥈', '🥉'];
+/** Seconds the headline sits in the middle before it moves up, and the gap between the revealed rows. */
+const HEAD_S = 2.4;
+const ROW_S = 0.45;
 
-/** Podium bar heights (rem) for 1st, 2nd and 3rd, and when each rises. */
-const PODIUM_HEIGHT = ['5.25rem', '3.75rem', '2.75rem'];
-const PODIUM_DELAY = ['1.1s', '0.55s', '0s'];
+const ordinal = (n: number) =>
+  `${n}${['th', 'st', 'nd', 'rd'][n % 100 > 10 && n % 100 < 14 ? 0 : n % 10] ?? 'th'}`;
 
-/** The final standings: a podium for the top three, a list for everybody else. Full screen and scrollable. */
+/**
+ * The final standings, in sequence: the headline ("You won!", "2nd place!", "You are last!") in the
+ * middle, then up to the top; the ranking drops in row by row (Mario Kart style, with the points
+ * when the game has them); then the "keep your stats" card for guests; then the buttons come up
+ * from the bottom. Full screen and scrollable.
+ */
 function ResultsPanel({
   room,
   me,
@@ -56,111 +62,81 @@ function ResultsPanel({
   const results = room.game?.results;
   if (!results) return null;
   const isHost = room.hostId === me;
-  const best = results.rankings[0];
-  const iWon = results.rankings.some((r) => r.rank === 1 && r.playerId === me);
   const rankings = results.rankings;
-  // Left to right: 2nd, 1st, 3rd (the classic podium); with two players just 2nd, 1st.
-  const podium = [1, 0, 2].filter((i) => i < rankings.length);
-  const rest = rankings.slice(3);
   const nameOf = (id: string) => room.members.find((x) => x.id === id);
+  const mine = rankings.find((r) => r.playerId === me);
+  const winner = nameOf(rankings[0]?.playerId ?? '')?.nickname ?? 'Someone';
+  const headline = !mine
+    ? (title ?? `${winner} wins!`)
+    : mine.rank === 1
+      ? 'You won!'
+      : mine.rank === rankings.length
+        ? (title ?? 'You are last!')
+        : `${ordinal(mine.rank)} place!`;
+  // Each step starts when the previous one has landed.
+  const rowsDone = HEAD_S + rankings.length * ROW_S;
+  const delay = (sec: number) => ({ animationDelay: `${sec}s` });
   return (
     <div
       data-testid="results-panel"
       className="animate-slide-up fixed inset-0 z-40 overflow-y-auto bg-panel text-ink"
     >
-      <div className="mx-auto flex min-h-full max-w-lg flex-col gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+0.75rem)]">
-        <h2 className="text-center text-xl font-bold uppercase tracking-[0.12em]">
-          {title ??
-            (iWon ? '🎉 You won!' : `🏆 ${nameOf(best?.playerId ?? '')?.nickname ?? ''} wins!`)}
+      <div className="mx-auto flex min-h-full max-w-lg flex-col gap-5 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+1.5rem)]">
+        <h2
+          data-testid="results-headline"
+          className="res-head text-center text-3xl font-bold uppercase leading-tight tracking-[0.1em]"
+        >
+          {headline}
         </h2>
 
-        <ol className="flex items-end justify-center gap-2" data-testid="podium">
-          {podium.map((i) => {
-            const r = rankings[i]!;
+        <ol className="flex flex-col gap-2" data-testid="standings">
+          {rankings.map((r, i) => {
             const m = nameOf(r.playerId);
-            const mine = r.playerId === me;
+            const isMe = r.playerId === me;
             return (
               <li
                 key={r.playerId}
                 data-testid={`rank-${r.rank}`}
-                data-place={i + 1}
-                className="flex min-w-0 flex-1 flex-col items-center"
+                className={`res-row flex items-end gap-2 rounded-md px-3 py-1.5 ${
+                  i === 0 ? 'bg-neon text-accentink' : isMe ? 'bg-accent/25' : ''
+                }`}
+                style={delay(HEAD_S + i * ROW_S)}
               >
-                <div
-                  className="podium-top flex w-full flex-col items-center pb-1"
-                  style={{ animationDelay: `calc(${PODIUM_DELAY[i]} + 0.5s)` }}
-                >
-                  <span className="text-2xl leading-none">{MEDALS[r.rank - 1] ?? r.rank}</span>
-                  <span className="text-2xl leading-none" aria-hidden>
-                    <AvatarFace avatar={m?.avatar ?? ''} />
-                  </span>
-                  <span
-                    className={`w-full truncate text-center text-sm font-bold ${mine ? 'text-accent' : ''}`}
-                  >
-                    {m?.nickname ?? 'Player'}
-                    {mine && ' (you)'}
-                  </span>
-                  {showScores && (
-                    <span className="text-sm font-bold tabular-nums text-neon">{r.score}</span>
-                  )}
-                </div>
-                <div
-                  className={`podium-bar flex w-full items-start justify-center rounded-t-lg border-2 border-b-0 pt-1 text-2xl font-bold ${
-                    i === 0
-                      ? 'border-neon bg-neon text-accentink'
-                      : mine
-                        ? 'border-accent bg-accent/25'
-                        : 'border-edge/50 bg-panel2'
-                  }`}
-                  style={{ height: PODIUM_HEIGHT[i], animationDelay: PODIUM_DELAY[i] }}
-                >
-                  {r.rank}
-                </div>
+                <span className="w-7 shrink-0 text-xl font-bold">{r.rank}.</span>
+                <span className="shrink-0 self-center text-xl leading-none" aria-hidden>
+                  <AvatarFace avatar={m?.avatar ?? ''} />
+                </span>
+                <span className="min-w-0 truncate text-xl font-bold">
+                  {m?.nickname ?? 'Player'}
+                  {isMe && ' (you)'}
+                </span>
+                {showScores && (
+                  <>
+                    <span className="mb-1.5 min-w-4 flex-1 border-b-4 border-dotted border-current opacity-50" />
+                    <span className="text-xl font-bold tabular-nums">{r.score}</span>
+                  </>
+                )}
               </li>
             );
           })}
         </ol>
 
-        {rest.length > 0 && (
-          <ol className="flex flex-col gap-1.5">
-            {rest.map((r) => {
-              const m = nameOf(r.playerId);
-              return (
-                <li
-                  key={r.playerId}
-                  data-testid={`rank-${r.rank}`}
-                  className={`flex items-center gap-3 rounded-md border-2 px-3 py-2 ${
-                    r.playerId === me ? 'border-accent bg-accent/15' : 'border-edge/30 bg-panel2'
-                  }`}
-                >
-                  <span className="w-8 text-center text-xl font-bold">{r.rank}</span>
-                  <span aria-hidden>
-                    <AvatarFace avatar={m?.avatar ?? ''} />
-                  </span>
-                  <span className="flex-1 truncate font-bold">
-                    {m?.nickname ?? 'Player'}
-                    {r.playerId === me && ' (you)'}
-                  </span>
-                  {showScores && (
-                    <span className="text-xl font-bold tabular-nums text-neon">{r.score}</span>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        )}
-
         {Extra && <Extra room={room} me={me} sendMove={sendMove} />}
 
         {account?.isGuest && !pending && (
-          <RegisterNudge
-            token={account.token}
-            gameId={room.gameId}
-            onRegister={account.onRegister}
-          />
+          <div className="res-row" style={delay(rowsDone + 0.2)}>
+            <RegisterNudge
+              token={account.token}
+              gameId={room.gameId}
+              onRegister={account.onRegister}
+            />
+          </div>
         )}
 
-        <div className="mt-auto flex flex-col gap-3">
+        <div
+          className="res-bottom mt-auto flex flex-col gap-3"
+          style={delay(rowsDone + (account?.isGuest ? 0.9 : 0.4))}
+        >
           {pending ? (
             <p className="label text-center text-muted">Almost there…</p>
           ) : isHost ? (

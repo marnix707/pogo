@@ -179,31 +179,25 @@ button {
 .sheet-panel[data-closing='true'] {
   animation: sheet-down 0.22s ease-in both;
 }
-@keyframes podium-rise {
-  from {
-    transform: scaleY(0);
-  }
-  to {
-    transform: scaleY(1);
-  }
+/* Results sequence: the headline starts in the middle, holds, then rises to the top; rows drop in one
+   by one (animation-delay is set inline); the buttons come up from the bottom. */
+@keyframes res-head {
+  0% { opacity: 0; transform: translateY(var(--drop, 30dvh)) scale(1.35); }
+  15% { opacity: 1; transform: translateY(var(--drop, 30dvh)) scale(1.35); }
+  55% { opacity: 1; transform: translateY(var(--drop, 30dvh)) scale(1.35); }
+  100% { opacity: 1; transform: none; }
 }
-@keyframes podium-pop {
-  from {
-    opacity: 0;
-    transform: translateY(1rem) scale(0.8);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+@keyframes res-row {
+  from { opacity: 0; transform: translateX(-120%); }
+  to { opacity: 1; transform: none; }
 }
-.podium-bar {
-  transform-origin: bottom;
-  animation: podium-rise 0.7s cubic-bezier(0.22, 0.8, 0.3, 1) both;
+@keyframes res-bottom {
+  from { opacity: 0; transform: translateY(130%); }
+  to { opacity: 1; transform: none; }
 }
-.podium-top {
-  animation: podium-pop 0.5s ease-out both;
-}
+.res-head { animation: res-head 2.4s cubic-bezier(0.3, 0.9, 0.3, 1) both; }
+.res-row { animation: res-row 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.05) both; }
+.res-bottom { animation: res-bottom 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.05) both; }
 @keyframes win-turn {
   0% {
     transform: rotateY(180deg) scale(0.7);
@@ -309,8 +303,9 @@ button {
   .win-card,
   .win-label,
   .confetti,
-  .podium-bar,
-  .podium-top,
+  .res-head,
+  .res-row,
+  .res-bottom,
   .sheet-backdrop,
   .sheet-panel,
   .info-bubble {

@@ -129,7 +129,7 @@ test('a whole game against the computer, from one tap to the result, and a remat
   await me.context.close();
 });
 
-test('a four-player game against three computers ends with a podium: 1st, 2nd, 3rd and the rest in a list', async ({
+test('a four-player game against three computers ends with the ranking: 1st to 4th, one row each', async ({
   browser,
 }) => {
   test.setTimeout(300_000);
@@ -145,14 +145,12 @@ test('a four-player game against three computers ends with a podium: 1st, 2nd, 3
   await readyUp(page);
   await playUntilResults(page);
 
-  // Everybody is ranked: the top three stand on the podium (2nd, 1st, 3rd from left to right).
-  const podium = page.getByTestId('podium');
-  await expect(podium).toBeVisible();
-  await expect(podium.locator('[data-place]')).toHaveCount(3);
+  // Everybody is ranked, top to bottom, in one list.
+  await expect(page.getByTestId('standings').locator('li')).toHaveCount(4);
   await expect(page.getByTestId('rank-1')).toBeVisible();
   await expect(page.getByTestId('rank-2')).toBeVisible();
   await expect(page.getByTestId('rank-3')).toBeVisible();
-  await expect(page.getByTestId('rank-4')).toBeVisible(); // 4th is in the list under the podium
+  await expect(page.getByTestId('rank-4')).toBeVisible();
   await expect(page.getByTestId('results-panel')).toContainText('Quad');
   // Both buttons are reachable on a phone screen.
   await expect(page.getByTestId('rematch')).toBeInViewport();
