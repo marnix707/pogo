@@ -56,12 +56,14 @@ test('a game tap opens the lobby: Yatzy can start solo, Karma needs 2 and offers
   const me = await newPlayer(browser, 'Picker', 'fox');
   const page = me.page;
   const more = page.getByRole('button', { name: 'More Computer players' });
+  await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-yatzy').click();
   await expect(page.getByTestId('lobby-start')).toHaveText('Start solo game');
   await expect(page.getByTestId('lobby-start')).toBeEnabled();
   await expect(more).toHaveCount(0);
   await page.getByTestId('lobby-leave').click();
 
+  await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
   await expect(page.getByTestId('lobby-start')).toContainText('Need 2 players');
   await expect(page.getByTestId('lobby-start')).toBeDisabled();
@@ -80,6 +82,7 @@ test('a whole game against the computer, from one tap to the result, and a remat
   const page = me.page;
   page.setDefaultTimeout(15_000);
 
+  await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
 
   for (let i = 0; i < 1; i++)
@@ -133,6 +136,7 @@ test('a four-player game against three computers ends with a podium: 1st, 2nd, 3
   const me = await newPlayer(browser, 'Quad', 'fox');
   const page = me.page;
   page.setDefaultTimeout(15_000);
+  await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
   for (let i = 0; i < 3; i++)
     await page.getByRole('button', { name: 'More Computer players' }).click();
@@ -161,6 +165,7 @@ test('with several computers the whole table fills up, each with its own name', 
 }) => {
   const me = await newPlayer(browser, 'Many', 'fox');
   const page = me.page;
+  await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
   for (let i = 0; i < 3; i++)
     await page.getByRole('button', { name: 'More Computer players' }).click();
@@ -179,6 +184,7 @@ test('with several computers the whole table fills up, each with its own name', 
 test('a host can add a computer player in the lobby', async ({ browser }) => {
   const me = await newPlayer(browser, 'Host', 'fox');
   const page = me.page;
+  await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
 
   // Karma needs two players; alone it cannot start...
@@ -197,6 +203,7 @@ test('a host can add a computer player in the lobby', async ({ browser }) => {
 
 test('Yatzy rooms have no computer setting', async ({ browser }) => {
   const me = await newPlayer(browser, 'Yatzy', 'fox');
+  await me.page.getByTestId('home-play').click();
   await me.page.getByTestId('home-game-yatzy').click();
   await expect(me.page.getByRole('button', { name: 'More Computer players' })).toHaveCount(0);
   await me.page.getByTestId('lobby-leave').click();
@@ -210,6 +217,7 @@ test('party mode: the winner picks a rule that applies to the next game; epic ha
   const me = await newPlayer(browser, 'Partier', 'fox');
   const page = me.page;
   page.setDefaultTimeout(15_000);
+  await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
   await page.getByRole('button', { name: 'More Computer players' }).click();
   await page.getByTestId('karma-mode-party').click();
@@ -230,6 +238,7 @@ test('party mode: the winner picks a rule that applies to the next game; epic ha
 test('epic mode switches on every rule from the start', async ({ browser }) => {
   const me = await newPlayer(browser, 'Epic', 'fox');
   const page = me.page;
+  await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
   await page.getByRole('button', { name: 'More Computer players' }).click();
   await page.getByTestId('karma-mode-epic').click();

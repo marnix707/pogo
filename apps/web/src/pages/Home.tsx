@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { PublicRoomSummary, PublicUser } from '@pogo/shared';
 import { InstallCard } from '../components/InstallCard';
-import { LogoMark } from '../components/icons';
+import { ArrowLeftIcon, LogoMark, SlidersIcon, TrophyIcon } from '../components/icons';
+import { RaisedColon } from '../components/Brand';
 import { AVATARS } from '@pogo/shared';
-import { Avatar, Button, SectionLabel, Sheet } from '../components/ui';
-import { TopBar } from '../components/TopBar';
+import { Button, SectionLabel, Sheet } from '../components/ui';
+import { TileButton } from '../components/TopBar';
 import { gameUis, getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
 import { avatarEmoji } from '../lib/avatars';
@@ -65,17 +66,20 @@ export function Home({
   lobby,
   watchLobby,
   onSettings,
-  onAvatar,
+  onProfile,
 }: {
   user: PublicUser;
   api: RoomApi;
   lobby: PublicRoomSummary[] | null;
   watchLobby: () => () => void;
   onSettings: () => void;
-  /** Save a new icon for this player. */
-  onAvatar: (avatar: (typeof AVATARS)[number]) => Promise<void>;
+  /** Save a new name and/or icon for this player. */
+  onProfile: (profile: { nickname: string; avatar: (typeof AVATARS)[number] }) => Promise<void>;
 }) {
-  const [picking, setPicking] = useState(false);
+  const [screen, setScreen] = useState<'menu' | 'play' | 'join'>('menu');
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [boardOpen, setBoardOpen] = useState(false);
+  const [name, setName] = useState(user.nickname);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<string>('all');
@@ -103,136 +107,220 @@ export function Home({
 
   return (
     <div className="menu mx-auto flex min-h-dvh max-w-md flex-col">
-      <TopBar
-        title="Po:go"
-        subtitle="Play Online, GO!"
-        left={<LogoMark className="h-11 w-11 shrink-0" />}
-        onSettings={onSettings}
-      />
-      <main className="flex flex-1 flex-col gap-6 px-4 pb-8 pt-2">
-        {/* Who I am, and joining with a code, side by side */}
-        <div className="hud flex items-center gap-3 p-3">
+      <header className="flex items-center gap-2.5 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
+        <LogoMark className="h-11 w-11 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-xl font-bold uppercase leading-tight tracking-[0.12em] text-onbg">
+            <RaisedColon text="Po:go" />
+          </h1>
+          <div className="label truncate text-[10px] text-onbg/70">Play Online, GO!</div>
+        </div>
+        <TileButton
+          onClick={() => setBoardOpen(true)}
+          aria-label="Leaderboard"
+          data-testid="home-leaderboard"
+        >
+          <TrophyIcon className="h-5 w-5" />
+        </TileButton>
+        <TileButton
+          onClick={() => {
+            setName(user.nickname);
+            setProfileOpen(true);
+          }}
+          aria-label="Your profile"
+          data-testid="home-avatar"
+          data-avatar={user.avatar}
+        >
+          <span className="text-2xl leading-none" aria-hidden>
+            {avatarEmoji(user.avatar)}
+          </span>
+        </TileButton>
+        <TileButton onClick={onSettings} aria-label="Settings" data-testid="settings-button">
+          <SlidersIcon className="h-5 w-5" />
+        </TileButton>
+      </header>
+
+      <main className="flex flex-1 flex-col gap-5 px-4 pb-8 pt-3">
+        {screen === 'menu' && (
+          <>
+            <InstallCard variant="banner" />
+            <div className="mt-6 flex flex-col gap-4">
+              <Button
+                data-testid="home-play"
+                className="!min-h-24 !text-3xl"
+                onClick={() => setScreen('play')}
+              >
+                Play
+              </Button>
+              <Button
+                data-testid="home-join"
+                variant="secondary"
+                className="!min-h-24 !text-3xl"
+                onClick={() => setScreen('join')}
+              >
+                Join
+              </Button>
+            </div>
+            <p className="label text-center text-onbg/70">
+              Playing as{' '}
+              <span data-testid="home-nickname" className="text-onbg">
+                {user.nickname}
+              </span>
+            </p>
+          </>
+        )}
+
+        {screen !== 'menu' && (
           <button
             type="button"
-            data-testid="home-avatar"
-            data-avatar={user.avatar}
-            aria-label="Change your icon"
-            onClick={() => setPicking(true)}
-            className="shrink-0 active:translate-y-px"
+            data-testid="home-back"
+            onClick={() => setScreen('menu')}
+            className="label flex items-center gap-2 self-start text-onbg"
           >
-            <Avatar avatar={user.avatar} size="lg" />
+            <ArrowLeftIcon className="h-4 w-4" /> Back
           </button>
-          <div className="min-w-0 flex-1">
-            <div className="label text-muted">Pilot</div>
-            <div className="truncate text-xl font-bold" data-testid="home-nickname">
-              {user.nickname}
-            </div>
-          </div>
-          <form onSubmit={join} className="flex shrink-0 gap-2" aria-label="Join with a code">
-            <input
-              data-testid="home-join-code"
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-              placeholder="CODE"
-              maxLength={8}
-              autoCapitalize="characters"
-              autoCorrect="off"
-              spellCheck={false}
-              aria-label="Room code"
-              className="hud min-h-12 w-[5.5rem] min-w-0 bg-panel px-2 text-center text-lg font-bold uppercase tracking-[0.2em] text-ink outline-none placeholder:text-muted/40 focus:!border-neon"
-            />
-            <Button
-              data-testid="home-join-submit"
-              disabled={blocked || code.length < 4}
-              className="!min-h-12 !px-3"
-            >
-              Join
-            </Button>
-          </form>
-        </div>
+        )}
 
-        <InstallCard variant="banner" />
+        {screen === 'join' && (
+          <>
+            <form onSubmit={join} className="hud flex gap-2 p-3" aria-label="Join with a code">
+              <input
+                data-testid="home-join-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                placeholder="ROOM CODE"
+                maxLength={8}
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                aria-label="Room code"
+                className="hud min-h-12 min-w-0 flex-1 bg-panel px-2 text-center text-lg font-bold uppercase tracking-[0.2em] text-ink outline-none placeholder:text-muted/40 focus:!border-neon"
+              />
+              <Button
+                data-testid="home-join-submit"
+                disabled={blocked || code.length < 4}
+                className="!min-h-12 !px-4"
+              >
+                Join
+              </Button>
+            </form>
 
-        <section aria-label="Open games">
-          <SectionLabel
-            right={
-              <span data-testid="open-games-count" className="text-onbg">
-                {openGames.length}
-              </span>
-            }
-          >
-            Open games
-          </SectionLabel>
-          {gameUis.length > 1 && (
-            <div className="mb-3 flex flex-wrap gap-2">
-              {[{ id: 'all', name: 'All' }, ...gameUis].map((g) => (
+            <section aria-label="Open games">
+              <SectionLabel
+                right={
+                  <span data-testid="open-games-count" className="text-onbg">
+                    {openGames.length}
+                  </span>
+                }
+              >
+                Open games
+              </SectionLabel>
+              {gameUis.length > 1 && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {[{ id: 'all', name: 'All' }, ...gameUis].map((g) => (
+                    <button
+                      key={g.id}
+                      aria-pressed={filter === g.id}
+                      onClick={() => setFilter(g.id)}
+                      className={`label min-h-9 rounded-md border-2 px-3 ${
+                        filter === g.id
+                          ? 'border-accent bg-accent text-accentink'
+                          : 'border-onbg/40 text-onbg'
+                      }`}
+                    >
+                      {g.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {lobby === null ? (
+                <p className="label text-onbg/70">Looking for games…</p>
+              ) : openGames.length === 0 ? (
+                <div
+                  className="hud p-4 text-center text-sm text-muted"
+                  data-testid="open-games-empty"
+                >
+                  No open games right now. Press Play to open a lobby, and switch on{' '}
+                  <b className="text-ink">Public room</b> there so others can join.
+                </div>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {openGames.map((r) => (
+                    <OpenGame
+                      key={r.code}
+                      room={r}
+                      disabled={blocked}
+                      onJoin={() => void run(api.join(r.code))}
+                    />
+                  ))}
+                </ul>
+              )}
+            </section>
+          </>
+        )}
+
+        {screen === 'play' && (
+          <section aria-label="Games">
+            <SectionLabel>Games</SectionLabel>
+            <div className="flex flex-col gap-3">
+              {gameUis.map((g) => (
                 <button
                   key={g.id}
-                  aria-pressed={filter === g.id}
-                  onClick={() => setFilter(g.id)}
-                  className={`label min-h-9 rounded-md border-2 px-3 ${
-                    filter === g.id
-                      ? 'border-accent bg-accent text-accentink'
-                      : 'border-onbg/40 text-onbg'
-                  }`}
+                  type="button"
+                  data-testid={`home-game-${g.id}`}
+                  disabled={blocked}
+                  onClick={() => void run(api.create(g.id))}
+                  className="hud hud-ticks flex w-full items-center gap-4 bg-panel p-4 text-left text-ink transition active:scale-[0.99] disabled:opacity-50"
                 >
-                  {g.name}
+                  <span
+                    className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-accent text-4xl"
+                    aria-hidden
+                  >
+                    {g.emoji}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xl font-bold uppercase tracking-[0.12em]">
+                      {g.name}
+                    </span>
+                    <span className="block text-sm leading-snug text-muted">{g.tagline}</span>
+                  </span>
                 </button>
               ))}
             </div>
-          )}
-          {lobby === null ? (
-            <p className="label text-onbg/70">Looking for games…</p>
-          ) : openGames.length === 0 ? (
-            <div className="hud p-4 text-center text-sm text-muted" data-testid="open-games-empty">
-              No open games right now. Pick a game below to open its lobby, and switch on{' '}
-              <b className="text-ink">Public room</b> there so others can join.
-            </div>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {openGames.map((r) => (
-                <OpenGame
-                  key={r.code}
-                  room={r}
-                  disabled={blocked}
-                  onJoin={() => void run(api.join(r.code))}
-                />
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section aria-label="Games">
-          <SectionLabel>Play</SectionLabel>
-          <div className="flex flex-col gap-3">
-            {gameUis.map((g) => (
-              <button
-                key={g.id}
-                type="button"
-                data-testid={`home-game-${g.id}`}
-                disabled={blocked}
-                onClick={() => void run(api.create(g.id))}
-                className="hud hud-ticks flex w-full items-center gap-4 bg-panel p-4 text-left text-ink transition active:scale-[0.99] disabled:opacity-50"
-              >
-                <span
-                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-accent text-4xl"
-                  aria-hidden
-                >
-                  {g.emoji}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-xl font-bold uppercase tracking-[0.12em]">
-                    {g.name}
-                  </span>
-                  <span className="block text-sm leading-snug text-muted">{g.tagline}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
+          </section>
+        )}
       </main>
 
-      <Sheet open={picking} onClose={() => setPicking(false)} title="Pick your icon">
+      <Sheet open={boardOpen} onClose={() => setBoardOpen(false)} title="Leaderboard">
+        <p className="text-center text-sm text-muted" data-testid="leaderboard-empty">
+          🏆 Rankings are coming soon. Wins and stats will show up here once accounts are in.
+        </p>
+      </Sheet>
+
+      <Sheet open={profileOpen} onClose={() => setProfileOpen(false)} title="Your profile">
+        <form
+          className="mb-4 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const nickname = name.trim();
+            if (nickname && nickname !== user.nickname) {
+              void onProfile({ nickname, avatar: user.avatar as (typeof AVATARS)[number] });
+            }
+            setProfileOpen(false);
+          }}
+        >
+          <input
+            data-testid="profile-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={20}
+            aria-label="Nickname"
+            className="hud min-h-12 min-w-0 flex-1 bg-panel px-3 text-lg font-bold text-ink outline-none focus:!border-neon"
+          />
+          <Button data-testid="profile-save" className="!px-4">
+            Save
+          </Button>
+        </form>
         <div className="grid grid-cols-4 gap-3">
           {AVATARS.map((a) => (
             <button
@@ -242,8 +330,8 @@ export function Home({
               aria-label={a}
               aria-pressed={user.avatar === a}
               onClick={() => {
-                setPicking(false);
-                if (a !== user.avatar) void onAvatar(a);
+                setProfileOpen(false);
+                if (a !== user.avatar) void onProfile({ nickname: user.nickname, avatar: a });
               }}
               className={`flex aspect-square items-center justify-center rounded-[8px] border-2 text-4xl ring-2 ring-line transition active:translate-y-px ${
                 user.avatar === a ? 'border-neon bg-neon/20' : 'border-edge/40 bg-panel2'

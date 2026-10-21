@@ -11,9 +11,11 @@ test('three players play a complete Karma game through the UI', async ({ browser
   for (const p of pages) p.setDefaultTimeout(15_000); // a stuck click fails fast with a clear error
 
   // Karma sits next to Yatzy on the home screen; Alice opens a private Karma room.
+  await alice.page.getByTestId('home-play').click();
   await alice.page.getByTestId('home-game-karma').click();
   const code = (await alice.page.getByTestId('room-code').textContent())!.trim();
   for (const p of [bob.page, cleo.page]) {
+    await p.getByTestId('home-join').click();
     await p.getByTestId('home-join-code').fill(code);
     await p.getByTestId('home-join-submit').click();
   }
@@ -78,13 +80,16 @@ test('the lobby can be filtered by game', async ({ browser }) => {
   const hostA = await newPlayer(browser, 'KarmaHost', 'fox');
   const hostB = await newPlayer(browser, 'YatzyHost', 'cat');
 
+  await hostA.page.getByTestId('home-play').click();
   await hostA.page.getByTestId('home-game-karma').click();
 
   await expect(hostA.page.getByTestId('room-visibility')).toHaveText('Public');
+  await hostB.page.getByTestId('home-play').click();
   await hostB.page.getByTestId('home-game-yatzy').click();
   await expect(hostB.page.getByTestId('room-visibility')).toHaveText('Public');
 
   const w = watcher.page;
+  await w.getByTestId('home-join').click();
   await expect(w.getByTestId(/^open-game-/).filter({ hasText: "KarmaHost's game" })).toBeVisible();
   await expect(w.getByTestId(/^open-game-/).filter({ hasText: "YatzyHost's game" })).toBeVisible();
 
@@ -142,10 +147,12 @@ test('cards slide when swapped and when played to the pile (unless motion is red
   const calm = await make('Calm', 'owl', 'reduce'); // reduced motion: must not animate
   const pages = [alice.page, bob.page, calm.page];
 
+  await alice.page.getByTestId('home-play').click();
   await alice.page.getByTestId('home-game-karma').click();
 
   const code = (await alice.page.getByTestId('room-code').textContent())!.trim();
   for (const p of [bob.page, calm.page]) {
+    await p.getByTestId('home-join').click();
     await p.getByTestId('home-join-code').fill(code);
     await p.getByTestId('home-join-submit').click();
   }
@@ -200,9 +207,11 @@ test('tap selects, tapping again deselects, the Play button plays; Ready button 
   const bob = await newPlayer(browser, 'Bob', 'cat');
   const [a, b] = [alice.page, bob.page];
 
+  await a.getByTestId('home-play').click();
   await a.getByTestId('home-game-karma').click();
 
   const code = (await a.getByTestId('room-code').textContent())!.trim();
+  await b.getByTestId('home-join').click();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
   await a.getByTestId('lobby-start').click();
@@ -300,9 +309,11 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
   const bob = await newPlayer(browser, 'Bob', 'cat');
   const [a, b] = [alice.page, bob.page];
 
+  await a.getByTestId('home-play').click();
   await a.getByTestId('home-game-karma').click();
 
   const code = (await a.getByTestId('room-code').textContent())!.trim();
+  await b.getByTestId('home-join').click();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
   await a.getByTestId('lobby-start').click();
@@ -382,9 +393,11 @@ test.fixme('a very long hand (after picking up piles) wraps into rows (2 from 9 
   const bob = await newPlayer(browser, 'Bob', 'cat');
   const [a, b] = [alice.page, bob.page];
 
+  await a.getByTestId('home-play').click();
   await a.getByTestId('home-game-karma').click();
 
   const code = (await a.getByTestId('room-code').textContent())!.trim();
+  await b.getByTestId('home-join').click();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
   await a.getByTestId('lobby-start').click();

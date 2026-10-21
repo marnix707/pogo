@@ -28,10 +28,12 @@ test('two players play a full Yatzy game, with a reconnect in the middle', async
   const [a, b] = [alice.page, bob.page];
 
   // Alice creates a room; Bob joins with the code.
+  await a.getByTestId('home-play').click();
   await a.getByTestId('home-game-yatzy').click();
   const code = (await a.getByTestId('room-code').textContent())!.trim();
   expect(code).toMatch(/^[A-Z0-9]{5}$/);
 
+  await b.getByTestId('home-join').click();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
   await expect(b.getByTestId('lobby-waiting')).toContainText('Alice');
@@ -101,6 +103,7 @@ test('a share link joins the room directly, and the host can remove a player', a
   browser,
 }) => {
   const host = await newPlayer(browser, 'Hana', 'owl');
+  await host.page.getByTestId('home-play').click();
   await host.page.getByTestId('home-game-yatzy').click();
   const code = (await host.page.getByTestId('room-code').textContent())!.trim();
 
@@ -114,7 +117,7 @@ test('a share link joins the room directly, and the host can remove a player', a
   await expect(host.page.getByTestId('member-Gus')).toBeVisible();
 
   await host.page.getByTestId('member-Gus').getByRole('button', { name: 'Remove' }).click();
-  await expect(guest.getByTestId('home-join-code')).toBeVisible();
+  await expect(guest.getByTestId('home-play')).toBeVisible();
   await expect(guest.getByTestId('toast')).toContainText('removed');
 
   await host.context.close();
@@ -135,6 +138,7 @@ test('the Yatzy scorecard, dice and buttons fit one phone screen without vertica
   await page.goto('/');
   await page.getByTestId('signin-nickname').fill('Solo');
   await page.getByTestId('signin-submit').click();
+  await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-yatzy').click();
   await page.getByTestId('lobby-start').click();
   await page.getByTestId('roll-button').click();

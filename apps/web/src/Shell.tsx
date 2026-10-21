@@ -110,9 +110,9 @@ export function Shell({
         lobby={lobby}
         watchLobby={watchLobby}
         onSettings={openSettings}
-        onAvatar={async (avatar) => {
+        onProfile={async (profile) => {
           try {
-            onUser(await updateProfile(session.token, { nickname: session.user.nickname, avatar }));
+            onUser(await updateProfile(session.token, profile));
           } catch (e) {
             toast.show((e as Error).message, 'error');
           }

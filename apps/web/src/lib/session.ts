@@ -56,7 +56,7 @@ export async function updateProfile(
     body: JSON.stringify(profile),
   });
   const body = (await res.json()) as Pick<AuthResponse, 'user'> & { error?: string };
-  if (!res.ok) throw new Error(body.error ?? 'Could not save your icon');
+  if (!res.ok) throw new Error(body.error ?? 'Could not save your profile');
   return body.user;
 }
 

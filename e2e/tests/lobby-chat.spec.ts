@@ -23,10 +23,12 @@ test('public games show up live in the lobby, can be joined from it, and quick m
   const w = watcher.page;
   const h = host.page;
 
+  await w.getByTestId('home-join').click();
   // Nothing open yet (other tests may have left rooms; look for this host specifically).
   await expect(w.getByText("Hosty's game")).toHaveCount(0);
 
   // A new room is public: it is listed live on the watcher's Home screen, without a refresh.
+  await h.getByTestId('home-play').click();
   await h.getByTestId('home-game-yatzy').click();
   await expect(h.getByTestId('room-visibility')).toHaveText('Public');
   await expect(h.getByTestId('room-code')).toBeVisible(); // a public room shows its code
@@ -49,6 +51,7 @@ test('public games show up live in the lobby, can be joined from it, and quick m
 
   // A third player joins from the list too.
   const third = await newPlayer(browser, 'Quicky', 'cat');
+  await third.page.getByTestId('home-join').click();
   await third.page
     .getByTestId(/^open-game-/)
     .filter({ hasText: "Hosty's game" })
@@ -73,9 +76,11 @@ test('players chat in the lobby and during the game; profanity is masked', async
   const bob = await newPlayer(browser, 'Bob', 'cat');
   const [a, b] = [alice.page, bob.page];
 
+  await a.getByTestId('home-play').click();
   await a.getByTestId('home-game-yatzy').click();
 
   const code = (await a.getByTestId('room-code').textContent())!.trim();
+  await b.getByTestId('home-join').click();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
   await expect(b.getByTestId('lobby-waiting')).toBeVisible();
@@ -140,25 +145,33 @@ test('profane nicknames are refused at sign-in when the filter is on (and allowe
   await context.close();
 });
 
-test('the dashboard: join-by-code beside the name, open games, then the games; a game tap opens its lobby', async ({
+test('the landing page: logo + name on top with leaderboard, profile and settings, then Play and Join', async ({
   browser,
 }) => {
   const me = await newPlayer(browser, 'Layout', 'fox');
   const page = me.page;
   const box = async (id: string) => (await page.getByTestId(id).boundingBox())!;
 
-  // Top row: the name and the join form share a row.
-  const name = await box('home-nickname');
-  const code = await box('home-join-code');
-  expect(Math.abs(name.y - code.y)).toBeLessThan(60);
-  expect(code.x).toBeGreaterThan(name.x);
+  // Header row: three icon buttons; below them the two big buttons, Play above Join.
+  const board = await box('home-leaderboard');
+  const avatar = await box('home-avatar');
+  const settings = await box('settings-button');
+  expect(Math.abs(board.y - settings.y)).toBeLessThan(4);
+  expect(board.x).toBeLessThan(avatar.x);
+  expect(avatar.x).toBeLessThan(settings.x);
+  const play = await box('home-play');
+  const join = await box('home-join');
+  expect(play.y).toBeGreaterThan(board.y);
+  expect(join.y).toBeGreaterThan(play.y);
 
-  // Order: open games above the games section; the game cards have no action buttons.
-  const open = await page.getByRole('region', { name: 'Open games' }).boundingBox();
-  const games = await page.getByRole('region', { name: 'Games', exact: true }).boundingBox();
-  expect(open!.y).toBeLessThan(games!.y);
+  // Join shows the code form and the open games; Back returns.
+  await page.getByTestId('home-join').click();
+  await expect(page.getByTestId('home-join-code')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Open games' })).toBeVisible();
+  await page.getByTestId('home-back').click();
 
-  // Tapping a game goes straight to its lobby (no menu in between).
+  // Play lists the games; tapping one goes straight to its lobby (no menu in between).
+  await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
   await expect(page.getByTestId('lobby-start')).toBeVisible();
   await expect(page.getByTestId('sheet-backdrop')).toHaveCount(0);
