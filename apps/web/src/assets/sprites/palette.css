@@ -1,0 +1,23 @@
+:root {
+  --pogo-outline: #101628;
+  --pogo-frog-light: #74cca8;
+  --pogo-frog: #56a786;
+  --pogo-frog-dark: #459373;
+  --pogo-eye: #fff4b4;
+  --pogo-yellow: #fda200;
+  --pogo-yellow-dark: #ea9600;
+  --pogo-yellow-light: #fdcf51;
+  --pogo-blue: #3aaef7;
+  --pogo-blue-dark: #0061b8;
+  --pogo-blue-light: #83e9f8;
+  --pogo-bg-blue: #274f8f;
+  --pogo-bg-blue-deep: #20325a;
+  --pogo-navy-panel: #233049;
+  --pogo-cream: #f7f1e4;
+  --pogo-white: #ffffff;
+  --pogo-light-gray: #dcdcdc;
+  --pogo-text-muted: #b9becb;
+  --pogo-red: #fd5f55;
+  --pogo-red-dark: #c14139;
+  --pogo-pink: #ff9690;
+}

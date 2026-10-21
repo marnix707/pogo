@@ -1,0 +1,779 @@
+[
+ {
+  "file": "animation-side/frames/00-side_idle.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": true,
+  "description": "Side-view animation frame 0: side_idle"
+ },
+ {
+  "file": "animation-side/frames/01-side_blink.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": true,
+  "description": "Side-view animation frame 1: side_blink"
+ },
+ {
+  "file": "animation-side/frames/02-side_crouch.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": true,
+  "description": "Side-view animation frame 2: side_crouch"
+ },
+ {
+  "file": "animation-side/frames/03-side_leap.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": true,
+  "description": "Side-view animation frame 3: side_leap"
+ },
+ {
+  "file": "animation-side/frames/04-side_stick.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": true,
+  "description": "Side-view animation frame 4: side_stick"
+ },
+ {
+  "file": "animation-side/frames/05-side_pogo_compress.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": true,
+  "description": "Side-view animation frame 5: side_pogo_compress"
+ },
+ {
+  "file": "animation-side/frames/06-side_pogo_extend.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": true,
+  "description": "Side-view animation frame 6: side_pogo_extend"
+ },
+ {
+  "file": "animation-side/frames/07-side_pogo_air.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": true,
+  "description": "Side-view animation frame 7: side_pogo_air"
+ },
+ {
+  "file": "animation-side/fx/fx_boing.svg",
+  "w": 40,
+  "h": 11,
+  "transparent": true,
+  "description": "Effect: boing bars around a big bounce"
+ },
+ {
+  "file": "animation-side/fx/fx_dust.svg",
+  "w": 32,
+  "h": 4,
+  "transparent": true,
+  "description": "Effect: dust puffs on landing"
+ },
+ {
+  "file": "animation-side/fx/fx_trail.svg",
+  "w": 9,
+  "h": 7,
+  "transparent": true,
+  "description": "Effect: speed lines behind a hop"
+ },
+ {
+  "file": "animation-side/pogo-side-spritesheet.svg",
+  "w": 256,
+  "h": 32,
+  "transparent": true,
+  "description": "Side-view animation frames in one row (32px per frame)"
+ },
+ {
+  "file": "animation/frames/00-idle.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": true,
+  "description": "Front-view animation frame 0: idle"
+ },
+ {
+  "file": "animation/frames/01-idle_blink.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": true,
+  "description": "Front-view animation frame 1: idle_blink"
+ },
+ {
+  "file": "animation/frames/02-crouch.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": true,
+  "description": "Front-view animation frame 2: crouch"
+ },
+ {
+  "file": "animation/frames/03-launch.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": true,
+  "description": "Front-view animation frame 3: launch"
+ },
+ {
+  "file": "animation/frames/04-air.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": true,
+  "description": "Front-view animation frame 4: air"
+ },
+ {
+  "file": "animation/frames/05-stick.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": true,
+  "description": "Front-view animation frame 5: stick"
+ },
+ {
+  "file": "animation/frames/06-pogo_compress.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": true,
+  "description": "Front-view animation frame 6: pogo_compress"
+ },
+ {
+  "file": "animation/frames/07-pogo_extend.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": true,
+  "description": "Front-view animation frame 7: pogo_extend"
+ },
+ {
+  "file": "animation/frames/08-pogo_air.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": true,
+  "description": "Front-view animation frame 8: pogo_air"
+ },
+ {
+  "file": "animation/fx/fx_boing.svg",
+  "w": 40,
+  "h": 11,
+  "transparent": true,
+  "description": "Effect: boing bars around a big bounce"
+ },
+ {
+  "file": "animation/fx/fx_dust.svg",
+  "w": 32,
+  "h": 4,
+  "transparent": true,
+  "description": "Effect: dust puffs on landing"
+ },
+ {
+  "file": "animation/fx/fx_trail.svg",
+  "w": 9,
+  "h": 7,
+  "transparent": true,
+  "description": "Effect: speed lines behind a hop"
+ },
+ {
+  "file": "animation/pogo-spritesheet.svg",
+  "w": 288,
+  "h": 32,
+  "transparent": true,
+  "description": "Front-view animation frames in one row (32px per frame)"
+ },
+ {
+  "file": "brand/boing-lines.svg",
+  "w": 40,
+  "h": 11,
+  "transparent": true,
+  "description": "The white boing speed lines on their own"
+ },
+ {
+  "file": "brand/frog-pogo.svg",
+  "w": 24,
+  "h": 29,
+  "transparent": true,
+  "description": "Pogo standing on his pogo stick, front view"
+ },
+ {
+  "file": "brand/frog.svg",
+  "w": 24,
+  "h": 20,
+  "transparent": true,
+  "description": "Pogo the frog, sitting, front view (main mascot)"
+ },
+ {
+  "file": "brand/key-art-boing.svg",
+  "w": 40,
+  "h": 43,
+  "transparent": true,
+  "description": "Start-screen key art: wordmark, Pogo on the stick and the white boing speed lines"
+ },
+ {
+  "file": "brand/key-art.svg",
+  "w": 29,
+  "h": 43,
+  "transparent": true,
+  "description": "Stacked logo: wordmark above Pogo on the pogo stick"
+ },
+ {
+  "file": "brand/lockup.svg",
+  "w": 58,
+  "h": 20,
+  "transparent": true,
+  "description": "Horizontal logo: frog + die-O wordmark"
+ },
+ {
+  "file": "brand/pogo-stick.svg",
+  "w": 24,
+  "h": 9,
+  "transparent": true,
+  "description": "Pogo stick alone, front view"
+ },
+ {
+  "file": "brand/wordmark-blue.svg",
+  "w": 29,
+  "h": 11,
+  "transparent": true,
+  "description": "POGO wordmark, blue"
+ },
+ {
+  "file": "brand/wordmark-cream.svg",
+  "w": 29,
+  "h": 11,
+  "transparent": true,
+  "description": "POGO wordmark, cream"
+ },
+ {
+  "file": "brand/wordmark-die-o.svg",
+  "w": 30,
+  "h": 11,
+  "transparent": true,
+  "description": "POGO wordmark with a die as the last O"
+ },
+ {
+  "file": "brand/wordmark-red.svg",
+  "w": 29,
+  "h": 11,
+  "transparent": true,
+  "description": "POGO wordmark, red"
+ },
+ {
+  "file": "brand/wordmark-yellow.svg",
+  "w": 29,
+  "h": 11,
+  "transparent": true,
+  "description": "POGO wordmark, primary (yellow)"
+ },
+ {
+  "file": "cards/10C.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "10 of clubs"
+ },
+ {
+  "file": "cards/10D.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "10 of diamonds"
+ },
+ {
+  "file": "cards/10H.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "10 of hearts"
+ },
+ {
+  "file": "cards/10S.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "10 of spades"
+ },
+ {
+  "file": "cards/2C.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "2 of clubs"
+ },
+ {
+  "file": "cards/2D.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "2 of diamonds"
+ },
+ {
+  "file": "cards/2H.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "2 of hearts"
+ },
+ {
+  "file": "cards/2S.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "2 of spades"
+ },
+ {
+  "file": "cards/3C.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "3 of clubs"
+ },
+ {
+  "file": "cards/3D.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "3 of diamonds"
+ },
+ {
+  "file": "cards/3H.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "3 of hearts"
+ },
+ {
+  "file": "cards/3S.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "3 of spades"
+ },
+ {
+  "file": "cards/4C.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "4 of clubs"
+ },
+ {
+  "file": "cards/4D.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "4 of diamonds"
+ },
+ {
+  "file": "cards/4H.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "4 of hearts"
+ },
+ {
+  "file": "cards/4S.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "4 of spades"
+ },
+ {
+  "file": "cards/5C.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "5 of clubs"
+ },
+ {
+  "file": "cards/5D.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "5 of diamonds"
+ },
+ {
+  "file": "cards/5H.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "5 of hearts"
+ },
+ {
+  "file": "cards/5S.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "5 of spades"
+ },
+ {
+  "file": "cards/6C.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "6 of clubs"
+ },
+ {
+  "file": "cards/6D.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "6 of diamonds"
+ },
+ {
+  "file": "cards/6H.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "6 of hearts"
+ },
+ {
+  "file": "cards/6S.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "6 of spades"
+ },
+ {
+  "file": "cards/7C.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "7 of clubs"
+ },
+ {
+  "file": "cards/7D.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "7 of diamonds"
+ },
+ {
+  "file": "cards/7H.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "7 of hearts"
+ },
+ {
+  "file": "cards/7S.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "7 of spades"
+ },
+ {
+  "file": "cards/8C.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "8 of clubs"
+ },
+ {
+  "file": "cards/8D.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "8 of diamonds"
+ },
+ {
+  "file": "cards/8H.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "8 of hearts"
+ },
+ {
+  "file": "cards/8S.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "8 of spades"
+ },
+ {
+  "file": "cards/9C.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "9 of clubs"
+ },
+ {
+  "file": "cards/9D.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "9 of diamonds"
+ },
+ {
+  "file": "cards/9H.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "9 of hearts"
+ },
+ {
+  "file": "cards/9S.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "9 of spades"
+ },
+ {
+  "file": "cards/AC.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Ace of clubs"
+ },
+ {
+  "file": "cards/AD.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Ace of diamonds"
+ },
+ {
+  "file": "cards/AH.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Ace of hearts"
+ },
+ {
+  "file": "cards/AS.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Ace of spades"
+ },
+ {
+  "file": "cards/JC.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Jack (frog jack art) of clubs"
+ },
+ {
+  "file": "cards/JD.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Jack (frog jack art) of diamonds"
+ },
+ {
+  "file": "cards/JH.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Jack (frog jack art) of hearts"
+ },
+ {
+  "file": "cards/JS.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Jack (frog jack art) of spades"
+ },
+ {
+  "file": "cards/KC.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "King (frog king art) of clubs"
+ },
+ {
+  "file": "cards/KD.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "King (frog king art) of diamonds"
+ },
+ {
+  "file": "cards/KH.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "King (frog king art) of hearts"
+ },
+ {
+  "file": "cards/KS.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "King (frog king art) of spades"
+ },
+ {
+  "file": "cards/QC.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Queen (frog queen art) of clubs"
+ },
+ {
+  "file": "cards/QD.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Queen (frog queen art) of diamonds"
+ },
+ {
+  "file": "cards/QH.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Queen (frog queen art) of hearts"
+ },
+ {
+  "file": "cards/QS.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Queen (frog queen art) of spades"
+ },
+ {
+  "file": "cards/back.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Card back"
+ },
+ {
+  "file": "cards/joker.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Joker"
+ },
+ {
+  "file": "cards/suits/clubs-mini.svg",
+  "w": 5,
+  "h": 6,
+  "transparent": true,
+  "description": "clubs suit symbol (small, for corners)"
+ },
+ {
+  "file": "cards/suits/clubs.svg",
+  "w": 7,
+  "h": 7,
+  "transparent": true,
+  "description": "clubs suit symbol (pip)"
+ },
+ {
+  "file": "cards/suits/diamonds-mini.svg",
+  "w": 5,
+  "h": 6,
+  "transparent": true,
+  "description": "diamonds suit symbol (small, for corners)"
+ },
+ {
+  "file": "cards/suits/diamonds.svg",
+  "w": 7,
+  "h": 7,
+  "transparent": true,
+  "description": "diamonds suit symbol (pip)"
+ },
+ {
+  "file": "cards/suits/hearts-mini.svg",
+  "w": 5,
+  "h": 6,
+  "transparent": true,
+  "description": "hearts suit symbol (small, for corners)"
+ },
+ {
+  "file": "cards/suits/hearts.svg",
+  "w": 7,
+  "h": 7,
+  "transparent": true,
+  "description": "hearts suit symbol (pip)"
+ },
+ {
+  "file": "cards/suits/spades-mini.svg",
+  "w": 5,
+  "h": 6,
+  "transparent": true,
+  "description": "spades suit symbol (small, for corners)"
+ },
+ {
+  "file": "cards/suits/spades.svg",
+  "w": 7,
+  "h": 7,
+  "transparent": true,
+  "description": "spades suit symbol (pip)"
+ },
+ {
+  "file": "characters/jack.svg",
+  "w": 24,
+  "h": 30,
+  "transparent": true,
+  "description": "Frog jack character art (full body, no card frame)"
+ },
+ {
+  "file": "characters/joker.svg",
+  "w": 24,
+  "h": 30,
+  "transparent": true,
+  "description": "Frog joker character art (full body, no card frame)"
+ },
+ {
+  "file": "characters/king.svg",
+  "w": 24,
+  "h": 30,
+  "transparent": true,
+  "description": "Frog king character art (full body, no card frame)"
+ },
+ {
+  "file": "characters/queen.svg",
+  "w": 24,
+  "h": 30,
+  "transparent": true,
+  "description": "Frog queen character art (full body, no card frame)"
+ },
+ {
+  "file": "dice/die-1.svg",
+  "w": 16,
+  "h": 16,
+  "transparent": true,
+  "description": "Die showing 1 (white)"
+ },
+ {
+  "file": "dice/die-2.svg",
+  "w": 16,
+  "h": 16,
+  "transparent": true,
+  "description": "Die showing 2 (yellow)"
+ },
+ {
+  "file": "dice/die-3.svg",
+  "w": 16,
+  "h": 16,
+  "transparent": true,
+  "description": "Die showing 3 (blue)"
+ },
+ {
+  "file": "dice/die-4.svg",
+  "w": 16,
+  "h": 16,
+  "transparent": true,
+  "description": "Die showing 4 (red)"
+ },
+ {
+  "file": "dice/die-5.svg",
+  "w": 16,
+  "h": 16,
+  "transparent": true,
+  "description": "Die showing 5 (green)"
+ },
+ {
+  "file": "dice/die-6.svg",
+  "w": 16,
+  "h": 16,
+  "transparent": true,
+  "description": "Die showing 6 (purple)"
+ },
+ {
+  "file": "icons/favicon.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": false,
+  "description": "Favicon (full yellow tile)"
+ },
+ {
+  "file": "icons/icon.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": false,
+  "description": "App icon (full yellow tile; the tile IS the icon)"
+ }
+]

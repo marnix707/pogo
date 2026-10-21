@@ -1,0 +1,586 @@
+{
+ "name": "Pogo the frog, side view (facing right)",
+ "frame_size": {
+  "w": 32,
+  "h": 32
+ },
+ "anchor": "bottom-centre of each frame; x/y are art pixels (multiply by your render scale). x=0 is where the stick stands, e.g. the middle of the screen.",
+ "frames": [
+  {
+   "index": 0,
+   "name": "side_idle",
+   "file": "frames/00-side_idle.svg",
+   "sheet_x": 0,
+   "description": "Sitting, facing right"
+  },
+  {
+   "index": 1,
+   "name": "side_blink",
+   "file": "frames/01-side_blink.svg",
+   "sheet_x": 32,
+   "description": "Blink, for the idle loop"
+  },
+  {
+   "index": 2,
+   "name": "side_crouch",
+   "file": "frames/02-side_crouch.svg",
+   "sheet_x": 64,
+   "description": "Squash before a hop, and on landing"
+  },
+  {
+   "index": 3,
+   "name": "side_leap",
+   "file": "frames/03-side_leap.svg",
+   "sheet_x": 96,
+   "description": "Mid-leap, legs stretched out behind"
+  },
+  {
+   "index": 4,
+   "name": "side_stick",
+   "file": "frames/04-side_stick.svg",
+   "sheet_x": 128,
+   "description": "Pogo stick standing on its own (side view)"
+  },
+  {
+   "index": 5,
+   "name": "side_pogo_compress",
+   "file": "frames/05-side_pogo_compress.svg",
+   "sheet_x": 160,
+   "description": "On the stick, spring squashed"
+  },
+  {
+   "index": 6,
+   "name": "side_pogo_extend",
+   "file": "frames/06-side_pogo_extend.svg",
+   "sheet_x": 192,
+   "description": "On the stick, spring at rest"
+  },
+  {
+   "index": 7,
+   "name": "side_pogo_air",
+   "file": "frames/07-side_pogo_air.svg",
+   "sheet_x": 224,
+   "description": "On the stick, airborne, spring stretched"
+  }
+ ],
+ "sequences": {
+  "hop_in": {
+   "loop": false,
+   "show_stick": true,
+   "steps": [
+    {
+     "frame": "side_crouch",
+     "ms": 90,
+     "x": -100,
+     "y": 0,
+     "fx": []
+    },
+    {
+     "frame": "side_leap",
+     "ms": 70,
+     "x": -95,
+     "y": -6,
+     "fx": [
+      {
+       "name": "fx_trail",
+       "x": -116,
+       "y": -11
+      }
+     ]
+    },
+    {
+     "frame": "side_leap",
+     "ms": 70,
+     "x": -90,
+     "y": -10,
+     "fx": [
+      {
+       "name": "fx_trail",
+       "x": -111,
+       "y": -15
+      }
+     ]
+    },
+    {
+     "frame": "side_leap",
+     "ms": 70,
+     "x": -85,
+     "y": -8,
+     "fx": [
+      {
+       "name": "fx_trail",
+       "x": -106,
+       "y": -13
+      }
+     ]
+    },
+    {
+     "frame": "side_idle",
+     "ms": 50,
+     "x": -81,
+     "y": -2,
+     "fx": []
+    },
+    {
+     "frame": "side_crouch",
+     "ms": 90,
+     "x": -80,
+     "y": 0,
+     "fx": [
+      {
+       "name": "fx_dust",
+       "x": -80,
+       "y": 0
+      }
+     ]
+    },
+    {
+     "frame": "side_idle",
+     "ms": 140,
+     "x": -80,
+     "y": 0,
+     "fx": []
+    },
+    {
+     "frame": "side_crouch",
+     "ms": 90,
+     "x": -80,
+     "y": 0,
+     "fx": []
+    },
+    {
+     "frame": "side_leap",
+     "ms": 70,
+     "x": -75,
+     "y": -6,
+     "fx": [
+      {
+       "name": "fx_trail",
+       "x": -96,
+       "y": -11
+      }
+     ]
+    },
+    {
+     "frame": "side_leap",
+     "ms": 70,
+     "x": -70,
+     "y": -10,
+     "fx": [
+      {
+       "name": "fx_trail",
+       "x": -91,
+       "y": -15
+      }
+     ]
+    },
+    {
+     "frame": "side_leap",
+     "ms": 70,
+     "x": -65,
+     "y": -8,
+     "fx": [
+      {
+       "name": "fx_trail",
+       "x": -86,
+       "y": -13
+      }
+     ]
+    },
+    {
+     "frame": "side_idle",
+     "ms": 50,
+     "x": -61,
+     "y": -2,
+     "fx": []
+    },
+    {
+     "frame": "side_crouch",
+     "ms": 90,
+     "x": -60,
+     "y": 0,
+     "fx": [
+      {
+       "name": "fx_dust",
+       "x": -60,
+       "y": 0
+      }
+     ]
+    },
+    {
+     "frame": "side_idle",
+     "ms": 140,
+     "x": -60,
+     "y": 0,
+     "fx": []
+    },
+    {
+     "frame": "side_crouch",
+     "ms": 90,
+     "x": -60,
+     "y": 0,
+     "fx": []
+    },
+    {
+     "frame": "side_leap",
+     "ms": 70,
+     "x": -55,
+     "y": -6,
+     "fx": [
+      {
+       "name": "fx_trail",
+       "x": -76,
+       "y": -11
+      }
+     ]
+    },
+    {
+     "frame": "side_leap",
+     "ms": 70,
+     "x": -50,
+     "y": -10,
+     "fx": [
+      {
+       "name": "fx_trail",
+       "x": -71,
+       "y": -15
+      }
+     ]
+    },
+    {
+     "frame": "side_leap",
+     "ms": 70,
+     "x": -45,
+     "y": -8,
+     "fx": [
+      {
+       "name": "fx_trail",
+       "x": -66,
+       "y": -13
+      }
+     ]
+    },
+    {
+     "frame": "side_idle",
+     "ms": 50,
+     "x": -41,
+     "y": -2,
+     "fx": []
+    },
+    {
+     "frame": "side_crouch",
+     "ms": 90,
+     "x": -40,
+     "y": 0,
+     "fx": [
+      {
+       "name": "fx_dust",
+       "x": -40,
+       "y": 0
+      }
+     ]
+    },
+    {
+     "frame": "side_idle",
+     "ms": 140,
+     "x": -40,
+     "y": 0,
+     "fx": []
+    },
+    {
+     "frame": "side_crouch",
+     "ms": 90,
+     "x": -40,
+     "y": 0,
+     "fx": []
+    },
+    {
+     "frame": "side_leap",
+     "ms": 70,
+     "x": -35,
+     "y": -6,
+     "fx": [
+      {
+       "name": "fx_trail",
+       "x": -56,
+       "y": -11
+      }
+     ]
+    },
+    {
+     "frame": "side_leap",
+     "ms": 70,
+     "x": -30,
+     "y": -10,
+     "fx": [
+      {
+       "name": "fx_trail",
+       "x": -51,
+       "y": -15
+      }
+     ]
+    },
+    {
+     "frame": "side_leap",
+     "ms": 70,
+     "x": -25,
+     "y": -8,
+     "fx": [
+      {
+       "name": "fx_trail",
+       "x": -46,
+       "y": -13
+      }
+     ]
+    },
+    {
+     "frame": "side_idle",
+     "ms": 50,
+     "x": -21,
+     "y": -2,
+     "fx": []
+    },
+    {
+     "frame": "side_crouch",
+     "ms": 90,
+     "x": -20,
+     "y": 0,
+     "fx": [
+      {
+       "name": "fx_dust",
+       "x": -20,
+       "y": 0
+      }
+     ]
+    },
+    {
+     "frame": "side_idle",
+     "ms": 140,
+     "x": -20,
+     "y": 0,
+     "fx": []
+    }
+   ],
+   "note": "Four forward hops from x=-100 to just left of the stick (x=-20)."
+  },
+  "mount": {
+   "loop": false,
+   "show_stick": true,
+   "steps": [
+    {
+     "frame": "side_crouch",
+     "ms": 150,
+     "x": -20,
+     "y": 0,
+     "fx": []
+    },
+    {
+     "frame": "side_leap",
+     "ms": 70,
+     "x": -15,
+     "y": -10,
+     "fx": [
+      {
+       "name": "fx_trail",
+       "x": -36,
+       "y": -15
+      }
+     ]
+    },
+    {
+     "frame": "side_leap",
+     "ms": 70,
+     "x": -9,
+     "y": -18,
+     "fx": [
+      {
+       "name": "fx_trail",
+       "x": -30,
+       "y": -23
+      }
+     ]
+    },
+    {
+     "frame": "side_leap",
+     "ms": 70,
+     "x": -4,
+     "y": -19,
+     "fx": [
+      {
+       "name": "fx_trail",
+       "x": -25,
+       "y": -24
+      }
+     ]
+    },
+    {
+     "frame": "side_leap",
+     "ms": 60,
+     "x": -1,
+     "y": -14,
+     "fx": [
+      {
+       "name": "fx_trail",
+       "x": -22,
+       "y": -19
+      }
+     ]
+    },
+    {
+     "frame": "side_pogo_compress",
+     "ms": 150,
+     "x": 0,
+     "y": 0,
+     "fx": [
+      {
+       "name": "fx_dust",
+       "x": 0,
+       "y": 0
+      }
+     ]
+    }
+   ],
+   "note": "Big leap onto the stick. Hide the separate stick from the side_pogo_compress step on."
+  },
+  "pogo_loop": {
+   "loop": true,
+   "show_stick": false,
+   "steps": [
+    {
+     "frame": "side_pogo_compress",
+     "ms": 90,
+     "x": 0,
+     "y": 0,
+     "fx": [
+      {
+       "name": "fx_dust",
+       "x": 0,
+       "y": 0
+      }
+     ]
+    },
+    {
+     "frame": "side_pogo_extend",
+     "ms": 60,
+     "x": 0,
+     "y": -3,
+     "fx": []
+    },
+    {
+     "frame": "side_pogo_air",
+     "ms": 90,
+     "x": 0,
+     "y": -10,
+     "fx": [
+      {
+       "name": "fx_boing",
+       "x": 2,
+       "y": -24
+      }
+     ]
+    },
+    {
+     "frame": "side_pogo_air",
+     "ms": 100,
+     "x": 0,
+     "y": -14,
+     "fx": [
+      {
+       "name": "fx_boing",
+       "x": 2,
+       "y": -28
+      }
+     ]
+    },
+    {
+     "frame": "side_pogo_air",
+     "ms": 90,
+     "x": 0,
+     "y": -10,
+     "fx": [
+      {
+       "name": "fx_boing",
+       "x": 2,
+       "y": -24
+      }
+     ]
+    },
+    {
+     "frame": "side_pogo_extend",
+     "ms": 60,
+     "x": 0,
+     "y": -3,
+     "fx": []
+    }
+   ],
+   "note": "Bounce in place; the stick is part of these frames."
+  },
+  "idle_loop": {
+   "loop": true,
+   "show_stick": false,
+   "steps": [
+    {
+     "frame": "side_idle",
+     "ms": 2200,
+     "x": 0,
+     "y": 0,
+     "fx": []
+    },
+    {
+     "frame": "side_blink",
+     "ms": 120,
+     "x": 0,
+     "y": 0,
+     "fx": []
+    }
+   ],
+   "note": "Optional sitting idle with blink."
+  }
+ },
+ "play_order": [
+  "hop_in",
+  "mount",
+  "pogo_loop"
+ ],
+ "stick": {
+  "frame": "side_stick",
+  "x": 0,
+  "y": 0
+ },
+ "mirror": "To face left, flip horizontally (CSS transform: scaleX(-1)) and negate x (frames and effects).",
+ "effects": [
+  {
+   "name": "fx_trail",
+   "file": "fx/fx_trail.svg",
+   "w": 9,
+   "h": 7,
+   "description": "Speed lines trailing behind a hop"
+  },
+  {
+   "name": "fx_boing",
+   "file": "fx/fx_boing.svg",
+   "w": 40,
+   "h": 11,
+   "description": "Key-art \"boing\" bars either side of a big bounce"
+  },
+  {
+   "name": "fx_dust",
+   "file": "fx/fx_dust.svg",
+   "w": 32,
+   "h": 4,
+   "description": "Two dust puffs on landing"
+  }
+ ],
+ "effects_note": "Each step has an \"fx\" list: draw those effect sprites on top of the frog for that step, at their own x/y (same bottom-centre anchor and coordinates as frames).",
+ "palette": {
+  "K": "#101628",
+  "G": "#56a786",
+  "L": "#74cca8",
+  "D": "#459373",
+  "E": "#fff4b4",
+  "Y": "#fda200",
+  "y": "#fdcf51",
+  "S": "#3aaef7",
+  "M": "#f7f1e4"
+ }
+}
