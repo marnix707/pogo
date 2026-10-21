@@ -65,8 +65,8 @@ export function Avatar({
 }) {
   const sizes = {
     sm: 'h-7 w-7 text-base',
-    // Two lines of chat text high (the name line and the first message line).
-    chat: 'h-10 w-10 text-xl',
+    // As high as a one-line chat message: the name line (1.25rem) + gap + the bubble (2rem).
+    chat: 'h-[3.375rem] w-[3.375rem] text-3xl',
     md: 'h-11 w-11 text-2xl',
     lg: 'h-16 w-16 text-4xl',
   };
