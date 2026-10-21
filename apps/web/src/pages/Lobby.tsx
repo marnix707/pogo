@@ -108,7 +108,7 @@ export function Lobby({
       <main className="flex flex-1 flex-col gap-5 px-4 pb-40 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
         {/* One slim header card: back, game, Invite and settings. */}
         <Card className="hud-ticks !p-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <TileButton
               onClick={() => void api.leave()}
               aria-label="Leave room"
@@ -117,7 +117,7 @@ export function Lobby({
               <ArrowLeftIcon className="h-5 w-5" />
             </TileButton>
             <div className="min-w-0 flex-1">
-              <h1 className="truncate text-xl font-bold uppercase leading-tight tracking-[0.12em]">
+              <h1 className="truncate text-lg font-bold uppercase leading-tight tracking-[0.08em] max-[380px]:text-base max-[380px]:tracking-normal">
                 {room.gameName}
               </h1>
               <div className="label flex items-center gap-2 text-[10px] text-muted">
@@ -133,10 +133,19 @@ export function Lobby({
                 </span>
               </div>
             </div>
+            {/* A public lobby shows its code at the top, between the title and Invite. */}
+            {room.visibility === 'public' && (
+              <span
+                data-testid="room-code"
+                className="shrink-0 select-all text-sm font-bold leading-none tracking-[0.1em] text-neon max-[380px]:text-xs max-[380px]:tracking-normal"
+              >
+                {room.code}
+              </span>
+            )}
             <Button
               variant="secondary"
               aria-label="Invite friends"
-              className="min-h-10 shrink-0 !px-3"
+              className="min-h-10 shrink-0 !px-2"
               onClick={() => void share()}
             >
               Invite
@@ -190,18 +199,6 @@ export function Lobby({
             <Card>
               <Toggle
                 label="Public room"
-                hint={
-                  room.visibility === 'public' ? (
-                    <span
-                      data-testid="room-code"
-                      // Selecting the code to copy it must not flip the switch around it.
-                      onClick={(e) => e.stopPropagation()}
-                      className="select-all text-2xl font-bold tracking-[0.2em] text-neon"
-                    >
-                      {room.code}
-                    </span>
-                  ) : undefined
-                }
                 checked={room.visibility === 'public'}
                 onChange={(isPublic) =>
                   void api.updateSettings({ visibility: isPublic ? 'public' : 'private' })
