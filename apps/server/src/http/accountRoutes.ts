@@ -14,6 +14,7 @@ import type { ZodTypeAny, z } from 'zod';
 import { hashCode, hashPassword, newCode, verifyPassword } from '../auth/passwords';
 import type { TokenService } from '../auth/tokens';
 import type { CodePurpose, UserStore } from '../auth/userStore';
+import { codeMail } from '../mail/template';
 import type { LogMailer, Mailer } from '../mail/mailer';
 import { authenticate } from './authRoutes';
 
@@ -80,11 +81,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
       userId,
       expiresAt: now() + CODE_TTL_MS,
     });
-    await mailer.send({
-      to: email,
-      subject: purpose === 'register' ? 'Your POGO code' : 'Reset your POGO password',
-      text: `Your POGO code is ${code}. It is valid for 10 minutes. If you did not ask for it, ignore this email.`,
-    });
+    await mailer.send(codeMail(email, purpose, code));
   }
 
   /** Checks a code; every wrong guess counts, and a used or expired code is gone. */

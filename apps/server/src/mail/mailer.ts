@@ -4,6 +4,10 @@ export interface Mail {
   to: string;
   subject: string;
   text: string;
+  /** Rich version; clients that cannot show it use `text`. */
+  html?: string;
+  /** Inline images referenced from the html as `cid:<cid>`. */
+  attachments?: { filename: string; content: Buffer; cid: string }[];
 }
 
 export interface Mailer {
@@ -31,7 +35,7 @@ export function createSmtpMailer(smtpUrl: string, from: string): Mailer {
   const transport = createTransport(smtpUrl);
   return {
     async send(mail) {
-      await transport.sendMail({ from, to: mail.to, subject: mail.subject, text: mail.text });
+      await transport.sendMail({ from, ...mail });
     },
   };
 }
