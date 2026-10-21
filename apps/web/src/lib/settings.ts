@@ -8,13 +8,13 @@ export interface Settings {
 }
 
 const KEY = 'pogo.settings';
-const defaults: Settings = { sound: true, vibration: true, crt: 0 };
+const defaults: Settings = { sound: true, vibration: true, crt: 20 };
 
 function load(): Settings {
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Settings>;
-    // (An earlier version stored the CRT effect as a switch: that is just "off" now.)
-    const crt = typeof saved.crt === 'number' ? Math.min(100, Math.max(0, saved.crt)) : 0;
+    // (An earlier version stored the CRT effect as a switch: that falls back to the default now.)
+    const crt = typeof saved.crt === 'number' ? Math.min(100, Math.max(0, saved.crt)) : defaults.crt;
     return { ...defaults, ...saved, crt };
   } catch {
     return defaults;
