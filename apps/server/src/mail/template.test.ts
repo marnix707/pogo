@@ -12,6 +12,7 @@ describe('codeMail', () => {
   });
 
   it('has its own subject for a password reset', () => {
-    expect(codeMail('a@b.nl', 'reset', '000000').subject).toMatch(/password/i);
+    expect(codeMail('a@b.nl', 'reset', '000000').subject).toMatch(/reset code is 000000/i);
+    expect(codeMail('a@b.nl', 'register', '064242').subject).toBe('POGO - Your code is 064242');
   });
 });

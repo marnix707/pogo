@@ -2,14 +2,14 @@ import type { CodePurpose } from '../auth/userStore';
 import { HERO_PNG_BASE64 } from './art';
 import type { Mail } from './mailer';
 
-const COPY: Record<CodePurpose, { subject: string; title: string; intro: string }> = {
+const COPY: Record<CodePurpose, { subject: (code: string) => string; title: string; intro: string }> = {
   register: {
-    subject: 'Your POGO code',
+    subject: (code) => `POGO - Your code is ${code}`,
     title: 'Welcome to POGO!',
     intro: 'Enter this code in the app to save your stats and join the leaderboard.',
   },
   reset: {
-    subject: 'Reset your POGO password',
+    subject: (code) => `POGO - Your reset code is ${code}`,
     title: 'New password?',
     intro: 'Enter this code in the app to choose a new password.',
   },
@@ -44,7 +44,7 @@ export function codeMail(to: string, purpose: CodePurpose, code: string): Mail {
   const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark light"><meta name="supported-color-schemes" content="dark light">
-<title>${copy.subject}</title></head>
+<title>${copy.subject(code)}</title></head>
 <body style="margin:0;padding:0;background:${C.page};">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your POGO code is ${code}. Valid for 10 minutes.</div>
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:${C.page};">
@@ -69,7 +69,7 @@ export function codeMail(to: string, purpose: CodePurpose, code: string): Mail {
 </td></tr></table></body></html>`;
   return {
     to,
-    subject: copy.subject,
+    subject: copy.subject(code),
     text,
     html,
     attachments: [
