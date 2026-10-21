@@ -10,6 +10,7 @@ import { updateProfile } from './lib/session';
 import { useRealtime } from './lib/socket';
 import { play } from './lib/sound';
 import { GameScreen } from './pages/GameScreen';
+import { ProfileSheet } from './components/ProfileSheet';
 import { Home } from './pages/Home';
 import { Lobby } from './pages/Lobby';
 
@@ -24,11 +25,14 @@ const LEFT_MESSAGE = {
 export function Shell({
   session,
   onUser,
+  onSession,
   onSignOut,
 }: {
   session: AuthResponse;
   /** The signed-in user changed (a new icon). */
   onUser: (user: AuthResponse['user']) => void;
+  /** Logged in as another user: swap the whole session. */
+  onSession: (session: AuthResponse) => void;
   onSignOut: () => void;
 }) {
   const {
@@ -97,6 +101,7 @@ export function Shell({
     if (message) toast.show(message, 'error');
   }, [leftReason, toast]);
 
+  const [registerOpen, setRegisterOpen] = useState(false);
   const openSettings = () => setSettingsOpen(true);
 
   let screen;
@@ -110,6 +115,10 @@ export function Shell({
         lobby={lobby}
         watchLobby={watchLobby}
         onSettings={openSettings}
+        token={session.token}
+        onUser={onUser}
+        onSession={onSession}
+        onSignOut={onSignOut}
         onProfile={async (profile) => {
           try {
             onUser(await updateProfile(session.token, profile));
@@ -140,6 +149,11 @@ export function Shell({
         readUpTo={readUpTo}
         markRead={markRead}
         onSettings={openSettings}
+        account={{
+          token: session.token,
+          isGuest: session.user.isGuest,
+          onRegister: () => setRegisterOpen(true),
+        }}
       />
     );
   }
@@ -149,6 +163,23 @@ export function Shell({
       <ConnectionBanner connection={connection} />
       {room && <ChatBanner key={room.code} messages={messages} me={session.user.id} />}
       {screen}
+      <ProfileSheet
+        open={registerOpen}
+        onClose={() => setRegisterOpen(false)}
+        user={session.user}
+        token={session.token}
+        initial="register"
+        onProfile={async (profile) => {
+          try {
+            onUser(await updateProfile(session.token, profile));
+          } catch (e) {
+            toast.show((e as Error).message, 'error');
+          }
+        }}
+        onUser={onUser}
+        onSession={onSession}
+        onSignOut={onSignOut}
+      />
       <SettingsSheet
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}

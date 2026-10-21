@@ -1,6 +1,6 @@
 import { yatzy } from '@pogo/shared';
 import type { RoomMemberView } from '@pogo/shared';
-import { avatarEmoji } from '../../lib/avatars';
+import { AvatarFace } from '../../components/AvatarFace';
 import { DIE_COLOR } from './Die';
 import { CATEGORY_HINT, CATEGORY_LABEL, UPPER_FACE } from './labels';
 
@@ -172,7 +172,7 @@ export function Scorecard({
                         current ? 'border-accent' : 'border-edge/50'
                       } ${m && (!m.connected || m.left) ? 'opacity-40' : ''}`}
                     >
-                      {avatarEmoji(m?.avatar ?? '')}
+                      <AvatarFace avatar={m?.avatar ?? ''} />
                     </div>
                     <div
                       className={`label mx-auto max-w-[4.5rem] truncate text-[9px] leading-tight tracking-wider ${

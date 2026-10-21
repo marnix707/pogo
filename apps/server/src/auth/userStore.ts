@@ -84,7 +84,8 @@ export interface UserStore {
   mergeInto(fromId: string, toId: string): Promise<number>;
 }
 
-const imageAvatar = (version: number) => `img:${version}`;
+/** An uploaded picture: `img:<userId>:<version>` (the web app builds the image URL from it). */
+const imageAvatar = (id: string, version: number) => `img:${id}:${version}`;
 
 function summarize(
   gameId: string,
@@ -205,7 +206,7 @@ export function createPrismaUserStore(prisma: PrismaClient): UserStore {
           update: { ...image, version: { increment: 1 }, updatedAt: new Date() },
         });
         return toPublic(
-          await prisma.user.update({ where: { id }, data: { avatar: imageAvatar(row.version) } }),
+          await prisma.user.update({ where: { id }, data: { avatar: imageAvatar(id, row.version) } }),
         );
       } catch {
         return null;
@@ -357,7 +358,7 @@ export function createMemoryUserStore(): UserStore {
       if (!existing) return null;
       const version = (images.get(id)?.version ?? 0) + 1;
       images.set(id, { ...image, version });
-      const updated = { ...existing, avatar: imageAvatar(version) };
+      const updated = { ...existing, avatar: imageAvatar(id, version) };
       users.set(id, updated);
       return updated;
     },

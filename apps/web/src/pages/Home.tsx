@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import type { PublicRoomSummary, PublicUser } from '@pogo/shared';
+import type { AVATARS, AuthResponse, PublicRoomSummary, PublicUser } from '@pogo/shared';
 import { InstallCard } from '../components/InstallCard';
 import { ArrowLeftIcon, LogoMark, SlidersIcon, TrophyIcon } from '../components/icons';
 import { RaisedColon } from '../components/Brand';
-import { AVATARS } from '@pogo/shared';
-import { Button, SectionLabel, Sheet } from '../components/ui';
+import { LeaderboardSheet } from '../components/LeaderboardSheet';
+import { ProfileSheet } from '../components/ProfileSheet';
+import type { ProfileMode } from '../components/ProfileSheet';
+import { Button, SectionLabel } from '../components/ui';
 import { TileButton } from '../components/TopBar';
 import { gameUis, getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
-import { avatarEmoji } from '../lib/avatars';
+import { AvatarFace } from '../components/AvatarFace';
 
 function OpenGame({
   room,
@@ -27,7 +29,7 @@ function OpenGame({
         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px] border-2 border-neon bg-panel2 text-2xl"
         aria-hidden
       >
-        {avatarEmoji(room.hostAvatar)}
+        <AvatarFace avatar={room.hostAvatar} />
       </span>
       <div className="min-w-0 flex-1">
         <div className="truncate font-bold">{room.hostNickname}&apos;s game</div>
@@ -67,12 +69,20 @@ export function Home({
   watchLobby,
   onSettings,
   onProfile,
+  token,
+  onUser,
+  onSession,
+  onSignOut,
 }: {
   user: PublicUser;
   api: RoomApi;
   lobby: PublicRoomSummary[] | null;
   watchLobby: () => () => void;
   onSettings: () => void;
+  token: string;
+  onUser: (user: PublicUser) => void;
+  onSession: (auth: AuthResponse) => void;
+  onSignOut: () => void;
   /** Save a new name and/or icon for this player. */
   onProfile: (profile: { nickname: string; avatar: (typeof AVATARS)[number] }) => Promise<void>;
 }) {
@@ -95,7 +105,7 @@ export function Home({
   const swipe = useRef<{ x: number; y: number } | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
-  const [name, setName] = useState(user.nickname);
+  const [profileMode, setProfileMode] = useState<ProfileMode>('main');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<string>('all');
@@ -154,7 +164,7 @@ export function Home({
         </TileButton>
         <TileButton
           onClick={() => {
-            setName(user.nickname);
+            setProfileMode('main');
             setProfileOpen(true);
           }}
           aria-label="Your profile"
@@ -162,7 +172,7 @@ export function Home({
           data-avatar={user.avatar}
         >
           <span className="text-2xl leading-none" aria-hidden>
-            {avatarEmoji(user.avatar)}
+            <AvatarFace avatar={user.avatar} />
           </span>
         </TileButton>
         <TileButton onClick={onSettings} aria-label="Settings" data-testid="settings-button">
@@ -321,57 +331,28 @@ export function Home({
         )}
       </main>
 
-      <Sheet open={boardOpen} onClose={() => setBoardOpen(false)} title="Leaderboard">
-        <p className="text-center text-sm text-muted" data-testid="leaderboard-empty">
-          🏆 Rankings are coming soon. Wins and stats will show up here once accounts are in.
-        </p>
-      </Sheet>
-
-      <Sheet open={profileOpen} onClose={() => setProfileOpen(false)} title="Your profile">
-        <form
-          className="mb-4 flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const nickname = name.trim();
-            if (nickname && nickname !== user.nickname) {
-              void onProfile({ nickname, avatar: user.avatar as (typeof AVATARS)[number] });
-            }
-            setProfileOpen(false);
-          }}
-        >
-          <input
-            data-testid="profile-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={20}
-            aria-label="Nickname"
-            className="hud min-h-12 min-w-0 flex-1 bg-panel px-3 text-lg font-bold text-ink outline-none focus:!border-neon"
-          />
-          <Button data-testid="profile-save" className="!px-4">
-            Save
-          </Button>
-        </form>
-        <div className="grid grid-cols-4 gap-3">
-          {AVATARS.map((a) => (
-            <button
-              type="button"
-              key={a}
-              data-testid={`pick-avatar-${a}`}
-              aria-label={a}
-              aria-pressed={user.avatar === a}
-              onClick={() => {
-                setProfileOpen(false);
-                if (a !== user.avatar) void onProfile({ nickname: user.nickname, avatar: a });
-              }}
-              className={`flex aspect-square items-center justify-center rounded-[8px] border-2 text-4xl ring-2 ring-line transition active:translate-y-px ${
-                user.avatar === a ? 'border-neon bg-neon/20' : 'border-edge/40 bg-panel2'
-              }`}
-            >
-              {avatarEmoji(a)}
-            </button>
-          ))}
-        </div>
-      </Sheet>
+      <LeaderboardSheet
+        open={boardOpen}
+        onClose={() => setBoardOpen(false)}
+        me={user.id}
+        isGuest={user.isGuest}
+        onRegister={() => {
+          setBoardOpen(false);
+          setProfileMode('register');
+          setProfileOpen(true);
+        }}
+      />
+      <ProfileSheet
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        user={user}
+        token={token}
+        initial={profileMode}
+        onProfile={onProfile}
+        onUser={onUser}
+        onSession={onSession}
+        onSignOut={onSignOut}
+      />
     </div>
   );
 }

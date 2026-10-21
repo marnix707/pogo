@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
-import { avatarEmoji } from '../lib/avatars';
+import { AvatarFace } from './AvatarFace';
 import { haptic } from '../lib/haptics';
 import { play } from '../lib/sound';
 import { CloseIcon } from './icons';
@@ -65,9 +65,9 @@ export function Avatar({
   return (
     <span
       aria-hidden
-      className={`inline-flex shrink-0 items-center justify-center rounded-[6px] border-2 border-neon bg-panel2 ring-2 ring-line ${sizes[size]} ${dim ? 'opacity-50 grayscale' : ''}`}
+      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-[6px] border-2 border-neon bg-panel2 ring-2 ring-line ${sizes[size]} ${dim ? 'opacity-50 grayscale' : ''}`}
     >
-      {avatarEmoji(avatar)}
+      <AvatarFace avatar={avatar} fill />
     </span>
   );
 }

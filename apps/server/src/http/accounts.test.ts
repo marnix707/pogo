@@ -272,7 +272,7 @@ describe('profile picture and deletion', () => {
 
     const ok = await call('PUT', '/api/me/avatar', acc.token, png, { 'content-type': 'image/png' });
     expect(ok.statusCode).toBe(200);
-    expect(ok.json().user.avatar).toBe('img:1');
+    expect(ok.json().user.avatar).toBe(`img:${acc.user.id}:1`);
     const img = await call('GET', `/api/users/${acc.user.id}/avatar`);
     expect(img.headers['content-type']).toBe('image/png');
     expect(Buffer.compare(img.rawPayload, png)).toBe(0);

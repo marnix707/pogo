@@ -3,12 +3,13 @@ import type { ChatMessage, RoomView } from '@pogo/shared';
 import type { ComponentType } from 'react';
 import type { GameUiProps } from '../games/types';
 import { Button, Sheet } from '../components/ui';
+import { RegisterNudge } from '../components/RegisterNudge';
 import { ChatPanel } from '../components/ChatPanel';
 import { ArrowLeftIcon, ChatIcon } from '../components/icons';
 import { TileButton, TopBar } from '../components/TopBar';
 import { getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
-import { avatarEmoji } from '../lib/avatars';
+import { AvatarFace } from '../components/AvatarFace';
 import { haptic } from '../lib/haptics';
 import { play } from '../lib/sound';
 
@@ -29,6 +30,7 @@ function ResultsPanel({
   pending = false,
   extra,
   sendMove,
+  account,
 }: {
   room: RoomView;
   me: string;
@@ -42,6 +44,8 @@ function ResultsPanel({
   /** Game-specific section between the standings and the buttons. */
   extra?: ComponentType<GameUiProps>;
   sendMove: GameUiProps['sendMove'];
+  /** Guests get a nudge to register under their results. */
+  account?: AccountProps;
 }) {
   const Extra = extra;
   // The status-bar strip and the home-indicator area outside the panel take its colour (see .results-open).
@@ -88,7 +92,7 @@ function ResultsPanel({
                 >
                   <span className="text-2xl leading-none">{MEDALS[r.rank - 1] ?? r.rank}</span>
                   <span className="text-2xl leading-none" aria-hidden>
-                    {avatarEmoji(m?.avatar ?? '')}
+                    <AvatarFace avatar={m?.avatar ?? ''} />
                   </span>
                   <span
                     className={`w-full truncate text-center text-sm font-bold ${mine ? 'text-accent' : ''}`}
@@ -130,7 +134,9 @@ function ResultsPanel({
                   }`}
                 >
                   <span className="w-8 text-center text-xl font-bold">{r.rank}</span>
-                  <span aria-hidden>{avatarEmoji(m?.avatar ?? '')}</span>
+                  <span aria-hidden>
+                    <AvatarFace avatar={m?.avatar ?? ''} />
+                  </span>
                   <span className="flex-1 truncate font-bold">
                     {m?.nickname ?? 'Player'}
                     {r.playerId === me && ' (you)'}
@@ -145,6 +151,14 @@ function ResultsPanel({
         )}
 
         {Extra && <Extra room={room} me={me} sendMove={sendMove} />}
+
+        {account?.isGuest && !pending && (
+          <RegisterNudge
+            token={account.token}
+            gameId={room.gameId}
+            onRegister={account.onRegister}
+          />
+        )}
 
         <div className="mt-auto flex flex-col gap-3">
           {pending ? (
@@ -181,6 +195,12 @@ function ResultsPanel({
   );
 }
 
+export interface AccountProps {
+  token: string;
+  isGuest: boolean;
+  onRegister: () => void;
+}
+
 export function GameScreen({
   room,
   me,
@@ -189,6 +209,7 @@ export function GameScreen({
   readUpTo,
   markRead,
   onSettings,
+  account,
 }: {
   room: RoomView;
   me: string;
@@ -197,6 +218,7 @@ export function GameScreen({
   readUpTo: number;
   markRead: () => void;
   onSettings: () => void;
+  account?: AccountProps;
 }) {
   const ui = getGameUi(room.gameId);
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -337,6 +359,7 @@ export function GameScreen({
           title={ui.resultsTitle?.(panelRoom, me)}
           showScores={!ui.hideScores}
           restarts={ui.playAgainRestarts}
+          account={account}
         />
       )}
 

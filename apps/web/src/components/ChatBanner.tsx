@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChatMessage } from '@pogo/shared';
-import { avatarEmoji } from '../lib/avatars';
+import { AvatarFace } from './AvatarFace';
 
 const SHOW_MS = 3600;
 
@@ -38,7 +38,7 @@ export function ChatBanner({ messages, me }: { messages: ChatMessage[]; me: stri
       className="chat-banner fixed inset-x-0 top-0 z-[60] flex h-[calc(env(safe-area-inset-top)+3.5rem)] items-center gap-3 border-b-2 border-neon bg-panel px-4 pt-[env(safe-area-inset-top)] text-left text-ink shadow-[0_4px_0_0_rgb(var(--c-line))]"
     >
       <span className="shrink-0 text-2xl leading-none" aria-hidden>
-        {avatarEmoji(shown.avatar)}
+        <AvatarFace avatar={shown.avatar} />
       </span>
       <span className="min-w-0 flex-1 truncate">
         <b className="text-neon">{shown.nickname}</b> {shown.text}

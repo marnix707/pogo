@@ -48,14 +48,20 @@ export function registerAuthRoutes(
   app.patch('/api/me', async (req, reply) => {
     const user = await authenticate(req, tokens, users);
     if (!user) return reply.code(401).send({ error: 'Not signed in' });
-    const parsed = profileSchema.safeParse(req.body);
+    // Keeping an uploaded picture while renaming sends the same `img:` value back.
+    const body = req.body as { avatar?: unknown } | null;
+    const keepPicture = user.avatar.startsWith('img:') && body?.avatar === user.avatar;
+    const parsed = profileSchema.safeParse(keepPicture ? { ...body, avatar: 'fox' } : req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? 'Invalid input' });
     }
     if (options.rejectProfaneNicknames && containsProfanity(parsed.data.nickname)) {
       return reply.code(400).send({ error: 'Please pick a different nickname' });
     }
-    const updated = await users.updateProfile(user.id, parsed.data);
+    const updated = await users.updateProfile(user.id, {
+      ...parsed.data,
+      avatar: keepPicture ? user.avatar : parsed.data.avatar,
+    });
     return { user: updated };
   });
 }

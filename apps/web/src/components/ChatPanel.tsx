@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { CHAT_MAX_LENGTH } from '@pogo/shared';
 import type { ChatMessage, Result } from '@pogo/shared';
-import { avatarEmoji } from '../lib/avatars';
+import { AvatarFace } from './AvatarFace';
 import { haptic } from '../lib/haptics';
 
 /** Message list + input. Used inline in the lobby and inside a sheet during games. */
@@ -66,7 +66,7 @@ export function ChatPanel({
                     aria-hidden
                     className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-edge/60 bg-panel2 text-sm"
                   >
-                    {avatarEmoji(m.avatar)}
+                    <AvatarFace avatar={m.avatar} />
                   </span>
                 )}
                 <div className={mine ? 'text-right' : ''}>

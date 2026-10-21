@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { karma } from '@pogo/shared';
 import type { RoomMemberView } from '@pogo/shared';
 import { Button, TimerDrain } from '../../components/ui';
-import { avatarEmoji } from '../../lib/avatars';
+import { AvatarFace } from '../../components/AvatarFace';
 import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
 import { useCountdown } from '../../lib/useCountdown';
@@ -240,7 +240,7 @@ function Seat({
     >
       <div className="flex w-full items-center justify-center gap-1">
         <span className="text-sm" aria-hidden>
-          {avatarEmoji(member?.avatar ?? '')}
+          <AvatarFace avatar={member?.avatar ?? ''} />
         </span>
         <span className="label truncate text-[9px]">{member?.nickname ?? '?'}</span>
       </div>
