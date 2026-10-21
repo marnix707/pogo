@@ -81,7 +81,7 @@ function ResultsPanel({
       data-testid="results-panel"
       className="animate-slide-up fixed inset-0 z-40 overflow-y-auto bg-panel text-ink"
     >
-      <div className="mx-auto flex min-h-full max-w-lg flex-col gap-5 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+1.5rem)]">
+      <div className="mx-auto flex min-h-full max-w-lg flex-col gap-5 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+3.5rem)]">
         <h2
           data-testid="results-headline"
           className="res-head text-center text-3xl font-bold uppercase leading-tight tracking-[0.1em]"
@@ -89,7 +89,8 @@ function ResultsPanel({
           {headline}
         </h2>
 
-        <ol className="flex flex-col gap-2" data-testid="standings">
+        {/* The standings sit in the middle of the free space between headline and the lower group. */}
+        <ol className="my-auto flex flex-col gap-2" data-testid="standings">
           {rankings.map((r, i) => {
             const m = nameOf(r.playerId);
             const isMe = r.playerId === me;
@@ -102,7 +103,6 @@ function ResultsPanel({
                 }`}
                 style={delay(HEAD_S + i * ROW_S)}
               >
-                <span className="w-7 shrink-0 text-xl font-bold">{r.rank}.</span>
                 <span className="shrink-0 self-center text-xl leading-none" aria-hidden>
                   <AvatarFace avatar={m?.avatar ?? ''} />
                 </span>
@@ -110,12 +110,11 @@ function ResultsPanel({
                   {m?.nickname ?? 'Player'}
                   {isMe && ' (you)'}
                 </span>
-                {showScores && (
-                  <>
-                    <span className="mb-1.5 min-w-4 flex-1 border-b-4 border-dotted border-current opacity-50" />
-                    <span className="text-xl font-bold tabular-nums">{r.score}</span>
-                  </>
-                )}
+                <span className="mb-1.5 min-w-4 flex-1 border-b-4 border-dotted border-current opacity-50" />
+                {/* Games with points show the total; the others the place. */}
+                <span className="text-xl font-bold tabular-nums">
+                  {showScores ? r.score : r.rank}
+                </span>
               </li>
             );
           })}
@@ -134,7 +133,7 @@ function ResultsPanel({
         )}
 
         <div
-          className="res-bottom mt-auto flex flex-col gap-3"
+          className="res-bottom flex flex-col gap-3"
           style={delay(rowsDone + (account?.isGuest ? 0.9 : 0.4))}
         >
           {pending ? (
