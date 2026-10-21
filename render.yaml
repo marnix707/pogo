@@ -62,6 +62,10 @@ services:
       - key: MAIL_FROM
         value: 'POGO <no-reply@example.com>'
 
+      # Admin panel: these emails become admin when they register or log in (comma separated).
+      - key: ADMIN_EMAILS
+        sync: false
+
       # Gameplay timings (same defaults as .env.example)
       - key: TURN_TIME_SEC
         value: '90'

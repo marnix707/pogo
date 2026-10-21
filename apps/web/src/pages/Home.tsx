@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import { displayName } from '@pogo/shared';
 import type { AVATARS, AuthResponse, PublicRoomSummary, PublicUser } from '@pogo/shared';
 import { PogoStage, Wordmark, introDone } from '../components/PogoStage';
 import { InstallCard } from '../components/InstallCard';
@@ -188,7 +189,7 @@ export function Home({
         {screen === 'menu' && (
           <>
             {landed && <InstallCard variant="banner" />}
-            <div className="flex flex-1 flex-col items-center justify-center">
+            <div className="flex flex-1 flex-col items-center justify-center pb-20">
               <Wordmark shown={landed} width={stageScale.word * 30} />
               <PogoStage scale={stageScale.frog} onLanded={() => setLanded(true)} />
             </div>
@@ -212,7 +213,7 @@ export function Home({
             <p data-in={landed} className="slide-bottom label text-center text-onbg/70">
               Playing as{' '}
               <span data-testid="home-nickname" className="text-onbg">
-                {user.nickname}
+                {displayName(user)}
               </span>
             </p>
           </>

@@ -27,12 +27,22 @@ export function useRealtime(token: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [readUpTo, setReadUpTo] = useState(0);
   const [lobby, setLobby] = useState<PublicRoomSummary[] | null>(null);
+  /** Set when the server refuses this player because of a ban. */
+  const [banned, setBanned] = useState<string | null>(null);
   const roomCodeRef = useRef<string>();
   const lobbyWatchers = useRef(0);
 
   useEffect(() => {
     const socket: PogoSocket = io({ auth: { token } });
     socketRef.current = socket;
+    // A ban ends the session for good: stop reconnecting and say why.
+    socket.on('connect_error', (err) => {
+      if (err.message !== 'banned') return;
+      setBanned(
+        (err as Error & { data?: { message?: string } }).data?.message ?? 'You are banned.',
+      );
+      socket.disconnect();
+    });
 
     const subscribeLobby = () => {
       if (lobbyWatchers.current === 0) return;
@@ -120,5 +130,6 @@ export function useRealtime(token: string) {
     lobby,
     watchLobby,
     request,
+    banned,
   };
 }

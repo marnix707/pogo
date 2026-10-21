@@ -46,6 +46,7 @@ export function Shell({
     lobby,
     watchLobby,
     request,
+    banned,
   } = useRealtime(session.token);
   const toast = useToast();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -105,7 +106,17 @@ export function Shell({
   const openSettings = () => setSettingsOpen(true);
 
   let screen;
-  if (!synced) {
+  if (banned) {
+    screen = (
+      <div className="mx-auto max-w-md p-8 text-center" data-testid="banned">
+        <h1 className="mb-3 text-2xl font-bold uppercase tracking-[0.12em] text-onbg">Banned</h1>
+        <p className="mb-6 text-onbg/90">{banned}</p>
+        <button className="underline" onClick={onSignOut}>
+          Sign out
+        </button>
+      </div>
+    );
+  } else if (!synced) {
     screen = <p className="label p-8 text-center text-onbg">Connecting…</p>;
   } else if (!room) {
     screen = (

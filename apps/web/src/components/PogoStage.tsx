@@ -240,12 +240,12 @@ export function Wordmark({ shown, width }: { shown: boolean; width: number }) {
       alt="POGO"
       data-testid="home-wordmark"
       className={`pointer-events-none relative z-10 ${shown ? 'wordmark-in' : 'opacity-0'}`}
-      // Tilted 10 degrees and sitting a little over the toad's head.
+      // Tilted 10 degrees, with clear space above the toad.
       style={{
         width,
         imageRendering: 'pixelated',
         transform: 'rotate(-10deg)',
-        marginBottom: -width * 0.12,
+        marginBottom: width * 0.1,
       }}
     />
   );
