@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ChatMessage, RoomView } from '@pogo/shared';
 import type { ComponentType } from 'react';
 import type { GameUiProps } from '../games/types';
+import { Confetti } from '../components/Confetti';
 import { Button, Sheet } from '../components/ui';
 import { RegisterNudge } from '../components/RegisterNudge';
 import { ChatPanel } from '../components/ChatPanel';
@@ -21,7 +22,7 @@ const ordinal = (n: number) =>
   `${n}${['th', 'st', 'nd', 'rd'][n % 100 > 10 && n % 100 < 14 ? 0 : n % 10] ?? 'th'}`;
 
 /**
- * The final standings, in sequence: the headline ("You won!", "2nd place!", "You are last!") in the
+ * The final standings, in sequence: the headline ("You won!", "2nd place!", "You lost!") in the
  * middle, then up to the top; the ranking drops in row by row (Mario Kart style, with the points
  * when the game has them); then the "keep your stats" card for guests; then the buttons come up
  * from the bottom. Full screen and scrollable.
@@ -37,6 +38,7 @@ function ResultsPanel({
   extra,
   sendMove,
   account,
+  confetti = false,
 }: {
   room: RoomView;
   me: string;
@@ -47,6 +49,8 @@ function ResultsPanel({
   restarts?: boolean;
   /** The game still needs something from the players: no rematch buttons yet. */
   pending?: boolean;
+  /** Confetti for the winner of a game with more than one player (games with their own fanfare skip it). */
+  confetti?: boolean;
   /** Game-specific section between the standings and the buttons. */
   extra?: ComponentType<GameUiProps>;
   sendMove: GameUiProps['sendMove'];
@@ -71,102 +75,112 @@ function ResultsPanel({
     : mine.rank === 1
       ? 'You won!'
       : mine.rank === rankings.length
-        ? (title ?? 'You are last!')
+        ? (title ?? 'You lost!')
         : `${ordinal(mine.rank)} place!`;
   // Each step starts when the previous one has landed.
   const rowsDone = HEAD_S + rankings.length * ROW_S;
   const delay = (sec: number) => ({ animationDelay: `${sec}s` });
+  const won = confetti && mine?.rank === 1 && rankings.length > 1;
   return (
-    <div
-      data-testid="results-panel"
-      className="animate-slide-up fixed inset-0 z-40 overflow-y-auto bg-panel text-ink"
-    >
-      <div className="mx-auto flex min-h-full max-w-lg flex-col gap-5 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+3.5rem)]">
-        <h2
-          data-testid="results-headline"
-          className="res-head text-center text-3xl font-bold uppercase leading-tight tracking-[0.1em]"
-        >
-          {headline}
-        </h2>
+    <>
+      <div
+        data-testid="results-panel"
+        className="animate-slide-up fixed inset-0 z-40 overflow-y-auto bg-panel text-ink"
+      >
+        <div className="mx-auto flex min-h-full max-w-lg flex-col gap-5 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+3.5rem)]">
+          <h2
+            data-testid="results-headline"
+            className="res-head text-center text-3xl font-bold uppercase leading-tight tracking-[0.1em]"
+          >
+            {headline}
+          </h2>
 
-        {/* The standings sit in the middle of the free space between headline and the lower group. */}
-        <ol className="my-auto flex flex-col gap-2" data-testid="standings">
-          {rankings.map((r, i) => {
-            const m = nameOf(r.playerId);
-            const isMe = r.playerId === me;
-            return (
-              <li
-                key={r.playerId}
-                data-testid={`rank-${r.rank}`}
-                className={`res-row flex items-end gap-2 rounded-md px-3 py-1.5 ${
-                  i === 0 ? 'bg-neon text-accentink' : isMe ? 'bg-accent/25' : ''
-                }`}
-                style={delay(HEAD_S + i * ROW_S)}
-              >
-                <span className="shrink-0 self-center text-xl leading-none" aria-hidden>
-                  <AvatarFace avatar={m?.avatar ?? ''} />
-                </span>
-                <span className="min-w-0 truncate text-xl font-bold">
-                  {m?.nickname ?? 'Player'}
-                  {isMe && ' (you)'}
-                </span>
-                <span className="mb-1.5 min-w-4 flex-1 border-b-4 border-dotted border-current opacity-50" />
-                {/* Games with points show the total; the others the place. */}
-                <span className="text-xl font-bold tabular-nums">
-                  {showScores ? r.score : r.rank}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-
-        {Extra && <Extra room={room} me={me} sendMove={sendMove} />}
-
-        {account?.isGuest && !pending && (
-          <div className="res-row" style={delay(rowsDone + 0.2)}>
-            <RegisterNudge
-              token={account.token}
-              gameId={room.gameId}
-              onRegister={account.onRegister}
-            />
-          </div>
-        )}
-
-        <div
-          className="res-bottom flex flex-col gap-3"
-          style={delay(rowsDone + (account?.isGuest ? 0.9 : 0.4))}
-        >
-          {pending ? (
-            <p className="label text-center text-muted">Almost there…</p>
-          ) : isHost ? (
-            <>
-              <Button
-                data-testid="rematch"
-                disabled={!api.online}
-                onClick={() => void api.rematch()}
-              >
-                Play again
-              </Button>
-              {restarts && (
-                <Button
-                  variant="secondary"
-                  data-testid="back-to-lobby"
-                  disabled={!api.online}
-                  onClick={() => void api.rematch(true)}
+          {/* The standings sit in the middle of the free space between headline and the lower group. */}
+          <ol className="my-auto flex flex-col gap-2" data-testid="standings">
+            {rankings.map((r, i) => {
+              const m = nameOf(r.playerId);
+              const isMe = r.playerId === me;
+              return (
+                <li
+                  key={r.playerId}
+                  data-testid={`rank-${r.rank}`}
+                  className={`res-row flex items-end gap-2 rounded-md px-3 py-1.5 ${
+                    i === 0 ? 'bg-neon text-accentink' : isMe ? 'bg-accent/25' : ''
+                  }`}
+                  style={delay(HEAD_S + i * ROW_S)}
                 >
-                  Back to lobby
-                </Button>
-              )}
-            </>
-          ) : (
-            <p className="label text-center text-muted">Waiting for the host to start a rematch…</p>
+                  <span className="shrink-0 self-center text-xl leading-none" aria-hidden>
+                    <AvatarFace avatar={m?.avatar ?? ''} />
+                  </span>
+                  <span className="min-w-0 truncate text-xl font-bold">
+                    {m?.nickname ?? 'Player'}
+                    {isMe && ' (you)'}
+                  </span>
+                  <span className="mb-1.5 min-w-4 flex-1 border-b-4 border-dotted border-current opacity-50" />
+                  {/* Games with points show the total; the others the place. */}
+                  <span className="text-xl font-bold tabular-nums">
+                    {showScores ? r.score : r.rank}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+
+          {Extra && <Extra room={room} me={me} sendMove={sendMove} />}
+
+          {account?.isGuest && !pending && (
+            <div className="res-row" style={delay(rowsDone + 0.2)}>
+              <RegisterNudge
+                token={account.token}
+                gameId={room.gameId}
+                onRegister={account.onRegister}
+              />
+            </div>
           )}
-          <Button variant="secondary" data-testid="results-leave" onClick={() => void api.leave()}>
-            Leave room
-          </Button>
+
+          <div
+            className="res-bottom flex flex-col gap-3"
+            style={delay(rowsDone + (account?.isGuest ? 0.9 : 0.4))}
+          >
+            {pending ? (
+              <p className="label text-center text-muted">Almost there…</p>
+            ) : isHost ? (
+              <>
+                <Button
+                  data-testid="rematch"
+                  disabled={!api.online}
+                  onClick={() => void api.rematch()}
+                >
+                  Play again
+                </Button>
+                {restarts && (
+                  <Button
+                    variant="secondary"
+                    data-testid="back-to-lobby"
+                    disabled={!api.online}
+                    onClick={() => void api.rematch(true)}
+                  >
+                    Back to lobby
+                  </Button>
+                )}
+              </>
+            ) : (
+              <p className="label text-center text-muted">
+                Waiting for the host to start a rematch…
+              </p>
+            )}
+            <Button
+              variant="secondary"
+              data-testid="results-leave"
+              onClick={() => void api.leave()}
+            >
+              Leave room
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+      {won && <Confetti startS={0.3} />}
+    </>
   );
 }
 
@@ -335,6 +349,7 @@ export function GameScreen({
           showScores={!ui.hideScores}
           restarts={ui.playAgainRestarts}
           account={account}
+          confetti={!ui.ownFanfare}
         />
       )}
 

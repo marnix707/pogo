@@ -333,11 +333,20 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
               <div className="flex gap-3">
                 <Button
                   data-testid="roll-button"
-                  className="min-h-11 flex-1 !px-3"
+                  className="relative min-h-11 flex-1 overflow-hidden !px-3"
                   disabled={busy || state.rollsLeft === 0 || (rolled && allHeld)}
                   onClick={roll}
                 >
-                  <span>{rolled ? `Roll again (${state.rollsLeft})` : 'Roll dice'}</span>
+                  {/* The turn clock as a draining bar inside the button. */}
+                  <TimerDrain
+                    deadline={game.deadline}
+                    serverTime={room.serverTime}
+                    totalSec={room.turnTimeSec}
+                    urgent={urgent}
+                  />
+                  <span className="relative">
+                    {rolled ? `Roll again (${state.rollsLeft})` : 'Roll dice'}
+                  </span>
                 </Button>
                 <Button
                   data-testid="score-button"
@@ -346,7 +355,11 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
                   disabled={busy || !selected || !settled}
                   onClick={score}
                 >
-                  {selected ? `Score ${settled ? preview[selected] : '?'}` : rolled ? 'Pick a category' : 'Score'}
+                  {selected
+                    ? `Score ${settled ? preview[selected] : '?'}`
+                    : rolled
+                      ? 'Pick a category'
+                      : 'Score'}
                 </Button>
               </div>
             ) : (

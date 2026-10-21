@@ -60,6 +60,9 @@ test('two players play a full Yatzy game, with a reconnect in the middle', async
   await a.getByTestId('die-0').click();
   await expect(a.getByTestId('die-0')).toHaveAttribute('aria-pressed', 'true');
   await expect(b.getByTestId('die-0')).toHaveAttribute('data-value', held!);
+  // Bob sees what Alice could score, in small grey type in her column (never on his own turn).
+  await expect(b.locator('[data-testid^=hint-]').first()).toBeVisible();
+  await expect(a.locator('[data-testid^=hint-]')).toHaveCount(0);
   await a.getByTestId('roll-button').click();
   await expect(a.getByTestId('rolls-used')).toHaveText('2');
   await expect(a.getByTestId('die-0')).toHaveAttribute('data-value', held!);

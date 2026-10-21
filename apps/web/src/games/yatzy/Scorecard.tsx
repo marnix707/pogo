@@ -40,6 +40,10 @@ export function Scorecard({
     state.players.map((p) => [p.id, yatzy.getTotals(p.scorecard, p.yatzyBonuses)]),
   );
   const member = (id: string) => members.find((m) => m.id === id);
+  // While somebody else is on turn, show in small grey what their dice could score on their card.
+  const active = state.players.find((p) => currentIds.includes(p.id) && p.id !== me);
+  const otherPreview =
+    active && state.dice.length > 0 ? yatzy.getPreviewScores(state.dice, active.scorecard) : {};
   // The +100 row only takes up space once someone has earned it.
   const showYatzyBonus = state.players.some((p) => p.yatzyBonuses > 0);
 
@@ -102,6 +106,13 @@ export function Scorecard({
                 >
                   {previewHidden ? '?' : preview[category]}
                 </button>
+              ) : p.id === active?.id && category in otherPreview ? (
+                <span
+                  data-testid={`hint-${category}`}
+                  className="text-[11px] font-normal text-muted"
+                >
+                  {otherPreview[category]}
+                </span>
               ) : (
                 <span className="text-muted/30">·</span>
               )}
