@@ -105,7 +105,7 @@ export function Lobby({
 
   return (
     <div className="menu mx-auto flex min-h-dvh max-w-md flex-col">
-      <main className="flex flex-1 flex-col gap-5 px-4 pb-8 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
+      <main className="flex flex-1 flex-col gap-5 px-4 pb-40 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
         {/* One slim header card: back, game, Invite and settings. */}
         <Card className="hud-ticks !p-3">
           <div className="flex items-center gap-3">
@@ -288,31 +288,51 @@ export function Lobby({
           </ul>
         </section>
 
-        {isHost ? (
-          <Button
-            data-testid="lobby-start"
-            disabled={!api.online || room.members.length + room.bots < room.minPlayers}
-            onClick={() => void api.start()}
-          >
-            {room.members.length + room.bots < room.minPlayers
-              ? `Need ${room.minPlayers} players`
-              : room.members.length === 1
-                ? room.bots > 0
-                  ? 'Start vs computer'
-                  : 'Start solo game'
-                : 'Start game'}
-          </Button>
-        ) : (
-          <p className="label text-center text-onbg" data-testid="lobby-waiting">
-            Waiting for {host?.nickname ?? 'the host'} to start…
-          </p>
-        )}
-
         <section aria-label="Chat">
           <SectionLabel>Chat</SectionLabel>
           <ChatPanel messages={messages} me={me} online={api.online} onSend={api.sendChat} />
         </section>
       </main>
+
+      {/* The start button stays fixed to the bottom of the screen; the page scrolls behind it. */}
+      <div
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-8"
+        style={{
+          // Solid behind the buttons (a disabled one is translucent), fading out above them.
+          background: 'linear-gradient(to top, rgb(var(--c-page)) 70%, rgb(var(--c-page) / 0))',
+        }}
+        data-testid="lobby-bar"
+      >
+        <div className="pointer-events-auto mx-auto flex max-w-md flex-col gap-1">
+          {isHost ? (
+            <Button
+              data-testid="lobby-start"
+              disabled={!api.online || room.members.length + room.bots < room.minPlayers}
+              onClick={() => void api.start()}
+            >
+              {room.members.length + room.bots < room.minPlayers
+                ? `Need ${room.minPlayers} players`
+                : room.members.length === 1
+                  ? room.bots > 0
+                    ? 'Start vs computer'
+                    : 'Start solo game'
+                  : 'Start game'}
+            </Button>
+          ) : (
+            <p className="label text-center text-onbg" data-testid="lobby-waiting">
+              Waiting for {host?.nickname ?? 'the host'} to start…
+            </p>
+          )}
+          <Button
+            variant="ghost"
+            data-testid="lobby-back"
+            className="!min-h-10 !text-xs"
+            onClick={() => void api.leave()}
+          >
+            Back to game selection
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
