@@ -271,7 +271,7 @@ export function ProfileSheet({
           className="flex flex-col gap-3"
           onSubmit={submit(async () => {
             await startRegister(token, email);
-            setNote(`We sent a 6-digit code to ${email}.`);
+            setNote(`We sent a 6-digit code to ${email}. It can take a few minutes; check your spam folder too.`);
             go('register-code');
           })}
         >
