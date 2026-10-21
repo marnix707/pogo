@@ -48,10 +48,16 @@ services:
         value: '1000'
 
       # Emailed codes for registering. 'log' only prints them in the server log (no mail is sent);
-      # switch to 'smtp' and set SMTP_URL (e.g. smtps://user:pass@smtp.example.com) in the dashboard.
+      # switch to 'smtp' and set SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASSWORD in the dashboard.
       - key: MAIL_MODE
         value: log
-      - key: SMTP_URL
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: '465'
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
         sync: false
       - key: MAIL_FROM
         value: 'POGO <no-reply@example.com>'
