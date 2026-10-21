@@ -15,11 +15,7 @@ function Bubble({
   children: React.ReactNode;
 }) {
   const place =
-    align === 'left'
-      ? 'left-0'
-      : align === 'right'
-        ? 'right-0'
-        : 'left-1/2 -translate-x-1/2';
+    align === 'left' ? 'left-0' : align === 'right' ? 'right-0' : 'left-1/2 -translate-x-1/2';
   const arrow =
     align === 'left' ? 'left-6' : align === 'right' ? 'right-6' : 'left-1/2 -translate-x-1/2';
   return (

@@ -52,13 +52,11 @@ export function KarmaRules({
           press <b>Ready</b>.
         </li>
         <li>
-          <b className="text-neon">Your turn:</b> tap a card to select it (tap it again to
-          deselect), then press <b>Play</b>, or double-tap a card to play it quickly. If you hold
-          several cards of the same rank, tapping one selects them all (tap one again to drop just
-          that card); press Play. Two or three of a kind: no double-tap. Four of a kind: double-tap
-          plays all four at once (an instant burn). The card must be equal to or higher than the top
-          card of the pile. Can&apos;t play anything? The pile is picked up for you automatically.
-          Want to pick it up anyway? Tap the <b>pile</b> twice.
+          <b className="text-neon">Your turn:</b> tap a card to select it, then tap it again to play
+          it. If you hold several cards of the same rank, tapping one selects them all (tap one
+          again to drop just that card); press <b>Play</b> to throw them together. The card must be
+          equal to or higher than the top card of the pile. Can&apos;t play anything? Tap the{' '}
+          <b>pile</b> to pick it up. Want to pick it up anyway? Tap the pile twice.
         </li>
         <li>
           <b className="text-neon">2</b> goes on anything, and anything goes on a 2.{' '}

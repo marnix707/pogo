@@ -199,7 +199,7 @@ test('cards slide when swapped and when played to the pile (unless motion is red
   for (const c of [alice, bob, calm]) await c.context.close();
 });
 
-test('tap selects, tapping again deselects, the Play button plays; Ready button works in the swap phase', async ({
+test('tap selects, tapping a single card again plays it, sets use the Play button; Ready button works in the swap phase', async ({
   browser,
 }) => {
   const alice = await newPlayer(browser, 'Alice', 'fox');
@@ -258,9 +258,16 @@ test('tap selects, tapping again deselects, the Play button plays; Ready button 
   await mover.getByTestId('karma-hint').click();
   for (const c of group(first!.rank)) await pressed(c.id, false);
 
-  // Tapping a selected card again deselects. With duplicates it deselects only that card (even
-  // when tapped twice quickly: no play), and a further tap adds it back.
-  await mover.waitForTimeout(450);
+  // Tapping anywhere outside my cards deselects too (here: on the opponent's seat).
+  await mover.getByTestId(first!.id).click(STRIP);
+  for (const c of group(first!.rank)) await pressed(c.id, true);
+  await mover
+    .locator('[data-testid^=seat-]')
+    .first()
+    .click({ position: { x: 3, y: 3 } });
+  for (const c of group(first!.rank)) await pressed(c.id, false);
+
+  // A set: tapping a selected card deselects only that card (never plays), a further tap adds it back.
   const firstGroup = group(first!.rank);
   if (firstGroup.length > 1) {
     await mover.getByTestId(first!.id).click(STRIP); // selects the whole rank
@@ -271,11 +278,6 @@ test('tap selects, tapping again deselects, the Play button plays; Ready button 
     await mover.getByTestId(first!.id).click(STRIP); // adds it back
     await pressed(first!.id, true);
     await mover.getByTestId('karma-hint').click(); // clear
-  } else {
-    await mover.getByTestId(first!.id).click(STRIP);
-    await pressed(first!.id, true);
-    await mover.waitForTimeout(450); // a slow second tap deselects
-    await mover.getByTestId(first!.id).click(STRIP);
   }
   for (const c of firstGroup) await pressed(c.id, false);
   await expect(pile).toHaveAttribute('data-count', '0');
@@ -283,15 +285,12 @@ test('tap selects, tapping again deselects, the Play button plays; Ready button 
 
   // Tapping a card of another rank selects that rank instead.
   const other = snap.playableHand.find((c) => c.rank !== first!.rank) ?? first!;
-  await mover.waitForTimeout(450);
   await mover.getByTestId(other.id).click(STRIP);
   for (const c of group(other.rank)) await pressed(c.id, true);
 
   if (group(other.rank).length === 1) {
-    // A card held once: a quick double tap plays it.
-    await mover.waitForTimeout(450);
-    await mover.getByTestId(other.id).click(STRIP); // deselect
-    await mover.getByTestId(other.id).click(STRIP); // quickly again: plays
+    // A card held once: tapping the selected card again plays it (no timing).
+    await mover.getByTestId(other.id).click(STRIP);
   } else {
     await mover.getByTestId('karma-play').click();
   }

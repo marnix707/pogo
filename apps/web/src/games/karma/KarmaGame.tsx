@@ -8,7 +8,7 @@ import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
 import { useCountdown } from '../../lib/useCountdown';
 import type { GameUiProps } from '../types';
-import { DOUBLE_TAP_MS, planTap } from './selection';
+import { planTap } from './selection';
 import { FourBurn } from './FourBurn';
 import { handLayout } from './handLayout';
 import { REVEAL_FLIP_MS, leftoverCount, revealPlan } from './reveal';
@@ -847,18 +847,9 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     }
   }
 
-  /** True when this is the second tap on the same thing within DOUBLE_TAP_MS. */
-  const lastTap = useRef({ key: '', at: 0 });
-  function isDoubleTap(key: string): boolean {
-    const now = Date.now();
-    const fast = lastTap.current.key === key && now - lastTap.current.at < DOUBLE_TAP_MS;
-    lastTap.current = { key, at: fast ? 0 : now };
-    return fast;
-  }
-
   /**
    * Play phase, see `planTap`: a rank held several times is selected as a whole set (then press
-   * Play); a card held once is tap-to-select, tap-again-to-deselect, quick double tap to play.
+   * Play); a card held once is tap to select, tap the selected card again to play it.
    */
   function tapCard(card: Card) {
     if (!playing) return;
@@ -870,7 +861,6 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
       zoneCards,
       selected: sel,
       card,
-      fast: isDoubleTap(`c${card}`),
     });
     if (plan.type === 'play') {
       void playSelected(plan.cards, null);
@@ -883,13 +873,14 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
 
   function tapDown(slot: number) {
     if (view.mustPickUp) return flashHint('Tap the pile to pick it up first');
-    if (isDoubleTap(`d${slot}`)) {
+    // Tap selects the face-down card, tapping it again flips it (plays it).
+    if (selDown === slot) {
       void playSelected([], slot);
       return;
     }
     haptic('tap');
     setSel([]);
-    setSelDown(selDown === slot ? null : slot);
+    setSelDown(slot);
   }
 
   function clearSelection() {
@@ -944,7 +935,10 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         'Time to swap! Tap a floating face-up card and a hand card to switch them, then press Ready';
   } else if (view.phase === 'swap') hint = 'Waiting for the others to get ready…';
   else if (myTurn && (sel.length > 0 || selDown !== null)) {
-    hint = 'Press Play · tap again to deselect (a single card or four of a kind: double-tap plays)';
+    hint =
+      sel.length > 1
+        ? 'Press Play · tap a card to drop it from the set'
+        : 'Press Play, or tap the card again to play it';
   }
 
   // Nothing in my active cards can be played, so picking up is the only move: the player must tap the pile
@@ -1003,6 +997,10 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         className="flex h-full min-h-0 flex-col"
         data-testid="karma-game"
         data-phase={view.phase}
+        // Tapping anywhere that is not a button (cards, Play, Ready, the pile are buttons) deselects.
+        onClick={(e) => {
+          if (!(e.target as HTMLElement).closest('button')) clearSelection();
+        }}
       >
         <div className="flex gap-2 px-3 pb-2">
           {opponents.map((p) => (

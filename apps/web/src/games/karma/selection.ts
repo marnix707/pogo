@@ -1,31 +1,26 @@
 import { karma } from '@pogo/shared';
 
-/** Two taps on the same card within this many ms are a double tap. */
-export const DOUBLE_TAP_MS = 350;
-
 export type TapPlan =
   /** The new selection (empty = nothing selected). */
   { type: 'select'; cards: number[] } | { type: 'play'; cards: number[] };
 
 /**
- * What a tap on a card of the active zone (hand, or the face-up cards) does.
+ * What a tap on a card of the active zone (hand, or the face-up cards) does. There is no timing:
  *
- * - Four of a kind: tap selects all four, a quick second tap plays them (an instant burn).
- * - A rank you hold two or three of: tapping selects every one of them. Tapping one of the selected
- *   cards again deselects just that card (tap it once more to add it back). No double tap here
- *   (with many cards you could never be quick enough); press Play.
- * - A rank you hold once: tap selects it, a quick second tap plays it, a slow one deselects it.
+ * - A card you hold once: the first tap selects it, tapping the selected card again plays it.
+ * - A rank you hold two, three or four of: tapping selects every one of them. Tapping one of the
+ *   selected cards again deselects just that card (tap it once more to add it back). Sets are
+ *   always played with the Play button.
+ * - Tapping another rank replaces the selection; tapping the table clears it.
  */
 export function planTap(opts: {
   zoneCards: readonly number[];
   selected: readonly number[];
   card: number;
-  fast: boolean;
 }): TapPlan {
-  const { zoneCards, selected, card, fast } = opts;
+  const { zoneCards, selected, card } = opts;
   const rank = karma.rankOf(card);
   const sameRank = zoneCards.filter((c) => karma.rankOf(c) === rank);
-  if (sameRank.length === 4 && fast) return { type: 'play', cards: sameRank };
   if (sameRank.length > 1) {
     if (selected.includes(card))
       return { type: 'select', cards: selected.filter((c) => c !== card) };
@@ -35,6 +30,6 @@ export function planTap(opts: {
       cards: selectedSame.length > 0 ? [...selectedSame, card] : sameRank,
     };
   }
-  if (fast) return { type: 'play', cards: [card] };
-  return { type: 'select', cards: selected.includes(card) ? [] : [card] };
+  if (selected.includes(card)) return { type: 'play', cards: [card] };
+  return { type: 'select', cards: [card] };
 }

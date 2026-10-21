@@ -182,7 +182,7 @@ function singleScene(): Scene {
         arrow: arrowAbove(PILE.x, PILE.y),
       },
       {
-        caption: 'Double-tap a card to throw it right away.',
+        caption: 'Tap a card to select it, then tap it again to throw it.',
         sprites: [pile(card(6, 3)), ...hand({ lift: true })],
         arrow: arrowUnder(COLS[1]!, HAND_Y),
       },
