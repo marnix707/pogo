@@ -104,6 +104,8 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'ROOM-121', message: /supports (at most )?\d+(-\d+)? players?$/ },
   { code: 'ROOM-122', message: / needs at least \d+ player/ },
   { code: 'ROOM-123', message: 'Unknown game' },
+  { code: 'ROOM-124', message: 'Only the host can change the game' },
+  { code: 'ROOM-125', message: 'The game can only be changed in the lobby' },
 
   // ---- GAME: any game ----
   { code: 'GAME-101', message: 'Not your turn' },

@@ -11,6 +11,8 @@ export interface RoomApi {
   leave(): Promise<Result<unknown>>;
   kick(userId: string): Promise<Result<unknown>>;
   updateSettings(patch: RoomSettingsInput): Promise<Result<unknown>>;
+  /** Lobby (host): play another game with the same people; nobody leaves the room. */
+  setGame(gameId: string): Promise<Result<unknown>>;
   /** Lobby: press or release Ready; the game starts by itself when everybody is ready. */
   ready(ready: boolean): Promise<Result<unknown>>;
   rematch(toLobby?: boolean): Promise<Result<unknown>>;

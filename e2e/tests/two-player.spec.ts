@@ -34,7 +34,7 @@ test('two players play a full Yatzy game, with a reconnect in the middle', async
   const code = (await a.getByTestId('room-code').textContent())!.trim();
   expect(code).toMatch(/^[A-Z0-9]{5}$/);
 
-  await b.getByTestId('home-join').click();
+  await b.getByTestId('home-play').click();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
   await expect(b.getByTestId('member-Alice')).toBeVisible();

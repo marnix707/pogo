@@ -5,7 +5,7 @@ import { displayName } from '@pogo/shared';
 import type { AVATARS, AuthResponse, PublicRoomSummary, PublicUser } from '@pogo/shared';
 import { PogoStage, Wordmark, introDone, markIntroSeen } from '../components/PogoStage';
 import { InstallCard } from '../components/InstallCard';
-import { ArrowLeftIcon, SlidersIcon, TrophyIcon } from '../components/icons';
+import { SlidersIcon, TrophyIcon } from '../components/icons';
 import { LeaderboardSheet } from '../components/LeaderboardSheet';
 import { ProfileSheet } from '../components/ProfileSheet';
 import type { ProfileMode } from '../components/ProfileSheet';
@@ -91,10 +91,10 @@ export function Home({
   /** Save a new name and/or icon for this player. */
   onProfile: (profile: { nickname: string; avatar: (typeof AVATARS)[number] }) => Promise<void>;
 }) {
-  const [screen, setScreen] = useState<'menu' | 'play' | 'join'>('menu');
-  // Play / Join are history entries, so the phone's back gesture or button returns to the menu
+  const [screen, setScreen] = useState<'menu' | 'play'>('menu');
+  // Play is a history entry, so the phone's back gesture or button returns to the menu
   // (instead of leaving the app), and an edge swipe does the same inside an installed app.
-  const open = (next: 'play' | 'join') => {
+  const open = (next: 'play') => {
     markIntroSeen();
     history.pushState({ pogo: next }, '');
     setScreen(next);
@@ -104,7 +104,7 @@ export function Home({
     else setScreen('menu');
   };
   useEffect(() => {
-    const onPop = () => setScreen((history.state?.pogo as 'play' | 'join' | undefined) ?? 'menu');
+    const onPop = () => setScreen((history.state?.pogo as 'play' | undefined) ?? 'menu');
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
@@ -223,14 +223,6 @@ export function Home({
               >
                 Play
               </Button>
-              <Button
-                data-testid="home-join"
-                variant="secondary"
-                className="!min-h-[clamp(3.5rem,10dvh,6rem)] !text-3xl"
-                onClick={() => open('join')}
-              >
-                Join
-              </Button>
             </div>
             <p data-in={landed} className="slide-bottom label text-center text-onbg/70">
               Playing as{' '}
@@ -241,18 +233,7 @@ export function Home({
           </>
         )}
 
-        {screen !== 'menu' && (
-          <button
-            type="button"
-            data-testid="home-back"
-            onClick={back}
-            className="label flex items-center gap-2 self-start text-onbg"
-          >
-            <ArrowLeftIcon className="h-4 w-4" /> Back
-          </button>
-        )}
-
-        {screen === 'join' && (
+        {screen === 'play' && (
           <>
             <form onSubmit={join} className="hud flex gap-2 p-3" aria-label="Join with a code">
               <input
@@ -276,6 +257,44 @@ export function Home({
               </Button>
             </form>
 
+            <section aria-label="Games">
+              <SectionLabel>Games</SectionLabel>
+              <div className="flex flex-col gap-3">
+                {gameUis.map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    data-testid={`home-game-${g.id}`}
+                    disabled={blocked}
+                    onClick={() => void run(api.create(g.id))}
+                    className="hud hud-ticks flex w-full items-center gap-4 bg-panel p-4 text-left text-ink transition active:scale-[0.99] disabled:opacity-50"
+                  >
+                    {g.logo ? (
+                      <img
+                        src={g.logo}
+                        alt=""
+                        aria-hidden
+                        className="h-16 w-24 shrink-0 object-contain"
+                        style={{ imageRendering: 'pixelated' }}
+                      />
+                    ) : (
+                      <span
+                        className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-accent text-4xl"
+                        aria-hidden
+                      >
+                        {g.emoji}
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xl font-bold uppercase tracking-[0.12em]">
+                        {g.name}
+                      </span>
+                      <span className="block text-sm leading-snug text-muted">{g.tagline}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
             <section aria-label="Open games">
               <SectionLabel
                 right={
@@ -311,7 +330,7 @@ export function Home({
                   className="hud p-4 text-center text-sm text-muted"
                   data-testid="open-games-empty"
                 >
-                  No open games right now. Press Play to open a lobby, and switch on{' '}
+                  No open games right now. Pick a game above to open a lobby, and switch on{' '}
                   <b className="text-ink">Public room</b> there so others can join.
                 </div>
               ) : (
@@ -328,47 +347,6 @@ export function Home({
               )}
             </section>
           </>
-        )}
-
-        {screen === 'play' && (
-          <section aria-label="Games">
-            <SectionLabel>Games</SectionLabel>
-            <div className="flex flex-col gap-3">
-              {gameUis.map((g) => (
-                <button
-                  key={g.id}
-                  type="button"
-                  data-testid={`home-game-${g.id}`}
-                  disabled={blocked}
-                  onClick={() => void run(api.create(g.id))}
-                  className="hud hud-ticks flex w-full items-center gap-4 bg-panel p-4 text-left text-ink transition active:scale-[0.99] disabled:opacity-50"
-                >
-                  {g.logo ? (
-                    <img
-                      src={g.logo}
-                      alt=""
-                      aria-hidden
-                      className="h-16 w-24 shrink-0 object-contain"
-                      style={{ imageRendering: 'pixelated' }}
-                    />
-                  ) : (
-                    <span
-                      className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-accent text-4xl"
-                      aria-hidden
-                    >
-                      {g.emoji}
-                    </span>
-                  )}
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-xl font-bold uppercase tracking-[0.12em]">
-                      {g.name}
-                    </span>
-                    <span className="block text-sm leading-snug text-muted">{g.tagline}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </section>
         )}
       </main>
 

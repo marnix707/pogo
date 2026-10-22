@@ -81,6 +81,7 @@ export function Shell({
       leave: () => run(request('room:leave', {})),
       kick: (userId) => run(request('room:kick', { userId })),
       updateSettings: (patch: RoomSettingsInput) => run(request('room:settings', patch)),
+      setGame: (gameId) => run(request('room:setGame', { gameId })),
       ready: (ready) => run(request('room:ready', { ready })),
       rematch: (toLobby) => run(request('room:rematch', { toLobby })),
       move: (move) => run(request('game:move', { move })),

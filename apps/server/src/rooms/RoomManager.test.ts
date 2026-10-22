@@ -151,6 +151,51 @@ describe('settings', () => {
   });
 });
 
+describe('a persistent lobby: the host switches the game and everybody stays', () => {
+  it('switches the game, keeps the people, resets ready and options', () => {
+    const { manager, must, lastRoom } = setup();
+    const { code } = must(manager.create(a, { gameId: 'karma', bots: 1 }));
+    must(manager.join(b, code));
+    must(manager.setReady(b.id, true));
+    const room = must(manager.setGame(a.id, 'yatzy'));
+    expect(room).toMatchObject({ code, gameId: 'yatzy', hostId: a.id, bots: 0 });
+    expect(room.members.map((m) => m.id).sort()).toEqual([a.id, b.id]);
+    expect(room.members.every((m) => !m.ready)).toBe(true); // everybody has to be ready again
+    // The other player sees the same room with the new game and can switch back later.
+    expect(lastRoom(b.id)).toMatchObject({ code, gameId: 'yatzy' });
+    expect(must(manager.setGame(a.id, 'karma')).gameId).toBe('karma');
+  });
+
+  it('only the host, only in the lobby, only known games, and only if everybody fits', () => {
+    const { manager, must } = setup();
+    const { code } = must(manager.create(a, { gameId: 'karma' }));
+    must(manager.join(b, code));
+    must(manager.join(c, code));
+    expect(manager.setGame(b.id, 'yatzy')).toMatchObject({
+      ok: false,
+      error: 'Only the host can change the game',
+    });
+    expect(manager.setGame(a.id, 'nope')).toMatchObject({ ok: false, error: 'Unknown game' });
+    // The fake race game seats at most 3: fine with 3, refused with 4 people.
+    expect(manager.setGame(a.id, 'race').ok).toBe(true);
+    must(manager.setGame(a.id, 'karma'));
+    must(manager.join(user(4), code));
+    expect(manager.setGame(a.id, 'race').ok).toBe(false);
+    must(manager.setGame(a.id, 'karma'));
+  });
+
+  it('is locked once the game has started', () => {
+    const { manager, must } = setup();
+    const { code } = must(manager.create(a, { gameId: 'race' }));
+    must(manager.join(b, code));
+    must(manager.start(a.id));
+    expect(manager.setGame(a.id, 'karma')).toMatchObject({
+      ok: false,
+      error: 'The game can only be changed in the lobby',
+    });
+  });
+});
+
 describe('playing', () => {
   function started() {
     const s = setup();

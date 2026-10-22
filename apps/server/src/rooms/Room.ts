@@ -98,7 +98,8 @@ const ok = <T>(data: T): Result<T> => ({ ok: true, data });
 export class Room {
   readonly code: string;
   readonly createdAt: number;
-  readonly game: AnyGameDefinition;
+  /** The game this room plays; the host can switch it in the lobby (the group stays together). */
+  game: AnyGameDefinition;
   hostId: string;
   visibility: Visibility;
   maxPlayers: number;
@@ -319,6 +320,27 @@ export class Room {
     if (patch.visibility !== undefined) this.visibility = patch.visibility;
     if (patch.turnTimeSec !== undefined) this.turnTimeSec = patch.turnTimeSec;
     // Everybody has to confirm the new settings again.
+    for (const m of this.members) m.ready = false;
+    this.changed();
+    return ok(null);
+  }
+
+  /**
+   * Lobby: the host picks another game and everybody stays in the room ("persistent lobby": a group of
+   * friends cycles through games without leaving). Options go back to the new game's defaults, computer
+   * players are kept only if the new game has room for them, and everybody has to press Ready again.
+   */
+  setGame(userId: string, game: AnyGameDefinition): Result<null> {
+    if (userId !== this.hostId) return fail('Only the host can change the game');
+    if (this.status !== 'lobby') return fail('The game can only be changed in the lobby');
+    if (game.id === this.game.id) return ok(null);
+    if (this.memberCount > game.maxPlayers) {
+      return fail(`${game.name} supports at most ${game.maxPlayers} players`);
+    }
+    this.game = game;
+    this.options = game.defaultOptions;
+    this.maxPlayers = game.maxPlayers;
+    this.bots = game.supportsBots ? Math.min(this.bots, game.maxPlayers - this.memberCount) : 0;
     for (const m of this.members) m.ready = false;
     this.changed();
     return ok(null);

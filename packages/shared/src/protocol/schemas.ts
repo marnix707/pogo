@@ -121,6 +121,9 @@ export type RoomSettingsInput = z.input<typeof roomSettingsSchema>;
 export const gameMoveEnvelopeSchema = z.object({ move: z.unknown() });
 export type GameMoveInput = z.input<typeof gameMoveEnvelopeSchema>;
 
+export const roomSetGameSchema = z.object({ gameId: z.string().min(1).max(32) });
+export type RoomSetGameInput = z.input<typeof roomSetGameSchema>;
+
 export const roomQuickplaySchema = z.object({ gameId: z.string().min(1).max(32) });
 export type RoomQuickplayInput = z.input<typeof roomQuickplaySchema>;
 

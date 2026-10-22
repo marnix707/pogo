@@ -1,9 +1,10 @@
 import { PlayerName } from '../components/PlayerName';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BOT_AVATAR, BOT_NAMES, getGame } from '@pogo/shared';
 import type { ChatMessage, RoomView } from '@pogo/shared';
 import { ArrowLeftIcon, CrownIcon, SlidersIcon } from '../components/icons';
 import { ChatPanel } from '../components/ChatPanel';
+import { GamePickerSheet } from '../components/GamePickerSheet';
 import { Avatar, Button, Card, SectionLabel, Toggle } from '../components/ui';
 import { TileButton } from '../components/TopBar';
 import { useToast } from '../components/Toast';
@@ -79,6 +80,15 @@ export function Lobby({
 }) {
   const toast = useToast();
   const isHost = room.hostId === me;
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // The host switched the game under us: tell the others (the lobby stays, only the game changes).
+  const shownGame = useRef(room.gameId);
+  useEffect(() => {
+    if (shownGame.current === room.gameId) return;
+    shownGame.current = room.gameId;
+    if (!isHost) toast.show(`The host switched to ${room.gameName}`, 'info');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room.gameId]);
   const iAmReady = !!room.members.find((m) => m.id === me)?.ready;
   const readyCount = room.members.filter((m) => m.ready).length;
   const secondsToStart = useCountdown(room.startsAt, room.serverTime);
@@ -331,16 +341,33 @@ export function Lobby({
           >
             {iAmReady ? (secondsToStart !== null ? 'Cancel' : 'Ready ✓ · tap to cancel') : 'Ready'}
           </Button>
-          <Button
-            variant="ghost"
-            data-testid="lobby-back"
-            className="!min-h-10 !text-xs"
-            onClick={() => void api.leave()}
-          >
-            Back to game selection
-          </Button>
+          {isHost ? (
+            <Button
+              variant="ghost"
+              data-testid="lobby-change-game"
+              className="!min-h-10 !text-xs"
+              onClick={() => setPickerOpen(true)}
+            >
+              Back to game selection
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              data-testid="lobby-back"
+              className="!min-h-10 !text-xs"
+              onClick={() => void api.leave()}
+            >
+              Leave lobby
+            </Button>
+          )}
         </div>
       </div>
+      <GamePickerSheet
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        currentId={room.gameId}
+        onPick={(id) => void api.setGame(id)}
+      />
     </div>
   );
 }

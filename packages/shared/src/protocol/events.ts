@@ -10,6 +10,7 @@ import type {
   RoomJoinInput,
   RoomKickInput,
   RoomSettingsInput,
+  RoomSetGameInput,
   Visibility,
 } from './schemas';
 
@@ -125,6 +126,7 @@ export interface ClientToServerEvents {
   'room:leave': (payload: EmptyPayload, ack: Ack<null>) => void;
   'room:kick': (payload: RoomKickInput, ack: Ack<null>) => void;
   'room:settings': (payload: RoomSettingsInput, ack: Ack<RoomView>) => void;
+  'room:setGame': (payload: RoomSetGameInput, ack: Ack<RoomView>) => void;
   'room:ready': (payload: RoomReadyInput, ack: Ack<RoomView>) => void;
   'room:rematch': (payload: RematchInput, ack: Ack<RoomView>) => void;
   'room:quickplay': (payload: RoomQuickplayInput, ack: Ack<RoomView>) => void;

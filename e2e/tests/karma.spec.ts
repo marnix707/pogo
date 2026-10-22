@@ -15,7 +15,7 @@ test('three players play a complete Karma game through the UI', async ({ browser
   await alice.page.getByTestId('home-game-karma').click();
   const code = (await alice.page.getByTestId('room-code').textContent())!.trim();
   for (const p of [bob.page, cleo.page]) {
-    await p.getByTestId('home-join').click();
+    await p.getByTestId('home-play').click();
     await p.getByTestId('home-join-code').fill(code);
     await p.getByTestId('home-join-submit').click();
   }
@@ -86,7 +86,7 @@ test('the lobby can be filtered by game', async ({ browser }) => {
   await expect(hostB.page.getByTestId('room-visibility')).toHaveText('Public');
 
   const w = watcher.page;
-  await w.getByTestId('home-join').click();
+  await w.getByTestId('home-play').click();
   await expect(w.getByTestId(/^open-game-/).filter({ hasText: "KarmaHost's game" })).toBeVisible();
   await expect(w.getByTestId(/^open-game-/).filter({ hasText: "YatzyHost's game" })).toBeVisible();
 
@@ -151,7 +151,7 @@ test('cards slide when swapped and when played to the pile (unless motion is red
 
   const code = (await alice.page.getByTestId('room-code').textContent())!.trim();
   for (const p of [bob.page, calm.page]) {
-    await p.getByTestId('home-join').click();
+    await p.getByTestId('home-play').click();
     await p.getByTestId('home-join-code').fill(code);
     await p.getByTestId('home-join-submit').click();
   }
@@ -210,7 +210,7 @@ test('tap selects, tapping a single card again plays it, sets use the Play butto
   await a.getByTestId('home-game-karma').click();
 
   const code = (await a.getByTestId('room-code').textContent())!.trim();
-  await b.getByTestId('home-join').click();
+  await b.getByTestId('home-play').click();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
   await readyAll(a, b);
@@ -311,7 +311,7 @@ test('the pile is picked up with two taps, the deck explains itself, a timer cou
   await a.getByTestId('home-game-karma').click();
 
   const code = (await a.getByTestId('room-code').textContent())!.trim();
-  await b.getByTestId('home-join').click();
+  await b.getByTestId('home-play').click();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
   await readyAll(a, b);
@@ -395,7 +395,7 @@ test.fixme('a very long hand (after picking up piles) wraps into rows and every 
   await a.getByTestId('home-game-karma').click();
 
   const code = (await a.getByTestId('room-code').textContent())!.trim();
-  await b.getByTestId('home-join').click();
+  await b.getByTestId('home-play').click();
   await b.getByTestId('home-join-code').fill(code);
   await b.getByTestId('home-join-submit').click();
   await readyAll(a, b);

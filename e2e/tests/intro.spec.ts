@@ -24,12 +24,12 @@ test('opening: the stick waits alone, the toad lands, then the wordmark and menu
   await page.waitForTimeout(150);
   await page.screenshot({ path: 'test-results/intro-4-tap.png' });
   await page.getByTestId('home-play').click();
-  await expect(page.getByTestId('home-back')).toBeVisible();
+  await expect(page.getByTestId('home-join-code')).toBeVisible();
 
   // Into a game lobby and back: the intro never plays again (the menu is simply there at once).
   await page.getByTestId('home-game-yatzy').click();
-  await expect(page.getByTestId('lobby-back')).toBeVisible();
-  await page.getByTestId('lobby-back').click();
+  await expect(page.getByTestId('lobby-leave')).toBeVisible();
+  await page.getByTestId('lobby-leave').click();
   await expect(page.getByTestId('home-wordmark')).toHaveClass(/wordmark-in/, { timeout: 1500 });
   await expect(page.getByTestId('home-play')).toBeVisible({ timeout: 1500 });
   await context.close();
