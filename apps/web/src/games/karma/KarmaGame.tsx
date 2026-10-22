@@ -11,7 +11,8 @@ import { useCountdown } from '../../lib/useCountdown';
 import type { GameUiProps } from '../types';
 import { planTap } from './selection';
 import { FourBurn } from './FourBurn';
-import { handLayout } from './handLayout';
+import { useCardScale } from '../../lib/cardScale';
+import { handLayout } from '../../lib/handLayout';
 import { REVEAL_FLIP_MS, leftoverCount, revealPlan, revealStartMs } from './reveal';
 import { WinReveal } from './WinReveal';
 import { RoundScreen } from './RoundScreen';
@@ -32,18 +33,6 @@ const byRankThenSuit = (a: Card, b: Card) => rankOf(a) - rankOf(b) || suitOf(a) 
 
 const prefersReducedMotion = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-/** Card scale for this phone: shrink a little on short screens, grow on tall ones. */
-function useCardScale(): number {
-  const [h, setH] = useState(() => window.innerHeight);
-  useEffect(() => {
-    const onResize = () => setH(window.innerHeight);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-  // Fit the table, hand and opponents into the screen: ~238px of chrome plus ~442px per unit of scale.
-  return Math.max(0.72, Math.min(1.12, (h - 238) / 442));
-}
 
 /** My table columns overlap by this many em so bigger cards fit beside the action buttons. */
 const MY_SLOT_OVERLAP = 0.7;

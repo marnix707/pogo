@@ -5,9 +5,14 @@ import { Avatar, Button, TimerDrain } from '../../components/ui';
 import { PlayerName } from '../../components/PlayerName';
 import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
+import { useCardScale } from '../../lib/cardScale';
+import { handLayout } from '../../lib/handLayout';
 import { useCountdown } from '../../lib/useCountdown';
 import type { GameUiProps } from '../types';
 import { CARD_COLORS, ColourCard } from './ColourCard';
+
+/** Height of everything on the table that is not a card (header, seats, event line, buttons): the cards get the rest. */
+const LASTCARD_CHROME = 300;
 
 const COLOR_NAMES = ['Red', 'Yellow', 'Green', 'Blue'];
 /** How long the "UNO!" announcement stays on screen. */
@@ -47,7 +52,7 @@ function Seat({
       </div>
       <div className="flex w-full items-center justify-between gap-1">
         <span className="flex">
-          {Array.from({ length: Math.min(player.count, 6) }, (_, i) => (
+          {Array.from({ length: Math.min(player.count, 5) }, (_, i) => (
             <ColourCard
               key={i}
               faceDown
@@ -57,7 +62,7 @@ function Seat({
           ))}
         </span>
         <span
-          className="text-lg font-bold leading-none"
+          className="shrink-0 text-lg font-bold leading-none"
           data-testid={`lastcard-count-${player.id}`}
         >
           {player.count}
@@ -285,7 +290,14 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
     }
   };
 
-  // Hand layout: fan the cards so they all fit the width when they can (overlap), scroll when they cannot.
+  // Sizes (px per em; a card is 5em x 7em): the same as Karma's.
+  const scale = useCardScale(LASTCARD_CHROME);
+  const myFont = 18 * scale;
+  const pileFont = 19.5 * scale;
+  const stockFont = 14.5 * scale;
+
+  // The hand is laid out like Karma's (lib/handLayout.ts): cards overlap by 10-30 %, shrink a little
+  // before another row is added, and extra rows overlap the one above by half a card.
   const handEl = useRef<HTMLDivElement>(null);
   const [handWidth, setHandWidth] = useState(340);
   useLayoutEffect(() => {
@@ -297,15 +309,13 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const cardSize = 11;
-  const cardW = cardSize * 5;
-  const n = view.hand.length;
-  const gap = 4;
-  const fits = n * cardW + (n - 1) * gap <= handWidth - 24;
-  const minStep = cardW * 0.42;
-  const step = fits
-    ? cardW + gap
-    : Math.max(minStep, n > 1 ? (handWidth - 24 - cardW) / (n - 1) : cardW);
+  const layout = handLayout(view.hand.length, handWidth, myFont);
+  const handRows = Array.from({ length: layout.rows }, (_, r) =>
+    view.hand.slice(r * layout.perRow, (r + 1) * layout.perRow),
+  );
+  const handFont = layout.font;
+  const cardW = handFont * 5;
+  const rowStep = handFont * 7 * 0.5;
 
   const opponents = (() => {
     const mineIndex = view.players.findIndex((p) => p.id === me);
@@ -363,8 +373,12 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
                   : undefined
               }
             >
-              <ColourCard faceDown size={13} className="absolute left-[3px] top-[3px] opacity-60" />
-              <ColourCard faceDown size={13} />
+              <ColourCard
+                faceDown
+                size={stockFont}
+                className="absolute left-[3px] top-[3px] opacity-60"
+              />
+              <ColourCard faceDown size={stockFont} />
             </span>
             <span className="label text-[11px] text-onbg/80" data-testid="lastcard-stock">
               {view.stockCount}
@@ -378,12 +392,12 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
               data-testid="lastcard-color"
               data-color={view.color}
             >
-              <div className="relative" style={{ width: 13 * 5, height: 13 * 7 }}>
+              <div className="relative" style={{ width: pileFont * 5, height: pileFont * 7 }}>
                 {view.below.map((c, i) => (
                   <ColourCard
                     key={`${c}-${i}`}
                     card={c}
-                    size={13}
+                    size={pileFont}
                     className="absolute left-0 top-0"
                     style={{ transform: `rotate(${(i - 1) * 9}deg)` }}
                   />
@@ -391,7 +405,7 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
                 <ColourCard
                   key={view.top}
                   card={view.top}
-                  size={13}
+                  size={pileFont}
                   className="lastcard-land absolute left-0 top-0"
                   data-testid="lastcard-top"
                 />
@@ -423,25 +437,40 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
         className="relative flex flex-col gap-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
         data-testid="lastcard-dock"
       >
+        {/* Rows centre themselves with mx-auto, NOT justify-center (that cuts off the left side when too wide). */}
         <div
           ref={handEl}
-          className="flex items-end overflow-x-auto px-3 pb-1 pt-5"
+          className="flex w-full flex-col px-1 pb-1 pt-4"
           data-testid="lastcard-hand"
+          data-rows={layout.rows}
           data-dimmed={!myTurn}
-          style={{ filter: !myTurn && !finished ? 'brightness(0.7)' : undefined }}
+          style={{
+            minHeight: `${handFont * 7 + rowStep * (layout.rows - 1) + 22}px`,
+            overflowX: 'clip',
+            filter: !myTurn && !finished ? 'brightness(0.7)' : undefined,
+          }}
         >
-          {view.hand.map((c, i) => (
-            <ColourCard
-              key={c}
-              card={c}
-              size={cardSize}
-              dimmed={myTurn && !canPlay(c)}
-              glow={view.drawn === c}
-              data-playable={canPlay(c)}
-              onClick={() => tapCard(c)}
-              style={{ marginLeft: i === 0 ? 0 : step - cardW }}
-              data-testid={`lastcard-card-${c}`}
-            />
+          {handRows.map((row, r) => (
+            <div
+              key={r}
+              className="mx-auto flex items-end"
+              style={{ marginTop: r === 0 ? 0 : `-${rowStep}px` }}
+            >
+              {row.map((c, i) => (
+                <ColourCard
+                  key={c}
+                  card={c}
+                  size={handFont}
+                  dimmed={myTurn && !canPlay(c)}
+                  glow={view.drawn === c}
+                  data-playable={canPlay(c)}
+                  onClick={() => tapCard(c)}
+                  // (strip > cardW = a gap; negative = overlap)
+                  style={{ marginLeft: i === 0 ? 0 : layout.strip - cardW }}
+                  data-testid={`lastcard-card-${c}`}
+                />
+              ))}
+            </div>
           ))}
         </div>
 

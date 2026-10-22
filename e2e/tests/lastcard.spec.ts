@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { newPlayer, readyAll } from './karma-helpers';
+import { STRIP, newPlayer, readyAll } from './karma-helpers';
 
 /** My turn: play the first playable card (a wild gets red), else draw / pass. Presses UNO! when it is urgent. */
 async function takeUnoTurn(page: Page) {
@@ -8,7 +8,7 @@ async function takeUnoTurn(page: Page) {
   if ((await urgent.getAttribute('data-state')) === 'urgent') await urgent.click();
   const playable = page.locator('[data-testid^=lastcard-card-][data-playable=true]').first();
   if (await playable.count()) {
-    await playable.click();
+    await playable.click(STRIP); // neighbouring cards overlap: tap the visible left strip
     const picker = page.getByTestId('lastcard-color-picker');
     if (await picker.isVisible()) await page.getByTestId('lastcard-color-0').click();
     return;
