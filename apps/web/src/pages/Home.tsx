@@ -1,9 +1,9 @@
 import { PlayerName } from '../components/PlayerName';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { displayName } from '@pogo/shared';
 import type { AVATARS, AuthResponse, PublicRoomSummary, PublicUser } from '@pogo/shared';
-import { PogoStage, Wordmark, introDone, markIntroSeen } from '../components/PogoStage';
+import { PEAK_ART, PogoStage, Wordmark, introDone, markIntroSeen } from '../components/PogoStage';
 import { InstallCard } from '../components/InstallCard';
 import { SlidersIcon, TrophyIcon } from '../components/icons';
 import { LeaderboardSheet } from '../components/LeaderboardSheet';
@@ -99,6 +99,21 @@ export function Home({
   const fit = stageH > 0 ? Math.min(1, stageH / STAGE_NEED) : 1;
   const stageScale = { frog: 4.375 * fit, word: 11 * fit };
 
+  // Where the logo goes: the middle of the gap between the bottom of the top bar (or the install banner,
+  // when it is there) and the top of the toad's highest jump (45 art px above the bottom of his stage).
+  const headerEl = useRef<HTMLElement>(null);
+  const frogBox = useRef<HTMLDivElement>(null);
+  const [wordMid, setWordMid] = useState(120);
+  useLayoutEffect(() => {
+    const box = stageBox.current?.getBoundingClientRect();
+    const frog = frogBox.current?.getBoundingClientRect();
+    const header = headerEl.current?.getBoundingClientRect();
+    if (!box || !frog || !header) return;
+    const top = Math.max(header.bottom, box.top);
+    const peak = frog.bottom - PEAK_ART * stageScale.frog;
+    setWordMid((top + peak) / 2 - box.top);
+  }, [stageH, stageScale.frog, screen, landed]);
+
   return (
     <div
       className={`menu mx-auto flex max-w-md flex-col ${screen === 'menu' ? 'h-dvh overflow-hidden' : 'min-h-dvh'}`}
@@ -116,6 +131,7 @@ export function Home({
       }}
     >
       <header
+        ref={headerEl}
         data-in={landed}
         className="slide-top flex items-center gap-2.5 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+1.25rem)]"
       >
@@ -167,10 +183,18 @@ export function Home({
             {landed && <InstallCard variant="banner" />}
             <div
               ref={stageBox}
-              className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden pb-4"
+              className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden pb-4"
             >
-              <Wordmark shown={landed} width={stageScale.word * 30} drop={100 * fit} />
-              <PogoStage scale={stageScale.frog} onLanded={() => setLanded(true)} />
+              {/* The logo sits exactly halfway between the bottom of the top bar and the highest point the toad reaches. */}
+              <div
+                className="pointer-events-none absolute inset-x-0 z-10 flex justify-center"
+                style={{ top: wordMid, transform: 'translateY(-50%)' }}
+              >
+                <Wordmark shown={landed} width={stageScale.word * 30} flat />
+              </div>
+              <div ref={frogBox} className="w-full">
+                <PogoStage scale={stageScale.frog} onLanded={() => setLanded(true)} />
+              </div>
             </div>
             <div data-in={landed} className="slide-bottom flex flex-col gap-4">
               <Button

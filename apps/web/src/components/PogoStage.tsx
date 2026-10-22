@@ -103,6 +103,12 @@ export const markIntroSeen = () => {
 const AUTO_BOUNCES = 3;
 /** The side-view art stands its stick 2 art px right of the front view's: shift it so the stick (and the landing) stays on the centre line. */
 const SIDE_SHIFT = -2;
+/**
+ * How high the toad reaches above the bottom of his stage, in art px: at the top of a bounce (`pogo_air`,
+ * y -14, its top row is 1 of 32): 14 + (32 - 1) = 45 (the stage itself is 48 tall).
+ */
+export const PEAK_ART = 45;
+
 const REST: Step = { view: 'front', frame: 'pogo_extend', ms: 0, x: 0, y: 0, fx: [] };
 
 /**
@@ -252,11 +258,14 @@ export function Wordmark({
   shown,
   width,
   drop = 0,
+  flat = false,
 }: {
   shown: boolean;
   width: number;
   /** Pixels to sit lower than its natural place (moved with `top`: the pop-in animation owns `transform`). */
   drop?: number;
+  /** No clear space underneath (the caller positions the logo itself). */
+  flat?: boolean;
 }) {
   return (
     <img
@@ -270,7 +279,7 @@ export function Wordmark({
         top: drop,
         imageRendering: 'pixelated',
         transform: 'rotate(-10deg)',
-        marginBottom: width * 0.1,
+        marginBottom: flat ? 0 : width * 0.1,
       }}
     />
   );
