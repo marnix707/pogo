@@ -2,12 +2,20 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import { Server } from 'socket.io';
-import { APP_NAME, getGame, maskProfanity } from '@pogo/shared';
+import {
+  APP_NAME,
+  INTERNAL_ERROR_CODE,
+  INTERNAL_ERROR_MESSAGE,
+  errorCodeFor,
+  getGame,
+  maskProfanity,
+} from '@pogo/shared';
 import type { AnyGameDefinition, Rng } from '@pogo/shared';
 import type { AppConfig } from './config';
 import { BanList, banMessage, createMemoryModerationStore } from './admin/moderation';
 import type { ModerationStore } from './admin/moderation';
 import { createTokenService } from './auth/tokens';
+import { AppError } from './errors';
 import type { UserStore } from './auth/userStore';
 import { registerAccountRoutes } from './http/accountRoutes';
 import { registerAdminRoutes } from './http/adminRoutes';
@@ -71,6 +79,44 @@ export async function buildApp(deps: AppDeps) {
     const userId = await tokens.verify(header.slice(7));
     const ban = userId ? bans.forUser(userId) : null;
     if (ban) return reply.code(403).send({ error: banMessage(ban), banned: true });
+  });
+
+  // Every error body gets its code (the text stays as it is); see shared errors.ts.
+  app.addHook('preSerialization', async (_req, _reply, payload) => {
+    if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+      const body = payload as { error?: unknown; code?: unknown };
+      if (typeof body.error === 'string' && body.code === undefined) {
+        return { ...body, code: errorCodeFor(body.error) };
+      }
+    }
+    return payload;
+  });
+  // Anything thrown: an AppError is reported as chosen, everything else is a server error (SYS-500).
+  // The ref in the response is the request id in the log line, so a report can be traced.
+  app.setErrorHandler((error: unknown, req, reply) => {
+    const err = error as Error & { statusCode?: number };
+    const status = err.statusCode && err.statusCode >= 400 ? err.statusCode : 500;
+    if (err instanceof AppError) {
+      // (the real cause, e.g. "Brevo 401: Key not found", is in `cause`)
+      const cause = err.cause instanceof Error ? err.cause.message : err.cause;
+      req.log.error({ err, cause, code: err.code, ref: req.id }, `${err.code}: ${err.message}`);
+      return reply.code(err.statusCode).send({ error: err.message, code: err.code, ref: req.id });
+    }
+    if (status >= 500) {
+      req.log.error({ err, code: INTERNAL_ERROR_CODE, ref: req.id }, 'request failed');
+      return reply
+        .code(status)
+        .send({ error: INTERNAL_ERROR_MESSAGE, code: INTERNAL_ERROR_CODE, ref: req.id });
+    }
+    // The rate limiter throws its own message (see errorResponseBuilder above).
+    if (status === 429) {
+      const message = 'Too many attempts. Please wait a minute and try again.';
+      return reply.code(429).send({ error: message, code: errorCodeFor(message) });
+    }
+    // Other 4xx raised by Fastify itself (malformed JSON, payload too large, ...)
+    return reply
+      .code(status)
+      .send({ error: 'Invalid request', code: errorCodeFor('Invalid request') });
   });
 
   // Liveness for the host's health probes: never touches the database (keeps Neon asleep).

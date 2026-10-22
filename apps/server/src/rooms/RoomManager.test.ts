@@ -69,7 +69,10 @@ describe('creating and joining', () => {
 
   it('rejects unknown games and out-of-range sizes', () => {
     const { manager } = setup();
-    expect(manager.create(a, { gameId: 'nope' })).toEqual({ ok: false, error: 'Unknown game' });
+    expect(manager.create(a, { gameId: 'nope' })).toMatchObject({
+      ok: false,
+      error: 'Unknown game',
+    });
     expect(manager.create(a, { gameId: 'race', maxPlayers: 9 }).ok).toBe(false);
     expect(manager.create(a, { gameId: 'race', options: { x: 1 } }).ok).toBe(false);
   });
@@ -87,14 +90,14 @@ describe('creating and joining', () => {
     const { code } = must(manager.create(a, { gameId: 'race' }));
     must(manager.join(b, code));
     expect(must(manager.join(b, code)).members).toHaveLength(2);
-    expect(manager.join(c, 'ZZZZZ')).toEqual({ ok: false, error: 'Room not found' });
+    expect(manager.join(c, 'ZZZZZ')).toMatchObject({ ok: false, error: 'Room not found' });
   });
 
   it('enforces max players', () => {
     const { manager, must } = setup();
     const { code } = must(manager.create(a, { gameId: 'race', maxPlayers: 2 }));
     must(manager.join(b, code));
-    expect(manager.join(c, code)).toEqual({ ok: false, error: 'This room is full' });
+    expect(manager.join(c, code)).toMatchObject({ ok: false, error: 'This room is full' });
   });
 
   it('keeps a user in one room at a time, leaving a lobby automatically', () => {
@@ -127,7 +130,10 @@ describe('leaving and kicking', () => {
     expect(manager.kick(b.id, a.id).ok).toBe(false);
     expect(manager.kick(a.id, b.id).ok).toBe(true);
     expect(last(b.id)).toEqual({ room: null, reason: 'kicked' });
-    expect(manager.join(b, code)).toEqual({ ok: false, error: 'You were removed from this room' });
+    expect(manager.join(b, code)).toMatchObject({
+      ok: false,
+      error: 'You were removed from this room',
+    });
   });
 });
 
@@ -159,14 +165,20 @@ describe('playing', () => {
     const { code } = must(manager.create(a, { gameId: 'race' }));
     expect(manager.start(a.id).ok).toBe(false); // 1 < min 2
     must(manager.join(b, code));
-    expect(manager.start(b.id)).toEqual({ ok: false, error: 'Only the host can start the game' });
+    expect(manager.start(b.id)).toMatchObject({
+      ok: false,
+      error: 'Only the host can start the game',
+    });
     expect(manager.start(a.id).ok).toBe(true);
     expect(manager.start(a.id).ok).toBe(false);
   });
 
   it('blocks new players once started', () => {
     const { manager, code } = started();
-    expect(manager.join(c, code)).toEqual({ ok: false, error: 'This game has already started' });
+    expect(manager.join(c, code)).toMatchObject({
+      ok: false,
+      error: 'This game has already started',
+    });
   });
 
   it('only sends each player their own private information', () => {
@@ -179,8 +191,14 @@ describe('playing', () => {
 
   it('validates moves: shape, turn order, and membership', () => {
     const { manager } = started();
-    expect(manager.move(a.id, { type: 'cheat' })).toEqual({ ok: false, error: 'Invalid move' });
-    expect(manager.move(b.id, { type: 'step' })).toEqual({ ok: false, error: 'Not your turn' });
+    expect(manager.move(a.id, { type: 'cheat' })).toMatchObject({
+      ok: false,
+      error: 'Invalid move',
+    });
+    expect(manager.move(b.id, { type: 'step' })).toMatchObject({
+      ok: false,
+      error: 'Not your turn',
+    });
     expect(manager.move(c.id, { type: 'step' }).ok).toBe(false);
     expect(manager.move(a.id, { type: 'step' }).ok).toBe(true);
   });
@@ -208,7 +226,7 @@ describe('playing', () => {
 
   it("won't let a player in a running game start another room", () => {
     const { manager } = started();
-    expect(manager.create(a, { gameId: 'race' })).toEqual({
+    expect(manager.create(a, { gameId: 'race' })).toMatchObject({
       ok: false,
       error: 'Finish or leave your current game first',
     });
@@ -436,7 +454,7 @@ describe('public lobby', () => {
     must(manager.create(a, { gameId: 'race', visibility: 'public' }));
     const yatzy = must(manager.quickPlay(b, 'yatzy'));
     expect(yatzy.gameId).toBe('yatzy');
-    expect(manager.quickPlay(c, 'nope')).toEqual({ ok: false, error: 'Unknown game' });
+    expect(manager.quickPlay(c, 'nope')).toMatchObject({ ok: false, error: 'Unknown game' });
   });
 
   it('quick match is idempotent for someone already waiting in a room for that game', () => {
@@ -487,7 +505,7 @@ describe('chat', () => {
 
   it('does not reach people outside the room, and outsiders cannot post', () => {
     const { manager, chats } = twoInRoom();
-    expect(manager.chat(c.id, 'psst')).toEqual({ ok: false, error: 'You are not in a room' });
+    expect(manager.chat(c.id, 'psst')).toMatchObject({ ok: false, error: 'You are not in a room' });
     expect(chats.get(c.id)).toBeUndefined();
   });
 
@@ -641,7 +659,7 @@ describe('computer players', () => {
 
   it('only works for games that support it, and within the player limits', () => {
     const { manager } = setup();
-    expect(manager.create(a, { gameId: 'race', bots: 1 })).toEqual({
+    expect(manager.create(a, { gameId: 'race', bots: 1 })).toMatchObject({
       ok: false,
       error: 'Race cannot be played against the computer',
     });
@@ -655,7 +673,7 @@ describe('computer players', () => {
     const { code } = must(manager.create(a, { gameId: 'karma' }));
     expect(manager.updateSettings(b.id, { bots: 1 }).ok).toBe(false); // not the host
     expect(must(manager.updateSettings(a.id, { bots: 4 })).bots).toBe(4);
-    expect(manager.join(b, code)).toEqual({ ok: false, error: 'This room is full' });
+    expect(manager.join(b, code)).toMatchObject({ ok: false, error: 'This room is full' });
     expect(manager.updateSettings(a.id, { bots: 5 }).ok).toBe(false);
     must(manager.updateSettings(a.id, { bots: 1 }));
     must(manager.join(b, code)); // room for another person again
@@ -694,7 +712,7 @@ describe('computer players', () => {
   it('cannot be kicked, chat, or be addressed like a person', () => {
     const { manager, must } = setup();
     must(manager.create(a, { gameId: 'karma', bots: 1, autoStart: true }));
-    expect(manager.kick(a.id, 'bot:1')).toEqual({
+    expect(manager.kick(a.id, 'bot:1')).toMatchObject({
       ok: false,
       error: 'That player is not in the room',
     });

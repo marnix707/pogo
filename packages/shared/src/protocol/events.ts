@@ -32,7 +32,10 @@ export interface PublicUser {
   isDev?: boolean;
 }
 
-export type Result<T> = { ok: true; data: T } | { ok: false; error: string };
+/** `code` is the error code (see errors.ts); `ref` identifies an unexpected server error in the logs. */
+export type Result<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string; code?: string; ref?: string };
 export type Ack<T> = (result: Result<T>) => void;
 
 export type RoomStatus = 'lobby' | 'playing' | 'finished';

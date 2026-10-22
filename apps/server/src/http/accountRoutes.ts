@@ -1,4 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
+import { mailFailure } from '../errors';
 import type { FastifyInstance } from 'fastify';
 import {
   deleteAccountSchema,
@@ -95,7 +96,11 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
       userId,
       expiresAt: now() + CODE_TTL_MS,
     });
-    await mailer.send(codeMail(email, purpose, code));
+    try {
+      await mailer.send(codeMail(email, purpose, code));
+    } catch (err) {
+      throw mailFailure(err); // logged by the error handler with its code and a ref
+    }
   }
 
   /** Checks a code; every wrong guess counts, and a used or expired code is gone. */

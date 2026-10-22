@@ -14,9 +14,13 @@ import {
   roomQuickplaySchema,
   roomReadySchema,
   roomSettingsSchema,
+  INTERNAL_ERROR_CODE,
+  INTERNAL_ERROR_MESSAGE,
+  failResult,
 } from '@pogo/shared';
 import type { ClientToServerEvents, PublicUser, Result, ServerToClientEvents } from '@pogo/shared';
 import { banMessage } from '../admin/moderation';
+import { newRef } from '../errors';
 import type { BanList } from '../admin/moderation';
 import type { TokenService } from '../auth/tokens';
 import type { UserStore } from '../auth/userStore';
@@ -125,14 +129,16 @@ export function registerSocketHandlers({
         const reply = (result: Result<unknown>) => {
           if (typeof ack === 'function') ack(result);
         };
-        if (!allow()) return reply({ ok: false, error: 'Slow down a little' });
+        if (!allow()) return reply(failResult('Slow down a little'));
         const parsed = schema.safeParse(payload ?? {});
-        if (!parsed.success) return reply({ ok: false, error: 'Invalid request' });
+        if (!parsed.success) return reply(failResult('Invalid request'));
         try {
           reply(run(parsed.data));
         } catch (err) {
-          log_.error({ err, event }, 'socket handler failed');
-          reply({ ok: false, error: 'Something went wrong' });
+          // The ref ties what the player sees to this log line.
+          const ref = newRef();
+          log_.error({ err, event, code: INTERNAL_ERROR_CODE, ref }, 'socket handler failed');
+          reply(failResult(INTERNAL_ERROR_MESSAGE, { code: INTERNAL_ERROR_CODE, ref }));
         }
       });
     }
@@ -148,7 +154,7 @@ export function registerSocketHandlers({
     route('chat:send', chatSendSchema, (p) =>
       chatAllowed(user.id)
         ? manager.chat(user.id, p.text)
-        : ({ ok: false, error: 'You are sending messages too fast' } as const),
+        : failResult('You are sending messages too fast'),
     );
     route('lobby:subscribe', emptyPayloadSchema, () => {
       void socket.join(LOBBY_CHANNEL);

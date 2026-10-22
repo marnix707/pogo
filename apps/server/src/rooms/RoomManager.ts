@@ -1,3 +1,4 @@
+import { failResult } from '@pogo/shared';
 import { randomInt } from 'node:crypto';
 import type {
   AdminRoomRow,
@@ -21,7 +22,7 @@ const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 5;
 const MAX_ROOMS = 2000;
 
-const fail = (error: string): Result<never> => ({ ok: false, error });
+const fail = (error: string): Result<never> => failResult(error);
 const ok = <T>(data: T): Result<T> => ({ ok: true, data });
 
 export interface RoomManagerDeps {

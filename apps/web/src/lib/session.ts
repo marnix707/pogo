@@ -1,4 +1,17 @@
 import type { AuthResponse, GameStatsView, LeaderboardRow, ProfileInput } from '@pogo/shared';
+import { formatError } from '@pogo/shared';
+
+/** An error body from the API: the text, its error code and (for server errors) a log reference. */
+interface ApiErrorBody {
+  error?: string;
+  code?: string;
+  ref?: string;
+}
+/** "Room not found (ROOM-101)": the friendly text with the code behind it, for troubleshooting. */
+const apiError = (body: ApiErrorBody, fallback: string): string =>
+  formatError(body.error ?? fallback, body.code, body.ref);
+const errorBody = async (res: Response): Promise<ApiErrorBody> =>
+  (await res.json().catch(() => ({}))) as ApiErrorBody;
 
 const TOKEN_KEY = 'pogo.token';
 
@@ -29,10 +42,10 @@ export async function restoreSession(): Promise<AuthResponse | null> {
     return null;
   }
   if (res.status === 403) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? 'You are banned.');
+    const body = (await res.json().catch(() => ({}))) as ApiErrorBody;
+    throw new Error(apiError(body, 'You are banned.'));
   }
-  if (!res.ok) throw new Error('Could not reach the server');
+  if (!res.ok) throw new Error(apiError(await errorBody(res), 'Could not reach the server'));
   const { user } = (await res.json()) as Pick<AuthResponse, 'user'>;
   return { token, user };
 }
@@ -44,7 +57,7 @@ export async function createGuest(profile: ProfileInput): Promise<AuthResponse> 
     body: JSON.stringify(profile),
   });
   const body = (await res.json()) as AuthResponse & { error?: string };
-  if (!res.ok) throw new Error(body.error ?? 'Could not create your guest account');
+  if (!res.ok) throw new Error(apiError(body, 'Could not create your guest account'));
   writeToken(body.token);
   return body;
 }
@@ -60,7 +73,7 @@ export async function updateProfile(
     body: JSON.stringify(profile),
   });
   const body = (await res.json()) as Pick<AuthResponse, 'user'> & { error?: string };
-  if (!res.ok) throw new Error(body.error ?? 'Could not save your profile');
+  if (!res.ok) throw new Error(apiError(body, 'Could not save your profile'));
   return body.user;
 }
 
@@ -85,8 +98,8 @@ async function request<T>(
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
-  const data = (await res.json().catch(() => ({}))) as T & { error?: string };
-  if (!res.ok) throw new Error(data.error ?? fallback);
+  const data = (await res.json().catch(() => ({}))) as T & ApiErrorBody;
+  if (!res.ok) throw new Error(apiError(data, fallback));
   return data;
 }
 
@@ -146,7 +159,7 @@ export async function uploadAvatar(token: string, image: Blob): Promise<AuthResp
   const data = (await res.json().catch(() => ({}))) as Pick<AuthResponse, 'user'> & {
     error?: string;
   };
-  if (!res.ok) throw new Error(data.error ?? 'Could not upload your picture');
+  if (!res.ok) throw new Error(apiError(data, 'Could not upload your picture'));
   return data.user;
 }
 

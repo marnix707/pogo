@@ -2,7 +2,10 @@ import type { CodePurpose } from '../auth/userStore';
 import { HERO_PNG_BASE64 } from './art';
 import type { Mail } from './mailer';
 
-const COPY: Record<CodePurpose, { subject: (code: string) => string; title: string; intro: string }> = {
+const COPY: Record<
+  CodePurpose,
+  { subject: (code: string) => string; title: string; intro: string }
+> = {
   register: {
     subject: (code) => `POGO - Your code is ${code}`,
     title: 'Welcome to POGO!',

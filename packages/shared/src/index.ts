@@ -2,6 +2,7 @@ export const APP_NAME = 'Pogo';
 
 export * from './protocol/schemas';
 export * from './protocol/events';
+export * from './protocol/errors';
 export * from './protocol/roles';
 export * from './moderation/profanity';
 export * from './game/types';

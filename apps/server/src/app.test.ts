@@ -172,7 +172,7 @@ describe('sockets', () => {
 
     // Bob can't move out of turn; Alice rolls.
     const roll = { move: { type: 'roll', held: [false, false, false, false, false] } };
-    expect(await call<null>((ack) => B.client.emit('game:move', roll, ack))).toEqual({
+    expect(await call<null>((ack) => B.client.emit('game:move', roll, ack))).toMatchObject({
       ok: false,
       error: 'Not your turn',
     });
@@ -195,7 +195,7 @@ describe('sockets', () => {
     const C = await login(token);
     expect((await call((ack) => C.client.emit('room:join', { code: '!!' }, ack))).ok).toBe(false);
     const res = await call((ack) => C.client.emit('room:create', { gameId: 'chess' }, ack));
-    expect(res).toEqual({ ok: false, error: 'Unknown game' });
+    expect(res).toMatchObject({ ok: false, error: 'Unknown game' });
   });
 
   it('rate limits floods of events', async () => {
@@ -321,7 +321,7 @@ describe('chat over sockets', () => {
   it('rejects empty, oversized and out-of-room messages', async () => {
     const { token } = await signup('Lonely');
     const c = await login(token);
-    expect(await call((ack) => c.client.emit('chat:send', { text: 'hi' }, ack))).toEqual({
+    expect(await call((ack) => c.client.emit('chat:send', { text: 'hi' }, ack))).toMatchObject({
       ok: false,
       error: 'You are not in a room',
     });
@@ -341,7 +341,7 @@ describe('chat over sockets', () => {
       results.push(await call((ack) => s.client.emit('chat:send', { text: `spam ${i}` }, ack)));
     }
     expect(results.filter((r) => r.ok)).toHaveLength(5); // the burst
-    expect(results.at(-1)).toEqual({ ok: false, error: 'You are sending messages too fast' });
+    expect(results.at(-1)).toMatchObject({ ok: false, error: 'You are sending messages too fast' });
   });
 });
 
@@ -396,7 +396,7 @@ describe('playing against the computer over sockets', () => {
     const res = await call((ack) =>
       me.client.emit('room:create', { gameId: 'yatzy', bots: 1, autoStart: true }, ack),
     );
-    expect(res).toEqual({ ok: false, error: 'Yatzy cannot be played against the computer' });
+    expect(res).toMatchObject({ ok: false, error: 'Yatzy cannot be played against the computer' });
     const solo = await call<RoomView>((ack) =>
       me.client.emit('room:create', { gameId: 'yatzy' }, ack),
     );

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { formatError } from '@pogo/shared';
 import type { AuthResponse, Result, RoomSettingsInput } from '@pogo/shared';
 import { ChatBanner } from './components/ChatBanner';
 import { markIntroSeen } from './components/PogoStage';
@@ -58,7 +59,7 @@ export function Shell({
     async (p: Promise<Result<unknown>>) => {
       const res = await p;
       if (!res.ok) {
-        toast.show(res.error, 'error');
+        toast.show(formatError(res.error, res.code, res.ref), 'error');
         haptic('error');
         play('error');
       }

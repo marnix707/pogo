@@ -72,7 +72,11 @@ export function createBrevoMailer(
           : html.replace(/<img[^>]*cid:hero[^>]*>/g, '');
       const res = await fetchImpl('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
-        headers: { 'api-key': apiKey, 'content-type': 'application/json', accept: 'application/json' },
+        headers: {
+          'api-key': apiKey,
+          'content-type': 'application/json',
+          accept: 'application/json',
+        },
         body: JSON.stringify({
           sender,
           to: [{ email: mail.to }],

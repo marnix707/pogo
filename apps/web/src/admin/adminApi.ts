@@ -1,3 +1,4 @@
+import { formatError } from '@pogo/shared';
 import type {
   AdminAuditRow,
   AdminBanRow,
@@ -38,8 +39,15 @@ async function call<T>(method: string, url: string, body?: unknown): Promise<T> 
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
-  const json = (await res.json().catch(() => ({}))) as T & { error?: string };
-  if (!res.ok) throw new Error(json.error ?? `Request failed (${res.status})`);
+  const json = (await res.json().catch(() => ({}))) as T & {
+    error?: string;
+    code?: string;
+    ref?: string;
+  };
+  if (!res.ok)
+    throw new Error(
+      formatError(json.error ?? `Request failed (${res.status})`, json.code, json.ref),
+    );
   return json;
 }
 

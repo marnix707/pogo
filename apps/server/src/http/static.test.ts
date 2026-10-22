@@ -90,7 +90,7 @@ describe('production web serving', () => {
   it('keeps unknown API paths as JSON 404s', async () => {
     const res = await app.app.inject('/api/nope');
     expect(res.statusCode).toBe(404);
-    expect(res.json()).toEqual({ error: 'Not found' });
+    expect(res.json()).toMatchObject({ error: 'Not found' });
   });
 
   it('livez works even when the database is down, healthz does not', async () => {

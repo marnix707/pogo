@@ -1,4 +1,4 @@
-import { BOT_AVATAR, BOT_NAMES, botId, displayName } from '@pogo/shared';
+import { BOT_AVATAR, BOT_NAMES, botId, displayName, failResult } from '@pogo/shared';
 import type {
   AdminRoomRow,
   AnyGameDefinition,
@@ -88,7 +88,7 @@ export interface RoomInit {
   bots: number;
 }
 
-const fail = (error: string): Result<never> => ({ ok: false, error });
+const fail = (error: string): Result<never> => failResult(error);
 const ok = <T>(data: T): Result<T> => ({ ok: true, data });
 
 /**
