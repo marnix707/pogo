@@ -849,6 +849,261 @@ html.results-open .safe-top-scrim {
   }
 }
 
+/* Karma fast reload: the cowboy slides in, the pistol kicks back, a flash pops, PEW!, then everything is gone. */
+@keyframes shot-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-3rem);
+  }
+  15% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+}
+@keyframes shot-recoil {
+  0%,
+  22% {
+    transform: scaleX(-1) rotate(0deg);
+  }
+  30% {
+    transform: scaleX(-1) rotate(-24deg) translateX(6px);
+  }
+  60%,
+  100% {
+    transform: scaleX(-1) rotate(0deg);
+  }
+}
+@keyframes shot-flash {
+  0%,
+  24% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  34% {
+    opacity: 1;
+    transform: scale(1.3) rotate(8deg);
+  }
+  60%,
+  100% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+@keyframes shot-pew {
+  0%,
+  26% {
+    opacity: 0;
+    transform: scale(0.3) rotate(-14deg);
+  }
+  38% {
+    opacity: 1;
+    transform: scale(1.35) rotate(-8deg);
+  }
+  50%,
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-8deg);
+  }
+}
+.reload-shot {
+  animation: shot-in 1300ms ease-out both;
+}
+.shot-gun {
+  animation: shot-recoil 1300ms ease-out both;
+}
+.shot-flash {
+  animation: shot-flash 1300ms ease-out both;
+}
+.shot-pew {
+  animation: shot-pew 1300ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reload-shot {
+    animation: none;
+  }
+  .shot-gun {
+    animation: none;
+  }
+  .shot-flash {
+    animation: none;
+    opacity: 0;
+  }
+  .shot-pew {
+    animation: none;
+  }
+}
+
+/* Karma "3 ate 8": Pac-Man chomps across and eats the 8. */
+@keyframes pacman-run {
+  0% {
+    transform: translateX(-6rem);
+  }
+  100% {
+    transform: translateX(calc(100vw + 2rem));
+  }
+}
+@keyframes pacman-top {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-32deg);
+  }
+}
+@keyframes pacman-bottom {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(32deg);
+  }
+}
+@keyframes pacman-eight {
+  0%,
+  38% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  46% {
+    opacity: 1;
+    transform: scale(0.6) rotate(10deg);
+  }
+  50%,
+  100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+@keyframes pacman-crunch {
+  0%,
+  44% {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.4) rotate(-6deg);
+  }
+  54% {
+    opacity: 1;
+    transform: translateY(-0.4rem) scale(1.3) rotate(-6deg);
+  }
+  64%,
+  82% {
+    opacity: 1;
+    transform: translateY(-0.4rem) scale(1) rotate(-6deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-1rem) scale(1) rotate(-6deg);
+  }
+}
+.pacman-run {
+  animation: pacman-run 1300ms linear both;
+}
+.pacman-top {
+  transform-origin: 50% 100%;
+  animation: pacman-top 220ms ease-in-out infinite;
+}
+.pacman-bottom {
+  transform-origin: 50% 0%;
+  animation: pacman-bottom 220ms ease-in-out infinite;
+}
+.pacman-eight {
+  animation: pacman-eight 1300ms linear both;
+}
+.pacman-crunch {
+  animation: pacman-crunch 1300ms ease-out both;
+}
+
+/* Karma "big hand": a hand holds out an extra card. */
+@keyframes bighand-hand {
+  0% {
+    opacity: 0;
+    transform: translate(60%, 40%) rotate(20deg);
+  }
+  25% {
+    opacity: 1;
+    transform: translate(-50%, 0) rotate(0deg);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 30%);
+  }
+}
+@keyframes bighand-card {
+  0%,
+  20% {
+    opacity: 0;
+    transform: translate(-50%, -2.5rem) scale(1.1);
+  }
+  45% {
+    opacity: 1;
+    transform: translate(-50%, 1.2rem) scale(1);
+  }
+  70% {
+    opacity: 1;
+    transform: translate(-50%, 2.3rem) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 6rem) scale(0.7);
+  }
+}
+@keyframes bighand-plus {
+  0%,
+  45% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  58% {
+    opacity: 1;
+    transform: scale(1.3);
+  }
+  70%,
+  85% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.bighand-hand {
+  animation: bighand-hand 1500ms ease-out both;
+}
+.bighand-card {
+  animation: bighand-card 1500ms ease-in-out both;
+}
+.bighand-plus {
+  animation: bighand-plus 1500ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pacman-run,
+  .pacman-eight,
+  .pacman-crunch,
+  .bighand-hand,
+  .bighand-card,
+  .bighand-plus {
+    animation: none;
+  }
+  .pacman-eight {
+    opacity: 0;
+  }
+  .pacman-top,
+  .pacman-bottom {
+    animation: none;
+  }
+}
+
 /* Yatzy scoring: the number pops with every die; the total goes bolder and relaxes again (one font weight only,
    so "bold" is a same-coloured text shadow that grows and shrinks). */
 @keyframes score-pop {

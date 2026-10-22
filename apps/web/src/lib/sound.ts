@@ -1,6 +1,7 @@
 import { getSettings } from './settings';
 
-export type SoundName = 'tap' | 'roll' | 'score' | 'turn' | 'win' | 'error';
+export type SoundName =
+  'tap' | 'roll' | 'score' | 'turn' | 'win' | 'error' | 'gun' | 'crunch' | 'deal';
 
 let ctx: AudioContext | undefined;
 
@@ -53,6 +54,48 @@ function tone(
   osc.stop(t0 + duration + 0.02);
 }
 
+/** A burst of filtered noise that dies away quickly (the crack of a shot). */
+function noise(c: AudioContext, start: number, duration: number, volume: number, highpass: number) {
+  const frames = Math.max(1, Math.floor(c.sampleRate * duration));
+  const buffer = c.createBuffer(1, frames, c.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < frames; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / frames) ** 2;
+  const src = c.createBufferSource();
+  src.buffer = buffer;
+  const filter = c.createBiquadFilter();
+  filter.type = 'highpass';
+  filter.frequency.value = highpass;
+  const gain = c.createGain();
+  const t0 = c.currentTime + start;
+  gain.gain.setValueAtTime(volume, t0);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+  src.connect(filter).connect(gain).connect(c.destination);
+  src.start(t0);
+}
+
+/** A tone that slides from one pitch to another. */
+function sweep(
+  c: AudioContext,
+  type: OscillatorType,
+  from: number,
+  to: number,
+  start: number,
+  duration: number,
+  volume: number,
+) {
+  const osc = c.createOscillator();
+  const gain = c.createGain();
+  osc.type = type;
+  const t0 = c.currentTime + start;
+  osc.frequency.setValueAtTime(from, t0);
+  osc.frequency.exponentialRampToValueAtTime(to, t0 + duration);
+  gain.gain.setValueAtTime(volume, t0);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+  osc.connect(gain).connect(c.destination);
+  osc.start(t0);
+  osc.stop(t0 + duration + 0.02);
+}
+
 /** Tiny synthesized sound effects: no audio files to download. */
 export function play(name: SoundName) {
   if (!getSettings().sound) return;
@@ -79,6 +122,24 @@ export function play(name: SoundName) {
       break;
     case 'error':
       tone(c, 200, 0, 0.18, 'sawtooth', 0.07);
+      break;
+    case 'crunch':
+      // Three quick bites: short bursts of low-passed noise with a little pitched thud under each.
+      [0, 0.1, 0.2].forEach((t, i) => {
+        noise(c, t, 0.07, 0.5, 400 + i * 150);
+        sweep(c, 'triangle', 260 - i * 40, 90, t, 0.08, 0.18);
+      });
+      break;
+    case 'deal':
+      // A card slid across the table: a soft swish and a tick.
+      noise(c, 0, 0.12, 0.18, 2500);
+      tone(c, 700, 0.1, 0.05, 'triangle', 0.06);
+      break;
+    case 'gun':
+      // A pistol shot: the crack, the thump and a short "pew" that slides down.
+      noise(c, 0, 0.22, 0.45, 900);
+      sweep(c, 'sine', 240, 40, 0, 0.18, 0.4);
+      sweep(c, 'square', 1700, 240, 0.005, 0.16, 0.07);
       break;
   }
 }

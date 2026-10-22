@@ -24,6 +24,8 @@ import {
   shouldShowTutorial,
 } from './KarmaTutorial';
 import { CardFlipContext, PlayingCard, resetFlipBoxes } from './PlayingCard';
+import { ReloadShot } from './ReloadShot';
+import { BigHandGive, PacmanBite } from './RuleFx';
 import type { FlipOrigin } from './PlayingCard';
 
 type Card = number;
@@ -992,6 +994,39 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     (view.mustPickUp ||
       (zone !== 'down' && !activeCards.some((c) => c !== null && canPlayRank(pile, rankOf(c)))));
 
+  // A fast reload (a drawn card matches what was just played): a cowboy fires his pistol, for everybody.
+  const [reloadShot, setReloadShot] = useState(0);
+  const lastReloadSeq = useRef(view.lastEvent?.seq ?? 0);
+  useEffect(() => {
+    const seq = view.lastEvent?.seq ?? 0;
+    if (seq === lastReloadSeq.current) return;
+    lastReloadSeq.current = seq;
+    // "3 ate 8": a 3 repeated the 8 beneath it: Pac-Man eats it (for everybody).
+    if (view.lastEvent?.echoed) {
+      setBite(seq);
+      play('crunch');
+      haptic('tap');
+    }
+    if (!view.reload || view.phase !== 'play') return;
+    setReloadShot(seq);
+    play('gun');
+    haptic('success');
+  }, [view.lastEvent?.seq, view.reload, view.phase]);
+  const [bite, setBite] = useState(0);
+
+  // "Big hand": at the start of the game (after the rules intro and the tutorial) a hand gives you the extra card.
+  const [handGive, setHandGive] = useState(0);
+  const handGiven = useRef(false);
+  useEffect(() => {
+    if (handGiven.current || intro || tutorial) return;
+    if (view.phase !== 'swap' || !view.rules.includes('bigHand')) return;
+    handGiven.current = true;
+    setHandGive(1);
+    play('deal');
+  }, [intro, tutorial, view.phase, view.rules]);
+
+  // When picking up is the only move, the Play button becomes a Pick up button (the pile pulses as well).
+  const pickUpButton = mustPickUp && myTurn && sel.length === 0 && selDown === null;
   const urgent = secondsLeft !== null && secondsLeft <= 10;
   const shownHint =
     flash ??
@@ -1295,22 +1330,30 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                     <Button
                       data-testid="karma-play"
                       className="!min-h-0 flex-[3] !px-2 !text-xl !leading-tight"
-                      disabled={!playing || busy || (selCount === 0 && !reload)}
+                      data-mode={
+                        pickUpButton ? 'pickup' : reload && selCount === 0 ? 'skip' : 'play'
+                      }
+                      disabled={!playing || busy || (selCount === 0 && !reload && !pickUpButton)}
                       onClick={() =>
+                        // Nothing can be played: the button is a Pick up button (the pile pulses too).
                         // Fast reload: with nothing selected the button is a Skip button.
-                        selCount === 0 && reload
-                          ? void send({ type: 'skipReload' })
-                          : void playSelected()
+                        pickUpButton
+                          ? pickUpPile()
+                          : selCount === 0 && reload
+                            ? void send({ type: 'skipReload' })
+                            : void playSelected()
                       }
                     >
                       <span>
-                        {selDown !== null
-                          ? 'Flip it'
-                          : selCount > 0
-                            ? `Play ${selCount === 1 ? cardLabel(sel[0] as Card) : `${selCount} cards`}`
-                            : reload
-                              ? 'Skip'
-                              : 'Play'}
+                        {pickUpButton
+                          ? 'Pick up'
+                          : selDown !== null
+                            ? 'Flip it'
+                            : selCount > 0
+                              ? `Play ${selCount === 1 ? cardLabel(sel[0] as Card) : `${selCount} cards`}`
+                              : reload
+                                ? 'Skip'
+                                : 'Play'}
                       </span>
                     </Button>
                   )}
@@ -1400,6 +1443,9 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
             onDone={() => setPeek(null)}
           />
         )}
+        <ReloadShot trigger={reloadShot} name={nameOf(currentId ?? '')} />
+        <PacmanBite trigger={bite} />
+        <BigHandGive trigger={handGive} />
         {view.phase === 'pick' && <RoundScreen room={room} me={me} sendMove={sendMove} />}
         {intro && <RulesIntro mode={view.mode} rules={view.rules} onDone={closeIntro} />}
         {tutorial && !intro && <KarmaTutorial onDone={closeTutorial} />}

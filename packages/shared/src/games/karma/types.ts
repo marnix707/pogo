@@ -39,6 +39,8 @@ export interface KarmaEvent {
   out: boolean;
   /** Players whose turn was skipped by an 8 (in order). */
   skipped: string[];
+  /** "3 ate 8": a 3 repeated the 8 beneath it (the rule, and the 8 really was there). */
+  echoed: boolean;
 }
 
 export interface KarmaState {

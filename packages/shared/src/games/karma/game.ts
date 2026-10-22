@@ -328,6 +328,7 @@ function event(
     failed: false,
     out: false,
     skipped: [],
+    echoed: false,
     ...extra,
   };
   state.lastEvent = ev;
@@ -407,7 +408,7 @@ function playToPile(state: KarmaState, idx: number, cards: Card[], kind: 'play' 
   state.reload = null;
   const eights = pendingSkips + (!burn && (rank === 8 || repeatsEight) ? cards.length : 0);
   const jokers = rank === JOKER_RANK ? cards.length : 0;
-  const ev = event(state, me.id, kind, cards, { burned: burn });
+  const ev = event(state, me.id, kind, cards, { burned: burn, echoed: repeatsEight && !burn });
   // Fast reload: a drawn card of the rank just played may be played too, before the turn passes.
   if (
     hasRule(state.rules, 'fastReload') &&
