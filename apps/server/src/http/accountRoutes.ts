@@ -17,7 +17,8 @@ import type { TokenService } from '../auth/tokens';
 import { isStaff } from '@pogo/shared';
 import type { PublicUser } from '@pogo/shared';
 import { banMessage } from '../admin/moderation';
-import type { BanList } from '../admin/moderation';
+import type { BanList, ModerationStore } from '../admin/moderation';
+import { displayName } from '@pogo/shared';
 import type { CodePurpose, UserStore } from '../auth/userStore';
 import { codeMail } from '../mail/template';
 import type { LogMailer, Mailer } from '../mail/mailer';
@@ -42,6 +43,8 @@ export interface AccountDeps {
   limitScale?: number;
   /** Bans: a banned account cannot log in (an IP ban also stops everyone but staff). */
   bans?: BanList;
+  /** Where sign-ups, email requests and logins are noted for the admin panel's Log tab. */
+  moderation?: ModerationStore;
   /** Emails that become admin when they register or log in (the first admin of a new install). */
   adminEmails?: string[];
   devEmails?: string[];
@@ -83,6 +86,29 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
     return out;
   };
   const now = deps.now ?? Date.now;
+  /** "fr***@gmail.com": enough to recognise an address in the log without storing it in full. */
+  const mask = (email: string) => {
+    const [name = '', host = ''] = email.split('@');
+    return `${name.slice(0, 2)}***@${host}`;
+  };
+  /** Notes an account event in the admin log; the log never breaks the request. */
+  const note = async (action: string, who: PublicUser | null, detail: string) => {
+    try {
+      await deps.moderation?.addAudit(
+        {
+          actorId: who?.id ?? '',
+          actorName: who ? displayName(who) : '(not signed in)',
+          action,
+          targetId: null,
+          targetName: '',
+          detail,
+        },
+        now(),
+      );
+    } catch (err) {
+      app.log.warn({ err }, 'audit log write failed');
+    }
+  };
   const tight = (max: number) => ({
     config: { rateLimit: { max: max * (deps.limitScale ?? 1), timeWindow: '1 minute' } },
   });
@@ -94,7 +120,12 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
       : ({ ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid input' } as const);
   };
 
-  async function sendCode(email: string, purpose: CodePurpose, userId: string | null) {
+  async function sendCode(
+    email: string,
+    purpose: CodePurpose,
+    userId: string | null,
+    who: PublicUser | null,
+  ) {
     const code = newCode();
     await users.putCode(email, purpose, {
       codeHash: hashCode(deps.secret, email, code),
@@ -104,8 +135,11 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
     try {
       await mailer.send(codeMail(email, purpose, code));
     } catch (err) {
-      throw mailFailure(err); // logged by the error handler with its code and a ref
+      const failure = mailFailure(err); // logged by the error handler with its code and a ref
+      await note('email-failed', who, `${purpose} code to ${mask(email)}: ${failure.code}`);
+      throw failure;
     }
+    await note('email-sent', who, `${purpose} code to ${mask(email)}`);
   }
 
   /** Checks a code; every wrong guess counts, and a used or expired code is gone. */
@@ -129,7 +163,8 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
     if (await users.getByEmail(input.data.email)) {
       return reply.code(409).send({ error: 'That email already has an account. Log in instead.' });
     }
-    await sendCode(input.data.email, 'register', me.id);
+    await note('register-requested', me, mask(input.data.email));
+    await sendCode(input.data.email, 'register', me.id, me);
     return { ok: true };
   });
 
@@ -147,6 +182,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
     if (result === 'taken')
       return reply.code(409).send({ error: 'That email already has an account' });
     if (!result) return reply.code(404).send({ error: 'Not signed in' });
+    await note('registered', result, mask(email));
     return { user: await withBootstrapRole(result) };
   });
 
@@ -156,11 +192,13 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
     const found = await users.getByEmail(input.data.email);
     const ok = await verifyPassword(input.data.password, found?.passwordHash ?? DUMMY_HASH);
     if (!found || !found.passwordHash || !ok) {
+      await note('login-failed', found?.user ?? null, mask(input.data.email));
       return reply.code(401).send({ error: 'Wrong email or password' });
     }
     const user = await withBootstrapRole(found.user);
     const ban = deps.bans?.forUser(user.id) ?? (isStaff(user) ? null : deps.bans?.forIp(req.ip));
     if (ban) return reply.code(403).send({ error: banMessage(ban), banned: true });
+    await note('login', user, '');
     const body: AuthResponse = { token: await tokens.sign(user.id), user };
     return body;
   });
@@ -170,7 +208,10 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
     if (!input.ok) return reply.code(400).send({ error: input.error });
     const found = await users.getByEmail(input.data.email);
     // Same answer whether or not the address has an account.
-    if (found?.passwordHash) await sendCode(input.data.email, 'reset', found.user.id);
+    if (found?.passwordHash) {
+      await note('reset-requested', found.user, mask(input.data.email));
+      await sendCode(input.data.email, 'reset', found.user.id, found.user);
+    }
     return { ok: true };
   });
 
@@ -182,6 +223,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
     if (!record?.userId)
       return reply.code(400).send({ error: 'That code is wrong or has expired' });
     await users.setPassword(record.userId, await hashPassword(password));
+    await note('password-reset', await users.get(record.userId), '');
     return { ok: true };
   });
 

@@ -1,3 +1,4 @@
+import { openAdminPanel } from '../lib/session';
 import { updateSettings, useSettings } from '../lib/settings';
 import { DisplayModeNote, InstallCard } from './InstallCard';
 import { Button, Sheet, Toggle } from './ui';
@@ -8,6 +9,7 @@ export function SettingsSheet({
   nickname,
   onSignOut,
   roomCode,
+  isDev,
 }: {
   open: boolean;
   onClose: () => void;
@@ -15,6 +17,8 @@ export function SettingsSheet({
   onSignOut: () => void;
   /** Set while in a room, so the code can be read (and shared) from here. */
   roomCode?: string;
+  /** Developers get a shortcut to the admin panel. */
+  isDev?: boolean;
 }) {
   const settings = useSettings();
   return (
@@ -58,6 +62,11 @@ export function SettingsSheet({
             className="h-8 w-full accent-[#3cb4ff]"
           />
         </label>
+        {isDev && (
+          <Button variant="secondary" onClick={openAdminPanel} data-testid="settings-admin">
+            Admin panel
+          </Button>
+        )}
         <InstallCard variant="settings" />
         <DisplayModeNote />
         <Button variant="secondary" onClick={onSignOut}>

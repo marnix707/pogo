@@ -204,6 +204,7 @@ export function Shell({
         nickname={session.user.nickname}
         onSignOut={onSignOut}
         roomCode={room?.code}
+        isDev={!!session.user.isDev}
       />
     </>
   );

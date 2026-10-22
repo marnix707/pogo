@@ -8,7 +8,6 @@ import type {
   AdminUserRow,
   PublicUser,
   Role,
-  TitleUserRow,
 } from '@pogo/shared';
 import { AvatarFace } from '../components/AvatarFace';
 import { TopoBackground } from '../components/TopoBackground';
@@ -24,7 +23,6 @@ import {
   listAudit,
   listBans,
   listRooms,
-  listTitleUsers,
   listUsers,
   setDev,
   setRole,
@@ -36,7 +34,7 @@ import {
 export const isAdminSite = () =>
   window.location.hostname.startsWith('admin.') || window.location.pathname.startsWith('/admin');
 
-type Tab = 'players' | 'titles' | 'rooms' | 'bans' | 'log';
+type Tab = 'players' | 'rooms' | 'bans' | 'log';
 
 const field =
   'hud min-h-11 w-full bg-panel px-3 text-ink outline-none placeholder:text-muted/50 focus:!border-neon';
@@ -170,6 +168,9 @@ function PlayerSheet({
               </button>
             </p>
           )}
+          {me.isDev && !row.isGuest && (
+            <TitlesEditor row={row} onChanged={onChanged} onError={onError} />
+          )}
           {row.id === me.id ? (
             <p className="text-sm opacity-70">This is you.</p>
           ) : sameOrHigher ? (
@@ -257,19 +258,40 @@ function PlayerSheet({
   );
 }
 
+type Show = 'registered' | 'everyone' | 'guests';
+type Sort = 'seen' | 'joined' | 'name';
+
 function Players({ me, onError }: { me: PublicUser; onError: (m: string) => void }) {
   const [q, setQ] = useState('');
+  const [show, setShow] = useState<Show>('registered');
+  const [sort, setSort] = useState<Sort>('seen');
+  const [onlineOnly, setOnlineOnly] = useState(false);
+  const [staffOnly, setStaffOnly] = useState(false);
   const [rows, setRows] = useState<AdminUserRow[]>([]);
-  const [open, setOpen] = useState<AdminUserRow | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
   const load = useCallback(() => {
-    listUsers(q)
+    listUsers(q, show === 'registered')
       .then(setRows)
       .catch((e: Error) => onError(e.message));
-  }, [q, onError]);
+  }, [q, show, onError]);
   useEffect(() => {
     const t = setTimeout(load, 250);
     return () => clearTimeout(t);
   }, [load]);
+  const shown = rows
+    .filter((r) => (show === 'guests' ? r.isGuest : true))
+    .filter((r) => !onlineOnly || r.online)
+    .filter((r) => !staffOnly || r.role !== 'user' || r.isDev)
+    .sort((a, b) =>
+      sort === 'name'
+        ? a.nickname.localeCompare(b.nickname, undefined, { sensitivity: 'base' })
+        : sort === 'joined'
+          ? b.createdAt - a.createdAt
+          : (b.lastSeenAt ?? b.createdAt) - (a.lastSeenAt ?? a.createdAt),
+    );
+  const open = rows.find((r) => r.id === openId) ?? null;
+  const chip = (active: boolean) =>
+    `label rounded-[8px] border-2 px-2.5 py-1.5 ${active ? 'border-neon bg-neon text-accentink' : 'border-edge/50 bg-panel2 text-onbg'}`;
   return (
     <div className="flex flex-col gap-3">
       <input
@@ -279,21 +301,69 @@ function Players({ me, onError }: { me: PublicUser; onError: (m: string) => void
         onChange={(e) => setQ(e.target.value)}
         data-testid="admin-search"
       />
+      <div className="flex flex-wrap items-center gap-2" data-testid="admin-filters">
+        {(
+          [
+            ['registered', 'Registered'],
+            ['everyone', 'Everyone'],
+            ['guests', 'Guests'],
+          ] as [Show, string][]
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            className={chip(show === id)}
+            onClick={() => setShow(id)}
+            data-testid={`admin-show-${id}`}
+          >
+            {label}
+          </button>
+        ))}
+        <button
+          className={chip(onlineOnly)}
+          onClick={() => setOnlineOnly(!onlineOnly)}
+          data-testid="admin-filter-online"
+        >
+          Online
+        </button>
+        <button
+          className={chip(staffOnly)}
+          onClick={() => setStaffOnly(!staffOnly)}
+          data-testid="admin-filter-staff"
+        >
+          Staff
+        </button>
+        <select
+          className="hud min-h-9 bg-panel px-2 text-sm text-ink"
+          value={sort}
+          onChange={(e) => setSort(e.target.value as Sort)}
+          aria-label="Sort by"
+          data-testid="admin-sort"
+        >
+          <option value="seen">Last seen</option>
+          <option value="joined">Newest</option>
+          <option value="name">Name A-Z</option>
+        </select>
+      </div>
+      <p className="text-xs text-onbg/80" data-testid="admin-count">
+        {shown.length} {shown.length === 1 ? 'player' : 'players'}
+      </p>
       <ul className="flex flex-col gap-2" data-testid="admin-users">
-        {rows.map((r) => (
+        {shown.map((r) => (
           <li key={r.id}>
             <button
               className="hud flex w-full items-center gap-3 p-2.5 text-left"
-              onClick={() => setOpen(r)}
+              onClick={() => setOpenId(r.id)}
               data-testid={`admin-user-${r.nickname}`}
             >
               <span className="text-2xl">
                 <AvatarFace avatar={r.avatar} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate font-bold">{displayName(r)}</span>
+                <span className="block truncate font-bold">
+                  <PlayerName name={displayName(r)} />
+                </span>
                 <span className="block truncate text-xs opacity-70">
-                  {r.email ?? (r.isGuest ? 'guest' : 'registered')}
+                  {r.email ?? (r.isGuest ? 'guest' : 'registered')} · seen {when(r.lastSeenAt)}
                 </span>
               </span>
               <span className="flex flex-wrap justify-end gap-1">
@@ -305,12 +375,12 @@ function Players({ me, onError }: { me: PublicUser; onError: (m: string) => void
             </button>
           </li>
         ))}
-        {rows.length === 0 && <li className="p-4 text-center opacity-70">Nobody found</li>}
+        {shown.length === 0 && <li className="p-4 text-center opacity-70">Nobody found</li>}
       </ul>
       <PlayerSheet
         row={open}
         me={me}
-        onClose={() => setOpen(null)}
+        onClose={() => setOpenId(null)}
         onChanged={load}
         onError={onError}
       />
@@ -398,7 +468,7 @@ function Log({ onError }: { onError: (m: string) => void }) {
     <ul className="flex flex-col gap-1.5 text-sm" data-testid="admin-log">
       {rows.map((r) => (
         <li key={r.id} className="hud px-3 py-2">
-          <b>{r.actorName}</b> {r.action} {r.targetName && <b>{r.targetName}</b>}
+          <b>{r.actorName}</b> {r.action.replace(/-/g, ' ')} {r.targetName && <b>{r.targetName}</b>}
           {r.detail && <span className="opacity-80"> · {r.detail}</span>}
           <div className="text-xs opacity-60">{when(r.at)}</div>
         </li>
@@ -412,32 +482,27 @@ function Log({ onError }: { onError: (m: string) => void }) {
 const PREFIX_IDEAS = ['👑', '⭐', '💎', '🔥', 'Sir', 'Lady', 'Dr.', 'VIP'];
 const SUFFIX_IDEAS = ['🐸', '🎲', '🃏', '💫', 'the Great', 'Pro', 'MVP', '♥'];
 
-function TitleSheet({
+/** Developers only: the prefix and suffix around a registered player's name. */
+function TitlesEditor({
   row,
-  onClose,
   onChanged,
   onError,
 }: {
-  row: TitleUserRow | null;
-  onClose: () => void;
+  row: AdminUserRow;
   onChanged: () => void;
   onError: (m: string) => void;
 }) {
-  const [prefix, setPrefix] = useState('');
-  const [suffix, setSuffix] = useState('');
+  const [prefix, setPrefix] = useState(row.prefix);
+  const [suffix, setSuffix] = useState(row.suffix);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
-    setPrefix(row?.prefix ?? '');
-    setSuffix(row?.suffix ?? '');
-  }, [row]);
+    setPrefix(row.prefix);
+    setSuffix(row.suffix);
+  }, [row.id, row.prefix, row.suffix]);
   const save = (p: string, s: string) => {
-    if (!row) return;
     setBusy(true);
     setTitles(row.id, p, s)
-      .then(() => {
-        onChanged();
-        onClose();
-      })
+      .then(onChanged)
       .catch((e: Error) => onError(e.message))
       .finally(() => setBusy(false));
   };
@@ -457,114 +522,55 @@ function TitleSheet({
     </div>
   );
   return (
-    <Sheet open={!!row} onClose={onClose} title={row ? row.nickname : ''}>
-      {row && (
-        <div className="flex flex-col gap-3" data-testid="title-sheet">
-          <p className="label">Preview</p>
-          <p className="hud px-3 py-2 text-lg font-bold" data-testid="title-preview">
-            <PlayerName
-              name={displayName({ ...row, prefix: prefix.trim(), suffix: suffix.trim() })}
-            />
-          </p>
-          <label className="flex flex-col gap-1">
-            <span className="label">Prefix (before the name)</span>
-            <input
-              className={field}
-              value={prefix}
-              maxLength={TITLE_MAX * 2}
-              onChange={(e) => setPrefix(e.target.value)}
-              data-testid="title-prefix"
-            />
-          </label>
-          {chips(PREFIX_IDEAS, setPrefix, 'idea-prefix')}
-          <label className="flex flex-col gap-1">
-            <span className="label">Suffix (after the name)</span>
-            <input
-              className={field}
-              value={suffix}
-              maxLength={TITLE_MAX * 2}
-              onChange={(e) => setSuffix(e.target.value)}
-              data-testid="title-suffix"
-            />
-          </label>
-          {chips(SUFFIX_IDEAS, setSuffix, 'idea-suffix')}
-          <p className="text-xs opacity-70">
-            At most {TITLE_MAX} characters each. Everybody sees it from the next room they join.
-          </p>
-          <div className="flex gap-2">
-            <Button
-              className="flex-1"
-              disabled={busy}
-              onClick={() => save(prefix.trim(), suffix.trim())}
-              data-testid="title-save"
-            >
-              Save
-            </Button>
-            <Button
-              variant="secondary"
-              className="flex-1"
-              disabled={busy}
-              onClick={() => save('', '')}
-              data-testid="title-clear"
-            >
-              Remove both
-            </Button>
-          </div>
-        </div>
-      )}
-    </Sheet>
-  );
-}
-
-/** Developers only: every registered player, and the prefix / suffix they were given. */
-function Titles({ onError }: { onError: (m: string) => void }) {
-  const [q, setQ] = useState('');
-  const [rows, setRows] = useState<TitleUserRow[]>([]);
-  const [open, setOpen] = useState<TitleUserRow | null>(null);
-  const load = useCallback(() => {
-    listTitleUsers(q)
-      .then(setRows)
-      .catch((e: Error) => onError(e.message));
-  }, [q, onError]);
-  useEffect(() => {
-    const t = setTimeout(load, 250);
-    return () => clearTimeout(t);
-  }, [load]);
-  return (
-    <div className="flex flex-col gap-3">
+    <div className="hud flex flex-col gap-2 p-3" data-testid="title-editor">
+      <div className="label">Prefix and suffix</div>
+      <p className="hud px-3 py-2 text-lg font-bold" data-testid="title-preview">
+        <PlayerName name={displayName({ ...row, prefix: prefix.trim(), suffix: suffix.trim() })} />
+      </p>
       <input
         className={field}
-        placeholder="Search nickname or email"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        data-testid="titles-search"
+        placeholder="Prefix (before the name)"
+        value={prefix}
+        maxLength={TITLE_MAX * 2}
+        onChange={(e) => setPrefix(e.target.value)}
+        data-testid="title-prefix"
       />
-      <ul className="flex flex-col gap-2" data-testid="titles-users">
-        {rows.map((r) => (
-          <li key={r.id}>
-            <button
-              className="hud flex w-full items-center gap-3 p-2.5 text-left"
-              onClick={() => setOpen(r)}
-              data-testid={`titles-user-${r.nickname}`}
-            >
-              <span className="text-2xl">
-                <AvatarFace avatar={r.avatar} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-bold">
-                  <PlayerName name={displayName(r)} />
-                </span>
-                <span className="block truncate text-xs opacity-70">{r.email}</span>
-              </span>
-              {r.online && <Badge tone="green">online</Badge>}
-            </button>
-          </li>
-        ))}
-        {rows.length === 0 && (
-          <li className="p-4 text-center opacity-70">No registered players found</li>
-        )}
-      </ul>
-      <TitleSheet row={open} onClose={() => setOpen(null)} onChanged={load} onError={onError} />
+      {chips(PREFIX_IDEAS, setPrefix, 'idea-prefix')}
+      <input
+        className={field}
+        placeholder="Suffix (after the name)"
+        value={suffix}
+        maxLength={TITLE_MAX * 2}
+        onChange={(e) => setSuffix(e.target.value)}
+        data-testid="title-suffix"
+      />
+      {chips(SUFFIX_IDEAS, setSuffix, 'idea-suffix')}
+      <p className="text-xs opacity-70">
+        At most {TITLE_MAX} characters each. Others see it when they next join a room.
+      </p>
+      <div className="flex gap-2">
+        <Button
+          className="flex-1"
+          disabled={busy}
+          onClick={() => save(prefix.trim(), suffix.trim())}
+          data-testid="title-save"
+        >
+          Save
+        </Button>
+        <Button
+          variant="secondary"
+          className="flex-1"
+          disabled={busy}
+          onClick={() => {
+            setPrefix('');
+            setSuffix('');
+            save('', '');
+          }}
+          data-testid="title-clear"
+        >
+          Remove both
+        </Button>
+      </div>
     </div>
   );
 }
@@ -587,7 +593,6 @@ export function AdminApp() {
 
   const tabs: [Tab, string][] = [
     ['players', 'Players'],
-    ...(me?.isDev ? ([['titles', 'Titles']] as [Tab, string][]) : []),
     ['rooms', 'Rooms'],
     ['bans', 'Bans'],
     ['log', 'Log'],
@@ -640,7 +645,6 @@ export function AdminApp() {
             </p>
           )}
           {tab === 'players' && <Players me={me} onError={showError} />}
-          {tab === 'titles' && me.isDev && <Titles onError={showError} />}
           {tab === 'rooms' && <Rooms onError={showError} />}
           {tab === 'bans' && <Bans onError={showError} />}
           {tab === 'log' && <Log onError={showError} />}

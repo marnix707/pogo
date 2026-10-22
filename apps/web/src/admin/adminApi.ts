@@ -7,7 +7,6 @@ import type {
   AuthResponse,
   PublicUser,
   Role,
-  TitleUserRow,
 } from '@pogo/shared';
 
 // The panel has its own token: on admin.<domain> the storage is separate anyway, and on /admin of the
@@ -60,10 +59,11 @@ export async function adminLogin(email: string, password: string): Promise<Publi
 export const adminLogout = () => setToken(null);
 export const adminMe = () => call<{ user: PublicUser }>('GET', '/api/admin/me').then((r) => r.user);
 
-export const listUsers = (q: string) =>
-  call<{ users: AdminUserRow[] }>('GET', `/api/admin/users?q=${encodeURIComponent(q)}`).then(
-    (r) => r.users,
-  );
+export const listUsers = (q: string, registeredOnly: boolean) =>
+  call<{ users: AdminUserRow[] }>(
+    'GET',
+    `/api/admin/users?q=${encodeURIComponent(q)}${registeredOnly ? '&registered=1' : ''}`,
+  ).then((r) => r.users);
 export const listRooms = () =>
   call<{ rooms: AdminRoomRow[] }>('GET', '/api/admin/rooms').then((r) => r.rooms);
 export const listBans = () =>
@@ -80,9 +80,5 @@ export const setRole = (id: string, role: Role) =>
 export const setDev = (id: string, isDev: boolean) =>
   call('POST', `/api/admin/users/${id}/dev`, { isDev });
 
-export const listTitleUsers = (q: string) =>
-  call<{ users: TitleUserRow[] }>('GET', `/api/admin/titles?q=${encodeURIComponent(q)}`).then(
-    (r) => r.users,
-  );
 export const setTitles = (id: string, prefix: string, suffix: string) =>
   call('POST', `/api/admin/users/${id}/titles`, { prefix, suffix });

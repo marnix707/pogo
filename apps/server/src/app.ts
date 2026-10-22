@@ -148,6 +148,7 @@ export async function buildApp(deps: AppDeps) {
           : createSmtpMailer(config.smtpUrl, config.mailFrom)),
     secret: config.jwtSecret,
     bans,
+    moderation,
     adminEmails: config.adminEmails,
     devEmails: config.devEmails,
     limitScale: config.isProd ? 1 : 100,

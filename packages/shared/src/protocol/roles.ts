@@ -80,20 +80,6 @@ export interface AdminUserRow {
   ban: AdminBanRow | null;
 }
 
-/** A registered player on the developers' titles page. */
-export interface TitleUserRow {
-  id: string;
-  nickname: string;
-  avatar: string;
-  email: string;
-  isDev: boolean;
-  prefix: string;
-  suffix: string;
-  createdAt: number;
-  lastSeenAt: number | null;
-  online: boolean;
-}
-
 export interface AdminBanRow {
   id: string;
   userId: string | null;

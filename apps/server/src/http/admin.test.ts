@@ -109,18 +109,17 @@ describe('admin access', () => {
 });
 
 describe('titles (developers only)', () => {
-  it('lists registered players and sets a prefix and suffix that show in the display name', async () => {
+  it('sets a prefix and suffix that show in the display name', async () => {
     const dev = await staffMember('Devy', 'admin');
     await users.setDev(dev.user.id, true);
     const fan = await staffMember('Fanny', 'user');
     const visitor = await guest('Visitor');
 
-    const list = await call('GET', '/api/admin/titles?q=fan', dev.token);
-    expect(list.statusCode).toBe(200);
-    expect(list.json().users).toHaveLength(1);
-    // Guests are never listed.
-    const all = await call('GET', '/api/admin/titles?q=visitor', dev.token);
-    expect(all.json().users).toHaveLength(0);
+    // The player list can be limited to registered players (the panel's default).
+    const registered = await call('GET', '/api/admin/users?q=visitor&registered=1', dev.token);
+    expect(registered.json().users).toHaveLength(0);
+    const everyone = await call('GET', '/api/admin/users?q=visitor', dev.token);
+    expect(everyone.json().users).toHaveLength(1);
 
     const set = await call('POST', `/api/admin/users/${fan.user.id}/titles`, dev.token, {
       prefix: ' 👑 ',
@@ -155,7 +154,6 @@ describe('titles (developers only)', () => {
     );
     expect(guestTarget.statusCode).toBe(400);
     const plainAdmin = await staffMember('Adminonly', 'admin');
-    expect((await call('GET', '/api/admin/titles', plainAdmin.token)).statusCode).toBe(403);
     expect(
       (
         await call('POST', `/api/admin/users/${fan.user.id}/titles`, plainAdmin.token, {
@@ -164,6 +162,27 @@ describe('titles (developers only)', () => {
         })
       ).statusCode,
     ).toBe(403);
+  });
+});
+
+describe('account events in the log', () => {
+  it('notes a sign-up request, the email and the registration', async () => {
+    const dev = await staffMember('Logger', 'admin');
+    const g = await guest('Newbie');
+    const start = await call('POST', '/api/account/register/start', g.token, {
+      email: 'newbie@example.com',
+    });
+    expect(start.statusCode).toBe(200);
+    const audit = await call('GET', '/api/admin/audit', dev.token);
+    const actions = (audit.json().audit as { action: string; actorName: string; detail: string }[])
+      .filter((r) => r.actorName === 'Newbie')
+      .map((r) => r.action);
+    expect(actions).toEqual(expect.arrayContaining(['register-requested', 'email-sent']));
+    const row = (audit.json().audit as { action: string; detail: string }[]).find(
+      (r) => r.action === 'email-sent',
+    );
+    // Addresses are masked in the log.
+    expect(row?.detail).toContain('ne***@example.com');
   });
 });
 

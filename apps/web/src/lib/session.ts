@@ -23,6 +23,20 @@ function readToken(): string | null {
   }
 }
 
+/**
+ * Opens the admin panel (`/admin`) signed in as the current player: the panel keeps its own token key,
+ * so the game's token is handed over first (it is the same account, the server checks the dev/staff rights).
+ */
+export function openAdminPanel() {
+  const token = readToken();
+  try {
+    if (token) localStorage.setItem('pogo.admin.token', token);
+  } catch {
+    /* the panel then simply asks for a login */
+  }
+  window.location.assign('/admin');
+}
+
 function writeToken(token: string | null) {
   try {
     if (token) localStorage.setItem(TOKEN_KEY, token);

@@ -83,7 +83,8 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminDeps) {
     const me = await staff(req, reply);
     if (!me) return;
     const q = String((req.query as { q?: string }).q ?? '').slice(0, 60);
-    const found = await users.search(q, 50);
+    const registered = (req.query as { registered?: string }).registered === '1';
+    const found = await (registered ? users.listRegistered(q, 200) : users.search(q, 200));
     const rows: AdminUserRow[] = found.map(({ user, createdAt, lastSeenAt }) => {
       const ban = bans.forUser(user.id);
       return {
@@ -246,26 +247,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminDeps) {
     }
     return me;
   }
-
-  app.get('/api/admin/titles', limits, async (req, reply) => {
-    if (!(await developer(req, reply))) return;
-    const q = String((req.query as { q?: string }).q ?? '').slice(0, 60);
-    const found = await users.listRegistered(q, 100);
-    return {
-      users: found.map(({ user, createdAt, lastSeenAt }) => ({
-        id: user.id,
-        nickname: user.nickname,
-        avatar: user.avatar,
-        email: user.email ?? '',
-        isDev: !!user.isDev,
-        prefix: user.prefix ?? '',
-        suffix: user.suffix ?? '',
-        createdAt,
-        lastSeenAt,
-        online: deps.isOnline(user.id),
-      })),
-    };
-  });
 
   app.post('/api/admin/users/:id/titles', limits, async (req, reply) => {
     const me = await developer(req, reply);
