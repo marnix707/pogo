@@ -1,9 +1,11 @@
+import type { ReactNode } from 'react';
 import { PlayerName } from '../../components/PlayerName';
 import { yatzy } from '@pogo/shared';
 import type { RoomMemberView } from '@pogo/shared';
 import { AvatarFace } from '../../components/AvatarFace';
 import { DIE_COLOR } from './Die';
 import { CATEGORY_HINT, CATEGORY_LABEL, UPPER_FACE } from './labels';
+import { FireText } from './FireText';
 import type { ScoreFxView } from './ScoreFx';
 
 type Category = yatzy.Category;
@@ -141,7 +143,7 @@ export function Scorecard({
   const computedRow = (
     label: string,
     hint: string,
-    value: (id: string) => string,
+    value: (id: string) => ReactNode,
     style: 'plain' | 'divider' | 'total' = 'plain',
   ) => {
     const total = style === 'total';
@@ -242,7 +244,8 @@ export function Scorecard({
             {showYatzyBonus &&
               computedRow('Yatzy bonus', '+100 each', (id) => {
                 const b = totals.get(id)!.yatzyBonus;
-                return b > 0 ? `+${b}` : '–';
+                // Every extra Yatzy sets the number on fire, a little bigger each time.
+                return b > 0 ? <FireText level={b / yatzy.YATZY_BONUS}>{`+${b}`}</FireText> : '–';
               })}
             {computedRow('Total', '', (id) => String(totals.get(id)!.grandTotal), 'total')}
           </tbody>
