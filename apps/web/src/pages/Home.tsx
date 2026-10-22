@@ -1,3 +1,4 @@
+import { PlayerName } from '../components/PlayerName';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { displayName } from '@pogo/shared';
@@ -33,7 +34,10 @@ function OpenGame({
         <AvatarFace avatar={room.hostAvatar} />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="truncate font-bold">{room.hostNickname}&apos;s game</div>
+        <div className="truncate font-bold">
+          <PlayerName name={room.hostNickname} />
+          &apos;s game
+        </div>
         <div className="label flex items-center gap-2 text-[10px] text-muted">
           <span>
             {ui?.emoji} {room.gameName}
@@ -231,7 +235,7 @@ export function Home({
             <p data-in={landed} className="slide-bottom label text-center text-onbg/70">
               Playing as{' '}
               <span data-testid="home-nickname" className="text-onbg">
-                {displayName(user)}
+                <PlayerName name={displayName(user)} />
               </span>
             </p>
           </>

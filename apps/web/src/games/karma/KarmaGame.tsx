@@ -1,3 +1,4 @@
+import { PlayerName } from '../../components/PlayerName';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { karma } from '@pogo/shared';
@@ -335,7 +336,9 @@ function Seat({
         <span className="text-sm" aria-hidden>
           <AvatarFace avatar={member?.avatar ?? ''} />
         </span>
-        <span className="label truncate text-[9px]">{member?.nickname ?? '?'}</span>
+        <span className="label truncate text-[9px]">
+          <PlayerName name={member?.nickname ?? '?'} />
+        </span>
       </div>
       <div className="flex items-center justify-center gap-3">
         <TableSlots

@@ -149,6 +149,7 @@ export async function buildApp(deps: AppDeps) {
     secret: config.jwtSecret,
     bans,
     adminEmails: config.adminEmails,
+    devEmails: config.devEmails,
     limitScale: config.isProd ? 1 : 100,
     // Handy for tests and local development; never in production.
     devMailbox: useLog && !config.isProd ? logMailer : undefined,
@@ -225,6 +226,13 @@ export async function buildApp(deps: AppDeps) {
   for (const email of config.adminEmails ?? []) {
     const found = await deps.users.getByEmail(email);
     if (found && found.user.role !== 'admin') await deps.users.setRole(found.user.id, 'admin');
+  }
+  // DEV_EMAILS accounts are developers (admin + the rainbow dev tag) on every start-up.
+  for (const email of config.devEmails ?? []) {
+    const found = await deps.users.getByEmail(email);
+    if (!found) continue;
+    if (found.user.role !== 'admin') await deps.users.setRole(found.user.id, 'admin');
+    if (!found.user.isDev) await deps.users.setDev(found.user.id, true);
   }
 
   return {

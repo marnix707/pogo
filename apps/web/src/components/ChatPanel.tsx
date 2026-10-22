@@ -1,3 +1,4 @@
+import { PlayerName } from './PlayerName';
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { CHAT_MAX_LENGTH } from '@pogo/shared';
@@ -68,7 +69,7 @@ export function ChatPanel({
                 >
                   {/* The pixel font has no bold weight, so a 1px shadow of the same colour thickens it. */}
                   <span className="text-sm font-bold leading-5 [text-shadow:1px_0_0_currentColor]">
-                    {m.nickname}
+                    <PlayerName name={m.nickname} />
                   </span>
                   <div
                     className={`inline-block break-words rounded-md px-3 py-1.5 text-left text-sm ${

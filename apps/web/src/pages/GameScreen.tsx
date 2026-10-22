@@ -1,3 +1,4 @@
+import { PlayerName } from '../components/PlayerName';
 import { useEffect, useRef, useState } from 'react';
 import type { ChatMessage, RoomView } from '@pogo/shared';
 import type { ComponentType } from 'react';
@@ -112,7 +113,7 @@ function ResultsPanel({
                     <AvatarFace avatar={m?.avatar ?? ''} />
                   </span>
                   <span className="min-w-0 truncate text-xl font-bold">
-                    {m?.nickname ?? 'Player'}
+                    <PlayerName name={m?.nickname ?? 'Player'} />
                     {isMe && ' (you)'}
                   </span>
                   <span className="mb-1.5 min-w-4 flex-1 border-b-4 border-dotted border-current opacity-50" />

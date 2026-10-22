@@ -44,6 +44,7 @@ export interface AccountDeps {
   bans?: BanList;
   /** Emails that become admin when they register or log in (the first admin of a new install). */
   adminEmails?: string[];
+  devEmails?: string[];
 }
 
 function imageKind(buf: Buffer): string | null {
@@ -73,9 +74,13 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
   const { users, tokens, mailer } = deps;
   /** The first admin: a listed email gets the admin role as soon as it registers or logs in. */
   const withBootstrapRole = async (user: PublicUser): Promise<PublicUser> => {
-    if (user.role === 'admin' || !user.email || !deps.adminEmails?.includes(user.email))
-      return user;
-    return (await users.setRole(user.id, 'admin')) ?? user;
+    if (!user.email) return user;
+    let out = user;
+    const isDevEmail = deps.devEmails?.includes(user.email) ?? false;
+    if (out.role !== 'admin' && (isDevEmail || deps.adminEmails?.includes(user.email)))
+      out = (await users.setRole(out.id, 'admin')) ?? out;
+    if (isDevEmail && !out.isDev) out = (await users.setDev(out.id, true)) ?? out;
+    return out;
   };
   const now = deps.now ?? Date.now;
   const tight = (max: number) => ({

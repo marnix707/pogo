@@ -1,3 +1,4 @@
+import { PlayerName } from '../../components/PlayerName';
 import { yatzy } from '@pogo/shared';
 import type { RoomMemberView } from '@pogo/shared';
 import { AvatarFace } from '../../components/AvatarFace';
@@ -190,7 +191,7 @@ export function Scorecard({
                         m?.left ? 'line-through opacity-60' : ''
                       }`}
                     >
-                      {p.id === me ? 'You' : (m?.nickname ?? '?')}
+                      {p.id === me ? 'You' : <PlayerName name={m?.nickname ?? '?'} />}
                     </div>
                   </th>
                 );

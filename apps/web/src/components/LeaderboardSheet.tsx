@@ -1,3 +1,4 @@
+import { PlayerName } from './PlayerName';
 import { useEffect, useState } from 'react';
 import type { LeaderboardRow } from '@pogo/shared';
 import { gameUis } from '../games/registry';
@@ -72,7 +73,9 @@ export function LeaderboardSheet({
                 <span className="flex h-8 w-8 items-center justify-center overflow-hidden text-xl">
                   <AvatarFace avatar={r.avatar} fill />
                 </span>
-                <span className="flex-1 truncate font-bold">{r.nickname}</span>
+                <span className="flex-1 truncate font-bold">
+                  <PlayerName name={r.nickname} />
+                </span>
                 <span className="text-xs text-muted">{r.games} played</span>
                 <span className="w-12 text-right font-bold tabular-nums">{metric(r)}</span>
               </li>

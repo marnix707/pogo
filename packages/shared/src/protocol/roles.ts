@@ -10,9 +10,18 @@ export const roleRank = (role: Role | undefined): number => RANK[role ?? 'user']
 export const isStaff = (user: Pick<PublicUser, 'role'> | null | undefined): boolean =>
   roleRank(user?.role) >= RANK.moderator;
 
+/** What follows a developer's name in every string other players see (the UI shows it as a rainbow tag). */
+export const DEV_TAG = ' (dev)';
+
 /** The name other players see: the nickname with "(dev)" behind it for developers. */
 export const displayName = (user: Pick<PublicUser, 'nickname' | 'isDev'>): string =>
-  user.isDev ? `${user.nickname} (dev)` : user.nickname;
+  user.isDev ? `${user.nickname}${DEV_TAG}` : user.nickname;
+
+/** Splits a display name into the plain name and whether it carries the developer tag. */
+export const splitDevTag = (name: string): { name: string; dev: boolean } =>
+  name.endsWith(DEV_TAG)
+    ? { name: name.slice(0, -DEV_TAG.length), dev: true }
+    : { name, dev: false };
 
 /** Moderators can ban for at most this long; only admins can ban for longer or for good. */
 export const MODERATOR_MAX_BAN_MINUTES = 7 * 24 * 60;

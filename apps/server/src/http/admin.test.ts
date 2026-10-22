@@ -28,6 +28,7 @@ const config = {
   smtpUrl: '',
   mailFrom: 'test',
   adminEmails: ['boss@example.com'],
+  devEmails: ['dev@example.com'],
 };
 
 let users: UserStore;
@@ -93,6 +94,16 @@ describe('admin access', () => {
       password: 'secret-pass',
     });
     expect(res.json().user.role).toBe('admin');
+  });
+
+  it('makes a DEV_EMAILS account admin with the dev tag when they log in', async () => {
+    const g = await guest('Coder');
+    await users.register(g.user.id, 'dev@example.com', await hashPassword('secret-pass'));
+    const res = await call('POST', '/api/auth/login', undefined, {
+      email: 'dev@example.com',
+      password: 'secret-pass',
+    });
+    expect(res.json().user).toMatchObject({ role: 'admin', isDev: true });
   });
 });
 

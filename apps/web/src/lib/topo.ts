@@ -90,7 +90,8 @@ export function contour(
       const b = values[j * cols + i + 1]!; // top right
       const c = values[(j + 1) * cols + i + 1]!; // bottom right
       const d = values[(j + 1) * cols + i]!; // bottom left
-      const index = (a > level ? 8 : 0) | (b > level ? 4 : 0) | (c > level ? 2 : 0) | (d > level ? 1 : 0);
+      const index =
+        (a > level ? 8 : 0) | (b > level ? 4 : 0) | (c > level ? 2 : 0) | (d > level ? 1 : 0);
       if (index === 0 || index === 15) continue;
       const x = i * cell;
       const y = j * cell;
@@ -175,7 +176,12 @@ export function topoFrame(
   const values = new Float32Array(cols * rows);
   for (let j = 0; j < rows; j++) {
     for (let i = 0; i < cols; i++) {
-      values[j * cols + i] = heightAt(noise, (i * cell) / unit + t * TOPO.drift, (j * cell) / unit, t);
+      values[j * cols + i] = heightAt(
+        noise,
+        (i * cell) / unit + t * TOPO.drift,
+        (j * cell) / unit,
+        t,
+      );
     }
   }
   const breath = TOPO.breathDepth * Math.sin((t / TOPO.breathSeconds) * Math.PI * 2);

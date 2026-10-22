@@ -14,7 +14,8 @@ function load(): Settings {
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Settings>;
     // (An earlier version stored the CRT effect as a switch: that falls back to the default now.)
-    const crt = typeof saved.crt === 'number' ? Math.min(100, Math.max(0, saved.crt)) : defaults.crt;
+    const crt =
+      typeof saved.crt === 'number' ? Math.min(100, Math.max(0, saved.crt)) : defaults.crt;
     return { ...defaults, ...saved, crt };
   } catch {
     return defaults;

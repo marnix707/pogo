@@ -39,6 +39,7 @@ const schema = z.object({
   MAIL_FROM: z.string().default('POGO <no-reply@pogo.local>'),
   /** Comma separated emails that become admin when they register or log in. */
   ADMIN_EMAILS: z.string().default(''),
+  DEV_EMAILS: z.string().default(''),
 });
 
 /**
@@ -93,6 +94,7 @@ export interface AppConfig {
   mailFrom: string;
   /** Lowercase emails that become admin on register/login (optional in tests). */
   adminEmails?: string[];
+  devEmails?: string[];
 }
 
 const list = (value: string) =>
@@ -131,5 +133,6 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     smtpUrl: smtpUrlFrom(env),
     mailFrom: env.MAIL_FROM,
     adminEmails: list(env.ADMIN_EMAILS).map((e) => e.toLowerCase()),
+    devEmails: list(env.DEV_EMAILS).map((e) => e.toLowerCase()),
   };
 }

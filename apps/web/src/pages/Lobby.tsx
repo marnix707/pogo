@@ -1,3 +1,4 @@
+import { PlayerName } from '../components/PlayerName';
 import { useEffect } from 'react';
 import { BOT_AVATAR, BOT_NAMES, getGame } from '@pogo/shared';
 import type { ChatMessage, RoomView } from '@pogo/shared';
@@ -252,7 +253,7 @@ export function Lobby({
                 <Avatar avatar={m.avatar} dim={!m.connected} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-bold">
-                    {m.nickname}
+                    <PlayerName name={m.nickname} />
                     {m.id === me && <span className="font-normal text-muted"> (you)</span>}
                   </div>
                   <div className="label flex items-center gap-1.5 text-[10px] text-muted">

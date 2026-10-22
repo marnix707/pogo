@@ -7,7 +7,8 @@ describe('topo', () => {
     const b = makeNoise(3);
     expect(a(1.3, 2.7, 0.4)).toBe(b(1.3, 2.7, 0.4));
     expect(makeNoise(4)(1.3, 2.7, 0.4)).not.toBe(a(1.3, 2.7, 0.4));
-    for (let i = 0; i < 200; i++) expect(Math.abs(a(i * 0.37, i * 0.19, i * 0.05))).toBeLessThanOrEqual(1);
+    for (let i = 0; i < 200; i++)
+      expect(Math.abs(a(i * 0.37, i * 0.19, i * 0.05))).toBeLessThanOrEqual(1);
   });
 
   it('the height field stays in a band the contour levels cover, and moves over time', () => {

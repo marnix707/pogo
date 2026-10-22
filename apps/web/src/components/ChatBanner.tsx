@@ -1,3 +1,4 @@
+import { PlayerName } from './PlayerName';
 import { useEffect, useRef, useState } from 'react';
 import type { ChatMessage } from '@pogo/shared';
 import { AvatarFace } from './AvatarFace';
@@ -41,7 +42,10 @@ export function ChatBanner({ messages, me }: { messages: ChatMessage[]; me: stri
         <AvatarFace avatar={shown.avatar} />
       </span>
       <span className="min-w-0 flex-1 truncate">
-        <b className="text-neon">{shown.nickname}</b> {shown.text}
+        <b className="text-neon">
+          <PlayerName name={shown.nickname} />
+        </b>{' '}
+        {shown.text}
       </span>
     </button>
   );

@@ -55,6 +55,7 @@ services:
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
       # Emails that become admin (admin panel) when they register or log in.
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      DEV_EMAILS: ${DEV_EMAILS:-}
       MAIL_FROM: ${MAIL_FROM:-POGO <no-reply@pogo.local>}
       CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING:-true}
     ports:
@@ -110,6 +111,7 @@ services:
       # So the tests know whether chat/nicknames are being filtered.
       PROFANITY_FILTER: ${PROFANITY_FILTER:-on}
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      DEV_EMAILS: ${DEV_EMAILS:-}
     volumes:
       - ./e2e/tests:/e2e/tests
       - ./e2e/playwright.config.ts:/e2e/playwright.config.ts

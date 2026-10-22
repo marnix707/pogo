@@ -182,21 +182,48 @@ button {
 /* Results sequence: the headline starts in the middle, holds, then rises to the top; rows drop in one
    by one (animation-delay is set inline); the buttons come up from the bottom. */
 @keyframes res-head {
-  0% { opacity: 0; transform: translateY(var(--drop, 30dvh)) scale(1.15); }
-  8% { opacity: 1; transform: translateY(var(--drop, 30dvh)) scale(1.15); }
-  100% { opacity: 1; transform: none; }
+  0% {
+    opacity: 0;
+    transform: translateY(var(--drop, 30dvh)) scale(1.15);
+  }
+  8% {
+    opacity: 1;
+    transform: translateY(var(--drop, 30dvh)) scale(1.15);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
 }
 @keyframes res-row {
-  from { opacity: 0; transform: translateX(-120%); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateX(-120%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 @keyframes res-bottom {
-  from { opacity: 0; transform: translateY(130%); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(130%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
-.res-head { animation: res-head 1.1s cubic-bezier(0.3, 0.9, 0.3, 1) both; }
-.res-row { animation: res-row 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.05) both; }
-.res-bottom { animation: res-bottom 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.05) both; }
+.res-head {
+  animation: res-head 1.1s cubic-bezier(0.3, 0.9, 0.3, 1) both;
+}
+.res-row {
+  animation: res-row 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.05) both;
+}
+.res-bottom {
+  animation: res-bottom 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.05) both;
+}
 @keyframes win-turn {
   0% {
     transform: rotateY(180deg) scale(0.7);
@@ -296,29 +323,98 @@ button {
 
 /* End of a Karma game: the loser's cards turn over in place (back shrinks away, face grows in). */
 @keyframes card-back-out {
-  from { transform: scaleX(1); }
-  to { transform: scaleX(0); }
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
 }
 @keyframes card-face-in {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
-.card-back-out { animation: card-back-out 0.35s ease-in both; }
-.card-face-in { animation: card-face-in 0.35s ease-out both; }
+.card-back-out {
+  animation: card-back-out 0.35s ease-in both;
+}
+.card-face-in {
+  animation: card-face-in 0.35s ease-out both;
+}
 
 /* Round screen (Karma party mode): the title pops in, the rules slide in from the left one by one. */
 @keyframes round-pop {
-  0% { opacity: 0; transform: scale(0.4); }
-  60% { opacity: 1; transform: scale(1.12); }
-  100% { opacity: 1; transform: scale(1); }
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 @keyframes round-row-in {
-  from { opacity: 0; transform: translateX(-60%); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateX(-60%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
-.round-pop { animation: round-pop 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.1) both; }
-.round-sub { animation: round-row-in 0.5s ease-out 0.35s both; }
-.round-row { animation: round-row-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.05) both; }
+.round-pop {
+  animation: round-pop 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+}
+.round-sub {
+  animation: round-row-in 0.5s ease-out 0.35s both;
+}
+.round-row {
+  animation: round-row-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.05) both;
+}
+
+/* The developer tag behind a name: a small rainbow "dev" that slowly shifts colour. */
+@keyframes dev-rainbow {
+  to {
+    background-position: 200% 0;
+  }
+}
+.dev-tag {
+  margin-left: 0.3em;
+  font-size: 0.72em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: lowercase;
+  background: linear-gradient(
+    90deg,
+    #ff3b3b,
+    #ff9a00,
+    #ffe14a,
+    #35d07f,
+    #2bb6ff,
+    #8f5bff,
+    #ff3bd4,
+    #ff3b3b
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 1px rgb(0 0 0 / 0.75));
+  animation: dev-rainbow 3.2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dev-tag {
+    animation: none;
+  }
+}
 
 @keyframes tutorial-arrow {
   0%,
@@ -547,12 +643,21 @@ html.results-open .safe-top-scrim {
 
 /* Home intro: the POGO letters pop in from nothing, then breathe by 5%. */
 @keyframes wordmark-pop {
-  from { transform: rotate(-10deg) scale(0); }
-  to { transform: rotate(-10deg) scale(1); }
+  from {
+    transform: rotate(-10deg) scale(0);
+  }
+  to {
+    transform: rotate(-10deg) scale(1);
+  }
 }
 @keyframes wordmark-breathe {
-  0%, 100% { transform: rotate(-10deg) scale(1); }
-  50% { transform: rotate(-10deg) scale(1.05); }
+  0%,
+  100% {
+    transform: rotate(-10deg) scale(1);
+  }
+  50% {
+    transform: rotate(-10deg) scale(1.05);
+  }
 }
 .wordmark-in {
   animation:
@@ -560,14 +665,30 @@ html.results-open .safe-top-scrim {
     wordmark-breathe 3.6s ease-in-out 480ms infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .wordmark-in { animation: none; }
+  .wordmark-in {
+    animation: none;
+  }
 }
 /* Menu pieces that slide in from the top / bottom when Pogo lands. */
-.slide-top, .slide-bottom {
-  transition: transform 600ms cubic-bezier(0.2, 0.9, 0.3, 1.1), opacity 400ms;
+.slide-top,
+.slide-bottom {
+  transition:
+    transform 600ms cubic-bezier(0.2, 0.9, 0.3, 1.1),
+    opacity 400ms;
 }
-.slide-top[data-in='false'] { transform: translateY(-160%); opacity: 0; pointer-events: none; }
-.slide-bottom[data-in='false'] { transform: translateY(160%); opacity: 0; pointer-events: none; }
+.slide-top[data-in='false'] {
+  transform: translateY(-160%);
+  opacity: 0;
+  pointer-events: none;
+}
+.slide-bottom[data-in='false'] {
+  transform: translateY(160%);
+  opacity: 0;
+  pointer-events: none;
+}
 @media (prefers-reduced-motion: reduce) {
-  .slide-top, .slide-bottom { transition: none; }
+  .slide-top,
+  .slide-bottom {
+    transition: none;
+  }
 }
