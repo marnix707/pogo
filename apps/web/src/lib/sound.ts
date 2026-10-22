@@ -96,7 +96,15 @@ function sweep(
   osc.stop(t0 + duration + 0.02);
 }
 
-/** Tiny synthesized sound effects: no audio files to download. */
+/** One tick of a counter that races up (a casino-style count): `step` raises the pitch a little. */
+export function tick(step: number) {
+  if (!getSettings().sound) return;
+  const c = audio();
+  if (!c) return;
+  tone(c, 620 + Math.min(step, 24) * 38, 0, 0.035, 'square', 0.035);
+}
+
+/** Tiny synthesized sound effects: no audio files to download.*/
 export function play(name: SoundName) {
   if (!getSettings().sound) return;
   const c = audio();

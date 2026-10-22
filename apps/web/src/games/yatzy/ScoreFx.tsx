@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { yatzy } from '@pogo/shared';
-import { play } from '../../lib/sound';
+import { play, tick } from '../../lib/sound';
 import { DIE_URL } from './Die';
 
 type Category = yatzy.Category;
@@ -29,7 +29,7 @@ const FLY_GAP_MS = 110;
 const HOLD_MS = 260;
 const TIP_MS = 220;
 const FALL_MS = 300;
-const COUNT_MS = 420;
+const COUNT_MS = 560;
 const LINGER_MS = 700;
 
 interface Point {
@@ -52,6 +52,8 @@ interface Num {
   tone: 'white' | 'grey';
   /** Set once the number tips over and falls towards the total. */
   fall: { dx: number; dy: number } | null;
+  /** The number has landed on the total and is soaked up by it (shrinks away while the total counts). */
+  absorb?: boolean;
 }
 
 const center = (r: DOMRect | null | undefined): Point | null =>
@@ -196,18 +198,35 @@ export function useScoreFx(state: yatzy.YatzyState): {
     // Landed in the total: a second number there, the total counts up and pulses bold.
     const landedAt = countedAt + HOLD_MS + TIP_MS + FALL_MS;
     at(landedAt, () => {
-      play('score');
-      setNum({ at: total, text: `+${score}`, size: 15, pop: 100, tone: 'white', fall: null });
+      // The number lands: the total turns white, soaks the number up and races up to its new value
+      // (casino style: quick ticks that rise in pitch).
+      setNum({
+        at: total,
+        text: `+${score}`,
+        size: 15,
+        pop: 100,
+        tone: 'white',
+        fall: null,
+        absorb: true,
+      });
       const t0 = performance.now();
-      const tick = (now: number) => {
+      let lastShown = from;
+      let lastTick = 0;
+      let ticks = 0;
+      const step = (now: number) => {
         const k = Math.min(1, (now - t0) / COUNT_MS);
-        const eased = 1 - Math.pow(1 - k, 3);
-        setView((v) =>
-          v ? { ...v, holdCell: false, totalShown: from + (to - from) * eased, pulseKey: 1 } : v,
-        );
-        if (k < 1) raf.current = requestAnimationFrame(tick);
+        const eased = 1 - Math.pow(1 - k, 2.2);
+        const shown = from + (to - from) * eased;
+        if (Math.round(shown) !== Math.round(lastShown) && now - lastTick > 38) {
+          tick(ticks++);
+          lastTick = now;
+        }
+        lastShown = shown;
+        setView((v) => (v ? { ...v, holdCell: false, totalShown: shown, pulseKey: 1 } : v));
+        if (k < 1) raf.current = requestAnimationFrame(step);
+        else play('score');
       };
-      raf.current = requestAnimationFrame(tick);
+      raf.current = requestAnimationFrame(step);
     });
     at(landedAt + LINGER_MS, () => {
       setNum(null);
@@ -290,6 +309,19 @@ function FlyingDie({ flight }: { flight: Flight }) {
 function ScoreNumber({ num }: { num: Num }) {
   const fallRef = useRef<HTMLDivElement>(null);
   const fell = !!num.fall;
+  // Landed on the total: the number is soaked up (it shrinks into the total and fades).
+  useLayoutEffect(() => {
+    const el = fallRef.current;
+    if (!el || !num.absorb) return;
+    const anim = el.animate(
+      [
+        { transform: 'scale(1)', opacity: 1 },
+        { transform: 'scale(0.25)', opacity: 0 },
+      ],
+      { duration: 420, delay: 120, easing: 'ease-in', fill: 'forwards' },
+    );
+    return () => anim.cancel();
+  }, [num.absorb]);
   useLayoutEffect(() => {
     const el = fallRef.current;
     if (!el || !num.fall) return;

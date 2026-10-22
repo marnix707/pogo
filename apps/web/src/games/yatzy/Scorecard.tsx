@@ -164,7 +164,11 @@ export function Scorecard({
               key={p.id}
               data-testid={total ? `total-${p.id}` : undefined}
               className={`${border} h-6 px-1 py-0.5 text-center align-middle [@media(max-height:640px)]:h-5 leading-none tabular-nums ${
-                total ? 'text-base font-bold text-accent' : 'text-sm text-muted'
+                total
+                  ? counting
+                    ? 'text-base font-bold text-white'
+                    : 'text-base font-bold text-accent'
+                  : 'text-sm text-muted'
               }`}
             >
               <span
