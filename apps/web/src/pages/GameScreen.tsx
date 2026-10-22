@@ -243,7 +243,6 @@ export function GameScreen({
       {!ui.ownHeader && (
         <TopBar
           title={ui.name}
-          subtitle={`Room ${room.code}`}
           onSettings={onSettings}
           actions={
             <>
