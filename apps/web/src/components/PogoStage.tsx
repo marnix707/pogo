@@ -210,7 +210,7 @@ export function PogoStage({ onLanded, scale }: { onLanded: () => void; scale: nu
         }),
       )}
       {!started && (
-        <p className="label absolute inset-x-0 -top-10 animate-pulse text-center text-onbg">
+        <p className="label absolute inset-x-0 top-2 animate-pulse text-center text-onbg">
           Tap to start
         </p>
       )}
