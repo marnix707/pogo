@@ -208,8 +208,9 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
           }`}
         >
           {!finished && (
+            // Everybody's clock drains in the banner (mine, but also the opponent's turn).
             <TimerDrain
-              active={myTurn}
+              active
               deadline={game.deadline}
               serverTime={room.serverTime}
               totalSec={room.turnTimeSec}
