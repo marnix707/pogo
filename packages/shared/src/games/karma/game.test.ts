@@ -15,7 +15,7 @@ const seat = (n: number): GamePlayer[] =>
 /** card(7) = 7♠, card(7, 1) = 7♥ ... */
 const card = (rank: number, suit = 0): Card => suit * 13 + (rank - 2);
 
-const NORMAL: KarmaOptions = { mode: 'normal', rules: [] };
+const NORMAL: KarmaOptions = { mode: 'normal', rules: [], round: 1 };
 
 type SeatInit = Partial<Pick<KarmaPlayerState, 'hand' | 'faceUp' | 'faceDown' | 'ready' | 'out'>>;
 
@@ -51,7 +51,7 @@ function table(
     mode: 'normal',
     rules: [],
     pick: null,
-    nextRules: [],
+    round: 1,
     ...extra,
   };
 }
@@ -1090,20 +1090,22 @@ describe('modes and rules', () => {
   it('normal mode has no rules, epic has all of them, party starts with the carried rules', () => {
     const make = (options: KarmaOptions) =>
       game.createInitialState(seat(3), options, createSeededRng(3));
-    expect(make({ mode: 'normal', rules: ['bigHand'] }).rules).toEqual([]);
-    expect(make({ mode: 'epic', rules: [] }).rules).toEqual(KARMA_RULES.map((r) => r.id));
-    expect(make({ mode: 'party', rules: ['bigHand', 'nonsense'] }).rules).toEqual(['bigHand']);
+    expect(make({ mode: 'normal', rules: ['bigHand'], round: 1 }).rules).toEqual([]);
+    expect(make({ mode: 'epic', rules: [], round: 1 }).rules).toEqual(KARMA_RULES.map((r) => r.id));
+    expect(make({ mode: 'party', rules: ['bigHand', 'nonsense'], round: 1 }).rules).toEqual([
+      'bigHand',
+    ]);
   });
 
   it('the options schema defaults to normal', () => {
-    expect(game.optionsSchema.parse({})).toEqual({ mode: 'normal', rules: [] });
+    expect(game.optionsSchema.parse({})).toEqual({ mode: 'normal', rules: [], round: 1 });
     expect(game.optionsSchema.safeParse({ mode: 'wild' }).success).toBe(false);
   });
 
   it('big hand deals four cards', () => {
     const s = game.createInitialState(
       seat(2),
-      { mode: 'party', rules: ['bigHand'] },
+      { mode: 'party', rules: ['bigHand'], round: 1 },
       createSeededRng(5),
     );
     expect(s.players[0]!.hand).toHaveLength(4);
@@ -1138,38 +1140,79 @@ describe('modes and rules', () => {
     expect(game.applyMove(empty, 'p1', { type: 'play', cards: [card(3)] }, rng).turn).toBe(1);
   });
 
-  it('party: the winner switches a rule on or off, then the game is over', () => {
-    const s = finished({ rules: [], mode: 'party', nextRules: [] });
-    // p1 plays the last card; p3 is the loser
-    const after = game.applyMove(s, 'p1', { type: 'play', cards: [card(9)] }, rng);
-    expect(after.phase).toBe('pick');
-    expect(after.pick!.playerId).toBe('p2'); // p2 finished first
-    expect(after.pick!.choices).toEqual(['bigHand', 'echoThree']);
-    expect(game.isGameOver(after)).toBe(false);
-    expect(game.getCurrentPlayers(after)).toEqual(['p2']);
-    // only the winner, only a rule from the catalogue
-    expect(game.validateMove(after, 'p1', { type: 'pickRule', rule: 'bigHand' }).ok).toBe(false);
-    expect(game.validateMove(after, 'p2', { type: 'pickRule', rule: 'nonsense' }).ok).toBe(false);
-    const on = game.applyMove(after, 'p2', { type: 'pickRule', rule: 'bigHand' }, rng);
-    expect(game.isGameOver(on)).toBe(true);
-    expect(game.nextOptions!(on, { mode: 'party', rules: [] })).toEqual({
-      mode: 'party',
-      rules: ['bigHand'],
-    });
-    // a rule that is on is switched off by the same pick
-    const withRule = finished({ rules: ['bigHand'], mode: 'party', nextRules: ['bigHand'] });
-    const pick = game.applyMove(withRule, 'p1', { type: 'play', cards: [card(9)] }, rng);
-    expect(pick.pick!.choices).toEqual(['bigHand', 'echoThree']);
-    const off = game.applyMove(pick, 'p2', { type: 'pickRule', rule: 'bigHand' }, rng);
-    expect(game.nextOptions!(off, { mode: 'party', rules: ['bigHand'] }).rules).toEqual([]);
-  });
+  describe('party mode: the last winner sets the rules before the next game', () => {
+    const party = (options: Partial<KarmaOptions> = {}) =>
+      game.createInitialState(
+        seat(3),
+        { mode: 'party', rules: ['bigHand'], round: 2, pickerId: 'p2', ...options },
+        createSeededRng(9),
+      );
 
-  it('auto-play picks a rule for an absent winner, normal mode goes straight to the results', () => {
-    const s = finished({ mode: 'party' });
-    const after = game.applyMove(s, 'p1', { type: 'play', cards: [card(9)] }, rng);
-    const auto = game.autoMove!(after, 'p2', rng);
-    expect(auto.move.type).toBe('pickRule');
-    const normal = game.applyMove(finished(), 'p1', { type: 'play', cards: [card(9)] }, rng);
-    expect(normal.phase).toBe('over');
+    it('round 1 and normal/epic games deal at once; round 2 of party starts with the pick', () => {
+      expect(party({ round: 1, pickerId: undefined }).phase).toBe('swap');
+      expect(
+        game.createInitialState(seat(3), { mode: 'epic', rules: [], round: 3 }, rng).phase,
+      ).toBe('swap');
+      const s = party();
+      expect(s.phase).toBe('pick');
+      expect(s.round).toBe(2);
+      expect(s.pick).toEqual({ playerId: 'p2', choices: ['bigHand', 'echoThree'] });
+      expect(s.rules).toEqual(['bigHand']); // carried over, ready to be switched
+      expect(game.getCurrentPlayers(s)).toEqual(['p2']);
+      expect(game.isGameOver(s)).toBe(false);
+      // nothing is dealt yet
+      expect(s.players.every((p) => p.hand.length === 0 && p.faceUp.length === 0)).toBe(true);
+    });
+
+    it('a missing last winner falls back to the first seat', () => {
+      expect(party({ pickerId: 'gone' }).pick!.playerId).toBe('p1');
+    });
+
+    it('only the picker toggles rules from the catalogue, and everybody sees it live', () => {
+      const s = party();
+      expect(game.validateMove(s, 'p1', { type: 'toggleRule', rule: 'echoThree' }).ok).toBe(false);
+      expect(game.validateMove(s, 'p2', { type: 'toggleRule', rule: 'nonsense' }).ok).toBe(false);
+      expect(game.validateMove(s, 'p2', { type: 'swap', hand: 1, up: 0 }).ok).toBe(false);
+      const on = game.applyMove(s, 'p2', { type: 'toggleRule', rule: 'echoThree' }, rng);
+      expect(on.rules).toEqual(['bigHand', 'echoThree']);
+      expect(game.getPlayerView(on, 'p1').rules).toEqual(['bigHand', 'echoThree']);
+      const off = game.applyMove(on, 'p2', { type: 'toggleRule', rule: 'bigHand' }, rng);
+      expect(off.rules).toEqual(['echoThree']);
+      expect(game.isFreeMove!({ type: 'toggleRule', rule: 'bigHand' })).toBe(true);
+      expect(game.isFreeMove!({ type: 'confirmRules' })).toBe(false);
+    });
+
+    it('confirming deals the cards for the chosen rules and starts the swap phase', () => {
+      const s = party();
+      const bigger = game.applyMove(s, 'p2', { type: 'confirmRules' }, createSeededRng(1));
+      expect(bigger.phase).toBe('swap');
+      expect(bigger.pick).toBeNull();
+      expect(bigger.players[0]!.hand).toHaveLength(4); // big hand was on
+      const off = game.applyMove(s, 'p2', { type: 'toggleRule', rule: 'bigHand' }, rng);
+      const normal = game.applyMove(off, 'p2', { type: 'confirmRules' }, createSeededRng(1));
+      expect(normal.players[0]!.hand).toHaveLength(3);
+      expect(normal.rules).toEqual([]);
+      expect(game.validateMove(normal, 'p2', { type: 'confirmRules' }).ok).toBe(false);
+      expect(game.getCurrentPlayers(normal).sort()).toEqual(['p1', 'p2', 'p3']);
+    });
+
+    it('auto-play (computer, absent player, timeout) confirms the rules unchanged', () => {
+      const s = party();
+      expect(game.autoMove!(s, 'p2', rng).move).toEqual({ type: 'confirmRules' });
+    });
+
+    it('the next options carry the round, the rules and the winner who picks next', () => {
+      const s = finished({ mode: 'party', rules: ['bigHand'], round: 2 });
+      const over = game.applyMove(s, 'p1', { type: 'play', cards: [card(9)] }, rng);
+      expect(over.phase).toBe('over');
+      expect(game.nextOptions!(over, { mode: 'party', rules: [], round: 2 })).toEqual({
+        mode: 'party',
+        rules: ['bigHand'],
+        round: 3,
+        pickerId: 'p2', // p2 finished first
+      });
+      const normal = game.applyMove(finished(), 'p1', { type: 'play', cards: [card(9)] }, rng);
+      expect(normal.phase).toBe('over');
+    });
   });
 });

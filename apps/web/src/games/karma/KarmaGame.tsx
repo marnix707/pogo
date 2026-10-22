@@ -13,6 +13,8 @@ import { FourBurn } from './FourBurn';
 import { handLayout } from './handLayout';
 import { REVEAL_FLIP_MS, leftoverCount, revealPlan, revealStartMs } from './reveal';
 import { WinReveal } from './WinReveal';
+import { RoundScreen } from './RoundScreen';
+import { RulesIntro } from './RulesIntro';
 import {
   KarmaTutorial,
   TUTORIAL_EVENT,
@@ -483,9 +485,24 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const [swapHand, setSwapHand] = useState<Card | null>(null);
   const [swapUp, setSwapUp] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
-  // A short tutorial over the swap phase of every game, until "Don't show this again" is ticked. The
-  // rules sheet can replay it.
-  const [tutorial, setTutorial] = useState(() => view.phase === 'swap' && shouldShowTutorial());
+  // Before the cards move: with extra rules on (party after the pick, or epic) the game sits dimmed
+  // while the rules fly past (RulesIntro); then, until "Don't show this again" is ticked, the
+  // tutorial; the rules sheet can replay it.
+  const hasRules = view.mode !== 'normal' && view.rules.length > 0 && !prefersReducedMotion();
+  const [intro, setIntro] = useState(() => view.phase === 'swap' && hasRules);
+  const [tutorial, setTutorial] = useState(
+    () => view.phase === 'swap' && !(view.phase === 'swap' && hasRules) && shouldShowTutorial(),
+  );
+  const lastPhase = useRef(view.phase);
+  useEffect(() => {
+    // The round screen (phase pick) ends and the cards are dealt: rules first, else the tutorial.
+    if (lastPhase.current === 'pick' && view.phase === 'swap') {
+      if (hasRules) setIntro(true);
+      else if (shouldShowTutorial()) setTutorial(true);
+    }
+    lastPhase.current = view.phase;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view.phase]);
   useEffect(() => {
     const open = () => setTutorial(true);
     window.addEventListener(TUTORIAL_EVENT, open);
@@ -494,6 +511,10 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const closeTutorial = (dontShowAgain: boolean) => {
     setTutorialHidden(dontShowAgain);
     setTutorial(false);
+  };
+  const closeIntro = () => {
+    setIntro(false);
+    if (shouldShowTutorial()) setTutorial(true);
   };
   const [flame, setFlame] = useState(false);
   /** A burn / failed blind card resolves at once on the server; keep the played cards on the pile a moment. */
@@ -1346,7 +1367,9 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
             onDone={() => setPeek(null)}
           />
         )}
-        {tutorial && <KarmaTutorial onDone={closeTutorial} />}
+        {view.phase === 'pick' && <RoundScreen room={room} me={me} sendMove={sendMove} />}
+        {intro && <RulesIntro mode={view.mode} rules={view.rules} onDone={closeIntro} />}
+        {tutorial && !intro && <KarmaTutorial onDone={closeTutorial} />}
         {fourBurn && <FourBurn cards={fourBurn} ms={FOUR_BURN_MS} />}
         {reveal && <WinReveal card={reveal.card} label={reveal.label} winner={reveal.winner} />}
       </div>

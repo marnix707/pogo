@@ -50,7 +50,8 @@ export const karmaMoveSchema: z.ZodType<KarmaMove, z.ZodTypeDef, unknown> = z.di
         .max(SLOTS - 1),
     }),
     z.object({ type: z.literal('pickup') }),
-    z.object({ type: z.literal('pickRule'), rule: z.string().max(40) }),
+    z.object({ type: z.literal('toggleRule'), rule: z.string().max(40) }),
+    z.object({ type: z.literal('confirmRules') }),
   ],
 );
 
@@ -58,6 +59,8 @@ const optionsSchema = z
   .object({
     mode: z.enum(['normal', 'party', 'epic']).default('normal'),
     rules: z.array(z.string().max(40)).max(KARMA_RULES.length).default([]),
+    round: z.number().int().min(1).max(999).default(1),
+    pickerId: z.string().max(64).optional(),
   })
   .strict() as z.ZodType<KarmaOptions, z.ZodTypeDef, unknown>;
 
@@ -152,25 +155,50 @@ export function findStarter(players: readonly KarmaPlayerState[]): number {
 
 // ---- game -----------------------------------------------------------------------------------
 
-function createInitialState(players: GamePlayer[], options: KarmaOptions, rng: Rng): KarmaState {
-  if (players.length < MIN_PLAYERS || players.length > MAX_PLAYERS) {
-    throw new Error(`Karma needs ${MIN_PLAYERS}-${MAX_PLAYERS} players`);
-  }
-  const rules = rulesFor(options);
+/** Deals fresh hands for these players (shuffles with the injected Rng). */
+function deal(playerIds: readonly string[], rules: readonly string[], rng: Rng) {
   const deck = shuffledDeck(rng);
   const take = (n: number) => deck.splice(deck.length - n, n);
-  const seats: KarmaPlayerState[] = players.map((p) => ({
-    id: p.id,
+  const seats: KarmaPlayerState[] = playerIds.map((id) => ({
+    id,
     faceDown: take(SLOTS),
     faceUp: take(SLOTS),
     hand: take(handSizeFor(rules)),
     ready: false,
     out: false,
   }));
+  return { seats, stock: deck };
+}
+
+function createInitialState(players: GamePlayer[], options: KarmaOptions, rng: Rng): KarmaState {
+  if (players.length < MIN_PLAYERS || players.length > MAX_PLAYERS) {
+    throw new Error(`Karma needs ${MIN_PLAYERS}-${MAX_PLAYERS} players`);
+  }
+  const rules = rulesFor(options);
+  const ids = players.map((p) => p.id);
+  // Party mode, round 2 and later: before anything is dealt, the winner of the last game sets the
+  // rules (the hand size depends on them, so the cards are dealt when they confirm).
+  const picker =
+    options.mode === 'party' && options.round > 1
+      ? (ids.find((id) => id === options.pickerId) ?? (ids[0] as string))
+      : null;
+  const dealt = picker
+    ? {
+        seats: ids.map((id): KarmaPlayerState => ({
+          id,
+          faceDown: [],
+          faceUp: [],
+          hand: [],
+          ready: false,
+          out: false,
+        })),
+        stock: [] as Card[],
+      }
+    : deal(ids, rules, rng);
   return {
-    phase: 'swap',
-    players: seats,
-    stock: deck,
+    phase: picker ? 'pick' : 'swap',
+    players: dealt.seats,
+    stock: dealt.stock,
     pile: [],
     burned: 0,
     turn: 0,
@@ -180,19 +208,22 @@ function createInitialState(players: GamePlayer[], options: KarmaOptions, rng: R
     lastEvent: null,
     mode: options.mode,
     rules,
-    pick: null,
-    nextRules: rules,
+    pick: picker ? { playerId: picker, choices: KARMA_RULES.map((r) => r.id) } : null,
+    round: options.round,
   };
 }
 
 function validateMove(state: KarmaState, playerId: string, move: KarmaMove): MoveValidation {
   if (state.phase === 'over') return err('The game is over');
   if (state.phase === 'pick') {
-    if (move.type !== 'pickRule') return err('The winner is choosing a rule');
-    if (state.pick?.playerId !== playerId) return err('Only the winner picks a rule');
+    if (move.type !== 'toggleRule' && move.type !== 'confirmRules')
+      return err('The rules are being chosen');
+    if (state.pick?.playerId !== playerId) return err('Only the last winner sets the rules');
+    if (move.type === 'confirmRules') return OK;
     return state.pick!.choices.includes(move.rule) ? OK : err('Pick one of the offered rules');
   }
-  if (move.type === 'pickRule') return err('There is no rule to pick now');
+  if (move.type === 'toggleRule' || move.type === 'confirmRules')
+    return err('There are no rules to choose now');
   const idx = state.players.findIndex((p) => p.id === playerId);
   const me = state.players[idx];
   if (!me) return err('You are not in this game');
@@ -340,35 +371,38 @@ function playToPile(state: KarmaState, idx: number, cards: Card[], kind: 'play' 
   advance(state, idx, ev, burn, eights);
 }
 
-/** Party mode: when the game has ended its winner may switch one extra rule on or off for the next one. */
-function offerRules(state: KarmaState): KarmaState {
-  if (state.phase !== 'over' || state.mode !== 'party') return state;
-  state.phase = 'pick';
-  state.pick = { playerId: state.finishOrder[0] as string, choices: KARMA_RULES.map((r) => r.id) };
-  return state;
-}
-
 function applyMove(state: KarmaState, playerId: string, move: KarmaMove, rng: Rng): KarmaState {
-  const next = applyMoveInner(state, playerId, move, rng);
-  return next.phase === 'over' && move.type !== 'pickRule' ? offerRules(next) : next;
+  return applyMoveInner(state, playerId, move, rng);
 }
 
 function applyMoveInner(
   state: KarmaState,
   playerId: string,
   move: KarmaMove,
-  _rng: Rng,
+  rng: Rng,
 ): KarmaState {
   const check = validateMove(state, playerId, move);
   if (!check.ok) throw new Error(check.error);
 
   const s = structuredClone(state);
-  if (move.type === 'pickRule') {
-    // The chosen rule is switched: on becomes off, off becomes on.
-    s.nextRules = s.rules.includes(move.rule)
+  if (move.type === 'toggleRule') {
+    // Switch the rule: on becomes off, off becomes on.
+    s.rules = s.rules.includes(move.rule)
       ? s.rules.filter((id) => id !== move.rule)
       : [...s.rules, move.rule];
-    s.phase = 'over';
+    return s;
+  }
+  if (move.type === 'confirmRules') {
+    // Now that the rules are known, deal the cards and start the swap phase.
+    const dealt = deal(
+      s.players.map((p) => p.id),
+      s.rules,
+      rng,
+    );
+    s.players = dealt.seats;
+    s.stock = dealt.stock;
+    s.phase = 'swap';
+    s.pick = null;
     return s;
   }
   const idx = s.players.findIndex((p) => p.id === playerId);
@@ -449,7 +483,7 @@ function getPlayerView(state: KarmaState, playerId: string): KarmaView {
     out: p.out,
   }));
   // The game is decided: the player who is left shows everything they still hold (turned over in the UI).
-  const decided = state.phase === 'over' || state.phase === 'pick';
+  const decided = state.phase === 'over';
   const left = decided
     ? state.players.find((p) => !p.out && (p.hand.length > 0 || p.faceDown.some((c) => c !== null)))
     : undefined;
@@ -466,6 +500,7 @@ function getPlayerView(state: KarmaState, playerId: string): KarmaView {
     mode: state.mode,
     rules: [...state.rules],
     pick: state.pick,
+    round: state.round,
     leftovers: left
       ? { playerId: left.id, hand: [...left.hand], faceDown: [...left.faceDown] }
       : null,
@@ -521,8 +556,8 @@ function autoMove(state: KarmaState, playerId: string, rng: Rng): AutoMove<Karma
   let move: KarmaMove;
 
   if (state.phase === 'pick') {
-    const choices = state.pick!.choices;
-    move = { type: 'pickRule', rule: choices[rng.int(choices.length)] as string };
+    // A computer, an absent player or a timeout keeps the rules as they are.
+    move = { type: 'confirmRules' };
   } else if (state.phase === 'swap') {
     const swap = bestSwap(me);
     move = swap ? { type: 'swap', ...swap } : { type: 'ready' };
@@ -560,10 +595,17 @@ export const karmaGame: GameDefinition<KarmaState, KarmaMove, KarmaOptions, Karm
   minPlayers: MIN_PLAYERS,
   maxPlayers: MAX_PLAYERS,
   optionsSchema,
-  defaultOptions: { mode: 'normal', rules: [] },
-  // "Play again" starts the next game right away; the host can still go back to the waiting room.
-  restartOnRematch: () => true,
-  nextOptions: (state, options) => ({ ...options, rules: state.nextRules }),
+  defaultOptions: { mode: 'normal', rules: [], round: 1 },
+  // The next game of the room: one round on, the rules as they were set (party), and the winner of
+  // this game picks the rules of the next one before the cards are dealt.
+  nextOptions: (state, options) => ({
+    ...options,
+    rules: state.mode === 'party' ? state.rules : options.rules,
+    round: state.round + 1,
+    pickerId: state.finishOrder[0],
+  }),
+  // Changing a rule is free: it does not restart the picker's clock.
+  isFreeMove: (move) => move.type === 'toggleRule',
   moveSchema: karmaMoveSchema,
   createInitialState,
   validateMove,

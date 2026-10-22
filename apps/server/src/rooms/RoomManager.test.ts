@@ -706,7 +706,7 @@ describe('computer players', () => {
   function humanMove(view: KView, me: string, jitter: () => number): unknown {
     const mine = view.players.find((p) => p.id === me)!;
     if (view.phase === 'swap') return { type: 'ready' };
-    if (view.phase === 'pick') return { type: 'pickRule', rule: view.pick!.choices[0]! };
+    if (view.phase === 'pick') return { type: 'confirmRules' };
     if (view.mustPickUp) return { type: 'pickup' }; // a too-low blind card is on the pile
     const zone = karma.activeZone(mine);
     if (zone === 'down') return { type: 'playDown', index: mine.faceDown.findIndex(Boolean) };
@@ -763,18 +763,39 @@ describe('computer players', () => {
     120_000,
   );
 
-  it('party mode: the winner switches a rule and "Play again" starts the next game with it', () => {
+  it('party mode: round 2 starts with the last winner setting the rules, then the cards are dealt', () => {
     const first = playOut(2, 7, { mode: 'party' });
     const { manager, must } = first;
     expect((first.room.game!.view as { rules: string[] }).rules).toEqual([]);
-    const next = must(manager.rematch(a.id));
-    expect(next.status).toBe('playing');
-    expect((next.options as { mode: string }).mode).toBe('party');
-    // A computer winner picks at random, so only check that exactly one rule was switched on.
-    const rules = (next.game!.view as { rules: string[] }).rules;
-    expect(rules).toHaveLength(1);
-    expect((next.options as { rules: string[] }).rules).toEqual(rules);
-    expect(next.members.map((m) => m.nickname)).toEqual(['User1', 'Robo', 'Bolt']);
+    const winner = first.room.game!.results!.rankings[0]!.playerId;
+    const lobby = must(manager.rematch(a.id, true));
+    expect(lobby.options).toMatchObject({ mode: 'party', round: 2, pickerId: winner });
+
+    must(manager.start(a.id));
+    const view = () =>
+      manager.getView(a.id)!.game!.view as {
+        phase: string;
+        round: number;
+        rules: string[];
+        pick: { playerId: string } | null;
+        players: { id: string; handCount: number }[];
+      };
+    expect(view()).toMatchObject({ phase: 'pick', round: 2, rules: [] });
+    expect(view().pick!.playerId).toBe(winner);
+    expect(manager.getView(a.id)!.game!.currentPlayers).toEqual([winner]);
+
+    if (winner === a.id) {
+      // I switch a rule on (everybody sees it live), then confirm.
+      must(manager.move(a.id, { type: 'toggleRule', rule: 'bigHand' }));
+      expect(view().rules).toEqual(['bigHand']);
+      must(manager.move(a.id, { type: 'confirmRules' }));
+      expect(view().players.find((p) => p.id === a.id)!.handCount).toBe(4);
+    } else {
+      // A computer keeps the rules as they are and confirms by itself.
+      vi.advanceTimersByTime(BOT);
+      expect(view().rules).toEqual([]);
+    }
+    expect(view().phase).toBe('swap');
   });
 
   it('epic mode starts with every rule on, normal mode with none', () => {
@@ -786,11 +807,10 @@ describe('computer players', () => {
     expect((normal.room.game!.view as { rules: string[] }).rules).toEqual([]);
   });
 
-  it('a rematch starts the next game at once, with new computer seats', () => {
+  it('a rematch always goes back to the lobby now (Ready starts the next game)', () => {
     const { manager, must } = playOut();
     const next = must(manager.rematch(a.id));
-    expect(next.status).toBe('playing');
-    expect(next.members.map((m) => m.nickname)).toEqual(['User1', 'Robo', 'Bolt']);
+    expect(next.status).toBe('lobby');
   });
 
   it('a rematch to the lobby removes the computer seats, keeps the setting, and brings them back on start', () => {

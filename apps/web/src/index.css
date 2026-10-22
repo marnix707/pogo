@@ -307,6 +307,20 @@ button {
 .card-back-out { animation: card-back-out 0.35s ease-in both; }
 .card-face-in { animation: card-face-in 0.35s ease-out both; }
 
+/* Round screen (Karma party mode): the title pops in, the rules slide in from the left one by one. */
+@keyframes round-pop {
+  0% { opacity: 0; transform: scale(0.4); }
+  60% { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes round-row-in {
+  from { opacity: 0; transform: translateX(-60%); }
+  to { opacity: 1; transform: none; }
+}
+.round-pop { animation: round-pop 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.1) both; }
+.round-sub { animation: round-row-in 0.5s ease-out 0.35s both; }
+.round-row { animation: round-row-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.05) both; }
+
 @keyframes tutorial-arrow {
   0%,
   100% {
@@ -347,6 +361,9 @@ button {
   .card-face-in {
     animation: none !important;
   }
+  .round-pop,
+  .round-sub,
+  .round-row,
   .res-head,
   .res-row,
   .res-bottom,

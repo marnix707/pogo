@@ -33,8 +33,6 @@ function ResultsPanel({
   api,
   title,
   showScores = true,
-  pending = false,
-  extra,
   sendMove,
   account,
   confetti = false,
@@ -44,17 +42,12 @@ function ResultsPanel({
   api: RoomApi;
   title?: string;
   showScores?: boolean;
-  /** The game still needs something from the players: no rematch buttons yet. */
-  pending?: boolean;
   /** Confetti for the winner of a game with more than one player (games with their own fanfare skip it). */
   confetti?: boolean;
-  /** Game-specific section between the standings and the buttons. */
-  extra?: ComponentType<GameUiProps>;
   sendMove: GameUiProps['sendMove'];
   /** Guests get a nudge to register under their results. */
   account?: AccountProps;
 }) {
-  const Extra = extra;
   // The status-bar strip and the home-indicator area outside the panel take its colour (see .results-open).
   useEffect(() => {
     document.documentElement.classList.add('results-open');
@@ -92,13 +85,8 @@ function ResultsPanel({
             {headline}
           </h2>
 
-          {/* The standings sit in the middle of the free space between the headline and the lower
-              group; with an extra section (Karma's rule pick) they stay up top and that section is
-              centred between the last player and the buttons instead. */}
-          <ol
-            className={`flex flex-col gap-2 ${Extra ? 'mt-2' : 'my-auto'}`}
-            data-testid="standings"
-          >
+          {/* The standings sit in the middle of the free space between the headline and the lower group. */}
+          <ol className="my-auto flex flex-col gap-2" data-testid="standings">
             {rankings.map((r, i) => {
               const m = nameOf(r.playerId);
               const isMe = r.playerId === me;
@@ -128,13 +116,7 @@ function ResultsPanel({
             })}
           </ol>
 
-          {Extra && (
-            <div className="my-auto">
-              <Extra room={room} me={me} sendMove={sendMove} />
-            </div>
-          )}
-
-          {account?.isGuest && !pending && (
+          {account?.isGuest && (
             <div className="res-row" style={delay(rowsDone + 0.2)}>
               <RegisterNudge
                 token={account.token}
@@ -148,27 +130,23 @@ function ResultsPanel({
             className="res-bottom flex flex-col gap-3"
             style={delay(rowsDone + (account?.isGuest ? 0.9 : 0.4))}
           >
-            {pending ? (
-              <p className="label text-center text-muted">Almost there…</p>
-            ) : (
-              <>
-                {/* Lobby takes everybody back to the room's lobby (Ready starts the next game). */}
-                <Button
-                  data-testid="results-lobby"
-                  disabled={!api.online}
-                  onClick={() => void api.rematch(true)}
-                >
-                  Lobby
-                </Button>
-                <Button
-                  variant="secondary"
-                  data-testid="results-leave"
-                  onClick={() => void api.leave()}
-                >
-                  Exit
-                </Button>
-              </>
-            )}
+            <>
+              {/* Lobby takes everybody back to the room's lobby (Ready starts the next game). */}
+              <Button
+                data-testid="results-lobby"
+                disabled={!api.online}
+                onClick={() => void api.rematch(true)}
+              >
+                Lobby
+              </Button>
+              <Button
+                variant="secondary"
+                data-testid="results-leave"
+                onClick={() => void api.leave()}
+              >
+                Exit
+              </Button>
+            </>
           </div>
         </div>
       </div>
@@ -220,13 +198,7 @@ export function GameScreen({
     if (chatOpen) markRead();
   }, [chatOpen, markRead, messages.length]);
   const finished = room.status === 'finished';
-  // A game can be over for the standings while it still waits for something (Karma: the winner's rule).
-  const pendingResults = room.status === 'playing' ? (ui?.pendingResults?.(room) ?? null) : null;
-  const ended = finished || pendingResults !== null;
-  const panelRoom: RoomView =
-    pendingResults && room.game
-      ? { ...room, game: { ...room.game, results: pendingResults } }
-      : room;
+  const ended = finished;
 
   // Fanfare once when the game ends.
   const wasFinished = useRef(ended);
@@ -248,12 +220,12 @@ export function GameScreen({
     else if (resultsShown && !fanfared.current) {
       fanfared.current = true;
       if (ui?.ownFanfare) return;
-      const won = panelRoom.game?.results?.rankings.some((r) => r.rank === 1 && r.playerId === me);
+      const won = room.game?.results?.rankings.some((r) => r.rank === 1 && r.playerId === me);
       play(won ? 'win' : 'score');
       haptic(won ? 'success' : 'tap');
     }
     wasFinished.current = ended;
-  }, [ended, resultsShown, panelRoom.game?.results, me]);
+  }, [ended, resultsShown, room.game?.results, me]);
 
   if (!ui) {
     return (
@@ -332,13 +304,11 @@ export function GameScreen({
       </div>
       {ended && resultsShown && (
         <ResultsPanel
-          room={panelRoom}
+          room={room}
           me={me}
           api={api}
           sendMove={api.move}
-          pending={pendingResults !== null}
-          extra={ui.ResultsExtra}
-          title={ui.resultsTitle?.(panelRoom, me)}
+          title={ui.resultsTitle?.(room, me)}
           showScores={!ui.hideScores}
           account={account}
           confetti={!ui.ownFanfare}

@@ -61,10 +61,10 @@ export interface KarmaState {
   mode: KarmaMode;
   /** Extra rules in force in this game. */
   rules: string[];
-  /** Party mode, after the game: the winner chooses one of these rules for the next game. */
+  /** Party mode, round 2 and later, before the cards are dealt: the last winner sets the rules. */
   pick: KarmaPick | null;
-  /** The rules the next game in this room starts with. */
-  nextRules: string[];
+  /** 1 for the first game of a room, then one more for every game after it. */
+  round: number;
 }
 
 export interface KarmaPick {
@@ -78,12 +78,19 @@ export type KarmaMove =
   | { type: 'play'; cards: Card[] }
   | { type: 'playDown'; index: number }
   | { type: 'pickup' }
-  | { type: 'pickRule'; rule: string };
+  /** Phase `pick`: the picker switches one rule on or off (everybody sees it live). */
+  | { type: 'toggleRule'; rule: string }
+  /** Phase `pick`: the picker is done; the cards are dealt and the swap phase starts. */
+  | { type: 'confirmRules' };
 
 export interface KarmaOptions {
   mode: KarmaMode;
   /** Rules carried over from earlier games of the room (party mode); set by the server. */
   rules: string[];
+  /** Which game of the room this is (set by `nextOptions`); from 2 on, party mode lets the last winner pick. */
+  round: number;
+  /** The winner of the previous game, who picks the rules of this one (party mode, round 2+). */
+  pickerId?: string;
 }
 
 /** What one player is allowed to know about a seat. */
@@ -120,6 +127,7 @@ export interface KarmaView {
   mode: KarmaMode;
   rules: string[];
   pick: KarmaPick | null;
+  round: number;
   /** The loser's remaining cards, only once the finish order is complete (never during play). */
   leftovers: KarmaLeftovers | null;
 }

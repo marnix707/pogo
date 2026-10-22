@@ -7,10 +7,7 @@ import { readyAll, readyUp, newPlayer, snapshot, takeTurn } from './karma-helper
 async function playUntilResults(page: Page, limitMs = 200_000) {
   const started = Date.now();
   let sawWinnerReveal = false;
-  // (In party mode the standings are already up while the winner still picks a rule inside them.)
-  const done = async () =>
-    (await page.getByTestId('results-panel').isVisible()) &&
-    !(await page.getByTestId('rule-pick').isVisible());
+  const done = async () => page.getByTestId('results-panel').isVisible();
   while (!(await done())) {
     // One evaluate, not count + getAttribute: reveals come and go (every face-down card has one).
     const winner = await page.evaluate(() =>
@@ -19,21 +16,6 @@ async function playUntilResults(page: Page, limitMs = 200_000) {
     if (winner === 'true') sawWinnerReveal = true;
     if (Date.now() - started > limitMs)
       throw new Error('the game against the computer did not finish');
-    // Party mode: the winner of the game picks a rule in the standings (the others just wait).
-    // (One evaluate: the overlay can vanish between two separate calls.)
-    const pick = await page.evaluate(() =>
-      document.querySelector('[data-testid=rule-pick]')?.getAttribute('data-mine'),
-    );
-    if (pick !== undefined && pick !== null) {
-      if (pick === 'true')
-        await page
-          .locator('[data-testid^=rule-choice-]')
-          .first()
-          .click({ timeout: 3000 })
-          .catch(() => {});
-      else await page.waitForTimeout(100);
-      continue;
-    }
     // A burn flame must go away by itself (it once got stuck for the rest of the game).
     if (await page.getByTestId('burn-flash').isVisible())
       await expect(page.getByTestId('burn-flash')).toHaveCount(0, { timeout: 4000 });
@@ -205,7 +187,7 @@ test('Yatzy rooms have no computer setting', async ({ browser }) => {
   await me.context.close();
 });
 
-test('party mode: the winner picks a rule that applies to the next game; epic has every rule', async ({
+test('party mode: in round 2 the last winner sets the rules on the round screen, then the game starts', async ({
   browser,
 }) => {
   test.setTimeout(300_000);
@@ -222,12 +204,22 @@ test('party mode: the winner picks a rule that applies to the next game; epic ha
   await readyUp(page);
   await playUntilResults(page);
 
-  // "Lobby" goes back to the lobby; the next game starts with the rule the winner switched on.
+  // "Lobby" goes back to the lobby; Ready starts round 2, which opens with the round screen where
+  // the winner of the last game sets the rules (a computer winner just confirms by itself).
   await page.getByTestId('results-lobby').click();
   await readyAll(page);
+  const round = page.getByTestId('round-screen');
+  const game = page.getByTestId('karma-game');
+  await expect(round.or(game.and(page.locator('[data-phase=swap]')))).toBeVisible();
+  if (await round.isVisible()) {
+    await expect(page.getByTestId('round-title')).toHaveText('Round 2');
+    if ((await round.getAttribute('data-mine')) === 'true') {
+      await page.getByTestId('round-rule-bigHand').click();
+      await expect(page.getByTestId('round-rule-bigHand')).toHaveAttribute('data-active', 'true');
+      await page.getByTestId('round-confirm').click();
+    }
+  }
   await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
-  await page.getByRole('button', { name: 'Rules' }).click();
-  await expect(page.getByTestId('rules-extra').locator('ul > li')).toHaveCount(1);
   await me.context.close();
 });
 
@@ -237,7 +229,9 @@ test('epic mode switches on every rule from the start', async ({ browser }) => {
   await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
   await page.getByRole('button', { name: 'More Computer players' }).click();
-  await page.getByTestId('karma-mode-epic').click();
+  await page.getByTestId('karma-mode-epic').click(); // choosing a mode shows no bubble...
+  await expect(page.getByTestId('karma-mode-bubble')).toHaveCount(0);
+  await page.getByTestId('karma-mode-epic').click(); // ...tapping the chosen mode again does
   await expect(page.getByTestId('karma-mode-bubble')).toBeVisible();
   await page.getByTestId('karma-rule-echoThree').click();
   await expect(page.getByTestId('karma-rule-bubble')).toContainText('repeats the card beneath');
