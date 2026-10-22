@@ -7,6 +7,7 @@ import {
   isStaff,
   roleRank,
   roleSchema,
+  titlesSchema,
 } from '@pogo/shared';
 import type { AdminAuditRow, AdminBanRow, AdminUserRow, PublicUser } from '@pogo/shared';
 import type { BanList, BanRecord, ModerationStore } from '../admin/moderation';
@@ -93,6 +94,8 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminDeps) {
         ...(me.role === 'admin' && user.email ? { email: user.email } : {}),
         role: user.role ?? 'user',
         isDev: !!user.isDev,
+        prefix: user.prefix ?? '',
+        suffix: user.suffix ?? '',
         createdAt,
         lastSeenAt,
         online: deps.isOnline(user.id),
@@ -230,6 +233,52 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminDeps) {
     if (!user) return reply.code(404).send({ error: 'Player not found' });
     const updated = await users.setDev(user.id, parsed.data.isDev);
     await log(me, parsed.data.isDev ? 'dev-on' : 'dev-off', user);
+    return { user: updated };
+  });
+
+  /** Developers only: the titles page. */
+  async function developer(req: FastifyRequest, reply: FastifyReply): Promise<PublicUser | null> {
+    const me = await staff(req, reply);
+    if (!me) return null;
+    if (!me.isDev) {
+      void reply.code(403).send({ error: 'Only developers can do this' });
+      return null;
+    }
+    return me;
+  }
+
+  app.get('/api/admin/titles', limits, async (req, reply) => {
+    if (!(await developer(req, reply))) return;
+    const q = String((req.query as { q?: string }).q ?? '').slice(0, 60);
+    const found = await users.listRegistered(q, 100);
+    return {
+      users: found.map(({ user, createdAt, lastSeenAt }) => ({
+        id: user.id,
+        nickname: user.nickname,
+        avatar: user.avatar,
+        email: user.email ?? '',
+        isDev: !!user.isDev,
+        prefix: user.prefix ?? '',
+        suffix: user.suffix ?? '',
+        createdAt,
+        lastSeenAt,
+        online: deps.isOnline(user.id),
+      })),
+    };
+  });
+
+  app.post('/api/admin/users/:id/titles', limits, async (req, reply) => {
+    const me = await developer(req, reply);
+    if (!me) return;
+    const parsed = titlesSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'Invalid input' });
+    const user = await users.get(idParam(req));
+    if (!user) return reply.code(404).send({ error: 'Player not found' });
+    if (user.isGuest)
+      return reply.code(400).send({ error: 'Only registered players can get titles' });
+    const { prefix, suffix } = parsed.data;
+    const updated = await users.setTitles(user.id, prefix, suffix);
+    await log(me, 'titles', user, `prefix "${prefix}", suffix "${suffix}"`);
     return { user: updated };
   });
 }

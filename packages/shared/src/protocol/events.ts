@@ -30,12 +30,14 @@ export interface PublicUser {
   role?: 'user' | 'moderator' | 'admin';
   /** Developer: "(dev)" is shown behind the name everywhere. */
   isDev?: boolean;
+  /** Text a developer gave this player: shown before / after the nickname everywhere. */
+  prefix?: string;
+  suffix?: string;
 }
 
 /** `code` is the error code (see errors.ts); `ref` identifies an unexpected server error in the logs. */
 export type Result<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: string; code?: string; ref?: string };
+  { ok: true; data: T } | { ok: false; error: string; code?: string; ref?: string };
 export type Ack<T> = (result: Result<T>) => void;
 
 export type RoomStatus = 'lobby' | 'playing' | 'finished';

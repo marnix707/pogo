@@ -85,6 +85,10 @@ export interface UserStore {
   search(query: string, limit: number): Promise<StaffUserRecord[]>;
   setRole(id: string, role: Role): Promise<PublicUser | null>;
   setDev(id: string, isDev: boolean): Promise<PublicUser | null>;
+  /** Registered players only (guests are never listed), most recently seen first. */
+  listRegistered(query: string, limit: number): Promise<StaffUserRecord[]>;
+  /** Prefix and suffix around the nickname; empty strings clear them. */
+  setTitles(id: string, prefix: string, suffix: string): Promise<PublicUser | null>;
   /** Remember when and from where the player was last seen (for IP bans). */
   touch(id: string, ip: string | null): Promise<void>;
   lastIpOf(id: string): Promise<string | null>;
@@ -131,6 +135,8 @@ export function createPrismaUserStore(prisma: PrismaClient): UserStore {
     email?: string | null;
     role?: string;
     isDev?: boolean;
+    prefix?: string | null;
+    suffix?: string | null;
   }): PublicUser => ({
     id: u.id,
     nickname: u.nickname,
@@ -140,10 +146,40 @@ export function createPrismaUserStore(prisma: PrismaClient): UserStore {
     ...(u.email ? { email: u.email } : {}),
     ...(u.role === 'moderator' || u.role === 'admin' ? { role: u.role } : {}),
     ...(u.isDev ? { isDev: true } : {}),
+    ...(u.prefix ? { prefix: u.prefix } : {}),
+    ...(u.suffix ? { suffix: u.suffix } : {}),
   });
   const find = async (id: string) => {
     const user = await prisma.user.findUnique({ where: { id } });
     return user ? toPublic(user) : null;
+  };
+  const searchRows = async (query: string, limit: number, registeredOnly: boolean) => {
+    const q = query.trim();
+    const rows = await prisma.user.findMany({
+      where: {
+        ...(registeredOnly ? { isGuest: false } : {}),
+        ...(q
+          ? {
+              OR: [
+                { nickname: { contains: q, mode: 'insensitive' as const } },
+                { email: { contains: q.toLowerCase() } },
+                { id: q },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [
+        { lastSeenAt: { sort: 'desc' as const, nulls: 'last' as const } },
+        { createdAt: 'desc' as const },
+      ],
+      take: limit,
+    });
+    return rows.map((u) => ({
+      user: toPublic(u),
+      createdAt: u.createdAt.getTime(),
+      lastSeenAt: u.lastSeenAt?.getTime() ?? null,
+      lastIp: u.lastIp,
+    }));
   };
   return {
     createGuest: async (profile) => toPublic(await prisma.user.create({ data: profile })),
@@ -222,26 +258,22 @@ export function createPrismaUserStore(prisma: PrismaClient): UserStore {
     },
 
     async search(query, limit) {
-      const q = query.trim();
-      const rows = await prisma.user.findMany({
-        where: q
-          ? {
-              OR: [
-                { nickname: { contains: q, mode: 'insensitive' } },
-                { email: { contains: q.toLowerCase() } },
-                { id: q },
-              ],
-            }
-          : {},
-        orderBy: [{ lastSeenAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
-        take: limit,
-      });
-      return rows.map((u) => ({
-        user: toPublic(u),
-        createdAt: u.createdAt.getTime(),
-        lastSeenAt: u.lastSeenAt?.getTime() ?? null,
-        lastIp: u.lastIp,
-      }));
+      return searchRows(query, limit, false);
+    },
+    async listRegistered(query, limit) {
+      return searchRows(query, limit, true);
+    },
+    async setTitles(id, prefix, suffix) {
+      try {
+        return toPublic(
+          await prisma.user.update({
+            where: { id },
+            data: { prefix: prefix || null, suffix: suffix || null },
+          }),
+        );
+      } catch {
+        return null;
+      }
     },
     async setRole(id, role) {
       try {
@@ -377,6 +409,24 @@ export function createMemoryUserStore(): UserStore {
     { createdAt: number; lastSeenAt: number | null; ip: string | null }
   >();
   const codeKey = (email: string, purpose: string) => `${purpose}:${email}`;
+  const memSearch = (query: string, limit: number, registeredOnly: boolean) => {
+    const q = query.trim().toLowerCase();
+    return [...users.values()]
+      .filter(
+        (u) =>
+          (!registeredOnly || !u.isGuest) &&
+          (!q ||
+            u.nickname.toLowerCase().includes(q) ||
+            u.email?.includes(q) ||
+            u.id === query.trim()),
+      )
+      .map((user) => {
+        const m = meta.get(user.id) ?? { createdAt: 0, lastSeenAt: null, ip: null };
+        return { user, createdAt: m.createdAt, lastSeenAt: m.lastSeenAt, lastIp: m.ip };
+      })
+      .sort((a, b) => (b.lastSeenAt ?? b.createdAt) - (a.lastSeenAt ?? a.createdAt))
+      .slice(0, limit);
+  };
   return {
     async createGuest(profile) {
       const user: PublicUser = { id: randomUUID(), isGuest: true, ...profile };
@@ -431,21 +481,22 @@ export function createMemoryUserStore(): UserStore {
     },
 
     async search(query, limit) {
-      const q = query.trim().toLowerCase();
-      return [...users.values()]
-        .filter(
-          (u) =>
-            !q ||
-            u.nickname.toLowerCase().includes(q) ||
-            u.email?.includes(q) ||
-            u.id === query.trim(),
-        )
-        .map((user) => {
-          const m = meta.get(user.id) ?? { createdAt: 0, lastSeenAt: null, ip: null };
-          return { user, createdAt: m.createdAt, lastSeenAt: m.lastSeenAt, lastIp: m.ip };
-        })
-        .sort((a, b) => (b.lastSeenAt ?? b.createdAt) - (a.lastSeenAt ?? a.createdAt))
-        .slice(0, limit);
+      return memSearch(query, limit, false);
+    },
+    async listRegistered(query, limit) {
+      return memSearch(query, limit, true);
+    },
+    async setTitles(id, prefix, suffix) {
+      const existing = users.get(id);
+      if (!existing) return null;
+      const { prefix: _p, suffix: _s, ...rest } = existing;
+      const updated: PublicUser = {
+        ...rest,
+        ...(prefix ? { prefix } : {}),
+        ...(suffix ? { suffix } : {}),
+      };
+      users.set(id, updated);
+      return updated;
     },
     async setRole(id, role) {
       const existing = users.get(id);

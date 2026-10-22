@@ -1,3 +1,4 @@
+import { displayName } from '@pogo/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createSeededRng } from '@pogo/shared';
 import type { Role } from '@pogo/shared';
@@ -104,6 +105,65 @@ describe('admin access', () => {
       password: 'secret-pass',
     });
     expect(res.json().user).toMatchObject({ role: 'admin', isDev: true });
+  });
+});
+
+describe('titles (developers only)', () => {
+  it('lists registered players and sets a prefix and suffix that show in the display name', async () => {
+    const dev = await staffMember('Devy', 'admin');
+    await users.setDev(dev.user.id, true);
+    const fan = await staffMember('Fanny', 'user');
+    const visitor = await guest('Visitor');
+
+    const list = await call('GET', '/api/admin/titles?q=fan', dev.token);
+    expect(list.statusCode).toBe(200);
+    expect(list.json().users).toHaveLength(1);
+    // Guests are never listed.
+    const all = await call('GET', '/api/admin/titles?q=visitor', dev.token);
+    expect(all.json().users).toHaveLength(0);
+
+    const set = await call('POST', `/api/admin/users/${fan.user.id}/titles`, dev.token, {
+      prefix: ' 👑 ',
+      suffix: 'the Great',
+    });
+    expect(set.statusCode).toBe(200);
+    const me = await users.get(fan.user.id);
+    expect(me).toMatchObject({ prefix: '👑', suffix: 'the Great' });
+    expect(displayName(me!)).toBe('👑 Fanny the Great');
+
+    // Clearing removes both.
+    await call('POST', `/api/admin/users/${fan.user.id}/titles`, dev.token, {
+      prefix: '',
+      suffix: '',
+    });
+    expect(displayName((await users.get(fan.user.id))!)).toBe('Fanny');
+
+    // Too long, guests and non-developers are refused.
+    const long = await call('POST', `/api/admin/users/${fan.user.id}/titles`, dev.token, {
+      prefix: 'x'.repeat(40),
+      suffix: '',
+    });
+    expect(long.statusCode).toBe(400);
+    const guestTarget = await call(
+      'POST',
+      `/api/admin/users/${visitor.user.id}/titles`,
+      dev.token,
+      {
+        prefix: 'Hi',
+        suffix: '',
+      },
+    );
+    expect(guestTarget.statusCode).toBe(400);
+    const plainAdmin = await staffMember('Adminonly', 'admin');
+    expect((await call('GET', '/api/admin/titles', plainAdmin.token)).statusCode).toBe(403);
+    expect(
+      (
+        await call('POST', `/api/admin/users/${fan.user.id}/titles`, plainAdmin.token, {
+          prefix: 'x',
+          suffix: '',
+        })
+      ).statusCode,
+    ).toBe(403);
   });
 });
 

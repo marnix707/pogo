@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { displayName, MODERATOR_MAX_BAN_MINUTES } from '@pogo/shared';
+import { displayName, MODERATOR_MAX_BAN_MINUTES, TITLE_MAX } from '@pogo/shared';
 import type {
   AdminAuditRow,
   AdminBanRow,
@@ -8,9 +8,11 @@ import type {
   AdminUserRow,
   PublicUser,
   Role,
+  TitleUserRow,
 } from '@pogo/shared';
 import { AvatarFace } from '../components/AvatarFace';
 import { TopoBackground } from '../components/TopoBackground';
+import { PlayerName } from '../components/PlayerName';
 import { Button, Sheet } from '../components/ui';
 import {
   adminLogin,
@@ -22,9 +24,11 @@ import {
   listAudit,
   listBans,
   listRooms,
+  listTitleUsers,
   listUsers,
   setDev,
   setRole,
+  setTitles,
   unban,
 } from './adminApi';
 
@@ -32,7 +36,7 @@ import {
 export const isAdminSite = () =>
   window.location.hostname.startsWith('admin.') || window.location.pathname.startsWith('/admin');
 
-type Tab = 'players' | 'rooms' | 'bans' | 'log';
+type Tab = 'players' | 'titles' | 'rooms' | 'bans' | 'log';
 
 const field =
   'hud min-h-11 w-full bg-panel px-3 text-ink outline-none placeholder:text-muted/50 focus:!border-neon';
@@ -404,6 +408,167 @@ function Log({ onError }: { onError: (m: string) => void }) {
   );
 }
 
+/** Ideas the developer can tap instead of typing. */
+const PREFIX_IDEAS = ['👑', '⭐', '💎', '🔥', 'Sir', 'Lady', 'Dr.', 'VIP'];
+const SUFFIX_IDEAS = ['🐸', '🎲', '🃏', '💫', 'the Great', 'Pro', 'MVP', '♥'];
+
+function TitleSheet({
+  row,
+  onClose,
+  onChanged,
+  onError,
+}: {
+  row: TitleUserRow | null;
+  onClose: () => void;
+  onChanged: () => void;
+  onError: (m: string) => void;
+}) {
+  const [prefix, setPrefix] = useState('');
+  const [suffix, setSuffix] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    setPrefix(row?.prefix ?? '');
+    setSuffix(row?.suffix ?? '');
+  }, [row]);
+  const save = (p: string, s: string) => {
+    if (!row) return;
+    setBusy(true);
+    setTitles(row.id, p, s)
+      .then(() => {
+        onChanged();
+        onClose();
+      })
+      .catch((e: Error) => onError(e.message))
+      .finally(() => setBusy(false));
+  };
+  const chips = (ideas: string[], set: (v: string) => void, testPrefix: string) => (
+    <div className="flex flex-wrap gap-1.5">
+      {ideas.map((i) => (
+        <button
+          key={i}
+          type="button"
+          className="hud px-2 py-1 text-sm"
+          onClick={() => set(i)}
+          data-testid={`${testPrefix}-${i}`}
+        >
+          {i}
+        </button>
+      ))}
+    </div>
+  );
+  return (
+    <Sheet open={!!row} onClose={onClose} title={row ? row.nickname : ''}>
+      {row && (
+        <div className="flex flex-col gap-3" data-testid="title-sheet">
+          <p className="label">Preview</p>
+          <p className="hud px-3 py-2 text-lg font-bold" data-testid="title-preview">
+            <PlayerName
+              name={displayName({ ...row, prefix: prefix.trim(), suffix: suffix.trim() })}
+            />
+          </p>
+          <label className="flex flex-col gap-1">
+            <span className="label">Prefix (before the name)</span>
+            <input
+              className={field}
+              value={prefix}
+              maxLength={TITLE_MAX * 2}
+              onChange={(e) => setPrefix(e.target.value)}
+              data-testid="title-prefix"
+            />
+          </label>
+          {chips(PREFIX_IDEAS, setPrefix, 'idea-prefix')}
+          <label className="flex flex-col gap-1">
+            <span className="label">Suffix (after the name)</span>
+            <input
+              className={field}
+              value={suffix}
+              maxLength={TITLE_MAX * 2}
+              onChange={(e) => setSuffix(e.target.value)}
+              data-testid="title-suffix"
+            />
+          </label>
+          {chips(SUFFIX_IDEAS, setSuffix, 'idea-suffix')}
+          <p className="text-xs opacity-70">
+            At most {TITLE_MAX} characters each. Everybody sees it from the next room they join.
+          </p>
+          <div className="flex gap-2">
+            <Button
+              className="flex-1"
+              disabled={busy}
+              onClick={() => save(prefix.trim(), suffix.trim())}
+              data-testid="title-save"
+            >
+              Save
+            </Button>
+            <Button
+              variant="secondary"
+              className="flex-1"
+              disabled={busy}
+              onClick={() => save('', '')}
+              data-testid="title-clear"
+            >
+              Remove both
+            </Button>
+          </div>
+        </div>
+      )}
+    </Sheet>
+  );
+}
+
+/** Developers only: every registered player, and the prefix / suffix they were given. */
+function Titles({ onError }: { onError: (m: string) => void }) {
+  const [q, setQ] = useState('');
+  const [rows, setRows] = useState<TitleUserRow[]>([]);
+  const [open, setOpen] = useState<TitleUserRow | null>(null);
+  const load = useCallback(() => {
+    listTitleUsers(q)
+      .then(setRows)
+      .catch((e: Error) => onError(e.message));
+  }, [q, onError]);
+  useEffect(() => {
+    const t = setTimeout(load, 250);
+    return () => clearTimeout(t);
+  }, [load]);
+  return (
+    <div className="flex flex-col gap-3">
+      <input
+        className={field}
+        placeholder="Search nickname or email"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        data-testid="titles-search"
+      />
+      <ul className="flex flex-col gap-2" data-testid="titles-users">
+        {rows.map((r) => (
+          <li key={r.id}>
+            <button
+              className="hud flex w-full items-center gap-3 p-2.5 text-left"
+              onClick={() => setOpen(r)}
+              data-testid={`titles-user-${r.nickname}`}
+            >
+              <span className="text-2xl">
+                <AvatarFace avatar={r.avatar} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-bold">
+                  <PlayerName name={displayName(r)} />
+                </span>
+                <span className="block truncate text-xs opacity-70">{r.email}</span>
+              </span>
+              {r.online && <Badge tone="green">online</Badge>}
+            </button>
+          </li>
+        ))}
+        {rows.length === 0 && (
+          <li className="p-4 text-center opacity-70">No registered players found</li>
+        )}
+      </ul>
+      <TitleSheet row={open} onClose={() => setOpen(null)} onChanged={load} onError={onError} />
+    </div>
+  );
+}
+
 export function AdminApp() {
   const [me, setMe] = useState<PublicUser | null>(null);
   const [checking, setChecking] = useState(!!adminToken());
@@ -422,6 +587,7 @@ export function AdminApp() {
 
   const tabs: [Tab, string][] = [
     ['players', 'Players'],
+    ...(me?.isDev ? ([['titles', 'Titles']] as [Tab, string][]) : []),
     ['rooms', 'Rooms'],
     ['bans', 'Bans'],
     ['log', 'Log'],
@@ -474,6 +640,7 @@ export function AdminApp() {
             </p>
           )}
           {tab === 'players' && <Players me={me} onError={showError} />}
+          {tab === 'titles' && me.isDev && <Titles onError={showError} />}
           {tab === 'rooms' && <Rooms onError={showError} />}
           {tab === 'bans' && <Bans onError={showError} />}
           {tab === 'log' && <Log onError={showError} />}

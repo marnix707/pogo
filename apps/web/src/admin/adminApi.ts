@@ -7,6 +7,7 @@ import type {
   AuthResponse,
   PublicUser,
   Role,
+  TitleUserRow,
 } from '@pogo/shared';
 
 // The panel has its own token: on admin.<domain> the storage is separate anyway, and on /admin of the
@@ -78,3 +79,10 @@ export const setRole = (id: string, role: Role) =>
   call('POST', `/api/admin/users/${id}/role`, { role });
 export const setDev = (id: string, isDev: boolean) =>
   call('POST', `/api/admin/users/${id}/dev`, { isDev });
+
+export const listTitleUsers = (q: string) =>
+  call<{ users: TitleUserRow[] }>('GET', `/api/admin/titles?q=${encodeURIComponent(q)}`).then(
+    (r) => r.users,
+  );
+export const setTitles = (id: string, prefix: string, suffix: string) =>
+  call('POST', `/api/admin/users/${id}/titles`, { prefix, suffix });

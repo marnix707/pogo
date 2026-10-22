@@ -13,9 +13,13 @@ export const isStaff = (user: Pick<PublicUser, 'role'> | null | undefined): bool
 /** What follows a developer's name in every string other players see (the UI shows it as a rainbow tag). */
 export const DEV_TAG = ' (dev)';
 
-/** The name other players see: the nickname with "(dev)" behind it for developers. */
-export const displayName = (user: Pick<PublicUser, 'nickname' | 'isDev'>): string =>
-  user.isDev ? `${user.nickname}${DEV_TAG}` : user.nickname;
+/** The name other players see: prefix, nickname and suffix, with "(dev)" behind it for developers. */
+export const displayName = (
+  user: Pick<PublicUser, 'nickname' | 'isDev'> & { prefix?: string | null; suffix?: string | null },
+): string => {
+  const name = [user.prefix, user.nickname, user.suffix].filter(Boolean).join(' ');
+  return user.isDev ? `${name}${DEV_TAG}` : name;
+};
 
 /** Splits a display name into the plain name and whether it carries the developer tag. */
 export const splitDevTag = (name: string): { name: string; dev: boolean } =>
@@ -45,6 +49,18 @@ export type BanInput = z.infer<typeof banSchema>;
 export const roleSchema = z.object({ role: z.enum(ROLES) });
 export const devSchema = z.object({ isDev: z.boolean() });
 
+/** Longest prefix / suffix a developer can hand out. */
+export const TITLE_MAX = 14;
+const titleText = z
+  .string()
+  .trim()
+  // One short line: no control characters (an empty string clears the title).
+  .refine((s) => !/[\u0000-\u001f\u007f]/.test(s), 'Invalid text')
+  .refine((s) => [...s].length <= TITLE_MAX, `At most ${TITLE_MAX} characters`)
+  .default('');
+export const titlesSchema = z.object({ prefix: titleText, suffix: titleText });
+export type TitlesInput = z.infer<typeof titlesSchema>;
+
 export interface AdminUserRow {
   id: string;
   nickname: string;
@@ -54,12 +70,28 @@ export interface AdminUserRow {
   email?: string;
   role: Role;
   isDev: boolean;
+  prefix: string;
+  suffix: string;
   createdAt: number;
   lastSeenAt: number | null;
   online: boolean;
   roomCode: string | null;
   /** Active ban, if any. */
   ban: AdminBanRow | null;
+}
+
+/** A registered player on the developers' titles page. */
+export interface TitleUserRow {
+  id: string;
+  nickname: string;
+  avatar: string;
+  email: string;
+  isDev: boolean;
+  prefix: string;
+  suffix: string;
+  createdAt: number;
+  lastSeenAt: number | null;
+  online: boolean;
 }
 
 export interface AdminBanRow {
