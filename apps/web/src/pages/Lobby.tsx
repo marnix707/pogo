@@ -149,8 +149,8 @@ export function Lobby({
         ) : (
           <>
             {/* The bar above the game card: Invite and the lobby code on the left, then Public / Private and the settings button. */}
-            <Card className="hud-ticks !p-2">
-              <div className="flex items-center gap-2" data-testid="lobby-toolbar">
+            <Card className="hud-ticks flex h-16 items-center !px-2 !py-0">
+              <div className="flex w-full items-center gap-2" data-testid="lobby-toolbar">
                 <Button
                   variant="secondary"
                   aria-label="Invite friends"
