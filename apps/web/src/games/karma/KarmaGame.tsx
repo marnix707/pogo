@@ -396,6 +396,8 @@ function describeEvent(
     parts.push(ev.failed ? `${who} tried ${shown}, too low!` : `${who} played ${shown}`);
   }
   if (ev.burned) parts.push('burned 🔥');
+  // (an odd number of jokers turns the direction of play around)
+  if (ev.cards.filter(karma.isJoker).length % 2 === 1) parts.push('direction reversed ↺');
   if (extra.again) parts.push(who === 'You' ? 'go again' : 'plays again');
   else if (ev.skipped.length > 0) parts.push(`${ev.skipped.map(nameOf).join(', ')} skipped`);
   if (ev.out) parts.push('out!');
@@ -1196,6 +1198,16 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
               <span className="label absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-onbg">
                 {`Pile ${shownPile.length}`}
                 {view.burned > 0 && ` · 🔥 ${view.burned}`}
+                {/* With jokers the direction of play can turn around: show which way it goes. */}
+                {view.rules.includes('jokers') && (
+                  <span
+                    data-testid="karma-direction"
+                    data-direction={view.direction}
+                    className="text-base leading-none text-neon"
+                  >
+                    {view.direction === 1 ? ' · ↻' : ' · ↺'}
+                  </span>
+                )}
               </span>
             </div>
           </div>

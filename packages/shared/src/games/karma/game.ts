@@ -7,7 +7,15 @@ import type {
   MoveValidation,
 } from '../../game/types';
 import type { Rng } from '../../game/rng';
-import { DECK_SIZE, cardLabel, rankOf, shuffledDeck, suitOf } from './cards';
+import {
+  DECK_SIZE,
+  JOKER_COUNT,
+  JOKER_RANK,
+  cardLabel,
+  rankOf,
+  shuffledDeck,
+  suitOf,
+} from './cards';
 import type { Card } from './cards';
 import { BIG_HAND_SIZE, HAND_SIZE, MAX_PLAYERS, MIN_PLAYERS, SLOTS } from './types';
 import { KARMA_RULES, hasRule, ruleById, rulesIntroMs } from './rules';
@@ -25,7 +33,7 @@ const cardSchema = z
   .number()
   .int()
   .min(0)
-  .max(DECK_SIZE - 1);
+  .max(DECK_SIZE + JOKER_COUNT - 1);
 
 export const karmaMoveSchema: z.ZodType<KarmaMove, z.ZodTypeDef, unknown> = z.discriminatedUnion(
   'type',
@@ -81,24 +89,26 @@ const OK: MoveValidation = { ok: true };
 
 // ---- rules helpers (exported for the UI) ----------------------------------------------------
 
-/** The card the next play is measured against: the topmost card that is not a (transparent) 3. */
+/** The card the next play is measured against: the topmost card that is not a transparent 3 or joker. */
 export function effectiveTop(pile: readonly Card[]): Card | undefined {
   for (let i = pile.length - 1; i >= 0; i--) {
-    if (rankOf(pile[i] as Card) !== 3) return pile[i];
+    const rank = rankOf(pile[i] as Card);
+    if (rank !== 3 && rank !== JOKER_RANK) return pile[i];
   }
   return undefined;
 }
 
 /**
  * Can a card of this rank be played on the pile?
- * - 2 and 10 can always be played (a 10 also burns the pile); anything may follow a 2.
+ * - 2 and 10 can always be played (a 10 also burns the pile); anything may follow a 2. A joker
+ *   can always be played too (it turns the direction of play around) and is invisible like a 3.
  * - A 3 is invisible: it can always be played and the card beneath it still counts
  *   (7, 3: the next player must still play 7 or lower). A pile of only 3s counts as empty.
  * - After a 7 the next card must be 7 or LOWER (the "lower than or equal" variant): 3-7, a 2 or a 10.
  * - Otherwise the card must be equal to or higher than the top card.
  */
 export function canPlayRank(pile: readonly Card[], rank: number): boolean {
-  if (rank === 2 || rank === 3 || rank === 10) return true;
+  if (rank === 2 || rank === 3 || rank === 10 || rank === JOKER_RANK) return true;
   const top = effectiveTop(pile);
   if (top === undefined) return true;
   const topRank = rankOf(top);
@@ -158,7 +168,7 @@ export function findStarter(players: readonly KarmaPlayerState[]): number {
 
 /** Deals fresh hands for these players (shuffles with the injected Rng). */
 function deal(playerIds: readonly string[], rules: readonly string[], rng: Rng) {
-  const deck = shuffledDeck(rng);
+  const deck = shuffledDeck(rng, hasRule(rules, 'jokers'));
   const take = (n: number) => deck.splice(deck.length - n, n);
   const seats: KarmaPlayerState[] = playerIds.map((id) => ({
     id,
@@ -211,6 +221,7 @@ function createInitialState(players: GamePlayer[], options: KarmaOptions, rng: R
     rules,
     pick: picker ? { playerId: picker, choices: KARMA_RULES.map((r) => r.id) } : null,
     round: options.round,
+    direction: 1,
     reload: null,
   };
 }
@@ -293,7 +304,7 @@ function validateMove(state: KarmaState, playerId: string, move: KarmaMove): Mov
 function nextActive(state: KarmaState, from: number): number {
   const n = state.players.length;
   for (let step = 1; step <= n; step++) {
-    const idx = (from + step) % n;
+    const idx = (((from + state.direction * step) % n) + n) % n;
     if (!state.players[idx]!.out) return idx;
   }
   return from;
@@ -326,9 +337,17 @@ function event(
 /**
  * After a move: mark the player out if empty, end the game if one player is left, pass the turn.
  * `skips` is the number of 8s just played: each skips one player. You cannot skip yourself, so when
- * everyone else is skipped (always the case with two players) you simply go again.
+ * everyone else is skipped (always the case with two players) you simply go again. `jokers` is the
+ * number of jokers just played (each reverses the direction of play).
  */
-function advance(state: KarmaState, idx: number, ev: KarmaEvent, goAgain: boolean, skips = 0) {
+function advance(
+  state: KarmaState,
+  idx: number,
+  ev: KarmaEvent,
+  goAgain: boolean,
+  skips = 0,
+  jokers = 0,
+) {
   const me = state.players[idx]!;
   if (
     me.hand.length === 0 &&
@@ -345,7 +364,10 @@ function advance(state: KarmaState, idx: number, ev: KarmaEvent, goAgain: boolea
     state.phase = 'over';
     return;
   }
-  if (goAgain && !me.out) {
+  // Jokers turn the direction around (one per joker); with only two players left that means you
+  // play again, like an 8.
+  if (jokers % 2 === 1) state.direction = state.direction === 1 ? -1 : 1;
+  if ((goAgain || (jokers % 2 === 1 && remaining.length === 2)) && !me.out) {
     state.turn = idx;
     return;
   }
@@ -384,18 +406,20 @@ function playToPile(state: KarmaState, idx: number, cards: Card[], kind: 'play' 
   const pendingSkips = state.reload?.skips ?? 0;
   state.reload = null;
   const eights = pendingSkips + (!burn && (rank === 8 || repeatsEight) ? cards.length : 0);
+  const jokers = rank === JOKER_RANK ? cards.length : 0;
   const ev = event(state, me.id, kind, cards, { burned: burn });
   // Fast reload: a drawn card of the rank just played may be played too, before the turn passes.
   if (
     hasRule(state.rules, 'fastReload') &&
     kind === 'play' &&
     !burn &&
+    rank !== JOKER_RANK &&
     drawn.some((c) => rankOf(c) === rank)
   ) {
     state.reload = { rank, skips: eights };
     return; // the same player is up again
   }
-  advance(state, idx, ev, burn, eights);
+  advance(state, idx, ev, burn, eights, jokers);
 }
 
 function applyMove(state: KarmaState, playerId: string, move: KarmaMove, rng: Rng): KarmaState {
@@ -535,6 +559,7 @@ function getPlayerView(state: KarmaState, playerId: string): KarmaView {
     rules: [...state.rules],
     pick: state.pick,
     round: state.round,
+    direction: state.direction,
     reload: state.reload ? { rank: state.reload.rank } : null,
     leftovers: left
       ? { playerId: left.id, hand: [...left.hand], faceDown: [...left.faceDown] }
@@ -610,7 +635,7 @@ function autoMove(state: KarmaState, playerId: string, rng: Rng): AutoMove<Karma
       const source = (zone === 'hand' ? me.hand : me.faceUp).filter((c): c is Card => c !== null);
       const ranks = [...new Set(source.map(rankOf))].filter((r) => canPlayRank(state.pile, r));
       // Specials are worth keeping: 3..9, J..A ascending, then 2, then 10.
-      const priority = (r: number) => (r === 10 ? 200 : r === 2 ? 100 : r);
+      const priority = (r: number) => (r === JOKER_RANK ? 300 : r === 10 ? 200 : r === 2 ? 100 : r);
       ranks.sort((a, b) => priority(a) - priority(b));
       // Always playing the very lowest card can circle forever (a 7 that nobody can follow is picked up
       // and led again, round and round). A little randomness breaks such cycles: 0 stuck games in

@@ -65,6 +65,8 @@ export interface KarmaState {
   pick: KarmaPick | null;
   /** 1 for the first game of a room, then one more for every game after it. */
   round: number;
+  /** Direction of play: 1 = clockwise (up the seat order), -1 = counter clockwise (jokers turn it around). */
+  direction: 1 | -1;
   /**
    * Fast reload: the player to move has just drawn a card of the rank they played and may play
    * it before the turn passes (only cards of `rank`, or skip). `skips` = 8s played so far this turn.
@@ -135,6 +137,8 @@ export interface KarmaView {
   rules: string[];
   pick: KarmaPick | null;
   round: number;
+  /** 1 = clockwise, -1 = counter clockwise. */
+  direction: 1 | -1;
   /** Fast reload: only cards of this rank may be played now (or skip). */
   reload: { rank: number } | null;
   /** The loser's remaining cards, only once the finish order is complete (never during play). */

@@ -25,7 +25,7 @@ function table(
   extra: Partial<
     Pick<
       KarmaState,
-      'pile' | 'stock' | 'turn' | 'phase' | 'finishOrder' | 'rules' | 'mode' | 'pick'
+      'pile' | 'stock' | 'turn' | 'phase' | 'finishOrder' | 'rules' | 'mode' | 'pick' | 'direction'
     >
   > = {},
 ): KarmaState {
@@ -52,6 +52,7 @@ function table(
     rules: [],
     pick: null,
     round: 1,
+    direction: 1,
     reload: null,
     ...extra,
   };
@@ -985,7 +986,7 @@ describe('wire schema', () => {
     for (const m of [
       { type: 'play', cards: [] },
       { type: 'play', cards: [1, 2, 3, 4, 5] },
-      { type: 'play', cards: [52] },
+      { type: 'play', cards: [54] },
       { type: 'play', cards: [-1] },
       { type: 'play', cards: [1.5] },
       { type: 'playDown', index: 3 },
@@ -1112,8 +1113,8 @@ describe('modes and rules', () => {
     expect(s.players[0]!.hand).toHaveLength(4);
   });
 
-  it('the extra rules are big hand, 3 ate 8 and fast reload', () => {
-    expect(KARMA_RULES.map((r) => r.id)).toEqual(['bigHand', 'echoThree', 'fastReload']);
+  it('the extra rules are big hand, 3 ate 8, fast reload and joker returns', () => {
+    expect(KARMA_RULES.map((r) => r.id)).toEqual(['bigHand', 'echoThree', 'fastReload', 'jokers']);
   });
 
   it('3 ate 8: a 3 repeats the 8 beneath it (skips the next player again)', () => {
@@ -1159,7 +1160,7 @@ describe('modes and rules', () => {
       expect(s.round).toBe(2);
       expect(s.pick).toEqual({
         playerId: 'p2',
-        choices: ['bigHand', 'echoThree', 'fastReload'],
+        choices: ['bigHand', 'echoThree', 'fastReload', 'jokers'],
       });
       expect(s.rules).toEqual(['bigHand']); // carried over, ready to be switched
       expect(game.getCurrentPlayers(s)).toEqual(['p2']);
@@ -1309,5 +1310,111 @@ describe('fast reload', () => {
       type: 'play',
       cards: [card(9, 2)],
     });
+  });
+});
+
+describe('joker returns', () => {
+  const JOKER_A = 52;
+  const JOKER_B = 53;
+  const three = (hand1: number[], extra: Parameters<typeof table>[1] = {}) =>
+    table(
+      [
+        { hand: hand1 },
+        { hand: [card(5)], faceUp: [card(6), null, null] },
+        { hand: [card(5, 1)], faceUp: [card(6, 1), null, null] },
+      ],
+      { rules: ['jokers'], ...extra },
+    );
+
+  it('adds two jokers to the deck only when the rule is on', () => {
+    const count = (options: KarmaOptions) => {
+      const s = game.createInitialState(seat(3), options, createSeededRng(7));
+      const all = [
+        ...s.stock,
+        ...s.players.flatMap((p) => [...p.hand, ...p.faceUp, ...p.faceDown]),
+      ] as number[];
+      return { n: all.length, jokers: all.filter((c) => c >= 52).sort() };
+    };
+    expect(count({ mode: 'party', rules: ['jokers'], round: 1 })).toEqual({
+      n: 54,
+      jokers: [JOKER_A, JOKER_B],
+    });
+    expect(count({ mode: 'normal', rules: [], round: 1 })).toEqual({ n: 52, jokers: [] });
+    expect(cardLabel(JOKER_A)).toBe('Joker');
+  });
+
+  it('a joker plays on anything and is invisible: the card beneath still counts', () => {
+    expect(canPlayRank([card(14)], 15)).toBe(true);
+    expect(canPlayRank([card(7)], 15)).toBe(true);
+    // 7, joker: the next play must still be 7 or lower
+    expect(canPlayRank([card(7), JOKER_A], 8)).toBe(false);
+    expect(canPlayRank([card(7), JOKER_A], 5)).toBe(true);
+    // a pile of only jokers counts as empty
+    expect(canPlayRank([JOKER_A, JOKER_B], 4)).toBe(true);
+    const s = three([JOKER_A, card(4)], { pile: [card(13)] });
+    expect(game.validateMove(s, 'p1', { type: 'play', cards: [JOKER_A] }).ok).toBe(true);
+  });
+
+  it('playing a joker turns the direction around', () => {
+    const s = three([JOKER_A, card(4)], { pile: [card(9)] });
+    const after = game.applyMove(s, 'p1', { type: 'play', cards: [JOKER_A] }, rng);
+    expect(after.direction).toBe(-1);
+    expect(after.turn).toBe(2); // counter clockwise: p3 is up
+    expect(game.getPlayerView(after, 'p2').direction).toBe(-1);
+    // a second joker turns it back
+    const s2 = { ...after, players: structuredClone(after.players) };
+    s2.players[2]!.hand = [JOKER_B];
+    const back = game.applyMove(s2, 'p3', { type: 'play', cards: [JOKER_B] }, rng);
+    expect(back.direction).toBe(1);
+    expect(back.turn).toBe(0);
+  });
+
+  it('with two players left a joker means you play again, like an 8', () => {
+    const s = table([{ hand: [JOKER_A, card(4)] }, { hand: [card(5)] }], {
+      rules: ['jokers'],
+      pile: [card(9)],
+    });
+    const after = game.applyMove(s, 'p1', { type: 'play', cards: [JOKER_A] }, rng);
+    expect(after.turn).toBe(0);
+    expect(after.direction).toBe(-1);
+    // also when a third player is already out
+    const out = table([{ hand: [JOKER_A, card(4)] }, { out: true }, { hand: [card(5)] }], {
+      rules: ['jokers'],
+      pile: [card(9)],
+      finishOrder: ['p2'],
+    });
+    expect(game.applyMove(out, 'p1', { type: 'play', cards: [JOKER_A] }, rng).turn).toBe(0);
+  });
+
+  it('skips players and finished players in the new direction', () => {
+    const s = table(
+      [{ hand: [JOKER_A, card(4)] }, { out: true }, { hand: [card(5)] }, { hand: [card(6)] }],
+      { rules: ['jokers'], pile: [card(9)], finishOrder: ['p2'] },
+    );
+    // counter clockwise from p1: p2 is out, so p4 is next
+    expect(game.applyMove(s, 'p1', { type: 'play', cards: [JOKER_A] }, rng).turn).toBe(3);
+  });
+
+  it('an 8 skips in the current direction, and two jokers at once cancel out', () => {
+    const reversed = three([card(8), card(4)], { pile: [card(6)], direction: -1 });
+    // counter clockwise from p1 the next is p3, who is skipped: p2 plays
+    const eight = game.applyMove(reversed, 'p1', { type: 'play', cards: [card(8)] }, rng);
+    expect(eight.turn).toBe(1);
+    expect(eight.lastEvent!.skipped).toEqual(['p3']);
+    const both = three([JOKER_A, JOKER_B, card(4)], { pile: [card(9)] });
+    const after = game.applyMove(both, 'p1', { type: 'play', cards: [JOKER_A, JOKER_B] }, rng);
+    expect(after.direction).toBe(1);
+    expect(after.turn).toBe(1);
+  });
+
+  it('a joker never triggers a fast reload, and the computer plays it last', () => {
+    const s = three([JOKER_A, card(4)], {
+      stock: [JOKER_B, card(2)],
+      rules: ['jokers', 'fastReload'],
+    });
+    const after = game.applyMove(s, 'p1', { type: 'play', cards: [JOKER_A] }, rng);
+    expect(after.reload).toBeNull();
+    const hand = three([card(4, 2), JOKER_B], { pile: [card(3)] });
+    expect(game.autoMove!(hand, 'p1', rng).move).toEqual({ type: 'play', cards: [card(4, 2)] });
   });
 });

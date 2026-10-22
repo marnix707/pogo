@@ -235,10 +235,10 @@ test('epic mode switches on every rule from the start', async ({ browser }) => {
   await expect(page.getByTestId('karma-mode-bubble')).toBeVisible();
   await page.getByTestId('karma-rule-echoThree').click();
   await expect(page.getByTestId('karma-rule-bubble')).toContainText('repeats the card beneath');
-  await expect(page.getByTestId('karma-active-rules').locator('li')).toHaveCount(3);
+  await expect(page.getByTestId('karma-active-rules').locator('li')).toHaveCount(4);
   await readyAll(page);
   await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
   await page.getByRole('button', { name: 'Rules' }).click();
-  await expect(page.getByTestId('rules-extra').locator('ul > li')).toHaveCount(3);
+  await expect(page.getByTestId('rules-extra').locator('ul > li')).toHaveCount(4);
   await me.context.close();
 });

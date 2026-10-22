@@ -53,6 +53,13 @@ export const KARMA_RULES: readonly KarmaRule[] = [
     description:
       'Draw a card of the rank you just played? Play it too, before the next turn. Press Skip to pass.',
   },
+  {
+    id: 'jokers',
+    name: 'Joker returns',
+    emoji: '🃏',
+    description:
+      'Two jokers join the deck. A joker plays on anything and turns the direction of play around (with two players you simply play again).',
+  },
 ];
 
 export const ruleById = (id: string): KarmaRule | undefined => KARMA_RULES.find((r) => r.id === id);

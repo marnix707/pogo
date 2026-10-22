@@ -18,6 +18,7 @@ export const cardBackUrl = byName['back']!;
 
 /** The artwork of a card number (0-51). */
 export function cardFaceUrl(card: number): string {
+  if (karma.isJoker(card)) return byName['joker']!;
   const rank = karma.rankOf(card);
   return byName[`${RANK_NAME[rank] ?? rank}${SUIT_LETTER[karma.suitOf(card)]}`]!;
 }
