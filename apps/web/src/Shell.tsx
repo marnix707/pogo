@@ -159,6 +159,8 @@ export function Shell({
         messages={messages}
         markRead={markRead}
         onSettings={openSettings}
+        lobbyList={lobby}
+        watchLobby={watchLobby}
       />
     );
   } else {

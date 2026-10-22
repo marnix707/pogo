@@ -1,14 +1,15 @@
 import { PlayerName } from '../components/PlayerName';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BOT_AVATAR, BOT_NAMES, getGame } from '@pogo/shared';
-import type { ChatMessage, RoomView } from '@pogo/shared';
+import type { ChatMessage, PublicRoomSummary, RoomView } from '@pogo/shared';
 import { ChevronIcon, CrownIcon, LockIcon, SlidersIcon } from '../components/icons';
 import { ChatPanel } from '../components/ChatPanel';
 import { GameCard } from '../components/GameCard';
+import { PlayScreen } from '../components/PlayScreen';
 import { Avatar, Button, Card, SectionLabel, Toggle } from '../components/ui';
 import { TileButton } from '../components/TopBar';
 import { useToast } from '../components/Toast';
-import { gameUis, getGameUi } from '../games/registry';
+import { getGameUi } from '../games/registry';
 import { morphFrom, takeGameCardRect } from '../lib/cardMorph';
 import type { RoomApi } from '../lib/api';
 import { useCountdown } from '../lib/useCountdown';
@@ -71,6 +72,8 @@ export function Lobby({
   messages,
   markRead,
   onSettings,
+  lobbyList,
+  watchLobby,
 }: {
   room: RoomView;
   me: string;
@@ -78,6 +81,9 @@ export function Lobby({
   messages: ChatMessage[];
   markRead: () => void;
   onSettings: () => void;
+  /** The open public games (for the game list the host sees after tapping the game card). */
+  lobbyList: PublicRoomSummary[] | null;
+  watchLobby: () => () => void;
 }) {
   const toast = useToast();
   const isHost = room.hostId === me;
@@ -137,6 +143,46 @@ export function Lobby({
   return (
     <div className="menu mx-auto flex min-h-dvh max-w-md flex-col">
       <main className="flex flex-1 flex-col gap-5 px-4 pb-40 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
+        {/* The bar above the game card: Invite and the lobby code on the left, then Public / Private and the settings button. */}
+        <Card className="hud-ticks !p-2">
+          <div className="flex items-center gap-2" data-testid="lobby-toolbar">
+            <Button
+              variant="secondary"
+              aria-label="Invite friends"
+              className="min-h-10 shrink-0 !px-3"
+              onClick={() => void share()}
+            >
+              Invite
+            </Button>
+            {/* A public lobby shows its code next to Invite. */}
+            {room.visibility === 'public' && (
+              <span className="label min-w-0 truncate text-[10px] text-muted">
+                Lobby code:{' '}
+                <span
+                  data-testid="room-code"
+                  className="select-all text-sm font-bold leading-none tracking-[0.1em] text-neon max-[380px]:text-xs max-[380px]:tracking-normal"
+                >
+                  {room.code}
+                </span>
+              </span>
+            )}
+            <span className="flex-1" />
+            <span
+              data-testid="room-visibility"
+              className={`label shrink-0 rounded border px-1.5 py-0.5 text-[10px] ${
+                room.visibility === 'public'
+                  ? 'border-accent text-accent'
+                  : 'border-edge/50 text-muted'
+              }`}
+            >
+              {room.visibility === 'public' ? 'Public' : 'Private'}
+            </span>
+            <TileButton onClick={onSettings} aria-label="Settings" data-testid="settings-button">
+              <SlidersIcon className="h-5 w-5" />
+            </TileButton>
+          </div>
+        </Card>
+
         {/* The game card from the Play screen, now the top of the lobby. The host taps it to pick another
             game (everybody stays in the room); the rest of the lobby drops in underneath it. */}
         {ui && (
@@ -150,68 +196,27 @@ export function Lobby({
         )}
 
         {choosing ? (
-          <section
-            aria-label="Choose a game"
-            className="lobby-stack flex flex-col gap-3"
-            data-testid="game-list"
-          >
-            {gameUis
-              .filter((g) => g.id !== room.gameId)
-              .map((g) => (
-                <GameCard
-                  key={g.id}
-                  ui={g}
-                  data-testid={`pick-game-${g.id}`}
-                  onClick={() => {
-                    setChoosing(false);
-                    void api.setGame(g.id);
-                  }}
-                />
-              ))}
-          </section>
+          /* The very same screen as after Play: join with a code on top, the games, the open games below. */
+          <div className="lobby-stack flex flex-col gap-5" data-testid="game-list">
+            <PlayScreen
+              api={api}
+              lobby={lobbyList}
+              watchLobby={watchLobby}
+              currentId={room.gameId}
+              gameIdPrefix="pick-game"
+              tooBigFor={(id) => room.members.length > (getGame(id)?.maxPlayers ?? Infinity)}
+              onPick={(g) => {
+                if (g.id === room.gameId) {
+                  setChoosing(false);
+                  return;
+                }
+                setChoosing(false);
+                return api.setGame(g.id);
+              }}
+            />
+          </div>
         ) : (
           <div className="lobby-stack flex flex-col gap-5">
-            {/* Under the game card: Invite and the code on the left, then Public / Private and the settings button. */}
-            <Card className="hud-ticks !p-2">
-              <div className="flex items-center gap-2" data-testid="lobby-toolbar">
-                <Button
-                  variant="secondary"
-                  aria-label="Invite friends"
-                  className="min-h-10 shrink-0 !px-3"
-                  onClick={() => void share()}
-                >
-                  Invite
-                </Button>
-                {/* A public lobby shows its code next to Invite. */}
-                {room.visibility === 'public' && (
-                  <span
-                    data-testid="room-code"
-                    className="min-w-0 select-all text-sm font-bold leading-none tracking-[0.1em] text-neon max-[380px]:text-xs max-[380px]:tracking-normal"
-                  >
-                    {room.code}
-                  </span>
-                )}
-                <span className="flex-1" />
-                <span
-                  data-testid="room-visibility"
-                  className={`label shrink-0 rounded border px-1.5 py-0.5 text-[10px] ${
-                    room.visibility === 'public'
-                      ? 'border-accent text-accent'
-                      : 'border-edge/50 text-muted'
-                  }`}
-                >
-                  {room.visibility === 'public' ? 'Public' : 'Private'}
-                </span>
-                <TileButton
-                  onClick={onSettings}
-                  aria-label="Settings"
-                  data-testid="settings-button"
-                >
-                  <SlidersIcon className="h-5 w-5" />
-                </TileButton>
-              </div>
-            </Card>
-
             {/* The settings fold in and out (folded by default: a new lobby, a new game, a new visit). */}
             <section aria-label="Lobby settings">
               <button
@@ -250,7 +255,7 @@ export function Lobby({
                     {/* Block 1: the game mode (when the game has one) with the turn timer underneath. */}
                     {(ui?.LobbyOptions || limits) && (
                       <section aria-label="Game settings">
-                        <SectionLabel>{ui?.LobbyOptions ? 'Game mode' : 'Settings'}</SectionLabel>
+                        {ui?.LobbyOptions && <SectionLabel>Game mode</SectionLabel>}
                         <Card className="flex flex-col gap-5">
                           {ui?.LobbyOptions && (
                             <ui.LobbyOptions

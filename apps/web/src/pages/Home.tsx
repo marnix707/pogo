@@ -9,65 +9,13 @@ import { SlidersIcon, TrophyIcon } from '../components/icons';
 import { LeaderboardSheet } from '../components/LeaderboardSheet';
 import { ProfileSheet } from '../components/ProfileSheet';
 import type { ProfileMode } from '../components/ProfileSheet';
-import { GameCard } from '../components/GameCard';
+import { PlayScreen } from '../components/PlayScreen';
 import { Button, SectionLabel } from '../components/ui';
 import { rememberGameCard } from '../lib/cardMorph';
 import { TileButton } from '../components/TopBar';
-import { gameUis, getGameUi } from '../games/registry';
+import { getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
 import { AvatarFace } from '../components/AvatarFace';
-
-function OpenGame({
-  room,
-  disabled,
-  onJoin,
-}: {
-  room: PublicRoomSummary;
-  disabled: boolean;
-  onJoin: () => void;
-}) {
-  const ui = getGameUi(room.gameId);
-  return (
-    <li data-testid={`open-game-${room.code}`} className="hud flex items-center gap-3 px-3 py-2.5">
-      <span
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px] border-2 border-neon bg-panel2 text-2xl"
-        aria-hidden
-      >
-        <AvatarFace avatar={room.hostAvatar} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="truncate font-bold">
-          <PlayerName name={room.hostNickname} />
-          &apos;s game
-        </div>
-        <div className="label flex items-center gap-2 text-[10px] text-muted">
-          <span>
-            {ui?.emoji} {room.gameName}
-          </span>
-          <span className="flex gap-1" aria-label={`${room.players} of ${room.maxPlayers} players`}>
-            {Array.from({ length: Math.min(room.maxPlayers, 8) }, (_, i) => (
-              <span
-                key={i}
-                className={`h-2 w-2 rounded-full ${i < room.players ? 'bg-accent' : 'border border-muted/60'}`}
-              />
-            ))}
-          </span>
-          <span>
-            {room.players}/{room.maxPlayers}
-          </span>
-        </div>
-      </div>
-      <Button
-        data-testid={`lobby-join-${room.code}`}
-        disabled={disabled}
-        className="min-h-11 !px-4"
-        onClick={onJoin}
-      >
-        Join
-      </Button>
-    </li>
-  );
-}
 
 export function Home({
   user,
@@ -116,28 +64,6 @@ export function Home({
   const [profileOpen, setProfileOpen] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
   const [profileMode, setProfileMode] = useState<ProfileMode>('main');
-  const [code, setCode] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [filter, setFilter] = useState<string>('all');
-
-  // Live-update the open games while this screen is showing.
-  useEffect(() => watchLobby(), [watchLobby]);
-
-  const openGames = useMemo(
-    () => (lobby ?? []).filter((r) => filter === 'all' || r.gameId === filter),
-    [lobby, filter],
-  );
-
-  async function run(p: Promise<unknown>) {
-    setBusy(true);
-    await p;
-    setBusy(false);
-  }
-
-  function join(e: FormEvent) {
-    e.preventDefault();
-    if (code.trim().length >= 4) void run(api.join(code));
-  }
 
   // The wordmark and toad fill the free height between the header and the buttons: measure it and
   // scale both down (never up) so the whole menu always fits the screen without scrolling.
@@ -156,8 +82,6 @@ export function Home({
   const STAGE_NEED = 340;
   const fit = stageH > 0 ? Math.min(1, stageH / STAGE_NEED) : 1;
   const stageScale = { frog: 4.375 * fit, word: 11 * fit };
-
-  const blocked = busy || !api.online;
 
   return (
     <div
@@ -236,100 +160,16 @@ export function Home({
         )}
 
         {screen === 'play' && (
-          <>
-            <form onSubmit={join} className="hud flex gap-2 p-3" aria-label="Join with a code">
-              <input
-                data-testid="home-join-code"
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-                placeholder="ROOM CODE"
-                maxLength={8}
-                autoCapitalize="characters"
-                autoCorrect="off"
-                spellCheck={false}
-                aria-label="Room code"
-                className="hud min-h-12 min-w-0 flex-1 bg-panel px-2 text-center text-lg font-bold uppercase tracking-[0.2em] text-ink outline-none placeholder:text-muted/40 focus:!border-neon"
-              />
-              <Button
-                data-testid="home-join-submit"
-                disabled={blocked || code.length < 4}
-                className="!min-h-12 !px-4"
-              >
-                Join
-              </Button>
-            </form>
-
-            <section aria-label="Games">
-              <SectionLabel>Games</SectionLabel>
-              <div className="flex flex-col gap-3">
-                {gameUis.map((g) => (
-                  <GameCard
-                    key={g.id}
-                    ui={g}
-                    data-testid={`home-game-${g.id}`}
-                    disabled={blocked}
-                    // The card morphs to the top of the lobby (lib/cardMorph.ts).
-                    onClick={() => {
-                      const el = document.querySelector(`[data-testid="home-game-${g.id}"]`);
-                      rememberGameCard(el);
-                      void run(api.create(g.id));
-                    }}
-                  />
-                ))}
-              </div>
-            </section>
-            <section aria-label="Open games">
-              <SectionLabel
-                right={
-                  <span data-testid="open-games-count" className="text-onbg">
-                    {openGames.length}
-                  </span>
-                }
-              >
-                Open games
-              </SectionLabel>
-              {gameUis.length > 1 && (
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {[{ id: 'all', name: 'All' }, ...gameUis].map((g) => (
-                    <button
-                      key={g.id}
-                      aria-pressed={filter === g.id}
-                      onClick={() => setFilter(g.id)}
-                      className={`label min-h-9 rounded-md border-2 px-3 ${
-                        filter === g.id
-                          ? 'border-accent bg-accent text-accentink'
-                          : 'border-onbg/40 text-onbg'
-                      }`}
-                    >
-                      {g.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {lobby === null ? (
-                <p className="label text-onbg/70">Looking for games…</p>
-              ) : openGames.length === 0 ? (
-                <div
-                  className="hud p-4 text-center text-sm text-muted"
-                  data-testid="open-games-empty"
-                >
-                  No open games right now. Pick a game above to open a lobby, and switch on{' '}
-                  <b className="text-ink">Public room</b> there so others can join.
-                </div>
-              ) : (
-                <ul className="flex flex-col gap-2">
-                  {openGames.map((r) => (
-                    <OpenGame
-                      key={r.code}
-                      room={r}
-                      disabled={blocked}
-                      onJoin={() => void run(api.join(r.code))}
-                    />
-                  ))}
-                </ul>
-              )}
-            </section>
-          </>
+          <PlayScreen
+            api={api}
+            lobby={lobby}
+            watchLobby={watchLobby}
+            // The card morphs to the top of the lobby (lib/cardMorph.ts).
+            onPick={(g, el) => {
+              rememberGameCard(el);
+              return api.create(g.id);
+            }}
+          />
         )}
       </main>
 

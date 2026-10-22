@@ -19,7 +19,9 @@ test('the host switches the game in the lobby and everybody stays', async ({ bro
   // The host taps the game card at the top: the other games drop in; picking one switches the lobby.
   await host.page.getByTestId('lobby-game-card').click();
   await expect(host.page.getByTestId('game-list')).toBeVisible();
-  await expect(host.page.getByTestId('pick-game-karma')).toHaveCount(0); // the current game is the top card
+  // It is the same screen as after Play: the code form, all games, and the open games underneath.
+  await expect(host.page.getByTestId('home-join-code')).toBeVisible();
+  await expect(host.page.getByRole('region', { name: 'Open games' })).toBeVisible();
   await host.page.getByTestId('pick-game-lastcard').click();
 
   // Same room, same people, new game.

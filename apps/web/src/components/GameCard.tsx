@@ -15,10 +15,12 @@ export const GameCard = forwardRef<
     disabled?: boolean;
     /** A small ▾ / ▴ in the corner: this card opens / closes the game list. */
     chevron?: 'down' | 'up';
+    /** Greyed out (still tappable, so the caller can say why it cannot be chosen). */
+    dim?: boolean;
     className?: string;
     'data-testid'?: string;
   }
->(function GameCard({ ui, onClick, disabled, chevron, className = '', ...rest }, ref) {
+>(function GameCard({ ui, onClick, disabled, chevron, dim, className = '', ...rest }, ref) {
   const body = (
     <>
       {ui.logo ? (
@@ -52,12 +54,13 @@ export const GameCard = forwardRef<
       )}
     </>
   );
-  const classes = `hud hud-ticks relative flex w-full items-center gap-4 bg-panel p-4 text-left text-ink ${className}`;
+  const classes = `hud hud-ticks relative flex w-full items-center gap-4 bg-panel p-4 text-left text-ink ${dim ? 'opacity-40 grayscale' : ''} ${className}`;
   return onClick ? (
     <button
       ref={ref as React.Ref<HTMLButtonElement>}
       type="button"
       disabled={disabled}
+      aria-disabled={dim || undefined}
       onClick={onClick}
       className={`${classes} transition active:scale-[0.99] disabled:opacity-50`}
       {...rest}

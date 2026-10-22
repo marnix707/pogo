@@ -781,3 +781,40 @@ html.results-open .safe-top-scrim {
     animation: none;
   }
 }
+
+/* "Party size too big!": floating text, no background, rises a little and fades out. */
+@keyframes float-note {
+  0% {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-0.4rem);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-1.4rem);
+  }
+}
+.float-note {
+  animation: float-note 1.5s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .float-note {
+    animation: float-note-fade 1.5s linear forwards;
+  }
+  @keyframes float-note-fade {
+    0%,
+    70% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+}
