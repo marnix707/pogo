@@ -19,9 +19,16 @@ export function App() {
       .then(setSession)
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
-    // Browsers only start audio after a gesture.
-    window.addEventListener('pointerdown', unlockAudio, { once: true });
-    return () => window.removeEventListener('pointerdown', unlockAudio);
+    // Browsers only start audio after a gesture. Never on a tap in a text field: starting audio while
+    // the keyboard is opening can make iOS drop the keyboard, so the unlock waits for the next tap.
+    const unlock = (e: PointerEvent) => {
+      if ((e.target as Element | null)?.closest?.('input, textarea, select, [contenteditable]'))
+        return;
+      unlockAudio();
+      window.removeEventListener('pointerdown', unlock);
+    };
+    window.addEventListener('pointerdown', unlock);
+    return () => window.removeEventListener('pointerdown', unlock);
   }, []);
 
   return (

@@ -1,0 +1,39 @@
+{
+ "size": {
+  "w": 77,
+  "h": 93
+ },
+ "card_offset": {
+  "x": 16,
+  "y": 16,
+  "note": "Place the ring so the card (45x61) sits at this offset inside it; scale both by the same whole number (4x: ring 308x372, card at 64,64)."
+ },
+ "static": {
+  "clockwise": "direction-cw.svg",
+  "anticlockwise": "direction-ccw.svg"
+ },
+ "spin": {
+  "clockwise": [
+   "frames/cw-00.svg",
+   "frames/cw-01.svg",
+   "frames/cw-02.svg",
+   "frames/cw-03.svg",
+   "frames/cw-04.svg",
+   "frames/cw-05.svg",
+   "frames/cw-06.svg",
+   "frames/cw-07.svg"
+  ],
+  "anticlockwise": [
+   "frames/ccw-00.svg",
+   "frames/ccw-01.svg",
+   "frames/ccw-02.svg",
+   "frames/ccw-03.svg",
+   "frames/ccw-04.svg",
+   "frames/ccw-05.svg",
+   "frames/ccw-06.svg",
+   "frames/ccw-07.svg"
+  ],
+  "ms_per_frame": 60,
+  "note": "One full turn = 8 frames. Suggested: play 1-2 turns in the NEW direction, hold the static ring ~400ms, then fade out over ~200ms."
+ }
+}
