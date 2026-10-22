@@ -47,10 +47,11 @@ services:
       - key: BOT_DELAY_MS
         value: '1000'
 
-      # Emailed codes for registering. 'log' only prints them in the server log (no mail is sent);
-      # switch to 'smtp' and set SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASSWORD in the dashboard.
+      # Emailed codes for registering. Render's free tier blocks SMTP, so production sends through
+      # Brevo's HTTPS API (BREVO_API_KEY below). 'log' would only print the codes in the server log:
+      # a Blueprint sync writes the values in this file over the dashboard, so keep this one 'brevo'.
       - key: MAIL_MODE
-        value: log
+        value: brevo
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
@@ -64,8 +65,9 @@ services:
         sync: false
       - key: PUBLIC_BASE_URL
         sync: false
+      # The verified Brevo sender, e.g. POGO <pogo@maruha.nl> (set in the dashboard; not overwritten by syncs).
       - key: MAIL_FROM
-        value: 'POGO <no-reply@example.com>'
+        sync: false
 
       # Admin panel: these emails become admin when they register or log in (comma separated).
       - key: ADMIN_EMAILS
