@@ -14,16 +14,24 @@ Every game asset for **POGO** (Pogo the frog, logo, playing cards, dice, animati
 | Folder | Contents |
 |---|---|
 | `brand/` | Frog, frog on pogo stick, pogo stick, wordmarks (yellow = primary), lockup, key art, **key-art-boing** (start screen with speed lines), boing-lines |
+| `brand/logos/` | Game-mode logos for the game picker: `karma.svg` (Karma), `yatzy.svg` (Yatzy, the dice scoring game), `last-card.svg` (the colour-match card game) |
 | `cards/` | All 52 cards `AS.svg` … `KC.svg` (rank + **S**pades/**H**earts/**D**iamonds/**C**lubs; ranks `A, 2–10, J, Q, K`), `joker.svg`, `back.svg`, and `suits/` |
+| `colour-cards/` | Colour-match deck (45×61 px, same size as the playing cards): `{red,yellow,blue,green}-{0..9,skip,reverse,draw2}.svg`, `wild.svg`, `wild-draw4.svg`, `back.svg`. `deck.json` lists how many of each go in a 108-card deck |
 | `characters/` | Frog king, queen, jack and joker art on their own (24×30), for menus and win screens |
-| `dice/` | `die-1.svg` … `die-6.svg` (16×16). The colour = the value: 1 white, 2 yellow, 3 blue, 4 red, 5 green, 6 purple. Show a **held** die by lifting it ~12px, not by recolouring. Shadow: `filter: drop-shadow(0 4px 0 #101628)` |
+| `dice/` | `die-1.svg` … `die-6.svg` (16×16). The colour = the value, and every pip (including the single pip on the 1) is the same navy 2×2 dot: 1 white, 2 yellow, 3 blue, 4 red, 5 green, 6 purple. Show a **held** die by lifting it ~12px, not by recolouring. Shadow: `filter: drop-shadow(0 4px 0 #101628)` |
 | `animation/` | Front-view Pogo animation: `frames/`, `fx/`, sprite sheet, `pogo-animation.json` |
 | `animation-side/` | Side-view (facing right) Pogo animation: same structure, `pogo-side-animation.json` |
-| `icons/` | `icon.svg`, `favicon.svg`, plus the PNG icons that browsers, iOS and the PWA manifest require |
+| `icons/` | `icon-rounded.svg` (the rounded logo tile, for use **inside** the app, e.g. the header), `icon.svg` and `favicon.svg` (square, because the OS rounds them itself), plus the PNG icons that browsers, iOS and the PWA manifest require |
 
 ### Cards
 - 45×61 art pixels. **Show them at 180×244 (4×)** or another multiple of 4. The face-card characters are drawn 1.25× bigger, so they're only pixel-perfect at multiples of 4.
 - The house style puts a `0 6px 0 #101628` shadow under each card. To show a selected card, lift it and add a `#fda200` outline.
+
+### Colour-match cards
+- A 108-card deck. Per colour: one 0, two each of 1–9, and two each of Skip, Reverse and Draw two. Plus four Wild and four Wild draw four. Counts are in `colour-cards/deck.json`.
+- Colours: red `#fd5f55`, yellow `#fda200`, blue `#3aaef7`, green `#56a786` (the same as the dice). Wild cards are navy with Pogo, or +4, on a four-colour tile. The back shows Pogo above the yellow POGO wordmark, so it never looks like a Wild.
+- The 6 and 9 have an underline so they can be told apart when a card is upside down.
+- Same display rules as the playing cards: 180×244 (4×) is ideal, and any whole multiple works because this deck has no scaled art.
 
 ### Animations
 Pogo hops in, jumps onto his pogo stick, then bounces in place.

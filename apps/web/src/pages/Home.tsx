@@ -343,12 +343,22 @@ export function Home({
                   onClick={() => void run(api.create(g.id))}
                   className="hud hud-ticks flex w-full items-center gap-4 bg-panel p-4 text-left text-ink transition active:scale-[0.99] disabled:opacity-50"
                 >
-                  <span
-                    className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-accent text-4xl"
-                    aria-hidden
-                  >
-                    {g.emoji}
-                  </span>
+                  {g.logo ? (
+                    <img
+                      src={g.logo}
+                      alt=""
+                      aria-hidden
+                      className="h-16 w-24 shrink-0 object-contain"
+                      style={{ imageRendering: 'pixelated' }}
+                    />
+                  ) : (
+                    <span
+                      className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-accent text-4xl"
+                      aria-hidden
+                    >
+                      {g.emoji}
+                    </span>
+                  )}
                   <span className="min-w-0 flex-1">
                     <span className="block text-xl font-bold uppercase tracking-[0.12em]">
                       {g.name}

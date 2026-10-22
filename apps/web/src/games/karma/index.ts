@@ -1,5 +1,6 @@
 import { createElement } from 'react';
 import type { GameUi } from '../types';
+import logoUrl from '../../assets/sprites/brand/logos/karma.svg';
 import { KarmaGame } from './KarmaGame';
 import { KarmaRules } from './KarmaRules';
 import { ModePicker } from './ModePicker';
@@ -9,6 +10,7 @@ export const karmaUi: GameUi = {
   id: 'karma',
   name: 'Karma',
   emoji: '🃏',
+  logo: logoUrl,
   tagline: 'Shed all your cards. Don’t be the last one left.',
   Component: KarmaGame,
   LobbyOptions: ModePicker,

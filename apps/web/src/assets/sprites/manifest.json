@@ -217,6 +217,27 @@
   "description": "Horizontal logo: frog + die-O wordmark"
  },
  {
+  "file": "brand/logos/karma.svg",
+  "w": 58,
+  "h": 54,
+  "transparent": true,
+  "description": "Game logo: KARMA (card game where the last player holding cards loses); Pogo in front of three face-down cards with open cards on top"
+ },
+ {
+  "file": "brand/logos/last-card.svg",
+  "w": 72,
+  "h": 55,
+  "transparent": true,
+  "description": "Game logo: LAST CARD (colour-match card game, uses colour-cards/); fanned hand with the raised Wild card (Pogo on four colours)"
+ },
+ {
+  "file": "brand/logos/yatzy.svg",
+  "w": 84,
+  "h": 35,
+  "transparent": true,
+  "description": "Game logo: YATZY (dice scoring game); five coloured dice in an arc"
+ },
+ {
   "file": "brand/pogo-stick.svg",
   "w": 24,
   "h": 9,
@@ -721,6 +742,391 @@
   "description": "Frog queen character art (full body, no card frame)"
  },
  {
+  "file": "colour-cards/back.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card back"
+ },
+ {
+  "file": "colour-cards/blue-0.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: blue 0"
+ },
+ {
+  "file": "colour-cards/blue-1.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: blue 1"
+ },
+ {
+  "file": "colour-cards/blue-2.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: blue 2"
+ },
+ {
+  "file": "colour-cards/blue-3.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: blue 3"
+ },
+ {
+  "file": "colour-cards/blue-4.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: blue 4"
+ },
+ {
+  "file": "colour-cards/blue-5.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: blue 5"
+ },
+ {
+  "file": "colour-cards/blue-6.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: blue 6"
+ },
+ {
+  "file": "colour-cards/blue-7.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: blue 7"
+ },
+ {
+  "file": "colour-cards/blue-8.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: blue 8"
+ },
+ {
+  "file": "colour-cards/blue-9.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: blue 9"
+ },
+ {
+  "file": "colour-cards/blue-draw2.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: blue Draw two"
+ },
+ {
+  "file": "colour-cards/blue-reverse.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: blue Reverse"
+ },
+ {
+  "file": "colour-cards/blue-skip.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: blue Skip"
+ },
+ {
+  "file": "colour-cards/green-0.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: green 0"
+ },
+ {
+  "file": "colour-cards/green-1.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: green 1"
+ },
+ {
+  "file": "colour-cards/green-2.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: green 2"
+ },
+ {
+  "file": "colour-cards/green-3.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: green 3"
+ },
+ {
+  "file": "colour-cards/green-4.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: green 4"
+ },
+ {
+  "file": "colour-cards/green-5.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: green 5"
+ },
+ {
+  "file": "colour-cards/green-6.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: green 6"
+ },
+ {
+  "file": "colour-cards/green-7.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: green 7"
+ },
+ {
+  "file": "colour-cards/green-8.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: green 8"
+ },
+ {
+  "file": "colour-cards/green-9.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: green 9"
+ },
+ {
+  "file": "colour-cards/green-draw2.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: green Draw two"
+ },
+ {
+  "file": "colour-cards/green-reverse.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: green Reverse"
+ },
+ {
+  "file": "colour-cards/green-skip.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: green Skip"
+ },
+ {
+  "file": "colour-cards/red-0.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: red 0"
+ },
+ {
+  "file": "colour-cards/red-1.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: red 1"
+ },
+ {
+  "file": "colour-cards/red-2.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: red 2"
+ },
+ {
+  "file": "colour-cards/red-3.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: red 3"
+ },
+ {
+  "file": "colour-cards/red-4.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: red 4"
+ },
+ {
+  "file": "colour-cards/red-5.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: red 5"
+ },
+ {
+  "file": "colour-cards/red-6.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: red 6"
+ },
+ {
+  "file": "colour-cards/red-7.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: red 7"
+ },
+ {
+  "file": "colour-cards/red-8.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: red 8"
+ },
+ {
+  "file": "colour-cards/red-9.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: red 9"
+ },
+ {
+  "file": "colour-cards/red-draw2.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: red Draw two"
+ },
+ {
+  "file": "colour-cards/red-reverse.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: red Reverse"
+ },
+ {
+  "file": "colour-cards/red-skip.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: red Skip"
+ },
+ {
+  "file": "colour-cards/wild-draw4.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: Wild draw four"
+ },
+ {
+  "file": "colour-cards/wild.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: Wild (Pogo on the four-colour tile)"
+ },
+ {
+  "file": "colour-cards/yellow-0.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: yellow 0"
+ },
+ {
+  "file": "colour-cards/yellow-1.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: yellow 1"
+ },
+ {
+  "file": "colour-cards/yellow-2.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: yellow 2"
+ },
+ {
+  "file": "colour-cards/yellow-3.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: yellow 3"
+ },
+ {
+  "file": "colour-cards/yellow-4.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: yellow 4"
+ },
+ {
+  "file": "colour-cards/yellow-5.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: yellow 5"
+ },
+ {
+  "file": "colour-cards/yellow-6.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: yellow 6"
+ },
+ {
+  "file": "colour-cards/yellow-7.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: yellow 7"
+ },
+ {
+  "file": "colour-cards/yellow-8.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: yellow 8"
+ },
+ {
+  "file": "colour-cards/yellow-9.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: yellow 9"
+ },
+ {
+  "file": "colour-cards/yellow-draw2.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: yellow Draw two"
+ },
+ {
+  "file": "colour-cards/yellow-reverse.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: yellow Reverse"
+ },
+ {
+  "file": "colour-cards/yellow-skip.svg",
+  "w": 45,
+  "h": 61,
+  "transparent": true,
+  "description": "Colour-match card: yellow Skip"
+ },
+ {
   "file": "dice/die-1.svg",
   "w": 16,
   "h": 16,
@@ -770,10 +1176,17 @@
   "description": "Favicon (full yellow tile)"
  },
  {
+  "file": "icons/icon-rounded.svg",
+  "w": 32,
+  "h": 32,
+  "transparent": true,
+  "description": "Logo tile with rounded corners and navy outline, transparent corners (use inside the app, e.g. the header)"
+ },
+ {
   "file": "icons/icon.svg",
   "w": 32,
   "h": 32,
   "transparent": false,
-  "description": "App icon (full yellow tile; the tile IS the icon)"
+  "description": "App icon for the OS (full square yellow tile; the phone rounds the corners)"
  }
 ]

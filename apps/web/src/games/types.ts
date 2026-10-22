@@ -30,6 +30,8 @@ export interface GameUi {
   id: string;
   name: string;
   emoji: string;
+  /** The artist's game-mode logo (an SVG url), shown in the game picker instead of the emoji. */
+  logo?: string;
   tagline: string;
   Component: ComponentType<GameUiProps>;
   /** Extra panel in the lobby for game-specific options (e.g. a game mode). */
