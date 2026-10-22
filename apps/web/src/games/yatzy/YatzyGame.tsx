@@ -9,6 +9,7 @@ import { TileButton } from '../../components/TopBar';
 import type { GameUiProps } from '../types';
 import { Die } from './Die';
 import { Scorecard } from './Scorecard';
+import { useScoreFx } from './ScoreFx';
 
 type Category = yatzy.Category;
 
@@ -32,6 +33,8 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
   const [rolling, setRolling] = useState<boolean[]>(NO_HOLDS);
   const [busy, setBusy] = useState(false);
   const secondsLeft = useCountdown(game.deadline, room.serverTime);
+  // Balatro-style scoring animation (the dice fly into the box and fall into the total).
+  const scoreFx = useScoreFx(state);
 
   // Let the scorecard stretch to the space between the banner and the dice dock.
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -195,6 +198,7 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {scoreFx.overlay}
       <header className="px-4 pb-1.5 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
         <div
           data-testid="turn-banner"
@@ -291,6 +295,7 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
           previewHidden={!settled}
           selected={selected}
           fillHeight={fill}
+          fx={scoreFx.view}
           onSelect={(c) => {
             if (!settled) return;
             setSelected(c);

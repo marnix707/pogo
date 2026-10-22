@@ -5,7 +5,7 @@ const dieUrls = import.meta.glob('../../assets/sprites/dice/die-*.svg', {
   query: '?url',
   import: 'default',
 }) as Record<string, string>;
-const DIE_URL = (face: number) =>
+export const DIE_URL = (face: number) =>
   Object.entries(dieUrls).find(([p]) => p.endsWith(`die-${face}.svg`))?.[1];
 
 /** The artist's face colours (die-1..6.svg): the scorecard's colour squares use them too. */

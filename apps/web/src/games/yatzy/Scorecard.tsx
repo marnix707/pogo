@@ -4,6 +4,7 @@ import type { RoomMemberView } from '@pogo/shared';
 import { AvatarFace } from '../../components/AvatarFace';
 import { DIE_COLOR } from './Die';
 import { CATEGORY_HINT, CATEGORY_LABEL, UPPER_FACE } from './labels';
+import type { ScoreFxView } from './ScoreFx';
 
 type Category = yatzy.Category;
 
@@ -20,6 +21,8 @@ interface Props {
   onSelect: (category: Category) => void;
   /** Stretch the table to this height so the rows fill the space (it still grows if it must). */
   fillHeight?: number;
+  /** The scoring animation: holds the new box and the total back until the dice have been counted. */
+  fx?: ScoreFxView | null;
 }
 
 const stickyLabel = 'sticky left-0 z-10';
@@ -36,9 +39,18 @@ export function Scorecard({
   selected,
   onSelect,
   fillHeight,
+  fx,
 }: Props) {
+  // While the dice are still being counted into a box, that box (and what it adds) is not there yet.
+  const held = (id: string) => (fx?.holdCell && fx.playerId === id ? fx : null);
   const totals = new Map(
-    state.players.map((p) => [p.id, yatzy.getTotals(p.scorecard, p.yatzyBonuses)]),
+    state.players.map((p) => {
+      const h = held(p.id);
+      if (!h) return [p.id, yatzy.getTotals(p.scorecard, p.yatzyBonuses)] as const;
+      const card = { ...p.scorecard };
+      delete card[h.category];
+      return [p.id, yatzy.getTotals(card, h.bonusesBefore)] as const;
+    }),
   );
   const member = (id: string) => members.find((m) => m.id === id);
   // While somebody else is on turn, show in small grey what their dice could score on their card.
@@ -79,11 +91,13 @@ export function Scorecard({
           )}
         </th>
         {state.players.map((p) => {
-          const value = p.scorecard[category];
+          const hold = held(p.id)?.category === category;
+          const value = hold ? undefined : p.scorecard[category];
           const mine = p.id === me;
           return (
             <td
               key={p.id}
+              data-testid={`cell-${p.id}-${category}`}
               className={`${rule} h-6 px-1 py-0.5 text-center align-middle [@media(max-height:640px)]:h-5 leading-none tabular-nums ${
                 isSelected && mine ? 'bg-accent/20' : currentIds.includes(p.id) ? 'bg-neon/10' : ''
               }`}
@@ -143,16 +157,25 @@ export function Scorecard({
           {label}
           {hint && <span className="ml-1.5 text-[10px] font-medium text-muted">{hint}</span>}
         </th>
-        {state.players.map((p) => (
-          <td
-            key={p.id}
-            className={`${border} h-6 px-1 py-0.5 text-center align-middle [@media(max-height:640px)]:h-5 leading-none tabular-nums ${
-              total ? 'text-base font-bold text-accent' : 'text-sm text-muted'
-            }`}
-          >
-            {value(p.id)}
-          </td>
-        ))}
+        {state.players.map((p) => {
+          const counting = total && fx?.playerId === p.id && fx.totalShown !== null;
+          return (
+            <td
+              key={p.id}
+              data-testid={total ? `total-${p.id}` : undefined}
+              className={`${border} h-6 px-1 py-0.5 text-center align-middle [@media(max-height:640px)]:h-5 leading-none tabular-nums ${
+                total ? 'text-base font-bold text-accent' : 'text-sm text-muted'
+              }`}
+            >
+              <span
+                key={counting ? fx!.pulseKey : 0}
+                className={counting ? 'score-bold inline-block' : undefined}
+              >
+                {counting ? String(Math.round(fx!.totalShown!)) : value(p.id)}
+              </span>
+            </td>
+          );
+        })}
       </tr>
     );
   };

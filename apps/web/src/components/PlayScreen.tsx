@@ -79,7 +79,7 @@ export function JoinBar({ api }: { api: RoomApi }) {
   return (
     <form
       onSubmit={join}
-      className="hud flex h-16 items-center gap-2 px-3"
+      className="calm hud hud-ticks flex h-16 items-center gap-2 !px-2"
       aria-label="Join with a code"
       data-testid="join-bar"
     >
@@ -93,7 +93,7 @@ export function JoinBar({ api }: { api: RoomApi }) {
         autoCorrect="off"
         spellCheck={false}
         aria-label="Room code"
-        className="hud h-11 min-w-0 flex-1 bg-panel px-2 text-center text-lg font-bold uppercase tracking-[0.2em] text-ink outline-none placeholder:text-muted/40 focus:!border-neon"
+        className="calm hud h-11 min-w-0 flex-1 bg-panel px-2 text-center text-lg font-bold uppercase tracking-[0.2em] text-ink outline-none placeholder:text-muted/40 focus:!border-neon"
       />
       <Button
         data-testid="home-join-submit"

@@ -7,12 +7,27 @@ import {
   getTotals,
   isJoker,
   rawScore,
+  scoringDiceIndices,
 } from './scoring';
 import { CATEGORIES, LOWER_CATEGORIES, UPPER_CATEGORIES } from './types';
 import type { Category, Scorecard } from './types';
 
 const fill = (cats: readonly Category[], value = 0): Scorecard =>
   Object.fromEntries(cats.map((c) => [c, value]));
+
+describe('scoringDiceIndices', () => {
+  it('counts the dice of the face for the upper boxes', () => {
+    expect(scoringDiceIndices([3, 1, 3, 3, 6], 'threes', 9)).toEqual([0, 2, 3]);
+  });
+  it('counts the four dice of a small straight and all five for the rest', () => {
+    expect(scoringDiceIndices([2, 3, 4, 5, 5], 'smallStraight', 30)).toEqual([0, 1, 2, 3]);
+    expect(scoringDiceIndices([2, 2, 3, 3, 3], 'fullHouse', 25)).toEqual([0, 1, 2, 3, 4]);
+    expect(scoringDiceIndices([1, 2, 4, 5, 6], 'chance', 18)).toEqual([0, 1, 2, 3, 4]);
+  });
+  it('counts nothing for a box that scored 0', () => {
+    expect(scoringDiceIndices([1, 2, 3, 4, 6], 'yatzy', 0)).toEqual([]);
+  });
+});
 
 describe('upper section', () => {
   it('sums only the matching face', () => {

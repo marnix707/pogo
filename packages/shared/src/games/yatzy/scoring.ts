@@ -68,6 +68,40 @@ export function rawScore(dice: readonly number[], category: Category): number {
   }
 }
 
+/**
+ * Which dice (indices into `dice`) the UI counts when `category` was scored with `score` points: the
+ * dice of that face for the upper boxes, the four dice of the run for a small straight, all five for
+ * the others; none when the box scored nothing.
+ */
+export function scoringDiceIndices(
+  dice: readonly number[],
+  category: Category,
+  score: number,
+): number[] {
+  if (score <= 0) return [];
+  const all = dice.map((_, i) => i);
+  switch (category) {
+    case 'ones':
+    case 'twos':
+    case 'threes':
+    case 'fours':
+    case 'fives':
+    case 'sixes': {
+      const face = UPPER_BY_FACE.indexOf(category) + 1;
+      return all.filter((i) => dice[i] === face);
+    }
+    case 'smallStraight': {
+      for (let start = 1; start <= 3; start++) {
+        const faces = [start, start + 1, start + 2, start + 3];
+        if (faces.every((f) => dice.includes(f))) return faces.map((f) => dice.indexOf(f));
+      }
+      return all;
+    }
+    default:
+      return all;
+  }
+}
+
 /** Joker rules apply when the dice are a Yatzy and the Yatzy box is already filled (50 or 0). */
 export function isJoker(dice: readonly number[], scorecard: Scorecard): boolean {
   return isYatzy(dice) && scorecard.yatzy !== undefined;
