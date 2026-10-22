@@ -94,7 +94,7 @@ test('a whole game against the computer, from one tap to the result, and a remat
   expect(sawWinnerReveal).toBe(true);
   await expect(page.getByTestId('win-reveal')).toHaveCount(0);
   await expect(page.getByTestId('rank-2')).toBeVisible();
-  await expect(panel.locator('h2')).toHaveText(/Karma got you|Robo is last/);
+  await expect(panel.locator('h2')).toHaveText(/won!/);
 
   // Back to lobby: the lobby with the computer still configured, and off we go again.
   await page.getByTestId('results-lobby').click();

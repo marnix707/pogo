@@ -38,12 +38,11 @@ export const karmaUi: GameUi = {
     const leftovers = n > 0 ? revealTotalMs(n, revealStartMs(blindOut)) + REVEAL_HOLD_MS : 0;
     return Math.max(blind, leftovers);
   },
+  // "<name> won!" for everybody but the winner (who gets the generic "You won!").
   resultsTitle(room, me) {
-    const results = room.game?.results?.rankings;
-    const last = results?.[results.length - 1];
-    if (!last) return undefined;
-    if (last.playerId === me) return '😬 Karma got you!';
-    const name = room.members.find((m) => m.id === last.playerId)?.nickname ?? 'Someone';
-    return `😬 ${name} is last`;
+    const winner = room.game?.results?.rankings[0];
+    if (!winner || winner.playerId === me) return undefined;
+    const name = room.members.find((m) => m.id === winner.playerId)?.nickname ?? 'Someone';
+    return `${name} won!`;
   },
 };

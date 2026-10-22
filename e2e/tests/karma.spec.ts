@@ -52,7 +52,7 @@ test('three players play a complete Karma game through the UI', async ({ browser
     if (!acted) await alice.page.waitForTimeout(50);
   }
 
-  // Everybody sees the same standings, and exactly one player is told they are last.
+  // Everybody sees the same standings, and exactly one player is told they won, the others who did.
   for (const p of pages) {
     await expect(p.getByTestId('results-panel')).toBeVisible();
     await expect(p.getByTestId('rank-1')).toBeVisible();
@@ -62,8 +62,8 @@ test('three players play a complete Karma game through the UI', async ({ browser
   const headlines = await Promise.all(
     pages.map((p) => p.getByTestId('results-panel').locator('h2').textContent()),
   );
-  expect(headlines.filter((h) => h?.includes('Karma got you'))).toHaveLength(1);
-  expect(headlines.filter((h) => h?.includes('is last'))).toHaveLength(2);
+  expect(headlines.filter((h) => h === 'You won!')).toHaveLength(1);
+  expect(headlines.filter((h) => h !== 'You won!' && h?.endsWith(' won!'))).toHaveLength(2);
 
   // "Lobby" takes everybody back to the lobby (Ready starts the next game).
   await alice.page.getByTestId('results-lobby').click();

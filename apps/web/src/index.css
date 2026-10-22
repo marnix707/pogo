@@ -182,9 +182,8 @@ button {
 /* Results sequence: the headline starts in the middle, holds, then rises to the top; rows drop in one
    by one (animation-delay is set inline); the buttons come up from the bottom. */
 @keyframes res-head {
-  0% { opacity: 0; transform: translateY(var(--drop, 30dvh)) scale(1.35); }
-  15% { opacity: 1; transform: translateY(var(--drop, 30dvh)) scale(1.35); }
-  55% { opacity: 1; transform: translateY(var(--drop, 30dvh)) scale(1.35); }
+  0% { opacity: 0; transform: translateY(var(--drop, 30dvh)) scale(1.15); }
+  8% { opacity: 1; transform: translateY(var(--drop, 30dvh)) scale(1.15); }
   100% { opacity: 1; transform: none; }
 }
 @keyframes res-row {
@@ -195,7 +194,7 @@ button {
   from { opacity: 0; transform: translateY(130%); }
   to { opacity: 1; transform: none; }
 }
-.res-head { animation: res-head 2.4s cubic-bezier(0.3, 0.9, 0.3, 1) both; }
+.res-head { animation: res-head 1.1s cubic-bezier(0.3, 0.9, 0.3, 1) both; }
 .res-row { animation: res-row 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.05) both; }
 .res-bottom { animation: res-bottom 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.05) both; }
 @keyframes win-turn {

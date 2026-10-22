@@ -16,7 +16,7 @@ import { haptic } from '../lib/haptics';
 import { play } from '../lib/sound';
 
 /** Seconds the headline sits in the middle before it moves up, and the gap between the revealed rows. */
-const HEAD_S = 2.4;
+const HEAD_S = 1.2;
 const ROW_S = 0.45;
 
 const ordinal = (n: number) =>
@@ -61,13 +61,16 @@ function ResultsPanel({
   const nameOf = (id: string) => room.members.find((x) => x.id === id);
   const mine = rankings.find((r) => r.playerId === me);
   const winner = nameOf(rankings[0]?.playerId ?? '')?.nickname ?? 'Someone';
-  const headline = !mine
-    ? (title ?? `${winner} wins!`)
-    : mine.rank === 1
+  // A game's own title (Karma: "<name> won!") replaces everything but the winner's "You won!".
+  const headline =
+    mine?.rank === 1
       ? 'You won!'
-      : mine.rank === rankings.length
-        ? (title ?? 'You lost!')
-        : `${ordinal(mine.rank)} place!`;
+      : (title ??
+        (!mine
+          ? `${winner} wins!`
+          : mine.rank === rankings.length
+            ? 'You lost!'
+            : `${ordinal(mine.rank)} place!`));
   // Each step starts when the previous one has landed.
   const rowsDone = HEAD_S + rankings.length * ROW_S;
   const delay = (sec: number) => ({ animationDelay: `${sec}s` });
@@ -82,7 +85,11 @@ function ResultsPanel({
         <div className="mx-auto flex min-h-full max-w-lg flex-col gap-5 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+3.5rem)]">
           <h2
             data-testid="results-headline"
-            className="res-head text-center text-3xl font-bold uppercase leading-tight tracking-[0.1em]"
+            className="res-head break-words px-1 text-center font-bold uppercase leading-tight tracking-[0.08em]"
+            // As big as the screen allows for this text (about 0.7em per letter incl. spacing), up to 1.875rem.
+            style={{
+              fontSize: `min(1.875rem, calc((min(100vw, 32rem) - 3rem) / ${Math.max(8, headline.length) * 0.72}))`,
+            }}
           >
             {headline}
           </h2>
