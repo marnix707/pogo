@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Browser } from '@playwright/test';
-import { readyAll } from './karma-helpers';
+import { leaveLobby, readyAll, openLobbySettings } from './karma-helpers';
 
 // Set by docker-compose from PROFANITY_FILTER (the dev server's filter setting).
 const filterOn = process.env.PROFANITY_FILTER !== 'off';
@@ -38,10 +38,12 @@ test('public games show up live in the lobby, can be joined from it, and quick m
   await expect(listing).toContainText('1/6');
 
   // Private removes it again (and hides the code under the switch).
+  await openLobbySettings(h);
   await h.getByRole('switch', { name: /Public room/ }).click();
   await expect(h.getByTestId('room-visibility')).toHaveText('Private');
   await expect(h.getByTestId('room-code')).toHaveCount(0);
   await expect(listing).toHaveCount(0);
+  await openLobbySettings(h);
   await h.getByRole('switch', { name: /Public room/ }).click();
   await expect(listing).toBeVisible();
 
@@ -63,7 +65,7 @@ test('public games show up live in the lobby, can be joined from it, and quick m
   await expect(h.getByTestId('player-count')).toHaveText('3 / 6');
 
   // Leave so the public room does not linger in the shared lobby for other tests.
-  for (const p of [third.page, w, h]) await p.getByTestId('lobby-leave').click();
+  for (const p of [third.page, w, h]) await leaveLobby(p);
 
   await watcher.context.close();
   await host.context.close();

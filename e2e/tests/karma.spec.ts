@@ -1,6 +1,14 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { STRIP, readyAll, readyUp, newPlayer, snapshot, takeTurn } from './karma-helpers';
+import {
+  STRIP,
+  leaveLobby,
+  readyAll,
+  readyUp,
+  newPlayer,
+  snapshot,
+  takeTurn,
+} from './karma-helpers';
 
 test('three players play a complete Karma game through the UI', async ({ browser }) => {
   test.setTimeout(240_000);
@@ -99,8 +107,8 @@ test('the lobby can be filtered by game', async ({ browser }) => {
   await expect(w.getByTestId(/^open-game-/).filter({ hasText: "KarmaHost's game" })).toHaveCount(0);
 
   // Leave the rooms so they do not linger in the shared lobby for other tests.
-  await hostA.page.getByTestId('lobby-leave').click();
-  await hostB.page.getByTestId('lobby-leave').click();
+  await leaveLobby(hostA.page);
+  await leaveLobby(hostB.page);
   await w.getByRole('button', { name: 'All', exact: true }).click();
   await expect(w.getByTestId(/^open-game-/).filter({ hasText: "KarmaHost's game" })).toHaveCount(0);
   await expect(w.getByTestId(/^open-game-/).filter({ hasText: "YatzyHost's game" })).toHaveCount(0);

@@ -262,6 +262,13 @@ export class RoomManager {
     return result.ok ? ok(room.view(userId)) : result;
   }
 
+  setReadyLock(userId: string, locked: boolean): Result<RoomView> {
+    const room = this.roomFor(userId);
+    if (!room) return fail('You are not in a room');
+    const result = room.setReadyLock(userId, locked);
+    return result.ok ? ok(room.view(userId)) : result;
+  }
+
   start(userId: string): Result<RoomView> {
     const room = this.roomFor(userId);
     if (!room) return fail('You are not in a room');

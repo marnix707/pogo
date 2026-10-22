@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { readyAll } from './karma-helpers';
+import { readyAll, openLobbySettings } from './karma-helpers';
 
 // The other specs use reduced motion (no tutorial); this one plays it for real.
 test('Karma tutorial shows every time until "Don\'t show this again" is ticked', async ({
@@ -18,6 +18,7 @@ test('Karma tutorial shows every time until "Don\'t show this again" is ticked',
   await expect(page.getByTestId('home-play')).toBeVisible({ timeout: 20_000 });
   await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
+  await openLobbySettings(page);
   await page.getByRole('button', { name: 'More Computer players' }).click();
   await readyAll(page);
 

@@ -11,6 +11,7 @@ import type {
   RoomKickInput,
   RoomSettingsInput,
   RoomSetGameInput,
+  RoomReadyLockInput,
   Visibility,
 } from './schemas';
 
@@ -55,6 +56,8 @@ export interface RoomMemberView {
   bot: boolean;
   /** Pressed Ready in the lobby (computer players always are). */
   ready: boolean;
+  /** Ready is locked: it stays on across setting changes, game switches and games. */
+  readyLock: boolean;
 }
 
 export interface RoomGameView {
@@ -126,6 +129,7 @@ export interface ClientToServerEvents {
   'room:leave': (payload: EmptyPayload, ack: Ack<null>) => void;
   'room:kick': (payload: RoomKickInput, ack: Ack<null>) => void;
   'room:settings': (payload: RoomSettingsInput, ack: Ack<RoomView>) => void;
+  'room:readyLock': (payload: RoomReadyLockInput, ack: Ack<RoomView>) => void;
   'room:setGame': (payload: RoomSetGameInput, ack: Ack<RoomView>) => void;
   'room:ready': (payload: RoomReadyInput, ack: Ack<RoomView>) => void;
   'room:rematch': (payload: RematchInput, ack: Ack<RoomView>) => void;

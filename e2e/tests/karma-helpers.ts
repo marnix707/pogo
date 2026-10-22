@@ -130,3 +130,16 @@ export async function takeTurn(page: Page, s: Snapshot) {
     await page.getByTestId('karma-play').click();
   }
 }
+
+/** The lobby has no back arrow: leave through Settings. */
+export async function leaveLobby(page: Page) {
+  await page.getByTestId('settings-button').click();
+  await page.getByTestId('settings-leave').click();
+}
+
+/** The lobby settings are folded by default: unfold them (idempotent) before touching a setting. */
+export async function openLobbySettings(page: Page) {
+  const toggle = page.getByTestId('lobby-settings-toggle');
+  if ((await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click();
+  await expect(page.getByTestId('lobby-settings')).toHaveAttribute('data-open', 'true');
+}

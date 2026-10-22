@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { STRIP, newPlayer, readyAll } from './karma-helpers';
+import { STRIP, newPlayer, readyAll, openLobbySettings } from './karma-helpers';
 
 /** My turn: play the first playable card (a wild gets red), else draw / pass. Presses UNO! when it is urgent. */
 async function takeUnoTurn(page: Page) {
@@ -26,8 +26,8 @@ test('UNO against two computers: the table shows, UNO! is announced, the game en
   await page.setViewportSize({ width: 390, height: 780 });
   await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-lastcard').click();
-  for (let i = 0; i < 2; i++)
-    await page.getByRole('button', { name: 'More Computer players' }).click();
+  for (let i = 0; i < 2; i++) await openLobbySettings(page);
+  await page.getByRole('button', { name: 'More Computer players' }).click();
   await readyAll(page);
   await expect(page.getByTestId('lastcard-game')).toBeVisible();
   await expect(page.locator('[data-testid^=lastcard-card-]')).toHaveCount(7);

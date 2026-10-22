@@ -154,6 +154,9 @@ export type EmptyPayload = Record<string, never>;
 export const roomReadySchema = z.object({ ready: z.boolean() });
 export type RoomReadyInput = z.input<typeof roomReadySchema>;
 
+export const roomReadyLockSchema = z.object({ locked: z.boolean() });
+export type RoomReadyLockInput = z.input<typeof roomReadyLockSchema>;
+
 /** `toLobby`: skip the instant restart some games do on a rematch and wait in the waiting room. */
 export const rematchSchema = z.object({ toLobby: z.boolean().optional() });
 export type RematchInput = z.input<typeof rematchSchema>;

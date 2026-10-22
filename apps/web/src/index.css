@@ -746,3 +746,38 @@ html.results-open .safe-top-scrim {
     animation: lastcard-call-fade 1.9s linear both;
   }
 }
+
+/* The lobby below the game card falls in from above, one piece after another (quick and smooth). */
+@keyframes lobby-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-1.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.lobby-stack > * {
+  animation: lobby-drop 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.lobby-stack > *:nth-child(2) {
+  animation-delay: 60ms;
+}
+.lobby-stack > *:nth-child(3) {
+  animation-delay: 120ms;
+}
+.lobby-stack > *:nth-child(4) {
+  animation-delay: 180ms;
+}
+.lobby-stack > *:nth-child(5) {
+  animation-delay: 240ms;
+}
+.lobby-stack > *:nth-child(n + 6) {
+  animation-delay: 300ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lobby-stack > * {
+    animation: none;
+  }
+}

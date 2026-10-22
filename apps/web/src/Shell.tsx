@@ -83,6 +83,7 @@ export function Shell({
       updateSettings: (patch: RoomSettingsInput) => run(request('room:settings', patch)),
       setGame: (gameId) => run(request('room:setGame', { gameId })),
       ready: (ready) => run(request('room:ready', { ready })),
+      readyLock: (locked) => run(request('room:readyLock', { locked })),
       rematch: (toLobby) => run(request('room:rematch', { toLobby })),
       move: (move) => run(request('game:move', { move })),
     }),
@@ -213,6 +214,14 @@ export function Shell({
         }}
         roomCode={room?.code}
         isDev={!!session.user.isDev}
+        onLeave={
+          room?.status === 'lobby'
+            ? () => {
+                setSettingsOpen(false);
+                void api.leave();
+              }
+            : undefined
+        }
       />
       <SwitchPlayerSheet
         open={switchOpen}

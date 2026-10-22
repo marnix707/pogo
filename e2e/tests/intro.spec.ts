@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { leaveLobby } from './karma-helpers';
 
 // The other specs run with reduced motion (no intro); this one plays the real opening animation.
 test('opening: the stick waits alone, the toad lands, then the wordmark and menu slide in; tapping makes him jump', async ({
@@ -28,8 +29,8 @@ test('opening: the stick waits alone, the toad lands, then the wordmark and menu
 
   // Into a game lobby and back: the intro never plays again (the menu is simply there at once).
   await page.getByTestId('home-game-yatzy').click();
-  await expect(page.getByTestId('lobby-leave')).toBeVisible();
-  await page.getByTestId('lobby-leave').click();
+  await expect(page.getByTestId('lobby-game-card')).toBeVisible();
+  await leaveLobby(page);
   await expect(page.getByTestId('home-wordmark')).toHaveClass(/wordmark-in/, { timeout: 1500 });
   await expect(page.getByTestId('home-play')).toBeVisible({ timeout: 1500 });
   await context.close();

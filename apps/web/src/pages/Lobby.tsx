@@ -1,14 +1,15 @@
 import { PlayerName } from '../components/PlayerName';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BOT_AVATAR, BOT_NAMES, getGame } from '@pogo/shared';
 import type { ChatMessage, RoomView } from '@pogo/shared';
-import { ArrowLeftIcon, CrownIcon, SlidersIcon } from '../components/icons';
+import { ChevronIcon, CrownIcon, LockIcon, SlidersIcon } from '../components/icons';
 import { ChatPanel } from '../components/ChatPanel';
-import { GamePickerSheet } from '../components/GamePickerSheet';
+import { GameCard } from '../components/GameCard';
 import { Avatar, Button, Card, SectionLabel, Toggle } from '../components/ui';
 import { TileButton } from '../components/TopBar';
 import { useToast } from '../components/Toast';
-import { getGameUi } from '../games/registry';
+import { gameUis, getGameUi } from '../games/registry';
+import { morphFrom, takeGameCardRect } from '../lib/cardMorph';
 import type { RoomApi } from '../lib/api';
 import { useCountdown } from '../lib/useCountdown';
 
@@ -80,7 +81,19 @@ export function Lobby({
 }) {
   const toast = useToast();
   const isHost = room.hostId === me;
-  const [pickerOpen, setPickerOpen] = useState(false);
+  /** The host opened the list of games (the top card is a button): the settings make room for it. */
+  const [choosing, setChoosing] = useState(false);
+  /** The settings are folded by default; the host unfolds them to change something. */
+  const [settingsFold, setSettingsFold] = useState(false);
+  useEffect(() => setSettingsFold(false), [room.gameId]); // a new game: folded again
+  // Arriving from the Play screen: the tapped game card morphs to the top of this lobby.
+  const topCard = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const from = takeGameCardRect();
+    const reduced =
+      typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (from && topCard.current && !reduced) morphFrom(topCard.current, from);
+  }, []);
   // The host switched the game under us: tell the others (the lobby stays, only the game changes).
   const shownGame = useRef(room.gameId);
   useEffect(() => {
@@ -90,6 +103,7 @@ export function Lobby({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room.gameId]);
   const iAmReady = !!room.members.find((m) => m.id === me)?.ready;
+  const iAmLocked = !!room.members.find((m) => m.id === me)?.readyLock;
   const readyCount = room.members.filter((m) => m.ready).length;
   const secondsToStart = useCountdown(room.startsAt, room.serverTime);
   const ui = getGameUi(room.gameId);
@@ -123,24 +137,64 @@ export function Lobby({
   return (
     <div className="menu mx-auto flex min-h-dvh max-w-md flex-col">
       <main className="flex flex-1 flex-col gap-5 px-4 pb-40 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
-        {/* One slim header card: back, game, Invite and settings. */}
-        <Card className="hud-ticks !p-3">
-          <div className="flex items-center gap-2">
-            <TileButton
-              onClick={() => void api.leave()}
-              aria-label="Leave room"
-              data-testid="lobby-leave"
-            >
-              <ArrowLeftIcon className="h-5 w-5" />
-            </TileButton>
-            <div className="min-w-0 flex-1">
-              <h1 className="truncate text-lg font-bold uppercase leading-tight tracking-[0.08em] max-[380px]:text-base max-[380px]:tracking-normal">
-                {room.gameName}
-              </h1>
-              <div className="label flex items-center gap-2 text-[10px] text-muted">
+        {/* The game card from the Play screen, now the top of the lobby. The host taps it to pick another
+            game (everybody stays in the room); the rest of the lobby drops in underneath it. */}
+        {ui && (
+          <GameCard
+            ref={topCard}
+            ui={ui}
+            data-testid="lobby-game-card"
+            chevron={isHost ? (choosing ? 'up' : 'down') : undefined}
+            onClick={isHost ? () => setChoosing((c) => !c) : undefined}
+          />
+        )}
+
+        {choosing ? (
+          <section
+            aria-label="Choose a game"
+            className="lobby-stack flex flex-col gap-3"
+            data-testid="game-list"
+          >
+            {gameUis
+              .filter((g) => g.id !== room.gameId)
+              .map((g) => (
+                <GameCard
+                  key={g.id}
+                  ui={g}
+                  data-testid={`pick-game-${g.id}`}
+                  onClick={() => {
+                    setChoosing(false);
+                    void api.setGame(g.id);
+                  }}
+                />
+              ))}
+          </section>
+        ) : (
+          <div className="lobby-stack flex flex-col gap-5">
+            {/* Under the game card: Invite and the code on the left, then Public / Private and the settings button. */}
+            <Card className="hud-ticks !p-2">
+              <div className="flex items-center gap-2" data-testid="lobby-toolbar">
+                <Button
+                  variant="secondary"
+                  aria-label="Invite friends"
+                  className="min-h-10 shrink-0 !px-3"
+                  onClick={() => void share()}
+                >
+                  Invite
+                </Button>
+                {/* A public lobby shows its code next to Invite. */}
+                {room.visibility === 'public' && (
+                  <span
+                    data-testid="room-code"
+                    className="min-w-0 select-all text-sm font-bold leading-none tracking-[0.1em] text-neon max-[380px]:text-xs max-[380px]:tracking-normal"
+                  >
+                    {room.code}
+                  </span>
+                )}
+                <span className="flex-1" />
                 <span
                   data-testid="room-visibility"
-                  className={`rounded border px-1.5 py-0.5 text-[9px] ${
+                  className={`label shrink-0 rounded border px-1.5 py-0.5 text-[10px] ${
                     room.visibility === 'public'
                       ? 'border-accent text-accent'
                       : 'border-edge/50 text-muted'
@@ -148,164 +202,203 @@ export function Lobby({
                 >
                   {room.visibility === 'public' ? 'Public' : 'Private'}
                 </span>
+                <TileButton
+                  onClick={onSettings}
+                  aria-label="Settings"
+                  data-testid="settings-button"
+                >
+                  <SlidersIcon className="h-5 w-5" />
+                </TileButton>
               </div>
-            </div>
-            {/* A public lobby shows its code at the top, between the title and Invite. */}
-            {room.visibility === 'public' && (
-              <span
-                data-testid="room-code"
-                className="shrink-0 select-all text-sm font-bold leading-none tracking-[0.1em] text-neon max-[380px]:text-xs max-[380px]:tracking-normal"
+            </Card>
+
+            {/* The settings fold in and out (folded by default: a new lobby, a new game, a new visit). */}
+            <section aria-label="Lobby settings">
+              <button
+                type="button"
+                className="w-full text-left"
+                aria-expanded={settingsFold}
+                data-testid="lobby-settings-toggle"
+                onClick={() => setSettingsFold((f) => !f)}
               >
-                {room.code}
-              </span>
-            )}
-            <Button
-              variant="secondary"
-              aria-label="Invite friends"
-              className="min-h-10 shrink-0 !px-2"
-              onClick={() => void share()}
-            >
-              Invite
-            </Button>
-            <TileButton onClick={onSettings} aria-label="Settings" data-testid="settings-button">
-              <SlidersIcon className="h-5 w-5" />
-            </TileButton>
-          </div>
-        </Card>
-
-        {/* Block 1: the game mode (when the game has one) with the turn timer underneath. */}
-        {(ui?.LobbyOptions || limits) && (
-          <section aria-label="Game settings">
-            <SectionLabel>{ui?.LobbyOptions ? 'Game mode' : 'Settings'}</SectionLabel>
-            <Card className="flex flex-col gap-5">
-              {ui?.LobbyOptions && (
-                <ui.LobbyOptions
-                  room={room}
-                  isHost={isHost}
-                  setOptions={(options) => void api.updateSettings({ options })}
-                />
-              )}
-              {limits && (
-                <div className="flex items-center gap-3">
-                  <div className="shrink-0 font-semibold">Turn timer</div>
-                  <div className="grid flex-1 grid-cols-4 gap-1.5" data-testid="turn-timer">
-                    {TIMER_CHOICES.map((t) => (
-                      <button
-                        key={t.value}
-                        aria-pressed={room.turnTimeSec === t.value}
-                        disabled={!isHost}
-                        onClick={() => void api.updateSettings({ turnTimeSec: t.value })}
-                        className={`min-h-11 rounded-md border-2 px-0 text-sm font-bold disabled:opacity-50 ${
-                          room.turnTimeSec === t.value
-                            ? 'border-accent bg-accent text-accentink'
-                            : 'border-edge/40 text-muted'
-                        }`}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </Card>
-          </section>
-        )}
-
-        {/* Block 2: public or private; a public lobby shows its code under the switch. */}
-        {limits && (
-          <section aria-label="Visibility">
-            <Card>
-              <Toggle
-                label="Public room"
-                disabled={!isHost}
-                checked={room.visibility === 'public'}
-                onChange={(isPublic) =>
-                  void api.updateSettings({ visibility: isPublic ? 'public' : 'private' })
-                }
-              />
-            </Card>
-          </section>
-        )}
-
-        {/* Block 3: computer players. The table size is simply the game's maximum. */}
-        {limits?.supportsBots && (
-          <section aria-label="Computer players">
-            <Card>
-              <Stepper
-                label="Computer players"
-                disabled={!isHost}
-                value={room.bots}
-                min={0}
-                max={limits.maxPlayers - room.members.length}
-                onChange={(bots) => void api.updateSettings({ bots })}
-              />
-            </Card>
-          </section>
-        )}
-
-        <section aria-label="Players">
-          <SectionLabel
-            right={
-              <span data-testid="player-count" className="text-onbg">
-                {room.members.length + room.bots} / {room.maxPlayers}
-              </span>
-            }
-          >
-            Crew
-          </SectionLabel>
-          <ul className="flex flex-col gap-2">
-            {room.members.map((m) => (
-              <li
-                key={m.id}
-                data-testid={`member-${m.nickname}`}
-                className="hud flex items-center gap-3 px-3 py-2.5"
+                <SectionLabel
+                  right={
+                    <ChevronIcon
+                      className="h-5 w-5 transition-transform duration-300"
+                      style={{ transform: settingsFold ? 'rotate(180deg)' : 'none' }}
+                    />
+                  }
+                >
+                  Settings
+                </SectionLabel>
+              </button>
+              <div
+                className="grid transition-[grid-template-rows] duration-300 ease-out"
+                style={{
+                  gridTemplateRows: settingsFold ? '1fr' : '0fr',
+                  // Hidden (not just clipped) while folded, so nothing in it can be tabbed to or tapped.
+                  visibility: settingsFold ? 'visible' : 'hidden',
+                  transitionProperty: 'grid-template-rows, visibility',
+                  transitionDuration: '300ms, 0s',
+                  transitionDelay: settingsFold ? '0s, 0s' : '0s, 300ms',
+                }}
+                data-testid="lobby-settings"
+                data-open={settingsFold}
               >
-                <Avatar avatar={m.avatar} dim={!m.connected} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-bold">
-                    <PlayerName name={m.nickname} />
-                    {m.id === me && <span className="font-normal text-muted"> (you)</span>}
-                  </div>
-                  <div className="label flex items-center gap-1.5 text-[10px] text-muted">
-                    {m.id === room.hostId && (
-                      <>
-                        <CrownIcon className="h-3.5 w-3.5 text-accent" /> Host ·
-                      </>
+                <div className="min-h-0 overflow-hidden">
+                  <div className="flex flex-col gap-5 pb-1">
+                    {/* Block 1: the game mode (when the game has one) with the turn timer underneath. */}
+                    {(ui?.LobbyOptions || limits) && (
+                      <section aria-label="Game settings">
+                        <SectionLabel>{ui?.LobbyOptions ? 'Game mode' : 'Settings'}</SectionLabel>
+                        <Card className="flex flex-col gap-5">
+                          {ui?.LobbyOptions && (
+                            <ui.LobbyOptions
+                              room={room}
+                              isHost={isHost}
+                              setOptions={(options) => void api.updateSettings({ options })}
+                            />
+                          )}
+                          {limits && (
+                            <div className="flex items-center gap-3">
+                              <div className="shrink-0 font-semibold">Turn timer</div>
+                              <div
+                                className="grid flex-1 grid-cols-4 gap-1.5"
+                                data-testid="turn-timer"
+                              >
+                                {TIMER_CHOICES.map((t) => (
+                                  <button
+                                    key={t.value}
+                                    aria-pressed={room.turnTimeSec === t.value}
+                                    disabled={!isHost}
+                                    onClick={() =>
+                                      void api.updateSettings({ turnTimeSec: t.value })
+                                    }
+                                    className={`min-h-11 rounded-md border-2 px-0 text-sm font-bold disabled:opacity-50 ${
+                                      room.turnTimeSec === t.value
+                                        ? 'border-accent bg-accent text-accentink'
+                                        : 'border-edge/40 text-muted'
+                                    }`}
+                                  >
+                                    {t.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </Card>
+                      </section>
                     )}
-                    {!m.connected ? 'Reconnecting…' : m.ready ? 'Ready ✓' : 'Not ready'}
+
+                    {/* Block 2: public or private; a public lobby shows its code under the switch. */}
+                    {limits && (
+                      <section aria-label="Visibility">
+                        <Card>
+                          <Toggle
+                            label="Public room"
+                            disabled={!isHost}
+                            checked={room.visibility === 'public'}
+                            onChange={(isPublic) =>
+                              void api.updateSettings({
+                                visibility: isPublic ? 'public' : 'private',
+                              })
+                            }
+                          />
+                        </Card>
+                      </section>
+                    )}
+
+                    {/* Block 3: computer players. The table size is simply the game's maximum. */}
+                    {limits?.supportsBots && (
+                      <section aria-label="Computer players">
+                        <Card>
+                          <Stepper
+                            label="Computer players"
+                            disabled={!isHost}
+                            value={room.bots}
+                            min={0}
+                            max={limits.maxPlayers - room.members.length}
+                            onChange={(bots) => void api.updateSettings({ bots })}
+                          />
+                        </Card>
+                      </section>
+                    )}
                   </div>
                 </div>
-                {isHost && m.id !== me && (
-                  <button
-                    onClick={() => void api.kick(m.id)}
-                    className="label min-h-10 rounded-md px-3 text-dangertext"
-                  >
-                    Remove
-                  </button>
-                )}
-              </li>
-            ))}
-            {/* Computer players take a seat when the game starts; they already show here. */}
-            {botSeats.map((name, i) => (
-              <li
-                key={`bot-${i}`}
-                data-testid={`bot-seat-${i + 1}`}
-                className="hud flex items-center gap-3 px-3 py-2.5"
-              >
-                <Avatar avatar={BOT_AVATAR} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-bold">{name}</div>
-                  <div className="label text-[10px] text-muted">Computer</div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
+              </div>
+            </section>
 
-        <section aria-label="Chat">
-          <SectionLabel>Chat</SectionLabel>
-          <ChatPanel messages={messages} me={me} online={api.online} onSend={api.sendChat} />
-        </section>
+            <section aria-label="Players">
+              <SectionLabel
+                right={
+                  <span data-testid="player-count" className="text-onbg">
+                    {room.members.length + room.bots} / {room.maxPlayers}
+                  </span>
+                }
+              >
+                Crew
+              </SectionLabel>
+              <ul className="flex flex-col gap-2">
+                {room.members.map((m) => (
+                  <li
+                    key={m.id}
+                    data-testid={`member-${m.nickname}`}
+                    className="hud flex items-center gap-3 px-3 py-2.5"
+                  >
+                    <Avatar avatar={m.avatar} dim={!m.connected} />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-bold">
+                        <PlayerName name={m.nickname} />
+                        {m.id === me && <span className="font-normal text-muted"> (you)</span>}
+                      </div>
+                      <div className="label flex items-center gap-1.5 text-[10px] text-muted">
+                        {m.id === room.hostId && (
+                          <>
+                            <CrownIcon className="h-3.5 w-3.5 text-accent" /> Host ·
+                          </>
+                        )}
+                        {!m.connected
+                          ? 'Reconnecting…'
+                          : m.ready
+                            ? m.readyLock
+                              ? 'Ready 🔒'
+                              : 'Ready ✓'
+                            : 'Not ready'}
+                      </div>
+                    </div>
+                    {isHost && m.id !== me && (
+                      <button
+                        onClick={() => void api.kick(m.id)}
+                        className="label min-h-10 rounded-md px-3 text-dangertext"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </li>
+                ))}
+                {/* Computer players take a seat when the game starts; they already show here. */}
+                {botSeats.map((name, i) => (
+                  <li
+                    key={`bot-${i}`}
+                    data-testid={`bot-seat-${i + 1}`}
+                    className="hud flex items-center gap-3 px-3 py-2.5"
+                  >
+                    <Avatar avatar={BOT_AVATAR} />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-bold">{name}</div>
+                      <div className="label text-[10px] text-muted">Computer</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section aria-label="Chat">
+              <SectionLabel>Chat</SectionLabel>
+              <ChatPanel messages={messages} me={me} online={api.online} onSend={api.sendChat} />
+            </section>
+          </div>
+        )}
       </main>
 
       {/* The start button stays fixed to the bottom of the screen; the page scrolls behind it. */}
@@ -318,56 +411,48 @@ export function Lobby({
         data-testid="lobby-bar"
       >
         <div className="pointer-events-auto mx-auto flex max-w-md flex-col gap-1">
-          <p className="label text-center text-onbg" data-testid="lobby-ready-count">
-            Ready {readyCount}/{room.members.length}
-            {room.members.length + room.bots < room.minPlayers &&
-              ` · Need ${room.minPlayers} players`}
-          </p>
-          {secondsToStart !== null && (
-            <p
-              className="text-center text-xl font-bold text-neon"
-              data-testid="lobby-countdown"
-              aria-live="polite"
-            >
-              Starting in {secondsToStart}…
-            </p>
-          )}
-          <Button
-            data-testid="lobby-ready"
-            variant={iAmReady ? 'secondary' : 'primary'}
-            aria-pressed={iAmReady}
-            disabled={!api.online}
-            onClick={() => void api.ready(!iAmReady)}
-          >
-            {iAmReady ? (secondsToStart !== null ? 'Cancel' : 'Ready ✓ · tap to cancel') : 'Ready'}
-          </Button>
-          {isHost ? (
+          <div className="flex gap-2">
             <Button
-              variant="ghost"
-              data-testid="lobby-change-game"
-              className="!min-h-10 !text-xs"
-              onClick={() => setPickerOpen(true)}
+              className="min-w-0 flex-1 whitespace-nowrap"
+              data-testid="lobby-ready"
+              variant={iAmReady ? 'secondary' : 'primary'}
+              aria-pressed={iAmReady}
+              disabled={!api.online}
+              onClick={() => void api.ready(!iAmReady)}
             >
-              Back to game selection
+              {/* The ready count lives inside the button: "Ready 1/3", then the countdown. */}
+              {iAmReady && <span aria-hidden>✓ </span>}
+              <span data-testid="lobby-ready-count">
+                Ready {readyCount}/{room.members.length}
+              </span>
+              {secondsToStart !== null && (
+                <span data-testid="lobby-countdown" aria-live="polite">
+                  {' · '}Starting {secondsToStart}…
+                </span>
+              )}
             </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              data-testid="lobby-back"
-              className="!min-h-10 !text-xs"
-              onClick={() => void api.leave()}
-            >
-              Leave lobby
-            </Button>
-          )}
+            {/* Once ready: an open padlock. Tap it to lock Ready (it then survives setting changes, a switched
+                game and coming back from a game); tap again to unlock. Cancelling Ready unlocks it too. */}
+            {iAmReady && (
+              <button
+                type="button"
+                data-testid="lobby-ready-lock"
+                aria-pressed={iAmLocked}
+                aria-label={iAmLocked ? 'Unlock ready' : 'Lock ready'}
+                disabled={!api.online}
+                onClick={() => void api.readyLock(!iAmLocked)}
+                className={`flex min-h-12 w-14 shrink-0 items-center justify-center rounded-[8px] border-2 ring-2 ring-line ${
+                  iAmLocked
+                    ? 'border-neon bg-neon text-accentink'
+                    : 'border-neon/70 bg-panel2 text-neon'
+                }`}
+              >
+                <LockIcon open={!iAmLocked} className="h-6 w-6" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
-      <GamePickerSheet
-        open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        currentId={room.gameId}
-        onPick={(id) => void api.setGame(id)}
-      />
     </div>
   );
 }

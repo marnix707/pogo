@@ -1,6 +1,14 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { readyAll, readyUp, newPlayer, snapshot, takeTurn } from './karma-helpers';
+import {
+  readyAll,
+  readyUp,
+  newPlayer,
+  snapshot,
+  takeTurn,
+  openLobbySettings,
+  leaveLobby,
+} from './karma-helpers';
 
 /** Plays my turns (the computer plays its own) until the results are on screen. */
 /** Plays until the standings show; returns whether the winner's last-card reveal was seen on the way. */
@@ -42,16 +50,17 @@ test('a game tap opens the lobby: Yatzy can start solo, Karma needs 2 and offers
   await page.getByTestId('home-game-yatzy').click();
   await expect(page.getByTestId('lobby-ready-count')).toHaveText('Ready 0/1');
   await expect(page.getByTestId('lobby-ready')).toBeEnabled();
+  await openLobbySettings(page);
   await expect(more).toHaveCount(0);
-  await page.getByTestId('lobby-leave').click();
+  await leaveLobby(page);
 
   await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
-  await expect(page.getByTestId('lobby-ready-count')).toContainText('Need 2 players');
+  await openLobbySettings(page);
   for (let i = 0; i < 4; i++) await more.click();
   await expect(more).toBeDisabled(); // Karma seats at most 5 in total
   await expect(page.getByTestId('lobby-ready-count')).toHaveText('Ready 0/1');
-  await page.getByTestId('lobby-leave').click();
+  await leaveLobby(page);
   await me.context.close();
 });
 
@@ -66,8 +75,8 @@ test('a whole game against the computer, from one tap to the result, and a remat
   await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
 
-  for (let i = 0; i < 1; i++)
-    await page.getByRole('button', { name: 'More Computer players' }).click();
+  for (let i = 0; i < 1; i++) await openLobbySettings(page);
+  await page.getByRole('button', { name: 'More Computer players' }).click();
   await readyAll(page);
 
   // Into the game: the computer sits at the table under its own name.
@@ -119,8 +128,8 @@ test('a four-player game against three computers ends with the ranking: 1st to 4
   page.setDefaultTimeout(15_000);
   await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
-  for (let i = 0; i < 3; i++)
-    await page.getByRole('button', { name: 'More Computer players' }).click();
+  for (let i = 0; i < 3; i++) await openLobbySettings(page);
+  await page.getByRole('button', { name: 'More Computer players' }).click();
   await readyAll(page);
   await expect(page.getByTestId('seat-status-bot:3')).toHaveText('Ready ✓', { timeout: 20_000 });
   await readyUp(page);
@@ -146,8 +155,8 @@ test('with several computers the whole table fills up, each with its own name', 
   const page = me.page;
   await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
-  for (let i = 0; i < 3; i++)
-    await page.getByRole('button', { name: 'More Computer players' }).click();
+  for (let i = 0; i < 3; i++) await openLobbySettings(page);
+  await page.getByRole('button', { name: 'More Computer players' }).click();
   await readyAll(page);
   await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
   for (const [i, name] of ['Robo', 'Bolt', 'Pixel'].entries()) {
@@ -166,9 +175,8 @@ test('a host can add a computer player in the lobby', async ({ browser }) => {
   await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
 
-  // Karma needs two players; alone it cannot start...
-  await expect(page.getByTestId('lobby-ready-count')).toContainText('Need 2 players');
-  // ...until a computer is added.
+  // Karma needs two players: alone it cannot start until a computer is added.
+  await openLobbySettings(page);
   await page.getByRole('button', { name: 'More Computer players' }).click();
   await expect(page.getByTestId('lobby-ready-count')).toHaveText('Ready 0/1');
   await readyAll(page);
@@ -183,7 +191,7 @@ test('Yatzy rooms have no computer setting', async ({ browser }) => {
   await me.page.getByTestId('home-play').click();
   await me.page.getByTestId('home-game-yatzy').click();
   await expect(me.page.getByRole('button', { name: 'More Computer players' })).toHaveCount(0);
-  await me.page.getByTestId('lobby-leave').click();
+  await leaveLobby(me.page);
   await me.context.close();
 });
 
@@ -196,6 +204,7 @@ test('party mode: in round 2 the last winner sets the rules on the round screen,
   page.setDefaultTimeout(15_000);
   await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
+  await openLobbySettings(page);
   await page.getByRole('button', { name: 'More Computer players' }).click();
   await page.getByTestId('karma-mode-party').click();
   await expect(page.getByTestId('karma-mode-party')).toHaveAttribute('aria-pressed', 'true');
@@ -228,6 +237,7 @@ test('epic mode switches on every rule from the start', async ({ browser }) => {
   const page = me.page;
   await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-karma').click();
+  await openLobbySettings(page);
   await page.getByRole('button', { name: 'More Computer players' }).click();
   await page.getByTestId('karma-mode-epic').click(); // choosing a mode shows no bubble...
   await expect(page.getByTestId('karma-mode-bubble')).toHaveCount(0);

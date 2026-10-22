@@ -19,6 +19,20 @@ export const SlidersIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+/** A padlock: closed (locked) or with the shackle open. */
+export const LockIcon = ({ open = false, ...p }: SVGProps<SVGSVGElement> & { open?: boolean }) => (
+  <svg {...base} {...p}>
+    <rect x="5" y="11" width="14" height="9" rx="2" />
+    <path d={open ? 'M8 11V8a4 4 0 0 1 7.5-1.9' : 'M8 11V8a4 4 0 0 1 8 0v3'} />
+  </svg>
+);
+
+export const ChevronIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base} {...p}>
+    <path d="M6 9l6 6 6-6" />
+  </svg>
+);
+
 export const ArrowLeftIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base} {...p}>
     <path d="M15 5l-7 7 7 7" />

@@ -9,7 +9,9 @@ import { SlidersIcon, TrophyIcon } from '../components/icons';
 import { LeaderboardSheet } from '../components/LeaderboardSheet';
 import { ProfileSheet } from '../components/ProfileSheet';
 import type { ProfileMode } from '../components/ProfileSheet';
+import { GameCard } from '../components/GameCard';
 import { Button, SectionLabel } from '../components/ui';
+import { rememberGameCard } from '../lib/cardMorph';
 import { TileButton } from '../components/TopBar';
 import { gameUis, getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
@@ -261,37 +263,18 @@ export function Home({
               <SectionLabel>Games</SectionLabel>
               <div className="flex flex-col gap-3">
                 {gameUis.map((g) => (
-                  <button
+                  <GameCard
                     key={g.id}
-                    type="button"
+                    ui={g}
                     data-testid={`home-game-${g.id}`}
                     disabled={blocked}
-                    onClick={() => void run(api.create(g.id))}
-                    className="hud hud-ticks flex w-full items-center gap-4 bg-panel p-4 text-left text-ink transition active:scale-[0.99] disabled:opacity-50"
-                  >
-                    {g.logo ? (
-                      <img
-                        src={g.logo}
-                        alt=""
-                        aria-hidden
-                        className="h-16 w-24 shrink-0 object-contain"
-                        style={{ imageRendering: 'pixelated' }}
-                      />
-                    ) : (
-                      <span
-                        className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-accent text-4xl"
-                        aria-hidden
-                      >
-                        {g.emoji}
-                      </span>
-                    )}
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-xl font-bold uppercase tracking-[0.12em]">
-                        {g.name}
-                      </span>
-                      <span className="block text-sm leading-snug text-muted">{g.tagline}</span>
-                    </span>
-                  </button>
+                    // The card morphs to the top of the lobby (lib/cardMorph.ts).
+                    onClick={() => {
+                      const el = document.querySelector(`[data-testid="home-game-${g.id}"]`);
+                      rememberGameCard(el);
+                      void run(api.create(g.id));
+                    }}
+                  />
                 ))}
               </div>
             </section>

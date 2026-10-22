@@ -73,6 +73,8 @@ interface Member {
   bot?: boolean;
   /** Pressed Ready in the lobby. */
   ready?: boolean;
+  /** Ready is locked: it survives setting changes, a switched game and a return to the lobby. */
+  readyLock?: boolean;
 }
 
 export interface RoomInit {
@@ -319,8 +321,8 @@ export class Room {
     this.options = options;
     if (patch.visibility !== undefined) this.visibility = patch.visibility;
     if (patch.turnTimeSec !== undefined) this.turnTimeSec = patch.turnTimeSec;
-    // Everybody has to confirm the new settings again.
-    for (const m of this.members) m.ready = false;
+    // Everybody has to confirm the new settings again (except those who locked their Ready).
+    this.resetReady();
     this.changed();
     return ok(null);
   }
@@ -341,7 +343,7 @@ export class Room {
     this.options = game.defaultOptions;
     this.maxPlayers = game.maxPlayers;
     this.bots = game.supportsBots ? Math.min(this.bots, game.maxPlayers - this.memberCount) : 0;
-    for (const m of this.members) m.ready = false;
+    this.resetReady();
     this.changed();
     return ok(null);
   }
@@ -352,8 +354,28 @@ export class Room {
     const member = this.members.find((m) => m.user.id === userId && !m.left && !m.bot);
     if (!member) return fail('You are not in this room');
     member.ready = ready;
+    if (!ready) member.readyLock = false; // cancelling Ready also unlocks it
     this.changed();
     return ok(null);
+  }
+
+  /**
+   * Lobby: lock (or unlock) your Ready. A locked Ready stays on when the host changes a setting, picks
+   * another game or the group comes back from a game, so a group can cycle through games quickly.
+   */
+  setReadyLock(userId: string, locked: boolean): Result<null> {
+    if (this.status !== 'lobby') return fail('The game has already started');
+    const member = this.members.find((m) => m.user.id === userId && !m.left && !m.bot);
+    if (!member) return fail('You are not in this room');
+    member.readyLock = locked;
+    if (locked) member.ready = true;
+    this.changed();
+    return ok(null);
+  }
+
+  /** A change everybody has to confirm: Ready goes off, except for people who locked it. */
+  private resetReady(): void {
+    for (const m of this.members) m.ready = !!m.readyLock;
   }
 
   /** Everybody present is ready and there are enough players (computer players count as seats). */
@@ -420,7 +442,7 @@ export class Room {
     if (this.status !== 'finished') return fail('The game is not finished');
     // Back to the waiting room: players who left and the computer players go away (the setting stays).
     this.members = this.members.filter((m) => !m.left && !m.bot);
-    for (const m of this.members) m.ready = false;
+    this.resetReady();
     // The game may carry something over to the next one (e.g. a rule the winner picked).
     if (this.state && this.game.nextOptions)
       this.options = this.game.nextOptions(this.state, this.options);
@@ -662,7 +684,7 @@ export class Room {
     if (this.status === 'lobby' && this.startAt !== null && now >= this.startAt) {
       if (this.canAutoStart() && this.begin().ok) return;
       // Could not start after all (e.g. someone dropped out): everybody has to ready up again.
-      for (const m of this.members) m.ready = false;
+      this.resetReady();
       this.startAt = null;
       this.changed();
       return;
@@ -702,6 +724,7 @@ export class Room {
         left: m.left,
         bot: !!m.bot,
         ready: !!m.bot || !!m.ready,
+        readyLock: !m.bot && !!m.readyLock,
       })),
       startsAt: this.status === 'lobby' ? this.startAt : null,
       serverTime: this.deps.now(),

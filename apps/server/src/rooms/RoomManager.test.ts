@@ -196,6 +196,51 @@ describe('a persistent lobby: the host switches the game and everybody stays', (
   });
 });
 
+describe('locked ready', () => {
+  it('stays on across setting changes and a switched game; cancelling unlocks it', () => {
+    const { manager, must } = setup();
+    const { code } = must(manager.create(a, { gameId: 'karma' }));
+    must(manager.join(b, code));
+    must(manager.setReady(a.id, true));
+    must(manager.setReady(b.id, true));
+    expect(must(manager.setReadyLock(a.id, true)).members.find((m) => m.id === a.id)).toMatchObject(
+      {
+        ready: true,
+        readyLock: true,
+      },
+    );
+    // A setting change resets everybody except the one who locked.
+    const changed = must(manager.updateSettings(a.id, { turnTimeSec: 60 }));
+    expect(changed.members.find((m) => m.id === a.id)).toMatchObject({
+      ready: true,
+      readyLock: true,
+    });
+    expect(changed.members.find((m) => m.id === b.id)).toMatchObject({
+      ready: false,
+      readyLock: false,
+    });
+    // A switched game too.
+    const switched = must(manager.setGame(a.id, 'yatzy'));
+    expect(switched.members.find((m) => m.id === a.id)).toMatchObject({
+      ready: true,
+      readyLock: true,
+    });
+    expect(switched.members.find((m) => m.id === b.id)!.ready).toBe(false);
+    // Locking also readies you; cancelling Ready unlocks.
+    expect(must(manager.setReadyLock(b.id, true)).members.find((m) => m.id === b.id)!.ready).toBe(
+      true,
+    );
+    const cancelled = must(manager.setReady(b.id, false));
+    expect(cancelled.members.find((m) => m.id === b.id)).toMatchObject({
+      ready: false,
+      readyLock: false,
+    });
+    // Not in a lobby any more: refused.
+    must(manager.setReady(b.id, true));
+    expect(manager.setReadyLock(user(9).id, true).ok).toBe(false);
+  });
+});
+
 describe('playing', () => {
   function started() {
     const s = setup();

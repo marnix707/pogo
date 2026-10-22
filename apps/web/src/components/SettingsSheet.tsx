@@ -10,6 +10,7 @@ export function SettingsSheet({
   onSignOut,
   roomCode,
   isDev,
+  onLeave,
 }: {
   open: boolean;
   onClose: () => void;
@@ -19,6 +20,8 @@ export function SettingsSheet({
   roomCode?: string;
   /** Developers get a shortcut to the admin panel. */
   isDev?: boolean;
+  /** In a lobby: leave the room (the lobby has no back arrow any more). */
+  onLeave?: () => void;
 }) {
   const settings = useSettings();
   return (
@@ -29,6 +32,11 @@ export function SettingsSheet({
             <span className="label text-muted">Room</span>
             <span className="text-lg font-bold tracking-[0.2em]">{roomCode}</span>
           </div>
+        )}
+        {onLeave && (
+          <Button variant="danger" onClick={onLeave} data-testid="settings-leave">
+            Leave lobby
+          </Button>
         )}
         <Toggle
           label="Sound effects"
