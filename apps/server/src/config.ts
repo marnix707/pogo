@@ -24,7 +24,16 @@ const schema = z.object({
   /** Optional all-in-one alternative to the four above (e.g. smtps://user:pass@host:465); wins when set. */
   SMTP_URL: z.string().default(''),
   /** API key for `MAIL_MODE=brevo` (Brevo's HTTPS API; hosts such as Render block outgoing SMTP). */
-  BREVO_API_KEY: z.string().default(''),
+  // (A key pasted with spaces, a newline or quotes around it still works.)
+  BREVO_API_KEY: z
+    .string()
+    .default('')
+    .transform((key) =>
+      key
+        .trim()
+        .replace(/^["']+|["']+$/g, '')
+        .trim(),
+    ),
   /** Public address of the site (no trailing slash); the mail artwork is loaded from it in brevo mode. */
   PUBLIC_BASE_URL: z.string().default(''),
   MAIL_FROM: z.string().default('POGO <no-reply@pogo.local>'),

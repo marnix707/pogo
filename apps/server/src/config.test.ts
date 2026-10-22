@@ -48,3 +48,15 @@ describe('loadConfig mail', () => {
     expect(c.smtpUrl).toBe('smtps://u:p@h:465');
   });
 });
+
+describe('loadConfig brevo key', () => {
+  const required = { DATABASE_URL: 'postgres://x', JWT_SECRET: 'a'.repeat(40) };
+  it('trims spaces, newlines and quotes around the API key', () => {
+    const cfg = loadConfig({
+      ...required,
+      MAIL_MODE: 'brevo',
+      BREVO_API_KEY: ' "xkeysib-abc123"\n',
+    } as NodeJS.ProcessEnv);
+    expect(cfg.brevoApiKey).toBe('xkeysib-abc123');
+  });
+});
