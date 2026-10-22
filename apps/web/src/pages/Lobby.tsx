@@ -214,6 +214,8 @@ export function Lobby({
               currentId={room.gameId}
               gameIdPrefix="pick-game"
               showJoin={false}
+              currentRoomCode={room.code}
+              onReturn={() => setChoosing(false)}
               // All the way at the bottom: leave the lobby for the home screen (no intro animation again).
               onMainScreen={() => void api.leave()}
               tooBigFor={(id) => room.members.length > (getGame(id)?.maxPlayers ?? Infinity)}

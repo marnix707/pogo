@@ -13,10 +13,13 @@ function OpenGame({
   room,
   disabled,
   onJoin,
+  mine = false,
 }: {
   room: PublicRoomSummary;
   disabled: boolean;
   onJoin: () => void;
+  /** This is the lobby I am in: the button says Return (and goes back to it). */
+  mine?: boolean;
 }) {
   const ui = getGameUi(room.gameId);
   return (
@@ -55,7 +58,7 @@ function OpenGame({
         className="min-h-11 !px-4"
         onClick={onJoin}
       >
-        Join
+        {mine ? 'Return' : 'Join'}
       </Button>
     </li>
   );
@@ -117,6 +120,8 @@ export function PlayScreen({
   gameIdPrefix = 'home-game',
   showJoin = true,
   onMainScreen,
+  currentRoomCode,
+  onReturn,
 }: {
   api: RoomApi;
   lobby: PublicRoomSummary[] | null;
@@ -132,6 +137,9 @@ export function PlayScreen({
   showJoin?: boolean;
   /** A "Main screen" button all the way at the bottom: back to the home screen. */
   onMainScreen?: () => void;
+  /** The lobby I am in (it shows up in the open games list): its button says Return instead of Join. */
+  currentRoomCode?: string;
+  onReturn?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<string>('all');
@@ -237,7 +245,10 @@ export function PlayScreen({
                 key={r.code}
                 room={r}
                 disabled={blocked}
-                onJoin={() => void run(api.join(r.code))}
+                mine={r.code === currentRoomCode}
+                onJoin={() =>
+                  r.code === currentRoomCode ? onReturn?.() : void run(api.join(r.code))
+                }
               />
             ))}
           </ul>
