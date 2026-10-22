@@ -47,7 +47,7 @@ export const GameCard = forwardRef<
         <span
           aria-hidden
           data-testid="game-card-chevron"
-          className="absolute right-3 top-1 text-xs opacity-60"
+          className="absolute bottom-1.5 right-3 text-2xl leading-none opacity-60"
         >
           {chevron === 'down' ? '▾' : '▴'}
         </span>
