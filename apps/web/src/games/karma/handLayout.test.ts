@@ -13,8 +13,18 @@ const FONT = 18; // card = 90px wide
 describe('handLayout', () => {
   it('keeps one row while every card shows at least the minimum', () => {
     const per = maxPerRow(390, FONT * 5);
-    expect(handLayout(per, 390, FONT).rows).toBe(1);
-    expect(handLayout(per + 1, 390, FONT).rows).toBe(2);
+    expect(handLayout(per, 390, FONT)).toMatchObject({ rows: 1, font: FONT });
+  });
+
+  it('shrinks the cards a little before it adds a row (6 cards stay in one row)', () => {
+    const six = handLayout(6, 390, FONT);
+    expect(six.rows).toBe(1);
+    expect(six.font).toBeLessThan(FONT);
+    expect(six.font).toBeGreaterThanOrEqual(FONT * 0.75);
+    // ...and the cards still overlap by at most 30%
+    expect(six.strip).toBeGreaterThanOrEqual(six.font * 5 * MIN_VISIBLE - 1e-6);
+    // a seventh card would need cards smaller than that: now it wraps
+    expect(handLayout(8, 390, FONT).rows).toBe(2);
   });
 
   it('shows at least MIN_VISIBLE of every card, for any hand size and width', () => {
@@ -57,7 +67,7 @@ describe('handLayout', () => {
   it('draws wrapped rows smaller (two rows, many rows) and single rows at full size', () => {
     expect(handLayout(3, 390, FONT).font).toBe(FONT);
     expect(handLayout(8, 390, FONT).font).toBeCloseTo(FONT * WRAP_SCALE);
-    expect(handLayout(30, 390, FONT).font).toBeCloseTo(FONT * MANY_ROWS_SCALE);
+    expect(handLayout(30, 390, FONT).font).toBeLessThanOrEqual(FONT * MANY_ROWS_SCALE + 1e-6);
   });
 
   it('spreads a sparse hand until the cards show MAX_VISIBLE of their width, no further', () => {

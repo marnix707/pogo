@@ -425,9 +425,22 @@ button {
     transform: scaleX(0);
   }
 }
+@keyframes timer-drain-y {
+  from {
+    transform: scaleY(var(--from, 1));
+  }
+  to {
+    transform: scaleY(0);
+  }
+}
 .timer-drain {
   transform-origin: left center;
   animation: timer-drain linear forwards;
+}
+/* The vertical version (Karma's Ready button while swapping): the level drops from the top. */
+.timer-drain-v {
+  transform-origin: center bottom;
+  animation: timer-drain-y linear forwards;
 }
 
 /* Last seconds of a turn: the overlay blinks (with reduced motion it just stays red). */

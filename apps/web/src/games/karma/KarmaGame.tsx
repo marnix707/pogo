@@ -1268,8 +1268,9 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                       disabled={busy}
                       onClick={() => void getReady()}
                     >
-                      {/* The swap phase has a clock too: the same draining bar as the turn timer. */}
+                      {/* The swap phase has a clock too: the same draining bar, going down instead of sideways. */}
                       <TimerDrain
+                        vertical
                         deadline={game.deadline}
                         serverTime={room.serverTime}
                         totalSec={room.turnTimeSec}

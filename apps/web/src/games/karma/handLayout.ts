@@ -12,7 +12,10 @@ export const MAX_VISIBLE = 0.9;
 /** Cards in the extra rows are drawn smaller: two rows, and three or more rows. */
 export const WRAP_SCALE = 0.85;
 export const MANY_ROWS_SCALE = 0.7;
-const scaleFor = (rows: number) => (rows <= 1 ? 1 : rows === 2 ? WRAP_SCALE : MANY_ROWS_SCALE);
+/** The biggest cards a layout with this many rows may use (extra rows save height with smaller cards). */
+const maxScale = (rows: number) => (rows <= 1 ? 1 : rows === 2 ? WRAP_SCALE : MANY_ROWS_SCALE);
+/** A row may shrink its cards to this share of that size to fit more cards before another row is added. */
+const MIN_SHRINK = 0.75;
 /** Extra room kept free at the edges of a spread-out row (on top of the container padding). */
 const SPREAD_PAD_PX = 12;
 /** Horizontal padding of the hand container (px-1 on both sides). */
@@ -34,17 +37,21 @@ export function maxPerRow(width: number, cardW: number): number {
 }
 
 /**
- * Picks the fewest rows for which every card still shows at least MIN_VISIBLE of its width.
- * `width` is the measured width of the hand container, `baseFont` the card size of a single row.
+ * Picks the fewest rows for which every card still shows at least MIN_VISIBLE of its width, letting
+ * the cards shrink continuously (down to MIN_SHRINK of their size) before a row is added.
+ * `width` is the measured width of the hand container, `baseFont` the full card size.
  */
 export function handLayout(count: number, width: number, baseFont: number): HandLayout {
   let rows = 1;
-  for (;;) {
-    const font = baseFont * scaleFor(rows);
-    if (Math.ceil(count / rows) <= maxPerRow(width, font * 5) || rows >= Math.max(1, count)) break;
-    rows++;
+  let scale = 1;
+  for (; ; rows++) {
+    const perRow = Math.max(1, Math.ceil(count / rows));
+    // The widest card for which `perRow` cards fit with the largest allowed overlap.
+    const fitCardW = (width - PADDING_PX) / (1 + (perRow - 1) * MIN_VISIBLE);
+    scale = Math.min(maxScale(rows), fitCardW / (baseFont * 5));
+    if (scale >= maxScale(rows) * MIN_SHRINK || rows >= Math.max(1, count)) break;
   }
-  const font = baseFont * scaleFor(rows);
+  const font = baseFont * scale;
   const cardW = font * 5;
   const perRow = Math.max(1, Math.ceil(count / rows));
   const fit =

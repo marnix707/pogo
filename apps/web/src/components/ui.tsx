@@ -191,10 +191,12 @@ function Drain({
   remainingMs,
   totalMs,
   urgent,
+  vertical,
 }: {
   remainingMs: number;
   totalMs: number;
   urgent: boolean;
+  vertical: boolean;
 }) {
   // Computed once per deadline (the parent keys this component by it), so re-renders never
   // restart or bend the running animation.
@@ -208,7 +210,7 @@ function Drain({
       className={`pointer-events-none absolute inset-0 ${urgent ? 'timer-flash' : ''}`}
     >
       <span
-        className={`timer-drain absolute inset-0 ${urgent ? 'bg-danger/55' : 'bg-white/25'}`}
+        className={`${vertical ? 'timer-drain-v' : 'timer-drain'} absolute inset-0 ${urgent ? 'bg-danger/55' : 'bg-white/25'}`}
         style={
           {
             '--from': start.from,
@@ -231,6 +233,7 @@ export function TimerDrain({
   totalSec,
   urgent = false,
   active = true,
+  vertical = false,
 }: {
   deadline: number | null | undefined;
   serverTime: number;
@@ -238,10 +241,18 @@ export function TimerDrain({
   urgent?: boolean;
   /** Only drain while true (e.g. on my turn). */
   active?: boolean;
+  /** Drain downwards (the level drops) instead of from the right to the left. */
+  vertical?: boolean;
 }) {
   if (deadline == null || !active) return null;
   const remainingMs = deadline - serverTime;
   return (
-    <Drain key={deadline} remainingMs={remainingMs} totalMs={totalSec * 1000} urgent={urgent} />
+    <Drain
+      key={deadline}
+      remainingMs={remainingMs}
+      totalMs={totalSec * 1000}
+      urgent={urgent}
+      vertical={vertical}
+    />
   );
 }
