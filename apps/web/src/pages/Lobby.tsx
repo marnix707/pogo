@@ -89,9 +89,8 @@ export function Lobby({
   const isHost = room.hostId === me;
   /** The host opened the list of games (the top card is a button): the settings make room for it. */
   const [choosing, setChoosing] = useState(false);
-  /** The settings are folded by default; the host unfolds them to change something. */
+  /** The settings are folded by default (a fresh lobby, or back from a game); switching games inside the lobby keeps them as they are. */
   const [settingsFold, setSettingsFold] = useState(false);
-  useEffect(() => setSettingsFold(false), [room.gameId]); // a new game: folded again
   // Arriving from the Play screen: the tapped game card morphs to the top of this lobby.
   const topCard = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
