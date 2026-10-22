@@ -41,21 +41,22 @@ services:
       # Profanity filter for chat and guest nicknames: 'on' or 'off'. Can be flipped in the Render
       # dashboard (Environment) without a code change.
       - key: PROFANITY_FILTER
-        value: 'off'
+        sync: false
 
       # How long computer players "think" before each move (ms)
       - key: BOT_DELAY_MS
-        value: '1000'
+        sync: false
 
       # Emailed codes for registering. Render's free tier blocks SMTP, so production sends through
-      # Brevo's HTTPS API (BREVO_API_KEY below). 'log' would only print the codes in the server log:
-      # a Blueprint sync writes the values in this file over the dashboard, so keep this one 'brevo'.
+      # Brevo's HTTPS API (BREVO_API_KEY below). 'log' would only print the codes in the server log,
+      # so set MAIL_MODE=brevo in the dashboard. (A key with a `value:` here is written over the dashboard on every
+      # deploy; `sync: false` keys are only asked for once and never overwritten.)
       - key: MAIL_MODE
-        value: brevo
+        sync: false
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
-        value: '465'
+        sync: false
       - key: SMTP_USER
         sync: false
       - key: SMTP_PASSWORD
@@ -77,8 +78,8 @@ services:
 
       # Gameplay timings (same defaults as .env.example)
       - key: TURN_TIME_SEC
-        value: '30'
+        sync: false
       - key: DISCONNECT_GRACE_SEC
-        value: '20'
+        sync: false
       - key: ROOM_TTL_SEC
-        value: '600'
+        sync: false
