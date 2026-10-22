@@ -154,6 +154,9 @@ export type EmptyPayload = Record<string, never>;
 export const roomReadySchema = z.object({ ready: z.boolean() });
 export type RoomReadyInput = z.input<typeof roomReadySchema>;
 
+export const roomSuggestSchema = z.object({ gameId: z.string().min(1).max(32).nullable() });
+export type RoomSuggestInput = z.input<typeof roomSuggestSchema>;
+
 export const roomReadyLockSchema = z.object({ locked: z.boolean() });
 export type RoomReadyLockInput = z.input<typeof roomReadyLockSchema>;
 

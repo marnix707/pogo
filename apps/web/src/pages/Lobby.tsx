@@ -65,6 +65,57 @@ function Stepper({
   );
 }
 
+/** "Suggested:" and the logo of the game a player would like to play next. */
+function SuggestedGame({
+  gameId,
+  playerName,
+  onPick,
+}: {
+  gameId: string;
+  playerName: string;
+  /** The host can switch to it with a tap. */
+  onPick?: () => void;
+}) {
+  const ui = getGameUi(gameId);
+  if (!ui) return null;
+  const body = (
+    <>
+      <span className="label text-[8px] leading-none text-muted">Suggested:</span>
+      {ui.logo ? (
+        <img
+          src={ui.logo}
+          alt={ui.name}
+          draggable={false}
+          className="h-9 w-14 object-contain"
+          style={{ imageRendering: 'pixelated' }}
+        />
+      ) : (
+        <span className="text-2xl leading-none">{ui.emoji}</span>
+      )}
+    </>
+  );
+  const cls = 'ml-auto flex shrink-0 flex-col items-center gap-0.5';
+  return onPick ? (
+    <button
+      type="button"
+      className={cls}
+      onClick={onPick}
+      data-testid={`suggestion-${gameId}`}
+      aria-label={`${playerName} suggests ${ui.name}: play it`}
+    >
+      {body}
+    </button>
+  ) : (
+    <span
+      className={cls}
+      data-testid={`suggestion-${gameId}`}
+      aria-label={`${playerName} suggests ${ui.name}`}
+    >
+      {body}
+    </span>
+  );
+}
+
 export function Lobby({
   room,
   me,
@@ -199,8 +250,9 @@ export function Lobby({
             ref={topCard}
             ui={ui}
             data-testid="lobby-game-card"
-            chevron={isHost ? (choosing ? 'up' : 'down') : undefined}
-            onClick={isHost ? () => setChoosing((c) => !c) : undefined}
+            // Everybody can open the list: the host picks the game, the others suggest one.
+            chevron={choosing ? 'up' : 'down'}
+            onClick={() => setChoosing((c) => !c)}
           />
         )}
 
@@ -220,12 +272,12 @@ export function Lobby({
               onMainScreen={() => void api.leave()}
               tooBigFor={(id) => room.members.length > (getGame(id)?.maxPlayers ?? Infinity)}
               onPick={(g) => {
-                if (g.id === room.gameId) {
-                  setChoosing(false);
-                  return;
-                }
                 setChoosing(false);
-                return api.setGame(g.id);
+                if (g.id === room.gameId) return;
+                if (isHost) return api.setGame(g.id);
+                // Not the host: a suggestion, shown next to my name in the crew list.
+                toast.show(`You suggested ${g.name}`);
+                return api.suggest(g.id);
               }}
             />
           </div>
@@ -392,6 +444,14 @@ export function Lobby({
                       >
                         Remove
                       </button>
+                    )}
+                    {/* A game suggested by this player, at the very end (the host taps it to switch). */}
+                    {m.suggestion && m.suggestion !== room.gameId && (
+                      <SuggestedGame
+                        gameId={m.suggestion}
+                        playerName={m.nickname}
+                        onPick={isHost ? () => void api.setGame(m.suggestion!) : undefined}
+                      />
                     )}
                   </li>
                 ))}

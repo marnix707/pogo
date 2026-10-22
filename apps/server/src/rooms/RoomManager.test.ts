@@ -196,6 +196,34 @@ describe('a persistent lobby: the host switches the game and everybody stays', (
   });
 });
 
+describe('game suggestions', () => {
+  it('anybody can suggest a game, everybody sees it, the host choosing clears them', () => {
+    const { manager, must, lastRoom } = setup();
+    const { code } = must(manager.create(a, { gameId: 'karma' }));
+    must(manager.join(b, code));
+    // A non-host suggests; the host and the suggester see it next to the suggester.
+    const suggested = must(manager.suggest(b.id, 'yatzy'));
+    expect(suggested.members.find((m) => m.id === b.id)!.suggestion).toBe('yatzy');
+    expect(lastRoom(a.id)!.members.find((m) => m.id === b.id)!.suggestion).toBe('yatzy');
+    expect(suggested.gameId).toBe('karma'); // only the host changes the game
+    // The same suggestion again takes it back; the current game cannot be suggested; unknown games neither.
+    expect(
+      must(manager.suggest(b.id, 'yatzy')).members.find((m) => m.id === b.id)!.suggestion,
+    ).toBeNull();
+    expect(
+      must(manager.suggest(b.id, 'karma')).members.find((m) => m.id === b.id)!.suggestion,
+    ).toBeNull();
+    expect(manager.suggest(b.id, 'nope')).toMatchObject({ ok: false, error: 'Unknown game' });
+    // The host switches the game: suggestions are cleared.
+    must(manager.suggest(b.id, 'yatzy'));
+    const switched = must(manager.setGame(a.id, 'yatzy'));
+    expect(switched.members.every((m) => m.suggestion === null)).toBe(true);
+    // Not in a lobby any more: refused.
+    must(manager.setReady(a.id, true));
+    must(manager.setReady(b.id, true));
+  });
+});
+
 describe('locked ready', () => {
   it('stays on across setting changes and a switched game; cancelling unlocks it', () => {
     const { manager, must } = setup();

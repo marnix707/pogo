@@ -83,6 +83,7 @@ export function Shell({
       updateSettings: (patch: RoomSettingsInput) => run(request('room:settings', patch)),
       setGame: (gameId) => run(request('room:setGame', { gameId })),
       ready: (ready) => run(request('room:ready', { ready })),
+      suggest: (gameId) => run(request('room:suggest', { gameId })),
       readyLock: (locked) => run(request('room:readyLock', { locked })),
       rematch: (toLobby) => run(request('room:rematch', { toLobby })),
       move: (move) => run(request('game:move', { move })),

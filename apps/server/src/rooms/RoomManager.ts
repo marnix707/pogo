@@ -262,6 +262,15 @@ export class RoomManager {
     return result.ok ? ok(room.view(userId)) : result;
   }
 
+  suggest(userId: string, gameId: string | null): Result<RoomView> {
+    const room = this.roomFor(userId);
+    if (!room) return fail('You are not in a room');
+    const game = gameId === null ? null : this.deps.getGame(gameId);
+    if (gameId !== null && !game) return fail('Unknown game');
+    const result = room.suggest(userId, game ?? null);
+    return result.ok ? ok(room.view(userId)) : result;
+  }
+
   setReadyLock(userId: string, locked: boolean): Result<RoomView> {
     const room = this.roomFor(userId);
     if (!room) return fail('You are not in a room');

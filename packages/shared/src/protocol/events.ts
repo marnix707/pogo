@@ -12,6 +12,7 @@ import type {
   RoomSettingsInput,
   RoomSetGameInput,
   RoomReadyLockInput,
+  RoomSuggestInput,
   Visibility,
 } from './schemas';
 
@@ -58,6 +59,8 @@ export interface RoomMemberView {
   ready: boolean;
   /** Ready is locked: it stays on across setting changes, game switches and games. */
   readyLock: boolean;
+  /** The game this player suggests for the next round (null = none). */
+  suggestion: string | null;
 }
 
 export interface RoomGameView {
@@ -129,6 +132,7 @@ export interface ClientToServerEvents {
   'room:leave': (payload: EmptyPayload, ack: Ack<null>) => void;
   'room:kick': (payload: RoomKickInput, ack: Ack<null>) => void;
   'room:settings': (payload: RoomSettingsInput, ack: Ack<RoomView>) => void;
+  'room:suggest': (payload: RoomSuggestInput, ack: Ack<RoomView>) => void;
   'room:readyLock': (payload: RoomReadyLockInput, ack: Ack<RoomView>) => void;
   'room:setGame': (payload: RoomSetGameInput, ack: Ack<RoomView>) => void;
   'room:ready': (payload: RoomReadyInput, ack: Ack<RoomView>) => void;

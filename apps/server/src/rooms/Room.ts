@@ -75,6 +75,8 @@ interface Member {
   ready?: boolean;
   /** Ready is locked: it survives setting changes, a switched game and a return to the lobby. */
   readyLock?: boolean;
+  /** The game this member suggests for the next round (the host decides). */
+  suggestion?: string | null;
 }
 
 export interface RoomInit {
@@ -344,6 +346,22 @@ export class Room {
     this.maxPlayers = game.maxPlayers;
     this.bots = game.supportsBots ? Math.min(this.bots, game.maxPlayers - this.memberCount) : 0;
     this.resetReady();
+    for (const m of this.members) m.suggestion = null; // the host chose: suggestions are done
+    this.changed();
+    return ok(null);
+  }
+
+  /**
+   * Lobby: suggest a game for the next round (anybody, also non-hosts who cannot change it); everybody sees
+   * it next to the suggester in the crew list. `null` takes the suggestion back.
+   */
+  suggest(userId: string, game: AnyGameDefinition | null): Result<null> {
+    if (this.status !== 'lobby') return fail('The game has already started');
+    const member = this.members.find((m) => m.user.id === userId && !m.left && !m.bot);
+    if (!member) return fail('You are not in this room');
+    // Suggesting the game that is already chosen is pointless; suggesting the same one again withdraws it.
+    member.suggestion =
+      game && game.id !== this.game.id && member.suggestion !== game.id ? game.id : null;
     this.changed();
     return ok(null);
   }
@@ -404,6 +422,7 @@ export class Room {
   private begin(): Result<null> {
     if (this.status !== 'lobby') return fail('The game has already started');
     this.startAt = null;
+    for (const m of this.members) m.suggestion = null; // the round starts: suggestions are done
     if (this.bots > 0 && !this.game.supportsBots) {
       return fail(`${this.game.name} cannot be played against the computer`);
     }
@@ -725,6 +744,7 @@ export class Room {
         bot: !!m.bot,
         ready: !!m.bot || !!m.ready,
         readyLock: !m.bot && !!m.readyLock,
+        suggestion: m.bot ? null : (m.suggestion ?? null),
       })),
       startsAt: this.status === 'lobby' ? this.startAt : null,
       serverTime: this.deps.now(),

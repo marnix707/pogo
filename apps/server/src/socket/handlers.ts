@@ -16,6 +16,7 @@ import {
   roomSettingsSchema,
   roomSetGameSchema,
   roomReadyLockSchema,
+  roomSuggestSchema,
   INTERNAL_ERROR_CODE,
   INTERNAL_ERROR_MESSAGE,
   failResult,
@@ -151,6 +152,7 @@ export function registerSocketHandlers({
     route('room:kick', roomKickSchema, (p) => manager.kick(user.id, p.userId));
     route('room:settings', roomSettingsSchema, (p) => manager.updateSettings(user.id, p));
     route('room:setGame', roomSetGameSchema, (p) => manager.setGame(user.id, p.gameId));
+    route('room:suggest', roomSuggestSchema, (p) => manager.suggest(user.id, p.gameId));
     route('room:readyLock', roomReadyLockSchema, (p) => manager.setReadyLock(user.id, p.locked));
     route('room:ready', roomReadySchema, (p) => manager.setReady(user.id, p.ready));
     route('room:rematch', rematchSchema, (p) => manager.rematch(user.id, p.toLobby));

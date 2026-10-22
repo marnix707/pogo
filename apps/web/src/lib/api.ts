@@ -15,6 +15,8 @@ export interface RoomApi {
   setGame(gameId: string): Promise<Result<unknown>>;
   /** Lobby: press or release Ready; the game starts by itself when everybody is ready. */
   ready(ready: boolean): Promise<Result<unknown>>;
+  /** Lobby: suggest a game for the next round (null takes it back); anybody can, the host decides. */
+  suggest(gameId: string | null): Promise<Result<unknown>>;
   /** Lock Ready: it stays on across setting changes, game switches and games. */
   readyLock(locked: boolean): Promise<Result<unknown>>;
   rematch(toLobby?: boolean): Promise<Result<unknown>>;
