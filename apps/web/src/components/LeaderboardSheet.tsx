@@ -63,20 +63,22 @@ export function LeaderboardSheet({
         ) : (
           <>
             <div
-              className="label flex items-center gap-3 px-3 pb-1 text-[10px] text-muted"
+              className="label flex items-center gap-2 px-2 pb-1 text-[10px] text-muted"
               data-testid="leaderboard-header"
             >
               <span className="w-6 text-center">#</span>
               <span className="w-8" />
               <span className="flex-1">Player</span>
-              <span className="w-16 text-right">Played</span>
-              <span className="w-14 text-right">{game === 'yatzy' ? 'Best' : 'Wins'}</span>
+              <span className="w-11 shrink-0 whitespace-nowrap text-right">Played</span>
+              <span className="w-9 shrink-0 whitespace-nowrap text-right">
+                {game === 'yatzy' ? 'Best' : 'Wins'}
+              </span>
             </div>
             <ol className="flex flex-col gap-1.5">
               {rows.map((r, i) => (
                 <li
                   key={r.userId}
-                  className={`flex items-center gap-3 rounded-md border-2 px-3 py-1.5 ${
+                  className={`flex items-center gap-2 rounded-md border-2 px-2 py-1.5 ${
                     r.userId === me ? 'border-neon bg-neon/15' : 'border-edge/30 bg-panel2'
                   }`}
                 >
@@ -84,11 +86,15 @@ export function LeaderboardSheet({
                   <span className="flex h-8 w-8 items-center justify-center overflow-hidden text-xl">
                     <AvatarFace avatar={r.avatar} fill />
                   </span>
-                  <span className="flex-1 truncate font-bold">
+                  <span className="min-w-0 flex-1 font-bold leading-tight [overflow-wrap:anywhere]">
                     <PlayerName name={r.nickname} />
                   </span>
-                  <span className="w-16 text-right text-sm text-muted tabular-nums">{r.games}</span>
-                  <span className="w-14 text-right font-bold tabular-nums">{metric(r)}</span>
+                  <span className="w-11 shrink-0 text-right text-sm text-muted tabular-nums">
+                    {r.games}
+                  </span>
+                  <span className="w-9 shrink-0 text-right font-bold tabular-nums">
+                    {metric(r)}
+                  </span>
                 </li>
               ))}
             </ol>
