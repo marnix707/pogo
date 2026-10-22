@@ -516,12 +516,21 @@ button {
   animation: info-bubble-in 180ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
 }
 
+/* Full-screen screens that cover the game (results, round screen) wear the same night-table background
+   as the app: the gradient and the soft glow here, the drifting contour lines as a TopoBackground inside. */
+.screen-bg {
+  background:
+    radial-gradient(38% 38% at 30% 32%, rgb(253 95 85 / 0.3), transparent 70%),
+    radial-gradient(42% 42% at 70% 64%, rgb(174 101 255 / 0.32), transparent 70%),
+    radial-gradient(30% 30% at 56% 18%, rgb(253 162 0 / 0.18), transparent 70%),
+    var(--page-gradient);
+}
 /* While the results are open the strips outside the panel (status bar, home indicator) match its colour. */
 html.results-open {
-  background: rgb(var(--c-panel));
+  background: #20325a;
 }
 html.results-open .safe-top-scrim {
-  background: rgb(var(--c-panel));
+  background: #2c78c8;
 }
 
 /* Home intro: the POGO letters pop in from nothing, then breathe by 5%. */

@@ -3,6 +3,7 @@ import type { ChatMessage, RoomView } from '@pogo/shared';
 import type { ComponentType } from 'react';
 import type { GameUiProps } from '../games/types';
 import { Confetti } from '../components/Confetti';
+import { TopoBackground } from '../components/TopoBackground';
 import { Button, Sheet } from '../components/ui';
 import { RegisterNudge } from '../components/RegisterNudge';
 import { ChatPanel } from '../components/ChatPanel';
@@ -75,8 +76,9 @@ function ResultsPanel({
     <>
       <div
         data-testid="results-panel"
-        className="animate-slide-up fixed inset-0 z-40 overflow-y-auto bg-panel text-ink"
+        className="animate-slide-up screen-bg fixed inset-0 z-40 overflow-y-auto text-ink"
       >
+        <TopoBackground />
         <div className="mx-auto flex min-h-full max-w-lg flex-col gap-5 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+3.5rem)]">
           <h2
             data-testid="results-headline"

@@ -1,4 +1,5 @@
 import { karma } from '@pogo/shared';
+import { TopoBackground } from '../../components/TopoBackground';
 import { Button, TimerDrain } from '../../components/ui';
 import { useCountdown } from '../../lib/useCountdown';
 import type { GameUiProps } from '../types';
@@ -39,8 +40,9 @@ export function RoundScreen({ room, me, sendMove }: GameUiProps) {
     <div
       data-testid="round-screen"
       data-mine={mine}
-      className="fixed inset-0 z-40 overflow-y-auto bg-panel text-ink"
+      className="screen-bg fixed inset-0 z-40 overflow-y-auto text-ink"
     >
+      <TopoBackground />
       <div className="mx-auto flex min-h-full max-w-md flex-col gap-4 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+3rem)]">
         <h2
           data-testid="round-title"
