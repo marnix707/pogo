@@ -59,3 +59,10 @@ export const ruleById = (id: string): KarmaRule | undefined => KARMA_RULES.find(
 
 export const hasRule = (rules: readonly string[] | undefined, id: string): boolean =>
   !!rules && rules.includes(id);
+
+/** The rules intro the clients play before the card swap (RulesIntro): how long it takes. */
+export const RULES_INTRO = { inMs: 700, outMs: 800, baseHoldMs: 1400, perRuleMs: 900 };
+export const rulesIntroMs = (rules: number): number =>
+  rules <= 0
+    ? 0
+    : RULES_INTRO.inMs + RULES_INTRO.baseHoldMs + RULES_INTRO.perRuleMs * rules + RULES_INTRO.outMs;

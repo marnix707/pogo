@@ -65,6 +65,16 @@ export interface GameDefinition<State, Move, Options, PlayerView = State> {
    */
   isFreeMove?(move: Move): boolean;
   /**
+   * The turn clock keeps running across this move instead of restarting (e.g. a phase everybody
+   * acts in at once, like Karma's card swap: one deadline for the whole phase, no matter who moves).
+   */
+  keepsClock?(before: State, after: State): boolean;
+  /**
+   * Extra milliseconds added to the clock when it (re)starts for this state, e.g. while the clients
+   * play an introduction before anything can be done.
+   */
+  clockBonusMs?(state: State): number;
+  /**
    * Milliseconds the clients need to finish showing the latest move (e.g. a card turning over).
    * Computer players wait at least this long before they move again.
    */

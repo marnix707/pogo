@@ -10,7 +10,7 @@ import type { Rng } from '../../game/rng';
 import { DECK_SIZE, cardLabel, rankOf, shuffledDeck, suitOf } from './cards';
 import type { Card } from './cards';
 import { BIG_HAND_SIZE, HAND_SIZE, MAX_PLAYERS, MIN_PLAYERS, SLOTS } from './types';
-import { KARMA_RULES, hasRule, ruleById } from './rules';
+import { KARMA_RULES, hasRule, ruleById, rulesIntroMs } from './rules';
 import type {
   KarmaEvent,
   KarmaMove,
@@ -645,6 +645,12 @@ export const karmaGame: GameDefinition<KarmaState, KarmaMove, KarmaOptions, Karm
   }),
   // Changing a rule is free: it does not restart the picker's clock.
   isFreeMove: (move) => move.type === 'toggleRule',
+  // The swap phase has one clock for everybody: it starts with the phase and no swap or Ready (yours,
+  // an opponent's or a computer's) resets it; when it runs out, everybody who is not ready is played.
+  keepsClock: (before, after) => before.phase === 'swap' && after.phase === 'swap',
+  // ...and it starts after the rules intro the clients play first (during the tutorial it runs).
+  clockBonusMs: (state) =>
+    state.phase === 'swap' && state.mode !== 'normal' ? rulesIntroMs(state.rules.length) : 0,
   moveSchema: karmaMoveSchema,
   createInitialState,
   validateMove,

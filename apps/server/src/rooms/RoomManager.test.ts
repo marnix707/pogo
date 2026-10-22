@@ -910,3 +910,53 @@ describe('ready and auto start', () => {
     expect(manager.setReady(a.id, false).ok).toBe(false);
   });
 });
+
+describe('karma: one clock for the whole card swap', () => {
+  const TURN = 30_000;
+  const startKarma = (options?: unknown) => {
+    const t = setup();
+    const room = t.must(t.manager.create(a, { gameId: 'karma', options }));
+    t.must(t.manager.join(b, room.code));
+    t.must(t.manager.start(a.id));
+    const view = (id: string) => t.manager.getView(id)!;
+    return { ...t, view };
+  };
+  type KView = {
+    phase: string;
+    players: { id: string; hand: number[] | null; faceUp: (number | null)[] }[];
+  };
+
+  it('swapping and readying (yours or an opponent) never restarts the clock', () => {
+    const { manager, must, view } = startKarma();
+    const d0 = view(a.id).game!.deadline!;
+    expect(d0 - view(a.id).serverTime).toBe(TURN);
+    vi.advanceTimersByTime(10_000);
+    const mine = (view(a.id).game!.view as KView).players.find((p) => p.id === a.id)!;
+    must(manager.move(a.id, { type: 'swap', hand: mine.hand![0], up: 0 }));
+    expect(view(a.id).game!.deadline).toBe(d0);
+    must(manager.move(a.id, { type: 'ready' }));
+    expect(view(b.id).game!.deadline).toBe(d0);
+    vi.advanceTimersByTime(5_000);
+    const theirs = (view(b.id).game!.view as KView).players.find((p) => p.id === b.id)!;
+    must(manager.move(b.id, { type: 'swap', hand: theirs.hand![0], up: 1 }));
+    expect(view(b.id).game!.deadline).toBe(d0);
+  });
+
+  it('when the clock runs out everybody who is not ready is played and the game starts', () => {
+    const { view } = startKarma();
+    const d0 = view(a.id).game!.deadline!;
+    expect((view(a.id).game!.view as KView).phase).toBe('swap');
+    vi.advanceTimersByTime(d0 - view(a.id).serverTime + 1);
+    // (the automatic swaps are paced a little; give them time)
+    vi.advanceTimersByTime(30_000);
+    expect((view(a.id).game!.view as KView).phase).toBe('play');
+    // the play phase got a fresh clock
+    expect(view(a.id).game!.deadline).not.toBe(d0);
+  });
+
+  it('the clock starts after the rules intro when rules are in force (epic)', () => {
+    const { view } = startKarma({ mode: 'epic', rules: [] });
+    const left = view(a.id).game!.deadline! - view(a.id).serverTime;
+    expect(left).toBe(TURN + karma.rulesIntroMs(karma.KARMA_RULES.length));
+  });
+});

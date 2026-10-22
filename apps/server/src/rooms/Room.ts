@@ -423,9 +423,11 @@ export class Room {
     const check = this.game.validateMove(this.state, userId, parsed.data);
     if (!check.ok) return fail(check.error);
 
+    const before = this.state;
     this.state = this.game.applyMove(this.state, userId, parsed.data, this.deps.rng);
-    // A free move (sharing which dice are kept) must not buy more time.
-    if (!this.game.isFreeMove?.(parsed.data)) {
+    // A free move (sharing which dice are kept) must not buy more time, and neither must a move in a
+    // phase with one clock for everybody (the card swap).
+    if (!this.game.isFreeMove?.(parsed.data) && !this.clockKept(before)) {
       this.nextAutoAt = null;
       this.startTurnClock();
     }
@@ -439,7 +441,14 @@ export class Room {
 
   private startTurnClock(): void {
     this.turnStartedAt = this.deps.now();
-    this.turnDeadline = this.turnTimeSec > 0 ? this.turnStartedAt + this.turnTimeSec * 1000 : null;
+    const bonus = this.state ? (this.game.clockBonusMs?.(this.state) ?? 0) : 0;
+    this.turnDeadline =
+      this.turnTimeSec > 0 ? this.turnStartedAt + this.turnTimeSec * 1000 + bonus : null;
+  }
+
+  /** The game says the clock keeps running across the move that took `before` to the current state. */
+  private clockKept(before: unknown): boolean {
+    return !!this.state && !!this.game.keepsClock?.(before as never, this.state);
   }
 
   private afterStateChange(): void {
@@ -479,6 +488,7 @@ export class Room {
       return;
     }
     let endsTurn = true;
+    const before = this.state;
     for (const id of this.game.getCurrentPlayers(this.state)) {
       const auto = autoMove.call(this.game, this.state, id, this.deps.rng);
       this.state = this.game.applyMove(this.state, id, auto.move, this.deps.rng);
@@ -486,7 +496,7 @@ export class Room {
     }
     if (endsTurn) {
       this.nextAutoAt = null;
-      this.startTurnClock();
+      if (!this.clockKept(before)) this.startTurnClock();
     } else {
       this.nextAutoAt = this.deps.now() + this.deps.limits.autoStepMs;
       this.turnDeadline = null;
@@ -529,6 +539,7 @@ export class Room {
   private playBots(): void {
     const autoMove = this.game.autoMove;
     if (!autoMove) return;
+    const before = this.state;
     for (const id of this.game.getCurrentPlayers(this.state)) {
       if (!this.members.find((m) => m.user.id === id)?.bot) continue;
       const auto = autoMove.call(this.game, this.state, id, this.deps.rng);
@@ -536,7 +547,8 @@ export class Room {
       if (this.game.isGameOver(this.state)) break;
     }
     this.nextAutoAt = null;
-    this.startTurnClock(); // the next person (if any) gets a fresh turn clock
+    // The next person (if any) gets a fresh turn clock, unless the game keeps one clock for the phase.
+    if (!this.clockKept(before)) this.startTurnClock();
     this.afterStateChange();
   }
 
