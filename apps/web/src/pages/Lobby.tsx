@@ -147,7 +147,7 @@ export function Lobby({
           <JoinBar api={api} />
         ) : (
           <>
-            {/* The bar above the game card: Invite and the lobby code on the left, then Public / Private and the settings button. */}
+            {/* The bar above the game card: Invite on the left, then the Public / Private rectangle (with the code) and the settings button. */}
             <Card className="hud-ticks flex h-16 items-center !px-2 !py-0">
               <div className="flex w-full items-center gap-2" data-testid="lobby-toolbar">
                 <Button
@@ -158,28 +158,26 @@ export function Lobby({
                 >
                   Invite
                 </Button>
-                {/* A public lobby shows its code next to Invite. */}
-                {room.visibility === 'public' && (
-                  <span className="label min-w-0 truncate text-[10px] text-muted">
-                    Lobby code:{' '}
-                    <span
-                      data-testid="room-code"
-                      className="select-all text-sm font-bold leading-none tracking-[0.1em] text-neon max-[380px]:text-xs max-[380px]:tracking-normal"
-                    >
-                      {room.code}
-                    </span>
-                  </span>
-                )}
                 <span className="flex-1" />
+                {/* Public / Private in a rectangle; a public lobby shows its code in it, in blue (gone when private). */}
                 <span
-                  data-testid="room-visibility"
-                  className={`label shrink-0 rounded border px-1.5 py-0.5 text-[10px] ${
+                  className={`label flex shrink-0 items-center gap-2 rounded border px-1.5 py-0.5 text-[10px] ${
                     room.visibility === 'public'
                       ? 'border-accent text-accent'
                       : 'border-edge/50 text-muted'
                   }`}
                 >
-                  {room.visibility === 'public' ? 'Public' : 'Private'}
+                  <span data-testid="room-visibility">
+                    {room.visibility === 'public' ? 'Public' : 'Private'}
+                  </span>
+                  {room.visibility === 'public' && (
+                    <span
+                      data-testid="room-code"
+                      className="select-all text-sm font-bold leading-none tracking-[0.1em] text-accent"
+                    >
+                      {room.code}
+                    </span>
+                  )}
                 </span>
                 <TileButton
                   onClick={onSettings}
