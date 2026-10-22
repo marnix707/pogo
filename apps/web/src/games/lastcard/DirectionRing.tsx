@@ -14,11 +14,11 @@ const url = (name: string): string | undefined =>
   Object.entries(files).find(([path]) => path.endsWith(`/${name}.svg`))?.[1];
 
 const FRAMES = 8;
-const FRAME_MS = 60;
+const FRAME_MS = 120;
 const TURNS = 1;
-const HOLD_MS = 300;
-const FADE_MS = 200;
-const REDUCED_MS = 700;
+const HOLD_MS = 600;
+const FADE_MS = 400;
+const REDUCED_MS = 1000;
 
 /** The ring is 77x93 art px around a 45x61 card at (16, 16); in em of a card that is 5em x 7em. */
 const RING = { w: (77 / 45) * 5, h: (93 / 61) * 7, x: (16 / 45) * 5, y: (16 / 61) * 7 };
