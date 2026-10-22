@@ -328,7 +328,7 @@ function Seat({
       data-current={current}
       data-endgame={endgame}
       className={`hud flex min-w-0 flex-1 flex-col items-center gap-1 px-1 py-1.5 ${
-        current ? '!border-accent' : ''
+        current ? '!border-line !bg-neon text-accentink' : ''
       } ${pickedUp ? 'animate-pulse !border-danger bg-danger/30' : ''} ${endgame && !player.out ? 'animate-pulse !border-neon' : ''} ${player.out ? 'opacity-60' : ''} ${member && !member.connected ? 'grayscale' : ''}`}
     >
       <div className="flex w-full items-center justify-center gap-1">
@@ -369,7 +369,7 @@ function Seat({
         />
       )}
       <div
-        className={`label text-[9px] ${current ? 'text-accent' : 'text-muted'}`}
+        className={`label text-[9px] ${current ? 'text-accentink' : 'text-muted'}`}
         data-testid={`seat-status-${player.id}`}
       >
         {status}
@@ -1018,7 +1018,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const leftoverStart = revealStartMs(!!view.lastEvent?.out && view.lastEvent.kind === 'blind');
   const myLeft = view.leftovers && view.leftovers.playerId === me ? view.leftovers : null;
   const myPlan = myLeft ? revealPlan(myLeft, leftoverStart) : null;
-  const opponents = view.players.filter((p) => p.id !== me);
+  // Clockwise around the table from me: the player after me in the turn order sits at the top left,
+  // then the next one to the right of them, and the player just before me at the top right.
+  const myIdx = view.players.findIndex((p) => p.id === me);
+  const opponents =
+    myIdx < 0 ? view.players : [...view.players.slice(myIdx + 1), ...view.players.slice(0, myIdx)];
   const finishRank = (id: string) => view.finishOrder.indexOf(id) + 1;
   const selCount = selDown !== null ? 1 : sel.length;
 
@@ -1246,7 +1250,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                       data-my-turn={myTurnShown}
                       data-seconds={secondsLeft}
                       className={`relative flex min-h-0 flex-[2] flex-col items-center justify-center overflow-hidden rounded-lg border-2 px-1 text-center ${
-                        urgent ? 'animate-pulse border-danger text-dangertext' : 'border-edge/40'
+                        urgent
+                          ? 'animate-pulse border-danger text-dangertext'
+                          : myTurnShown
+                            ? '!border-line bg-neon text-accentink'
+                            : 'border-edge/40'
                       }`}
                     >
                       <TimerDrain
