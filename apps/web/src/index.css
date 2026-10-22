@@ -92,6 +92,16 @@ body::after {
   --c-dangertext: 122 21 16;
 }
 
+/* The chat box: grey (the palette's light gray #dcdcdc) instead of the gold menu boxes. */
+.menu .hud.chat-grey,
+.hud.chat-grey.menu {
+  --c-panel: 220 220 220;
+  --c-panel2: 196 200 210;
+  --c-edge: 16 22 40;
+  --c-ink: 16 22 40;
+  --c-muted: 74 82 102;
+}
+
 html.crt::after {
   content: '';
   opacity: var(--crt, 0);

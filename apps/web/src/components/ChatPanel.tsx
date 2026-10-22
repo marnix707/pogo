@@ -49,7 +49,7 @@ export function ChatPanel({
         ref={listRef}
         role="log"
         aria-live="polite"
-        className={`hud flex flex-col gap-2 overflow-y-auto p-3 ${heightClass}`}
+        className={`hud chat-grey flex flex-col gap-2 overflow-y-auto p-3 ${heightClass}`}
       >
         {messages.length === 0 ? (
           <p className="m-auto text-center text-sm text-muted">No messages yet. Say hi! 👋</p>
@@ -95,7 +95,7 @@ export function ChatPanel({
           aria-label="Chat message"
           enterKeyHint="send"
           autoComplete="off"
-          className="hud min-h-11 min-w-0 flex-1 bg-panel px-3 text-ink outline-none placeholder:text-muted/50 focus:!border-neon"
+          className="hud chat-grey min-h-11 min-w-0 flex-1 bg-panel px-3 text-ink outline-none placeholder:text-muted/50 focus:!border-neon"
         />
         <button
           data-testid="chat-send"
