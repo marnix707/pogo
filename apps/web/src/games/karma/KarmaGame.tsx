@@ -619,6 +619,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const myTurnShown = myTurn && frozenBy === null;
   const shownTurnId = frozenBy ?? currentId;
   const playing = view.phase === 'play' && myTurnShown;
+  // Fast reload: just drew a card of the rank I played: only that rank can be selected, or skip.
+  const reload = playing ? view.reload : null;
 
   // Anchors for cards that arrive from somewhere that is not a card (deck, pile, a seat).
   const stockEl = useRef<HTMLDivElement>(null);
@@ -890,8 +892,14 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     if (!playing) return;
     if (view.mustPickUp) return flashHint('Tap the pile to pick it up first');
     // Face-up cards can always be tried (a too-low one goes on the pile and you pick it up).
+    if (reload && rankOf(card) !== reload.rank) return;
     if (zone !== 'up' && !canPlayRank(pile, rankOf(card))) return;
-    const zoneCards = zone === 'hand' ? hand : (mine?.faceUp ?? []).filter((c) => c !== null);
+    const zoneCards =
+      zone === 'hand'
+        ? reload
+          ? hand.filter((c) => rankOf(c) === reload.rank)
+          : hand
+        : (mine?.faceUp ?? []).filter((c) => c !== null);
     const plan = planTap({
       zoneCards,
       selected: sel,
@@ -969,6 +977,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
       hint =
         'Time to swap! Tap a floating face-up card and a hand card to switch them, then press Ready';
   } else if (view.phase === 'swap') hint = 'Waiting for the others to get ready…';
+  else if (reload && sel.length === 0)
+    hint = '⚡ Fast reload: play the matching card, or press Skip';
   else if (myTurn && (sel.length > 0 || selDown !== null)) {
     hint =
       sel.length > 1
@@ -982,6 +992,7 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   // (Not while a flipped face-down card is still turning over: the pulsing pile would give away that it was too low.)
   const mustPickUp =
     playing &&
+    !reload &&
     !reveal &&
     pile.length > 0 &&
     (view.mustPickUp ||
@@ -1271,15 +1282,22 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                     <Button
                       data-testid="karma-play"
                       className="!min-h-0 flex-[3] !px-2 !text-xl !leading-tight"
-                      disabled={!playing || busy || selCount === 0}
-                      onClick={() => void playSelected()}
+                      disabled={!playing || busy || (selCount === 0 && !reload)}
+                      onClick={() =>
+                        // Fast reload: with nothing selected the button is a Skip button.
+                        selCount === 0 && reload
+                          ? void send({ type: 'skipReload' })
+                          : void playSelected()
+                      }
                     >
                       <span>
                         {selDown !== null
                           ? 'Flip it'
                           : selCount > 0
                             ? `Play ${selCount === 1 ? cardLabel(sel[0] as Card) : `${selCount} cards`}`
-                            : 'Play'}
+                            : reload
+                              ? 'Skip'
+                              : 'Play'}
                       </span>
                     </Button>
                   )}
@@ -1314,7 +1332,9 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                       style={{ marginTop: r === 0 ? 0 : `-${rowStep}px` }}
                     >
                       {row.map((c, i) => {
-                        const playable = canPlayRank(pile, rankOf(c));
+                        const playable = reload
+                          ? rankOf(c) === reload.rank
+                          : canPlayRank(pile, rankOf(c));
                         return (
                           <PlayingCard
                             key={c}

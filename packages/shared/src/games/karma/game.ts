@@ -50,6 +50,7 @@ export const karmaMoveSchema: z.ZodType<KarmaMove, z.ZodTypeDef, unknown> = z.di
         .max(SLOTS - 1),
     }),
     z.object({ type: z.literal('pickup') }),
+    z.object({ type: z.literal('skipReload') }),
     z.object({ type: z.literal('toggleRule'), rule: z.string().max(40) }),
     z.object({ type: z.literal('confirmRules') }),
   ],
@@ -210,6 +211,7 @@ function createInitialState(players: GamePlayer[], options: KarmaOptions, rng: R
     rules,
     pick: picker ? { playerId: picker, choices: KARMA_RULES.map((r) => r.id) } : null,
     round: options.round,
+    reload: null,
   };
 }
 
@@ -240,6 +242,16 @@ function validateMove(state: KarmaState, playerId: string, move: KarmaMove): Mov
   if (state.turn !== idx) return err('Not your turn');
   if (state.mustPickUp && move.type !== 'pickup') return err('Pick up the pile first');
   const zone = stateZone(me);
+
+  if (state.reload) {
+    // Fast reload: only a card of the rank just played, or skip.
+    if (move.type === 'skipReload') return OK;
+    if (move.type !== 'play') return err('Play the matching card or skip');
+    if (move.cards.some((c) => rankOf(c) !== state.reload!.rank))
+      return err('Only the matching card can be played now');
+  } else if (move.type === 'skipReload') {
+    return err('There is nothing to skip');
+  }
 
   switch (move.type) {
     case 'swap':
@@ -356,8 +368,10 @@ function playToPile(state: KarmaState, idx: number, cards: Card[], kind: 'play' 
   const rank = rankOf(cards[0] as Card);
   const burn = rank === 10 || quartetOnTop(state.pile);
   const handSize = handSizeFor(state.rules);
+  const before = me.hand.length;
   while (me.hand.length < handSize && state.stock.length > 0)
     me.hand.push(state.stock.pop() as Card);
+  const drawn = me.hand.slice(before);
   if (burn) {
     state.burned += state.pile.length;
     state.pile = [];
@@ -366,8 +380,21 @@ function playToPile(state: KarmaState, idx: number, cards: Card[], kind: 'play' 
   // "3 ate 8" a 3 repeats the 8 beneath it (3s in between do not hide it).
   const repeatsEight =
     rank === 3 && hasRule(state.rules, 'echoThree') && below !== undefined && rankOf(below) === 8;
-  const eights = !burn && (rank === 8 || repeatsEight) ? cards.length : 0;
+  // (8s played earlier in a fast reload chain of this turn still count.)
+  const pendingSkips = state.reload?.skips ?? 0;
+  state.reload = null;
+  const eights = pendingSkips + (!burn && (rank === 8 || repeatsEight) ? cards.length : 0);
   const ev = event(state, me.id, kind, cards, { burned: burn });
+  // Fast reload: a drawn card of the rank just played may be played too, before the turn passes.
+  if (
+    hasRule(state.rules, 'fastReload') &&
+    kind === 'play' &&
+    !burn &&
+    drawn.some((c) => rankOf(c) === rank)
+  ) {
+    state.reload = { rank, skips: eights };
+    return; // the same player is up again
+  }
   advance(state, idx, ev, burn, eights);
 }
 
@@ -423,6 +450,13 @@ function applyMoveInner(
         s.phase = 'play';
         s.turn = findStarter(s.players);
       }
+      return s;
+    }
+
+    case 'skipReload': {
+      const skips = s.reload?.skips ?? 0;
+      s.reload = null;
+      advance(s, idx, s.lastEvent as KarmaEvent, false, skips);
       return s;
     }
 
@@ -501,6 +535,7 @@ function getPlayerView(state: KarmaState, playerId: string): KarmaView {
     rules: [...state.rules],
     pick: state.pick,
     round: state.round,
+    reload: state.reload ? { rank: state.reload.rank } : null,
     leftovers: left
       ? { playerId: left.id, hand: [...left.hand], faceDown: [...left.faceDown] }
       : null,
@@ -558,6 +593,10 @@ function autoMove(state: KarmaState, playerId: string, rng: Rng): AutoMove<Karma
   if (state.phase === 'pick') {
     // A computer, an absent player or a timeout keeps the rules as they are.
     move = { type: 'confirmRules' };
+  } else if (state.phase === 'play' && state.reload) {
+    // Fast reload (computer, absent player, timeout): play the matching cards.
+    const match = me.hand.filter((c) => rankOf(c) === state.reload!.rank);
+    move = match.length > 0 ? { type: 'play', cards: match } : { type: 'skipReload' };
   } else if (state.phase === 'swap') {
     const swap = bestSwap(me);
     move = swap ? { type: 'swap', ...swap } : { type: 'ready' };

@@ -52,6 +52,7 @@ function table(
     rules: [],
     pick: null,
     round: 1,
+    reload: null,
     ...extra,
   };
 }
@@ -1111,8 +1112,8 @@ describe('modes and rules', () => {
     expect(s.players[0]!.hand).toHaveLength(4);
   });
 
-  it('the extra rules are big hand and 3 ate 8', () => {
-    expect(KARMA_RULES.map((r) => r.id)).toEqual(['bigHand', 'echoThree']);
+  it('the extra rules are big hand, 3 ate 8 and fast reload', () => {
+    expect(KARMA_RULES.map((r) => r.id)).toEqual(['bigHand', 'echoThree', 'fastReload']);
   });
 
   it('3 ate 8: a 3 repeats the 8 beneath it (skips the next player again)', () => {
@@ -1156,7 +1157,10 @@ describe('modes and rules', () => {
       const s = party();
       expect(s.phase).toBe('pick');
       expect(s.round).toBe(2);
-      expect(s.pick).toEqual({ playerId: 'p2', choices: ['bigHand', 'echoThree'] });
+      expect(s.pick).toEqual({
+        playerId: 'p2',
+        choices: ['bigHand', 'echoThree', 'fastReload'],
+      });
       expect(s.rules).toEqual(['bigHand']); // carried over, ready to be switched
       expect(game.getCurrentPlayers(s)).toEqual(['p2']);
       expect(game.isGameOver(s)).toBe(false);
@@ -1213,6 +1217,97 @@ describe('modes and rules', () => {
       });
       const normal = game.applyMove(finished(), 'p1', { type: 'play', cards: [card(9)] }, rng);
       expect(normal.phase).toBe('over');
+    });
+  });
+});
+
+describe('fast reload', () => {
+  // p1 holds two 9s and a 4; the deck's top cards (the end of `stock`) decide what is drawn.
+  const setup = (stock: number[], extra: Parameters<typeof table>[1] = {}) =>
+    table(
+      [
+        { hand: [card(9), card(9, 1), card(4)], faceUp: [card(12), null, null] },
+        { hand: [card(5)], faceUp: [card(6), null, null] },
+      ],
+      { rules: ['fastReload'], stock, pile: [card(6, 2)], ...extra },
+    );
+
+  it('a drawn card of the rank you just played may be played too, before the turn passes', () => {
+    // playing both 9s draws two cards (the last two of the stock): a 9 and a 3
+    const s = setup([card(2), card(3), card(9, 2)]);
+    const after = game.applyMove(s, 'p1', { type: 'play', cards: [card(9), card(9, 1)] }, rng);
+    expect(after.reload).toEqual({ rank: 9, skips: 0 });
+    expect(after.turn).toBe(0); // still p1
+    expect(game.getCurrentPlayers(after)).toEqual(['p1']);
+    expect(game.getPlayerView(after, 'p2').reload).toEqual({ rank: 9 });
+    // only the matching card (or skip) is allowed
+    expect(game.validateMove(after, 'p1', { type: 'play', cards: [card(4)] }).ok).toBe(false);
+    expect(game.validateMove(after, 'p1', { type: 'pickup' }).ok).toBe(false);
+    expect(game.validateMove(after, 'p1', { type: 'play', cards: [card(9, 2)] }).ok).toBe(true);
+    expect(game.validateMove(after, 'p2', { type: 'skipReload' }).ok).toBe(false);
+    // playing the match goes on the pile and the turn passes
+    const played = game.applyMove(after, 'p1', { type: 'play', cards: [card(9, 2)] }, rng);
+    expect(played.reload).toBeNull();
+    expect(played.pile.slice(-1)).toEqual([card(9, 2)]);
+    expect(played.turn).toBe(1);
+  });
+
+  it('skipping passes the turn', () => {
+    const s = setup([card(2), card(3), card(9, 2)]);
+    const after = game.applyMove(s, 'p1', { type: 'play', cards: [card(9), card(9, 1)] }, rng);
+    const skipped = game.applyMove(after, 'p1', { type: 'skipReload' }, rng);
+    expect(skipped.reload).toBeNull();
+    expect(skipped.turn).toBe(1);
+    expect(skipped.pile).toHaveLength(3);
+  });
+
+  it('nothing happens without a matching draw, without the rule, or after a burn', () => {
+    const noMatch = setup([card(2), card(3), card(5, 2)]);
+    expect(
+      game.applyMove(noMatch, 'p1', { type: 'play', cards: [card(9), card(9, 1)] }, rng).reload,
+    ).toBeNull();
+    const off = setup([card(2), card(3), card(9, 2)], { rules: [] });
+    const offAfter = game.applyMove(off, 'p1', { type: 'play', cards: [card(9), card(9, 1)] }, rng);
+    expect(offAfter.reload).toBeNull();
+    expect(offAfter.turn).toBe(1);
+    // a 10 burns the pile: the same player leads again anyway, no restriction
+    const burn = table(
+      [{ hand: [card(10), card(4)] }, { hand: [card(5)], faceUp: [card(6), null, null] }],
+      { rules: ['fastReload'], stock: [card(2), card(10, 1)], pile: [card(6, 2)] },
+    );
+    const burned = game.applyMove(burn, 'p1', { type: 'play', cards: [card(10)] }, rng);
+    expect(burned.reload).toBeNull();
+    expect(burned.turn).toBe(0);
+  });
+
+  it('an 8 played before the reload still skips the next player, also over a chain', () => {
+    const s = table(
+      [
+        { hand: [card(8), card(4)] },
+        { hand: [card(5)], faceUp: [card(6), null, null] },
+        { hand: [card(5, 1)], faceUp: [card(6, 1), null, null] },
+      ],
+      // (a hand refills to three: the first play draws the two last cards, the second one draws the 8 of hearts)
+      { rules: ['fastReload'], stock: [card(8, 1), card(2), card(8, 2)], pile: [card(6, 2)] },
+    );
+    // playing one 8 draws two cards, one an 8 again: reload with one skip pending
+    const first = game.applyMove(s, 'p1', { type: 'play', cards: [card(8)] }, rng);
+    expect(first.reload).toEqual({ rank: 8, skips: 1 });
+    // skipping now passes the turn *past* p2
+    const skipped = game.applyMove(first, 'p1', { type: 'skipReload' }, rng);
+    expect(skipped.turn).toBe(2);
+    expect(skipped.lastEvent!.skipped).toEqual(['p2']);
+    // playing the second 8 draws another 8: the chain goes on with two skips pending
+    const second = game.applyMove(first, 'p1', { type: 'play', cards: [card(8, 2)] }, rng);
+    expect(second.reload).toEqual({ rank: 8, skips: 2 });
+  });
+
+  it('auto-play plays the matching cards, or skips when there is none', () => {
+    const s = setup([card(2), card(3), card(9, 2)]);
+    const after = game.applyMove(s, 'p1', { type: 'play', cards: [card(9), card(9, 1)] }, rng);
+    expect(game.autoMove!(after, 'p1', rng).move).toEqual({
+      type: 'play',
+      cards: [card(9, 2)],
     });
   });
 });

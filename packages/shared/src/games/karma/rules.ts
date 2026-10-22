@@ -2,8 +2,8 @@
  * Game modes and the catalogue of extra rules.
  *
  * - normal: the base rules only.
- * - party: every time a game ends, its winner switches one extra rule on or off; the rules that
- *   are on apply to every next game in the room.
+ * - party: from round 2 on, the winner of the last game sets the rules (before the cards are dealt);
+ *   the rules that are on apply to that game and carry over to the next.
  * - epic: every rule in the catalogue is on from the first game.
  *
  * To add a rule: add an entry to KARMA_RULES and give it an effect in game.ts (look for `hasRule`).
@@ -16,9 +16,14 @@ export const KARMA_MODES: { id: KarmaMode; name: string; emoji: string; blurb: s
     id: 'party',
     name: 'Party',
     emoji: '🎉',
-    blurb: 'After each game the winner switches an extra rule on or off for all next games.',
+    blurb: 'From round 2 the winner of the last game switches the extra rules on or off.',
   },
-  { id: 'epic', name: 'Epic', emoji: '🔥', blurb: 'Every extra rule is on from the start. Tap a rule below to see what it does.' },
+  {
+    id: 'epic',
+    name: 'Epic',
+    emoji: '🔥',
+    blurb: 'Every extra rule is on from the start. Tap a rule below to see what it does.',
+  },
 ];
 
 export interface KarmaRule {
@@ -40,6 +45,13 @@ export const KARMA_RULES: readonly KarmaRule[] = [
     name: '3 ate 8',
     emoji: '3️⃣',
     description: 'A 3 repeats the card beneath it: a 3 on an 8 skips the next player again.',
+  },
+  {
+    id: 'fastReload',
+    name: 'Fast reload',
+    emoji: '⚡',
+    description:
+      'Draw a card of the rank you just played? Play it too, before the next turn. Press Skip to pass.',
   },
 ];
 

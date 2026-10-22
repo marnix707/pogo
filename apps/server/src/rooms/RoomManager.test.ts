@@ -707,6 +707,7 @@ describe('computer players', () => {
     const mine = view.players.find((p) => p.id === me)!;
     if (view.phase === 'swap') return { type: 'ready' };
     if (view.phase === 'pick') return { type: 'confirmRules' };
+    if (view.reload) return { type: 'skipReload' }; // fast reload: a tired human just skips
     if (view.mustPickUp) return { type: 'pickup' }; // a too-low blind card is on the pile
     const zone = karma.activeZone(mine);
     if (zone === 'down') return { type: 'playDown', index: mine.faceDown.findIndex(Boolean) };

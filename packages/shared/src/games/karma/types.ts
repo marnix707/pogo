@@ -65,6 +65,11 @@ export interface KarmaState {
   pick: KarmaPick | null;
   /** 1 for the first game of a room, then one more for every game after it. */
   round: number;
+  /**
+   * Fast reload: the player to move has just drawn a card of the rank they played and may play
+   * it before the turn passes (only cards of `rank`, or skip). `skips` = 8s played so far this turn.
+   */
+  reload: { rank: number; skips: number } | null;
 }
 
 export interface KarmaPick {
@@ -78,6 +83,8 @@ export type KarmaMove =
   | { type: 'play'; cards: Card[] }
   | { type: 'playDown'; index: number }
   | { type: 'pickup' }
+  /** Fast reload: pass on playing a drawn matching card; the turn moves on. */
+  | { type: 'skipReload' }
   /** Phase `pick`: the picker switches one rule on or off (everybody sees it live). */
   | { type: 'toggleRule'; rule: string }
   /** Phase `pick`: the picker is done; the cards are dealt and the swap phase starts. */
@@ -128,6 +135,8 @@ export interface KarmaView {
   rules: string[];
   pick: KarmaPick | null;
   round: number;
+  /** Fast reload: only cards of this rank may be played now (or skip). */
+  reload: { rank: number } | null;
   /** The loser's remaining cards, only once the finish order is complete (never during play). */
   leftovers: KarmaLeftovers | null;
 }
