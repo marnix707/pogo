@@ -27,7 +27,7 @@ const reduced = () =>
 const FLY_MS = 280;
 const FLY_GAP_MS = 110;
 const HOLD_MS = 260;
-const TIP_MS = 150;
+const TIP_MS = 220;
 const FALL_MS = 300;
 const COUNT_MS = 420;
 const LINGER_MS = 700;
@@ -294,16 +294,20 @@ function ScoreNumber({ num }: { num: Num }) {
     const el = fallRef.current;
     if (!el || !num.fall) return;
     const { dx, dy } = num.fall;
-    // First it tips (winds up a little), then it falls over into the total.
+    // Smooth click: it tips 45 degrees to the left, then falls down into the total and ends upright (0 degrees).
     const anim = el.animate(
       [
-        { transform: 'translate(0, 0) rotate(0deg)', offset: 0, easing: 'ease-out' },
         {
-          transform: 'translate(-2px, -6px) rotate(-14deg)',
-          offset: TIP_MS / (TIP_MS + FALL_MS),
-          easing: 'cubic-bezier(0.55, 0, 0.9, 0.5)',
+          transform: 'translate(0, 0) rotate(0deg)',
+          offset: 0,
+          easing: 'cubic-bezier(0.3, 0, 0.2, 1)',
         },
-        { transform: `translate(${dx}px, ${dy}px) rotate(70deg) scale(0.7)`, offset: 1 },
+        {
+          transform: 'translate(0, -3px) rotate(-45deg)',
+          offset: TIP_MS / (TIP_MS + FALL_MS),
+          easing: 'cubic-bezier(0.55, 0, 0.9, 0.45)',
+        },
+        { transform: `translate(${dx}px, ${dy}px) rotate(0deg) scale(0.9)`, offset: 1 },
       ],
       { duration: TIP_MS + FALL_MS, fill: 'forwards' },
     );
