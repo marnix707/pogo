@@ -207,11 +207,11 @@ export function Scorecard({
                     }`}
                   >
                     <div
-                      className={`mx-auto flex h-6 w-6 items-center justify-center rounded-full border-2 bg-panel2 text-xs ${
+                      className={`mx-auto flex h-6 w-6 items-center justify-center overflow-hidden rounded-full border-2 bg-panel2 text-[15px] leading-none ${
                         current ? 'border-accent' : 'border-edge/50'
                       } ${m && (!m.connected || m.left) ? 'opacity-40' : ''}`}
                     >
-                      <AvatarFace avatar={m?.avatar ?? ''} />
+                      <AvatarFace avatar={m?.avatar ?? ''} fill />
                     </div>
                     <div
                       className={`label mx-auto max-w-[4.5rem] truncate text-[9px] leading-tight tracking-wider ${
