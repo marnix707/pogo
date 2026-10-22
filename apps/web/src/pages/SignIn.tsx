@@ -2,8 +2,8 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { AVATARS } from '@pogo/shared';
 import type { AuthResponse } from '@pogo/shared';
-import { RaisedColon } from '../components/Brand';
-import { LogoMark } from '../components/icons';
+import { Wordmark } from '../components/PogoStage';
+import frogOnStick from '../assets/sprites/brand/frog-pogo.svg';
 import { Button } from '../components/ui';
 import { AvatarFace } from '../components/AvatarFace';
 import { forgetPlayer, readPlayers } from '../lib/players';
@@ -94,11 +94,17 @@ export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) 
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 px-5 py-10">
-      <div className="text-center">
-        <LogoMark className="mx-auto mb-4 h-24 w-24 drop-shadow-[0_6px_0_rgb(0_24_80/0.35)]" />
-        <h1 className="text-6xl font-bold uppercase tracking-[0.18em] text-onbg [text-shadow:4px_4px_0_rgb(var(--c-accent))]">
-          <RaisedColon text="POGO" />
-        </h1>
+      <div className="flex flex-col items-center text-center" data-testid="signin-brand">
+        {/* The same wordmark and frog as the home screen (the artist's pixel art). */}
+        <Wordmark shown width={270} />
+        <img
+          src={frogOnStick}
+          alt=""
+          aria-hidden
+          data-testid="signin-frog"
+          className="mt-1"
+          style={{ width: 24 * 5, imageRendering: 'pixelated' }}
+        />
         <p className="label mt-4 text-onbg/80">Quick games · No account needed</p>
       </div>
 
