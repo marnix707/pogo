@@ -219,6 +219,7 @@ export async function buildApp(deps: AppDeps) {
     bans,
     moderation,
     manager,
+    publicBaseUrl: config.publicBaseUrl,
     disconnectUser: (userId) => io.in(userChannel(userId)).disconnectSockets(true),
     isOnline: (userId) => (io.sockets.adapter.rooms.get(userChannel(userId))?.size ?? 0) > 0,
   });

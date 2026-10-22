@@ -24,6 +24,7 @@ import {
   listBans,
   listRooms,
   listUsers,
+  recoveryLink,
   setDev,
   setRole,
   setTitles,
@@ -155,6 +156,9 @@ function PlayerSheet({
       ? [{ id: 'kick' as const, label: 'Kick', hint: `Out of room ${row.roomCode}` }]
       : []),
     ...(moderatable ? [{ id: 'ban' as const, label: 'Ban', hint: 'For a while or for good' }] : []),
+    ...(isAdmin && row?.isGuest
+      ? [{ id: 'recovery' as const, label: 'Recovery link', hint: 'Log this guest in again' }]
+      : []),
     ...(isAdmin && row && row.id !== me.id
       ? [{ id: 'role' as const, label: 'Role & dev tag', hint: row.role }]
       : []),
@@ -276,6 +280,7 @@ function PlayerSheet({
                   </Button>
                 </div>
               )}
+              {view === 'recovery' && <RecoveryPanel row={row} onError={onError} />}
               {view === 'role' && (
                 <div className="hud flex flex-col gap-2 p-3">
                   <div className="label">Role & dev tag</div>
@@ -308,7 +313,55 @@ function PlayerSheet({
   );
 }
 
-type PlayerView = 'menu' | 'titles' | 'kick' | 'ban' | 'role';
+/** Admin: a private login link for a guest who pressed "Switch player" (the guest's stats are kept on the server). */
+function RecoveryPanel({ row, onError }: { row: AdminUserRow; onError: (m: string) => void }) {
+  const [url, setUrl] = useState('');
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="hud flex flex-col gap-2 p-3" data-testid="recovery-panel">
+      <div className="label">Recovery link</div>
+      <p className="text-sm">
+        Send this link to {row.nickname}. Opening it on their phone logs them in as this guest again
+        with all their stats. Treat it like a password.
+      </p>
+      {!url ? (
+        <Button
+          data-testid="recovery-create"
+          onClick={() =>
+            void recoveryLink(row.id)
+              .then(setUrl)
+              .catch((e: Error) => onError(e.message))
+          }
+        >
+          Create link
+        </Button>
+      ) : (
+        <>
+          <input
+            className={field}
+            readOnly
+            value={url}
+            data-testid="recovery-url"
+            onFocus={(e) => e.target.select()}
+          />
+          <Button
+            variant="secondary"
+            onClick={() =>
+              void navigator.clipboard
+                .writeText(url)
+                .then(() => setCopied(true))
+                .catch(() => undefined)
+            }
+          >
+            {copied ? 'Copied' : 'Copy'}
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
+
+type PlayerView = 'menu' | 'titles' | 'kick' | 'ban' | 'role' | 'recovery';
 
 type Show = 'registered' | 'everyone' | 'guests';
 type Sort = 'seen' | 'joined' | 'name';

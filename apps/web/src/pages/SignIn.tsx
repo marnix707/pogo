@@ -6,7 +6,17 @@ import { RaisedColon } from '../components/Brand';
 import { LogoMark } from '../components/icons';
 import { Button } from '../components/ui';
 import { AvatarFace } from '../components/AvatarFace';
-import { createGuest, login, startReset, verifyReset } from '../lib/session';
+import { forgetPlayer, readPlayers } from '../lib/players';
+import type { SavedPlayer } from '../lib/players';
+import {
+  adoptToken,
+  createGuest,
+  login,
+  restoreSession,
+  startReset,
+  verifyReset,
+} from '../lib/session';
+import { PlayerName } from '../components/PlayerName';
 
 export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) {
   const [nickname, setNickname] = useState('');
@@ -18,6 +28,9 @@ export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) 
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [note, setNote] = useState('');
+  /** Guests this device has played as: one tap continues as them ("Switch player" never loses one). */
+  const [saved, setSaved] = useState<SavedPlayer[]>(() => readPlayers());
+  const [forgetting, setForgetting] = useState<string | null>(null);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -25,6 +38,27 @@ export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) 
     setError(undefined);
     try {
       onDone(await createGuest({ nickname, avatar }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function continueAs(player: SavedPlayer) {
+    setBusy(true);
+    setError(undefined);
+    try {
+      adoptToken(player.token);
+      const session = await restoreSession();
+      if (session) {
+        onDone(session);
+        return;
+      }
+      // The server no longer knows this guest (or its login expired): drop it.
+      forgetPlayer(player.id);
+      setSaved(readPlayers());
+      setError(`${player.nickname} could not be restored.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -75,6 +109,9 @@ export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) 
             data-testid="login-email"
             type="email"
             autoComplete="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            enterKeyHint="next"
             placeholder="Email"
             aria-label="Email"
             value={email}
@@ -97,6 +134,9 @@ export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) 
               data-testid="login-password"
               type="password"
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              autoCapitalize="none"
+              autoCorrect="off"
+              enterKeyHint="go"
               placeholder={mode === 'login' ? 'Password' : 'New password (8+ characters)'}
               aria-label="Password"
               value={password}
@@ -137,6 +177,72 @@ export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) 
           </button>
         </form>
       )}
+      {mode === 'guest' && saved.length > 0 && (
+        <section className="flex flex-col gap-2" data-testid="saved-players">
+          <p className="label text-center text-onbg/80">Players on this device</p>
+          {saved.map((p) =>
+            forgetting === p.id ? (
+              <div
+                key={p.id}
+                className="hud flex flex-col gap-2 p-3"
+                data-testid={`forget-${p.id}`}
+              >
+                <p
+                  className={`text-sm ${p.recoverySaved ? '' : 'font-semibold text-dangertext'}`}
+                  data-severity={p.recoverySaved ? 'soft' : 'strong'}
+                >
+                  {p.recoverySaved
+                    ? `Remove ${p.nickname} from this device? You saved a recovery link, so you can still get it back with that link.`
+                    : `Forget ${p.nickname}? Its stats are lost for good: nothing else can bring this player back.`}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant={p.recoverySaved ? 'secondary' : 'danger'}
+                    className="flex-1"
+                    data-testid="forget-confirm"
+                    onClick={() => {
+                      forgetPlayer(p.id);
+                      setSaved(readPlayers());
+                      setForgetting(null);
+                    }}
+                  >
+                    Forget
+                  </Button>
+                  <Button className="flex-1" onClick={() => setForgetting(null)}>
+                    Keep
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div key={p.id} className="flex items-stretch gap-2">
+                <button
+                  type="button"
+                  disabled={busy}
+                  data-testid={`continue-as-${p.id}`}
+                  onClick={() => void continueAs(p)}
+                  className="hud flex min-w-0 flex-1 items-center gap-3 p-2.5 text-left disabled:opacity-50"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center text-3xl">
+                    <AvatarFace avatar={p.avatar} />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate font-bold">
+                    Continue as <PlayerName name={p.nickname} />
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Forget ${p.nickname}`}
+                  data-testid={`forget-player-${p.id}`}
+                  onClick={() => setForgetting(p.id)}
+                  className="hud w-11 shrink-0 text-lg font-bold"
+                >
+                  ×
+                </button>
+              </div>
+            ),
+          )}
+        </section>
+      )}
       {mode === 'guest' && (
         <>
           <form onSubmit={submit} className="hud hud-ticks flex flex-col gap-5 p-5">
@@ -149,6 +255,8 @@ export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) 
                 placeholder="e.g. Dice Queen"
                 maxLength={20}
                 autoComplete="nickname"
+                autoCorrect="off"
+                enterKeyHint="go"
                 className="min-h-14 rounded-md border-2 border-edge/40 bg-panel2 px-4 text-lg font-semibold text-ink placeholder:text-muted/50 outline-none focus:border-neon"
               />
             </label>

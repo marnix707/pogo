@@ -5,6 +5,7 @@ import { ChatBanner } from './components/ChatBanner';
 import { markIntroSeen } from './components/PogoStage';
 import { ConnectionBanner } from './components/ConnectionBanner';
 import { SettingsSheet } from './components/SettingsSheet';
+import { SwitchPlayerSheet } from './components/SwitchPlayerSheet';
 import { useToast } from './components/Toast';
 import type { RoomApi } from './lib/api';
 import { haptic } from './lib/haptics';
@@ -105,6 +106,7 @@ export function Shell({
   }, [leftReason, toast]);
 
   const [registerOpen, setRegisterOpen] = useState(false);
+  const [switchOpen, setSwitchOpen] = useState(false);
   const openSettings = () => setSettingsOpen(true);
 
   // Going into a game room counts as having seen the opening animation (it never replays on return).
@@ -202,9 +204,25 @@ export function Shell({
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         nickname={session.user.nickname}
-        onSignOut={onSignOut}
+        // A guest is asked first (the dialog says what can be recovered); an account just signs out.
+        onSignOut={() => {
+          setSettingsOpen(false);
+          if (session.user.isGuest) setSwitchOpen(true);
+          else onSignOut();
+        }}
         roomCode={room?.code}
         isDev={!!session.user.isDev}
+      />
+      <SwitchPlayerSheet
+        open={switchOpen}
+        onClose={() => setSwitchOpen(false)}
+        user={session.user}
+        token={session.token}
+        onSwitch={onSignOut}
+        onRegister={() => {
+          setSwitchOpen(false);
+          setRegisterOpen(true);
+        }}
       />
     </>
   );

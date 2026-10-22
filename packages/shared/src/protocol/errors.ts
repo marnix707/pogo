@@ -74,6 +74,8 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'ADM-109', message: 'You cannot change your own role' },
   { code: 'ADM-110', message: 'Staff needs a registered account (to log in to the panel)' },
   { code: 'ADM-111', message: 'Only admins can give the dev tag' },
+  { code: 'ADM-114', message: 'Only admins can create recovery links' },
+  { code: 'ADM-115', message: 'Only guests can be recovered with a link' },
   { code: 'ADM-112', message: 'Only developers can do this' },
   { code: 'ADM-113', message: 'Only registered players can get titles' },
 

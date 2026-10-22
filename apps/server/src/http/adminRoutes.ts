@@ -25,6 +25,8 @@ export interface AdminDeps {
   /** Close every socket of this user (after a ban). */
   disconnectUser: (userId: string) => void;
   isOnline: (userId: string) => boolean;
+  /** Public address of the game (for recovery links); empty = the client builds it from its own origin. */
+  publicBaseUrl?: string;
   now?: () => number;
 }
 
@@ -235,6 +237,22 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminDeps) {
     const updated = await users.setDev(user.id, parsed.data.isDev);
     await log(me, parsed.data.isDev ? 'dev-on' : 'dev-off', user);
     return { user: updated };
+  });
+
+  /** A login link for a guest who lost their device token (e.g. pressed "Switch player"). */
+  app.post('/api/admin/users/:id/recovery', limits, async (req, reply) => {
+    const me = await staff(req, reply);
+    if (!me) return;
+    if (me.role !== 'admin')
+      return reply.code(403).send({ error: 'Only admins can create recovery links' });
+    const user = await users.get(idParam(req));
+    if (!user) return reply.code(404).send({ error: 'Player not found' });
+    if (!user.isGuest)
+      return reply.code(400).send({ error: 'Only guests can be recovered with a link' });
+    const token = await tokens.sign(user.id);
+    await log(me, 'recovery-link', user);
+    const base = deps.publicBaseUrl?.replace(/\/+$/, '');
+    return { token, url: base ? `${base}/?recover=${token}` : null };
   });
 
   /** Developers only: the titles page. */

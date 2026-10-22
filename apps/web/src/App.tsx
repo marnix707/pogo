@@ -3,7 +3,7 @@ import type { AuthResponse } from '@pogo/shared';
 import { ToastProvider } from './components/Toast';
 import { TopoBackground } from './components/TopoBackground';
 import { unlockAudio } from './lib/sound';
-import { forgetSession, restoreSession } from './lib/session';
+import { consumeRecoveryLink, forgetSession, restoreSession } from './lib/session';
 import { Shell } from './Shell';
 import { SignIn } from './pages/SignIn';
 
@@ -13,6 +13,8 @@ export function App() {
   const [error, setError] = useState<string>();
 
   useEffect(() => {
+    // A recovery link (?recover=<token>) logs this device in as that player.
+    consumeRecoveryLink();
     restoreSession()
       .then(setSession)
       .catch((err: Error) => setError(err.message))
@@ -41,7 +43,11 @@ export function App() {
           onSession={setSession}
           onSignOut={() => {
             forgetSession();
-            setSession(null);
+            // A fresh page (not an in-place swap): the focused button and the sheets are gone, so the
+            // sign-in fields start with a clean focus state (iPhone home-screen apps did not show the
+            // keyboard after an in-place switch). Saved guests survive in localStorage.
+            (document.activeElement as HTMLElement | null)?.blur();
+            window.location.reload();
           }}
         />
       ) : (

@@ -8,12 +8,14 @@ import {
   mergeGuest,
   removeAvatar,
   resizeImage,
+  recoveryUrl,
   startRegister,
   startReset,
   uploadAvatar,
   verifyRegister,
   verifyReset,
 } from '../lib/session';
+import { rememberRecoverySaved } from '../lib/players';
 import { AvatarFace } from './AvatarFace';
 import { Button, Sheet } from './ui';
 
@@ -245,6 +247,7 @@ export function ProfileSheet({
               >
                 I already have an account
               </button>
+              <RecoveryLink userId={user.id} token={token} />
             </div>
           ) : (
             <div className="flex flex-col gap-2 text-sm">
@@ -508,5 +511,31 @@ function Back({ onClick }: { onClick: () => void }) {
     <button type="button" className="label text-center text-muted underline" onClick={onClick}>
       Back
     </button>
+  );
+}
+
+/** A guest can copy a private link that logs them in again anywhere (after "Switch player", a new phone...). */
+function RecoveryLink({ userId, token }: { userId: string; token: string }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    const url = recoveryUrl(token);
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      window.prompt('Copy this private link and keep it safe:', url);
+    }
+    rememberRecoverySaved(userId);
+    setCopied(true);
+  }
+  return (
+    <div className="flex flex-col gap-1 border-t border-edge/30 pt-2" data-testid="recovery-card">
+      <p className="text-xs opacity-80">
+        <b>Save this player:</b> copy a private link that logs you back in on any device. Treat it
+        like a password: anybody with it can play as you.
+      </p>
+      <Button variant="secondary" data-testid="profile-copy-recovery" onClick={() => void copy()}>
+        {copied ? 'Link copied' : 'Copy recovery link'}
+      </Button>
+    </div>
   );
 }

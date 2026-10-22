@@ -1,5 +1,6 @@
 import type { AuthResponse, GameStatsView, LeaderboardRow, ProfileInput } from '@pogo/shared';
 import { formatError } from '@pogo/shared';
+import { forgetPlayer, rememberPlayer } from './players';
 
 /** An error body from the API: the text, its error code and (for server errors) a log reference. */
 interface ApiErrorBody {
@@ -61,8 +62,38 @@ export async function restoreSession(): Promise<AuthResponse | null> {
   }
   if (!res.ok) throw new Error(apiError(await errorBody(res), 'Could not reach the server'));
   const { user } = (await res.json()) as Pick<AuthResponse, 'user'>;
+  keepOnDevice(token, user);
   return { token, user };
 }
+
+/** Guests are kept on this device (so "Switch player" can be undone); accounts are not. */
+function keepOnDevice(token: string, user: AuthResponse['user']) {
+  if (user.isGuest)
+    rememberPlayer({ id: user.id, nickname: user.nickname, avatar: user.avatar, token });
+  else forgetPlayer(user.id);
+}
+
+/** Use this login on this device (a saved player, or a recovery link); `restoreSession` then checks it. */
+export const adoptToken = (token: string) => writeToken(token);
+
+/** Takes `?recover=<token>` out of the address and uses it as the login (a link from an admin or from Profile). */
+export function consumeRecoveryLink(): boolean {
+  try {
+    const url = new URL(window.location.href);
+    const token = url.searchParams.get('recover');
+    if (!token) return false;
+    url.searchParams.delete('recover');
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    writeToken(token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The link that logs this guest in again anywhere (treat it like a password). */
+export const recoveryUrl = (token: string) =>
+  `${window.location.origin}/?recover=${encodeURIComponent(token)}`;
 
 export async function createGuest(profile: ProfileInput): Promise<AuthResponse> {
   const res = await fetch('/api/auth/guest', {
@@ -73,6 +104,7 @@ export async function createGuest(profile: ProfileInput): Promise<AuthResponse> 
   const body = (await res.json()) as AuthResponse & { error?: string };
   if (!res.ok) throw new Error(apiError(body, 'Could not create your guest account'));
   writeToken(body.token);
+  keepOnDevice(body.token, body.user);
   return body;
 }
 
@@ -88,9 +120,11 @@ export async function updateProfile(
   });
   const body = (await res.json()) as Pick<AuthResponse, 'user'> & { error?: string };
   if (!res.ok) throw new Error(apiError(body, 'Could not save your profile'));
+  keepOnDevice(token, body.user);
   return body.user;
 }
 
+/** "Switch player": only the active login goes; saved guests stay (see lib/players.ts). */
 export function forgetSession() {
   writeToken(null);
 }
@@ -125,7 +159,10 @@ export const verifyRegister = (token: string, email: string, code: string, passw
     email,
     code,
     password,
-  }).then((r) => r.user);
+  }).then((r) => {
+    keepOnDevice(token, r.user);
+    return r.user;
+  });
 
 export const startReset = (email: string) =>
   request<{ ok: true }>('POST', '/api/auth/reset/start', null, { email });

@@ -165,6 +165,35 @@ describe('titles (developers only)', () => {
   });
 });
 
+describe('recovery links for guests', () => {
+  it('an admin gets a link that logs in as that guest; others cannot', async () => {
+    const admin = await staffMember('Recover1', 'admin');
+    const mod = await staffMember('Recover2', 'moderator');
+    const lost = await guest('LostGuest');
+    const res = await call('POST', `/api/admin/users/${lost.user.id}/recovery`, admin.token);
+    expect(res.statusCode).toBe(200);
+    const { token } = res.json() as { token: string };
+    // The token is a normal login for that guest.
+    const me = await call('GET', '/api/me', token);
+    expect(me.statusCode).toBe(200);
+    expect(me.json().user.id).toBe(lost.user.id);
+    // It is written to the audit log.
+    const audit = await call('GET', '/api/admin/audit', admin.token);
+    expect(
+      (audit.json().audit as { action: string }[]).some((r) => r.action === 'recovery-link'),
+    ).toBe(true);
+    // Moderators are refused, and registered players do not need a link.
+    expect(
+      (await call('POST', `/api/admin/users/${lost.user.id}/recovery`, mod.token)).statusCode,
+    ).toBe(403);
+    const registered = await staffMember('Registered3', 'user');
+    expect(
+      (await call('POST', `/api/admin/users/${registered.user.id}/recovery`, admin.token))
+        .statusCode,
+    ).toBe(400);
+  });
+});
+
 describe('account events in the log', () => {
   it('notes a sign-up request, the email and the registration', async () => {
     const dev = await staffMember('Logger', 'admin');

@@ -80,5 +80,11 @@ export const setRole = (id: string, role: Role) =>
 export const setDev = (id: string, isDev: boolean) =>
   call('POST', `/api/admin/users/${id}/dev`, { isDev });
 
+/** A login link for a guest who lost their device token. `url` is null when the server has no public address. */
+export const recoveryLink = (id: string) =>
+  call<{ token: string; url: string | null }>('POST', `/api/admin/users/${id}/recovery`, {}).then(
+    (r) => r.url ?? `${window.location.origin}/?recover=${encodeURIComponent(r.token)}`,
+  );
+
 export const setTitles = (id: string, prefix: string, suffix: string) =>
   call('POST', `/api/admin/users/${id}/titles`, { prefix, suffix });
