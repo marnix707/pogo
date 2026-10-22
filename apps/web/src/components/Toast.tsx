@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { ReactNode } from 'react';
 
 interface ToastApi {
@@ -20,8 +28,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => () => clearTimeout(timer.current), []);
 
+  // A stable value: a new object on every render made every effect that depends on `toast` run again after each
+  // toast (an effect that shows a toast then looped forever: the "removed from the room" toast flickered).
+  const api = useMemo(() => ({ show }), [show]);
+
   return (
-    <ToastContext.Provider value={{ show }}>
+    <ToastContext.Provider value={api}>
       {children}
       {toast && (
         <div
