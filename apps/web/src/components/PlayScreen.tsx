@@ -61,6 +61,43 @@ function OpenGame({
   );
 }
 
+/** Join a room with its code. */
+export function JoinBar({ api }: { api: RoomApi }) {
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  async function join(e: FormEvent) {
+    e.preventDefault();
+    if (code.trim().length < 4) return;
+    setBusy(true);
+    await api.join(code);
+    setBusy(false);
+  }
+  const blocked = busy || !api.online;
+  return (
+    <form onSubmit={join} className="hud flex gap-2 p-3" aria-label="Join with a code">
+      <input
+        data-testid="home-join-code"
+        value={code}
+        onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+        placeholder="ROOM CODE"
+        maxLength={8}
+        autoCapitalize="characters"
+        autoCorrect="off"
+        spellCheck={false}
+        aria-label="Room code"
+        className="hud min-h-12 min-w-0 flex-1 bg-panel px-2 text-center text-lg font-bold uppercase tracking-[0.2em] text-ink outline-none placeholder:text-muted/40 focus:!border-neon"
+      />
+      <Button
+        data-testid="home-join-submit"
+        disabled={blocked || code.length < 4}
+        className="!min-h-12 !px-4"
+      >
+        Join
+      </Button>
+    </form>
+  );
+}
+
 /**
  * The Play screen: join with a code on top, the games, the open games underneath. The Home screen shows
  * it after Play; a lobby shows the very same screen when its host taps the game card at the top.
@@ -73,6 +110,8 @@ export function PlayScreen({
   tooBigFor,
   currentId,
   gameIdPrefix = 'home-game',
+  showJoin = true,
+  onMainScreen,
 }: {
   api: RoomApi;
   lobby: PublicRoomSummary[] | null;
@@ -84,8 +123,11 @@ export function PlayScreen({
   /** The lobby's current game (highlighted). */
   currentId?: string;
   gameIdPrefix?: string;
+  /** The join-by-code bar on top (a lobby shows it in place of its own top bar instead). */
+  showJoin?: boolean;
+  /** A "Main screen" button all the way at the bottom: back to the home screen. */
+  onMainScreen?: () => void;
 }) {
-  const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<string>('all');
   const [note, setNote] = useState<{ id: string; n: number } | null>(null);
@@ -105,34 +147,9 @@ export function PlayScreen({
     setBusy(false);
   }
 
-  function join(e: FormEvent) {
-    e.preventDefault();
-    if (code.trim().length >= 4) void run(api.join(code));
-  }
-
   return (
     <>
-      <form onSubmit={join} className="hud flex gap-2 p-3" aria-label="Join with a code">
-        <input
-          data-testid="home-join-code"
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-          placeholder="ROOM CODE"
-          maxLength={8}
-          autoCapitalize="characters"
-          autoCorrect="off"
-          spellCheck={false}
-          aria-label="Room code"
-          className="hud min-h-12 min-w-0 flex-1 bg-panel px-2 text-center text-lg font-bold uppercase tracking-[0.2em] text-ink outline-none placeholder:text-muted/40 focus:!border-neon"
-        />
-        <Button
-          data-testid="home-join-submit"
-          disabled={blocked || code.length < 4}
-          className="!min-h-12 !px-4"
-        >
-          Join
-        </Button>
-      </form>
+      {showJoin && <JoinBar api={api} />}
 
       <section aria-label="Games">
         <SectionLabel>Games</SectionLabel>
@@ -221,6 +238,16 @@ export function PlayScreen({
           </ul>
         )}
       </section>
+      {onMainScreen && (
+        <Button
+          variant="secondary"
+          data-testid="main-screen"
+          className="mt-2"
+          onClick={onMainScreen}
+        >
+          Main screen
+        </Button>
+      )}
     </>
   );
 }

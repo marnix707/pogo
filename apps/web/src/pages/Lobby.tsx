@@ -5,7 +5,7 @@ import type { ChatMessage, PublicRoomSummary, RoomView } from '@pogo/shared';
 import { ChevronIcon, CrownIcon, LockIcon, SlidersIcon } from '../components/icons';
 import { ChatPanel } from '../components/ChatPanel';
 import { GameCard } from '../components/GameCard';
-import { PlayScreen } from '../components/PlayScreen';
+import { JoinBar, PlayScreen } from '../components/PlayScreen';
 import { Avatar, Button, Card, SectionLabel, Toggle } from '../components/ui';
 import { TileButton } from '../components/TopBar';
 import { useToast } from '../components/Toast';
@@ -143,45 +143,56 @@ export function Lobby({
   return (
     <div className="menu mx-auto flex min-h-dvh max-w-md flex-col">
       <main className="flex flex-1 flex-col gap-5 px-4 pb-40 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
-        {/* The bar above the game card: Invite and the lobby code on the left, then Public / Private and the settings button. */}
-        <Card className="hud-ticks !p-2">
-          <div className="flex items-center gap-2" data-testid="lobby-toolbar">
-            <Button
-              variant="secondary"
-              aria-label="Invite friends"
-              className="min-h-10 shrink-0 !px-3"
-              onClick={() => void share()}
-            >
-              Invite
-            </Button>
-            {/* A public lobby shows its code next to Invite. */}
-            {room.visibility === 'public' && (
-              <span className="label min-w-0 truncate text-[10px] text-muted">
-                Lobby code:{' '}
-                <span
-                  data-testid="room-code"
-                  className="select-all text-sm font-bold leading-none tracking-[0.1em] text-neon max-[380px]:text-xs max-[380px]:tracking-normal"
+        {choosing ? (
+          /* Picking a game: the join-by-code bar takes the place of the lobby bar (it comes back afterwards). */
+          <JoinBar api={api} />
+        ) : (
+          <>
+            {/* The bar above the game card: Invite and the lobby code on the left, then Public / Private and the settings button. */}
+            <Card className="hud-ticks !p-2">
+              <div className="flex items-center gap-2" data-testid="lobby-toolbar">
+                <Button
+                  variant="secondary"
+                  aria-label="Invite friends"
+                  className="min-h-10 shrink-0 !px-3"
+                  onClick={() => void share()}
                 >
-                  {room.code}
+                  Invite
+                </Button>
+                {/* A public lobby shows its code next to Invite. */}
+                {room.visibility === 'public' && (
+                  <span className="label min-w-0 truncate text-[10px] text-muted">
+                    Lobby code:{' '}
+                    <span
+                      data-testid="room-code"
+                      className="select-all text-sm font-bold leading-none tracking-[0.1em] text-neon max-[380px]:text-xs max-[380px]:tracking-normal"
+                    >
+                      {room.code}
+                    </span>
+                  </span>
+                )}
+                <span className="flex-1" />
+                <span
+                  data-testid="room-visibility"
+                  className={`label shrink-0 rounded border px-1.5 py-0.5 text-[10px] ${
+                    room.visibility === 'public'
+                      ? 'border-accent text-accent'
+                      : 'border-edge/50 text-muted'
+                  }`}
+                >
+                  {room.visibility === 'public' ? 'Public' : 'Private'}
                 </span>
-              </span>
-            )}
-            <span className="flex-1" />
-            <span
-              data-testid="room-visibility"
-              className={`label shrink-0 rounded border px-1.5 py-0.5 text-[10px] ${
-                room.visibility === 'public'
-                  ? 'border-accent text-accent'
-                  : 'border-edge/50 text-muted'
-              }`}
-            >
-              {room.visibility === 'public' ? 'Public' : 'Private'}
-            </span>
-            <TileButton onClick={onSettings} aria-label="Settings" data-testid="settings-button">
-              <SlidersIcon className="h-5 w-5" />
-            </TileButton>
-          </div>
-        </Card>
+                <TileButton
+                  onClick={onSettings}
+                  aria-label="Settings"
+                  data-testid="settings-button"
+                >
+                  <SlidersIcon className="h-5 w-5" />
+                </TileButton>
+              </div>
+            </Card>
+          </>
+        )}
 
         {/* The game card from the Play screen, now the top of the lobby. The host taps it to pick another
             game (everybody stays in the room); the rest of the lobby drops in underneath it. */}
@@ -204,6 +215,9 @@ export function Lobby({
               watchLobby={watchLobby}
               currentId={room.gameId}
               gameIdPrefix="pick-game"
+              showJoin={false}
+              // All the way at the bottom: leave the lobby for the home screen (no intro animation again).
+              onMainScreen={() => void api.leave()}
               tooBigFor={(id) => room.members.length > (getGame(id)?.maxPlayers ?? Infinity)}
               onPick={(g) => {
                 if (g.id === room.gameId) {
