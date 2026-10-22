@@ -165,6 +165,18 @@ describe('titles (developers only)', () => {
   });
 });
 
+describe('credits', () => {
+  it('names the developer account (first DEV_EMAILS address) on the home screen', async () => {
+    const dev = await guest('CreditDev');
+    await users.register(dev.user.id, 'dev@example.com', await hashPassword('secret-pass'));
+    await users.setDev(dev.user.id, true);
+    const res = await call('GET', '/api/credits');
+    expect(res.statusCode).toBe(200);
+    // (An earlier test may already have registered dev@example.com under another name.)
+    expect(res.json().developer).toMatch(/ \(dev\)$/);
+  });
+});
+
 describe('recovery links for guests', () => {
   it('an admin gets a link that logs in as that guest; others cannot', async () => {
     const admin = await staffMember('Recover1', 'admin');

@@ -193,6 +193,13 @@ export const mergeGuest = (token: string, guestToken: string) =>
 export const fetchStats = (token: string) =>
   request<{ stats: GameStatsView[] }>('GET', '/api/me/stats', token).then((r) => r.stats);
 
+/** The developer's display name for the credit line on Home (null when unknown or the server is unreachable). */
+export const fetchDeveloper = (): Promise<string | null> =>
+  fetch('/api/credits')
+    .then((r) => (r.ok ? (r.json() as Promise<{ developer?: string | null }>) : null))
+    .then((b) => b?.developer ?? null)
+    .catch(() => null);
+
 export const fetchLeaderboard = (game: string) =>
   request<{ entries: LeaderboardRow[] }>('GET', `/api/leaderboard?game=${game}`, null).then(
     (r) => r.entries,

@@ -158,8 +158,9 @@ test('the landing page: logo + name on top with leaderboard, profile and setting
   const avatar = await box('home-avatar');
   const settings = await box('settings-button');
   expect(Math.abs(board.y - settings.y)).toBeLessThan(4);
-  expect(board.x).toBeLessThan(avatar.x);
-  expect(avatar.x).toBeLessThan(settings.x);
+  // My picture top left; leaderboard and settings stay on the right.
+  expect(avatar.x).toBeLessThan(board.x);
+  expect(board.x).toBeLessThan(settings.x);
   const play = await box('home-play');
   expect(play.y).toBeGreaterThan(board.y);
 

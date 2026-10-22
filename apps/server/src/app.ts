@@ -10,6 +10,7 @@ import {
   getGame,
   maskProfanity,
 } from '@pogo/shared';
+import { displayName } from '@pogo/shared';
 import type { AnyGameDefinition, Rng } from '@pogo/shared';
 import type { AppConfig } from './config';
 import { BanList, banMessage, createMemoryModerationStore } from './admin/moderation';
@@ -121,6 +122,17 @@ export async function buildApp(deps: AppDeps) {
 
   // Liveness for the host's health probes: never touches the database (keeps Neon asleep).
   app.get('/api/livez', async () => ({ ok: true }));
+  // Who made the game: the display name of the developer account (the first DEV_EMAILS address), for the
+  // credit line on the home screen. Cached for a few minutes; null when there is no such account.
+  let credit: { at: number; developer: string | null } | null = null;
+  app.get('/api/credits', async () => {
+    if (!credit || Date.now() - credit.at > 5 * 60_000) {
+      const email = config.devEmails?.[0];
+      const found = email ? await deps.users.getByEmail(email) : null;
+      credit = { at: Date.now(), developer: found ? displayName(found.user) : null };
+    }
+    return { developer: credit.developer };
+  });
   app.get('/api/healthz', async () => {
     await deps.healthCheck();
     return { ok: true, app: APP_NAME };

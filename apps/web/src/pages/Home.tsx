@@ -12,6 +12,7 @@ import type { ProfileMode } from '../components/ProfileSheet';
 import { PlayScreen } from '../components/PlayScreen';
 import { Button, SectionLabel } from '../components/ui';
 import { rememberGameCard } from '../lib/cardMorph';
+import { fetchDeveloper } from '../lib/session';
 import { TileButton } from '../components/TopBar';
 import { getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
@@ -61,6 +62,21 @@ export function Home({
   const swipe = useRef<{ x: number; y: number } | null>(null);
   // Opening animation: the menu only slides in when Pogo lands on his stick (once per page load).
   const [landed, setLanded] = useState(introDone);
+  // "Playing as <name>" slides out when the screen is there and back after 5 seconds.
+  const [nameOut, setNameOut] = useState(false);
+  useEffect(() => {
+    if (!landed) return;
+    const out = setTimeout(() => setNameOut(true), 300);
+    const back = setTimeout(() => setNameOut(false), 5300);
+    return () => {
+      clearTimeout(out);
+      clearTimeout(back);
+    };
+  }, [landed]);
+  const [developer, setDeveloper] = useState<string | null>(null);
+  useEffect(() => {
+    void fetchDeveloper().then(setDeveloper);
+  }, []);
   const [profileOpen, setProfileOpen] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
   const [profileMode, setProfileMode] = useState<ProfileMode>('main');
@@ -103,14 +119,7 @@ export function Home({
         data-in={landed}
         className="slide-top flex items-center gap-2.5 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+1.25rem)]"
       >
-        <div className="min-w-0 flex-1" />
-        <TileButton
-          onClick={() => setBoardOpen(true)}
-          aria-label="Leaderboard"
-          data-testid="home-leaderboard"
-        >
-          <TrophyIcon className="h-5 w-5" />
-        </TileButton>
+        {/* Top left: my picture; "Playing as <name>" swipes out next to it for 5 seconds, then slides back. */}
         <TileButton
           onClick={() => {
             setProfileMode('main');
@@ -119,10 +128,33 @@ export function Home({
           aria-label="Your profile"
           data-testid="home-avatar"
           data-avatar={user.avatar}
+          className="relative z-10"
         >
           <span className="text-2xl leading-none" aria-hidden>
             <AvatarFace avatar={user.avatar} />
           </span>
+        </TileButton>
+        <div
+          className="min-w-0 flex-1 overflow-hidden"
+          data-testid="home-playing-as"
+          data-open={nameOut}
+        >
+          <p
+            className="label whitespace-nowrap text-onbg/70 transition-transform duration-500 ease-out motion-reduce:transition-none"
+            style={{ transform: nameOut ? 'none' : 'translateX(-110%)' }}
+          >
+            Playing as{' '}
+            <span data-testid="home-nickname" className="text-onbg">
+              <PlayerName name={displayName(user)} />
+            </span>
+          </p>
+        </div>
+        <TileButton
+          onClick={() => setBoardOpen(true)}
+          aria-label="Leaderboard"
+          data-testid="home-leaderboard"
+        >
+          <TrophyIcon className="h-5 w-5" />
         </TileButton>
         <TileButton onClick={onSettings} aria-label="Settings" data-testid="settings-button">
           <SlidersIcon className="h-5 w-5" />
@@ -150,11 +182,19 @@ export function Home({
                 Play
               </Button>
             </div>
-            <p data-in={landed} className="slide-bottom label text-center text-onbg/70">
-              Playing as{' '}
-              <span data-testid="home-nickname" className="text-onbg">
-                <PlayerName name={displayName(user)} />
-              </span>
+            <p
+              data-in={landed}
+              className="slide-bottom label text-center text-onbg/70"
+              data-testid="home-credit"
+            >
+              {developer ? (
+                <>
+                  Developed by <PlayerName name={developer} />
+                </>
+              ) : (
+                <>Developed with Claude</>
+              )}
+              {developer && <span className="ml-1 text-[9px] opacity-80">(and Claude)</span>}
             </p>
           </>
         )}
