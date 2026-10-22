@@ -289,25 +289,8 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
       </div>
 
       {!finished && (
-        <div className="relative border-t-2 border-edge/60 bg-panel px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 text-ink">
+        <div className="border-t-2 border-edge/60 bg-panel px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 text-ink">
           <div className="mx-auto flex max-w-md flex-col gap-2">
-            {/* The rolls left, small, above the dice: only while somebody else is on turn (mine is in the Roll button). */}
-            {!myTurn && (
-              <div
-                className="pointer-events-none absolute inset-x-0 top-[3px] z-10 flex justify-center gap-1"
-                aria-label={`${state.rollsLeft} rolls left`}
-                data-testid="rolls-dots"
-              >
-                {Array.from({ length: yatzy.MAX_ROLLS }, (_, i) => (
-                  <span
-                    key={i}
-                    className={`h-2 w-2 rounded-full border-[1.5px] ${
-                      i < state.rollsLeft ? 'border-accent bg-accent' : 'border-muted/50'
-                    }`}
-                  />
-                ))}
-              </div>
-            )}
             <div className="mx-auto grid w-full max-w-[22rem] grid-cols-5 gap-2.5 pt-1">
               {order.map((i) => (
                 <div
@@ -369,9 +352,26 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
                 </Button>
               </div>
             ) : (
-              <p className="label flex min-h-11 items-center justify-center text-center text-[11px] text-muted">
-                {current?.nickname ?? 'Someone'} is playing…
-              </p>
+              <div className="flex min-h-11 flex-col items-center justify-center gap-1.5">
+                {/* The rolls left, small, between the dice and who is playing (mine is in the Roll button). */}
+                <div
+                  className="flex justify-center gap-1"
+                  aria-label={`${state.rollsLeft} rolls left`}
+                  data-testid="rolls-dots"
+                >
+                  {Array.from({ length: yatzy.MAX_ROLLS }, (_, i) => (
+                    <span
+                      key={i}
+                      className={`h-2 w-2 rounded-full border-[1.5px] ${
+                        i < state.rollsLeft ? 'border-accent bg-accent' : 'border-muted/50'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <p className="label text-center text-[11px] leading-none text-muted">
+                  {current?.nickname ?? 'Someone'} is playing…
+                </p>
+              </div>
             )}
             <span className="sr-only" data-testid="rolls-used">
               {rollsUsed}
