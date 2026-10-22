@@ -30,14 +30,18 @@ test('an admin finds a player, gives the (dev) tag and bans them', async ({ brow
   await page.getByTestId('admin-password').fill('secret-pass');
   await page.getByTestId('admin-submit').click();
   await expect(page.getByTestId('admin-panel')).toBeVisible();
+  // The player list shows registered players by default; the victim is a guest.
+  await page.getByTestId('admin-show-everyone').click();
   await page.getByTestId('admin-search').fill(VICTIM);
   await page.getByTestId(`admin-user-${VICTIM}`).click();
   await page.screenshot({ path: 'test-results/admin-sheet.png' });
+  await page.getByTestId('admin-menu-role').click();
   await page.getByTestId('admin-dev').click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByTestId(`admin-user-${VICTIM}`)).toContainText(`${VICTIM} (dev)`);
 
   await page.getByTestId(`admin-user-${VICTIM}`).click();
+  await page.getByTestId('admin-menu-ban').click();
   await page.getByTestId('admin-ban-reason').fill('testing');
   await page.getByTestId('admin-ban').click();
   await expect(page.getByTestId(`admin-user-${VICTIM}`)).toContainText('banned');

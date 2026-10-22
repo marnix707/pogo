@@ -144,6 +144,21 @@ function PlayerSheet({
     }
   };
   const sameOrHigher = row && row.role !== 'user' && (!isAdmin || row.role === 'admin');
+  const [view, setView] = useState<PlayerView>('menu');
+  useEffect(() => setView('menu'), [row?.id]);
+  const moderatable = !!row && row.id !== me.id && !sameOrHigher;
+  const entries: { id: PlayerView; label: string; hint: string }[] = [
+    ...(me.isDev && row && !row.isGuest
+      ? [{ id: 'titles' as const, label: 'Prefix & suffix', hint: 'Text around the name' }]
+      : []),
+    ...(moderatable && row?.roomCode
+      ? [{ id: 'kick' as const, label: 'Kick', hint: `Out of room ${row.roomCode}` }]
+      : []),
+    ...(moderatable ? [{ id: 'ban' as const, label: 'Ban', hint: 'For a while or for good' }] : []),
+    ...(isAdmin && row && row.id !== me.id
+      ? [{ id: 'role' as const, label: 'Role & dev tag', hint: row.role }]
+      : []),
+  ];
   return (
     <Sheet open={!!row} onClose={onClose} title={row ? displayName(row) : ''}>
       {row && (
@@ -168,95 +183,132 @@ function PlayerSheet({
               </button>
             </p>
           )}
-          {me.isDev && !row.isGuest && (
-            <TitlesEditor row={row} onChanged={onChanged} onError={onError} />
-          )}
-          {row.id === me.id ? (
-            <p className="text-sm opacity-70">This is you.</p>
-          ) : sameOrHigher ? (
-            <p className="text-sm opacity-70">Staff of this rank cannot be moderated by you.</p>
+          {view === 'menu' ? (
+            <div className="flex flex-col gap-2" data-testid="admin-menu">
+              {row.id === me.id && <p className="text-sm opacity-70">This is you.</p>}
+              {row.id !== me.id && sameOrHigher && (
+                <p className="text-sm opacity-70">Staff of this rank cannot be moderated by you.</p>
+              )}
+              {entries.map((e) => (
+                <button
+                  key={e.id}
+                  className="hud flex min-h-12 items-center justify-between gap-2 px-3 py-2 text-left"
+                  onClick={() => setView(e.id)}
+                  data-testid={`admin-menu-${e.id}`}
+                >
+                  <span className="font-bold uppercase tracking-[0.1em]">{e.label}</span>
+                  <span className="truncate text-xs opacity-70">{e.hint} ›</span>
+                </button>
+              ))}
+              {entries.length === 0 && row.id !== me.id && !sameOrHigher && (
+                <p className="text-sm opacity-70">Nothing to do here.</p>
+              )}
+            </div>
           ) : (
             <>
-              {row.roomCode && (
-                <Button
-                  variant="secondary"
-                  onClick={() => void act(() => kickUser(row.id))}
-                  data-testid="admin-kick"
-                >
-                  Kick from room {row.roomCode}
-                </Button>
-              )}
-              <div className="hud flex flex-col gap-2 p-3">
-                <div className="label">Ban</div>
-                <select
-                  className={field}
-                  value={String(minutes)}
-                  onChange={(e) =>
-                    setMinutes(e.target.value === 'null' ? null : Number(e.target.value))
-                  }
-                  data-testid="admin-ban-duration"
-                >
-                  {durations.map((d) => (
-                    <option key={d.label} value={String(d.minutes)}>
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className={field}
-                  placeholder="Reason (shown to the player)"
-                  maxLength={200}
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  data-testid="admin-ban-reason"
-                />
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={blockIp}
-                    onChange={(e) => setBlockIp(e.target.checked)}
-                  />
-                  Also block their IP address
-                </label>
-                <Button
-                  className="!bg-danger"
-                  onClick={() => void act(() => banUser(row.id, minutes, reason, blockIp))}
-                  data-testid="admin-ban"
-                >
-                  Ban
-                </Button>
-              </div>
-            </>
-          )}
-          {isAdmin && row.id !== me.id && (
-            <div className="hud flex flex-col gap-2 p-3">
-              <div className="label">Admin</div>
-              {!row.isGuest && (
-                <select
-                  className={field}
-                  value={row.role}
-                  onChange={(e) => void act(() => setRole(row.id, e.target.value as Role))}
-                  data-testid="admin-role"
-                >
-                  <option value="user">Player</option>
-                  <option value="moderator">Moderator</option>
-                  <option value="admin">Admin</option>
-                </select>
-              )}
-              <Button
-                variant="secondary"
-                onClick={() => void act(() => setDev(row.id, !row.isDev))}
-                data-testid="admin-dev"
+              <button
+                className="label self-start underline"
+                onClick={() => setView('menu')}
+                data-testid="admin-back"
               >
-                {row.isDev ? 'Remove (dev) tag' : 'Give (dev) tag'}
-              </Button>
-            </div>
+                ‹ Back
+              </button>
+              {view === 'titles' && (
+                <TitlesEditor
+                  row={row}
+                  onChanged={() => {
+                    onChanged();
+                    setView('menu');
+                  }}
+                  onError={onError}
+                />
+              )}
+              {view === 'kick' && (
+                <div className="hud flex flex-col gap-2 p-3">
+                  <div className="label">Kick</div>
+                  <p className="text-sm">
+                    Remove them from room {row.roomCode}. They can join again.
+                  </p>
+                  <Button onClick={() => void act(() => kickUser(row.id))} data-testid="admin-kick">
+                    Kick from room {row.roomCode}
+                  </Button>
+                </div>
+              )}
+              {view === 'ban' && (
+                <div className="hud flex flex-col gap-2 p-3">
+                  <div className="label">Ban</div>
+                  <select
+                    className={field}
+                    value={String(minutes)}
+                    onChange={(e) =>
+                      setMinutes(e.target.value === 'null' ? null : Number(e.target.value))
+                    }
+                    data-testid="admin-ban-duration"
+                  >
+                    {durations.map((d) => (
+                      <option key={d.label} value={String(d.minutes)}>
+                        {d.label}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className={field}
+                    placeholder="Reason (shown to the player)"
+                    maxLength={200}
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    data-testid="admin-ban-reason"
+                  />
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={blockIp}
+                      onChange={(e) => setBlockIp(e.target.checked)}
+                    />
+                    Also block their IP address
+                  </label>
+                  <Button
+                    className="!bg-danger"
+                    onClick={() => void act(() => banUser(row.id, minutes, reason, blockIp))}
+                    data-testid="admin-ban"
+                  >
+                    Ban
+                  </Button>
+                </div>
+              )}
+              {view === 'role' && (
+                <div className="hud flex flex-col gap-2 p-3">
+                  <div className="label">Role & dev tag</div>
+                  {!row.isGuest && (
+                    <select
+                      className={field}
+                      value={row.role}
+                      onChange={(e) => void act(() => setRole(row.id, e.target.value as Role))}
+                      data-testid="admin-role"
+                    >
+                      <option value="user">Player</option>
+                      <option value="moderator">Moderator</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  )}
+                  <Button
+                    variant="secondary"
+                    onClick={() => void act(() => setDev(row.id, !row.isDev))}
+                    data-testid="admin-dev"
+                  >
+                    {row.isDev ? 'Remove (dev) tag' : 'Give (dev) tag'}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
     </Sheet>
   );
 }
+
+type PlayerView = 'menu' | 'titles' | 'kick' | 'ban' | 'role';
 
 type Show = 'registered' | 'everyone' | 'guests';
 type Sort = 'seen' | 'joined' | 'name';

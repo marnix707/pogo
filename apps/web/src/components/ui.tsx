@@ -128,7 +128,7 @@ export function Sheet({
         aria-label={title}
         data-closing={closing}
         onClick={(e) => e.stopPropagation()}
-        className="hud menu sheet-panel w-full max-w-lg rounded-b-none !border-b-0 bg-panel p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl"
+        className="hud menu sheet-panel max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-b-none !border-b-0 bg-panel p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl"
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold uppercase tracking-[0.16em]">{title}</h2>
