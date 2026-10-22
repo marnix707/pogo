@@ -423,18 +423,18 @@ export function Lobby({
                         {m.id === me && <span className="font-normal text-muted"> (you)</span>}
                       </div>
                       <div className="label flex items-center gap-1.5 text-[10px] text-muted">
-                        {m.id === room.hostId && (
-                          <>
-                            <CrownIcon className="h-3.5 w-3.5 text-accent" /> Host ·
-                          </>
-                        )}
-                        {!m.connected
-                          ? 'Reconnecting…'
-                          : m.ready
-                            ? m.readyLock
-                              ? 'Ready 🔒'
-                              : 'Ready ✓'
-                            : 'Not ready'}
+                        {m.id === room.hostId && <CrownIcon className="h-3.5 w-3.5 text-accent" />}
+                        {/* One text node, so the space after the dot can never be lost. */}
+                        <span>
+                          {m.id === room.hostId ? 'Host · ' : ''}
+                          {!m.connected
+                            ? 'Reconnecting…'
+                            : m.ready
+                              ? m.readyLock
+                                ? 'Ready 🔒'
+                                : 'Ready ✓'
+                              : 'Not ready'}
+                        </span>
                       </div>
                     </div>
                     {isHost && m.id !== me && (

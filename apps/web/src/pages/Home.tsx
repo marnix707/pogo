@@ -10,7 +10,7 @@ import { LeaderboardSheet } from '../components/LeaderboardSheet';
 import { ProfileSheet } from '../components/ProfileSheet';
 import type { ProfileMode } from '../components/ProfileSheet';
 import { PlayScreen } from '../components/PlayScreen';
-import { Button, SectionLabel } from '../components/ui';
+import { Avatar, Button, SectionLabel } from '../components/ui';
 import { rememberGameCard } from '../lib/cardMorph';
 import { fetchDeveloper } from '../lib/session';
 import { TileButton } from '../components/TopBar';
@@ -143,7 +143,9 @@ export function Home({
           className="slide-top flex items-center gap-2.5 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+1.25rem)]"
         >
           {/* Top left: my picture; "Playing as <name>" swipes out next to it for 5 seconds, then slides back. */}
-          <TileButton
+          {/* The same icon as in the crew list: the picture fills a rounded tile with the gold ring and the dark outline. */}
+          <button
+            type="button"
             onClick={() => {
               setProfileMode('main');
               setProfileOpen(true);
@@ -151,12 +153,10 @@ export function Home({
             aria-label="Your profile"
             data-testid="home-avatar"
             data-avatar={user.avatar}
-            className="relative z-10"
+            className="relative z-10 shrink-0 active:translate-y-px"
           >
-            <span className="text-2xl leading-none" aria-hidden>
-              <AvatarFace avatar={user.avatar} />
-            </span>
-          </TileButton>
+            <Avatar avatar={user.avatar} size="md" />
+          </button>
           <div
             className="min-w-0 flex-1 overflow-hidden"
             data-testid="home-playing-as"
