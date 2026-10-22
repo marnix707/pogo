@@ -12,25 +12,32 @@ import { CARD_COLORS, ColourCard } from './ColourCard';
 const COLOR_NAMES = ['Red', 'Yellow', 'Green', 'Blue'];
 /** How long the "UNO!" announcement stays on screen. */
 const UNO_CALL_MS = 1900;
+/** After somebody drops to one card without UNO!, the next move waits this long (they can be called out). */
+const CALL_HOLD_MS = 1500;
 
 /** One opponent: face, name, how many cards they hold, and whether they called UNO!. */
 function Seat({
   player,
   member,
   active,
+  catchable,
+  onCatch,
 }: {
   player: lastcard.LastCardPlayerView;
   member: RoomMemberView | undefined;
   active: boolean;
+  /** This player went to one card without UNO!: they can still be called out. */
+  catchable: boolean;
+  onCatch: () => void;
 }) {
-  const risky = player.count === 1 && !player.called;
   return (
     <div
       data-testid={`lastcard-seat-${player.id}`}
       data-count={player.count}
       data-called={player.called}
       data-active={active}
-      className={`hud flex min-w-0 flex-1 flex-col items-center gap-1 px-1.5 py-1.5 ${active ? '!bg-neon !text-accentink' : ''}`}
+      data-catchable={catchable}
+      className={`hud flex min-w-0 flex-1 flex-col items-center gap-1 px-1.5 py-1.5 ${active ? '!bg-neon !text-accentink' : ''} ${catchable ? 'outline outline-2 outline-danger' : ''}`}
     >
       <div className="flex w-full min-w-0 items-center gap-1.5">
         <Avatar avatar={member?.avatar ?? 'fox'} size="sm" />
@@ -64,13 +71,15 @@ function Seat({
           UNO!
         </span>
       )}
-      {risky && (
-        <span
-          className="label animate-pulse text-[10px] opacity-80"
-          data-testid={`uno-risk-${player.id}`}
+      {catchable && (
+        <button
+          type="button"
+          onClick={onCatch}
+          data-testid={`uno-callout-${player.id}`}
+          className="lastcard-btn-urgent label w-full rounded bg-danger px-1.5 py-1 text-[11px] text-white"
         >
-          1 card…
-        </span>
+          Call out!
+        </button>
       )}
     </div>
   );
@@ -104,12 +113,12 @@ function describe(
     case 'pass':
       text = `${who} ${verb('passed', 'passed')}`;
       break;
-    case 'lastcard':
+    case 'uno':
       text = `${who} ${verb('called', 'called')} UNO!`;
       break;
-  }
-  if (ev.penalty) {
-    text += ` · ${nameOf(ev.penalty)} forgot UNO! (+1 card)`;
+    case 'callout':
+      text = `${who} called out ${nameOf(ev.victim?.playerId ?? '')} · +${ev.victim?.count ?? 4} cards`;
+      break;
   }
   return text;
 }
@@ -161,10 +170,7 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
     const ev = view.lastEvent;
     if (!ev || ev.seq === lastSeq.current) return;
     lastSeq.current = ev.seq;
-    if (ev.penalty === me) {
-      play('error');
-      haptic('error');
-    } else if (ev.victim?.playerId === me) {
+    if (ev.victim?.playerId === me) {
       play('error');
       haptic('error');
     } else if (ev.playerId !== me) {
@@ -196,8 +202,41 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
   }, [view.unoCall, me]);
   useEffect(() => () => clearTimeout(callTimer.current), []);
 
+  // Called out: a red announcement for everybody (not for one made before we joined).
+  const [caught, setCaught] = useState<{ seq: number; byId: string; targetId: string } | null>(
+    null,
+  );
+  const seenCatch = useRef(view.catchCall?.seq ?? 0);
+  const catchTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => {
+    const c = view.catchCall;
+    if (!c || c.seq === seenCatch.current) return;
+    seenCatch.current = c.seq;
+    setCaught(c);
+    play(c.targetId === me ? 'error' : 'score');
+    haptic(c.targetId === me ? 'error' : 'tap');
+    clearTimeout(catchTimer.current);
+    catchTimer.current = setTimeout(() => setCaught(null), UNO_CALL_MS);
+  }, [view.catchCall, me]);
+  useEffect(() => () => clearTimeout(catchTimer.current), []);
+
+  // Somebody else went down to one card without UNO!: everybody is held for a moment so the others can call
+  // them out (it is too late once the next player plays, draws or passes). Not for the player themselves.
+  const [held, setHeld] = useState(false);
+  const holdTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => {
+    clearTimeout(holdTimer.current);
+    if (view.callWindow && view.callWindow !== me && !finished) {
+      setHeld(true);
+      holdTimer.current = setTimeout(() => setHeld(false), CALL_HOLD_MS);
+    } else {
+      setHeld(false);
+    }
+  }, [view.callWindow, seq, me, finished]);
+  useEffect(() => () => clearTimeout(holdTimer.current), []);
+
   const canPlay = (card: lastcard.Card): boolean => {
-    if (!myTurn || busy) return false;
+    if (!myTurn || busy || held) return false;
     if (view.drawn !== null && card !== view.drawn) return false;
     if (!lastcard.canPlayCard(card, view.top, view.color, view.hand)) return false;
     return !(view.hand.length === 1 && lastcard.isSpecial(card));
@@ -214,6 +253,10 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
   const tapCard = (card: lastcard.Card) => {
     if (!myTurn) {
       flashHint('Wait for your turn');
+      return;
+    }
+    if (held) {
+      flashHint('Wait… somebody may call out UNO!');
       return;
     }
     if (!canPlay(card)) {
@@ -234,7 +277,7 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
 
   const unoButton = () => {
     if (view.mustCall) {
-      void send({ type: 'lastcard' });
+      void send({ type: 'uno' });
     } else if (myTurn && view.hand.length === 2) {
       setArmed((a) => !a);
     } else {
@@ -290,6 +333,8 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
             player={p}
             member={member(p.id)}
             active={!finished && p.id === currentId}
+            catchable={!finished && view.callWindow === p.id && p.id !== me}
+            onCatch={() => void send({ type: 'callout', target: p.id })}
           />
         ))}
       </div>
@@ -300,9 +345,11 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
             type="button"
             className="relative flex flex-col items-center gap-1 disabled:opacity-100"
             onClick={() =>
-              myTurn && view.drawn === null
-                ? void send({ type: 'draw' })
-                : flashHint(myTurn ? 'Play the card you drew, or pass' : 'Wait for your turn')
+              held
+                ? flashHint('Wait… somebody may call out UNO!')
+                : myTurn && view.drawn === null
+                  ? void send({ type: 'draw' })
+                  : flashHint(myTurn ? 'Play the card you drew, or pass' : 'Wait for your turn')
             }
             data-testid="lastcard-draw"
             data-enabled={myTurn && view.drawn === null}
@@ -402,7 +449,7 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
           <Button
             variant={myTurn ? 'primary' : 'secondary'}
             className="relative min-h-14 flex-1 overflow-hidden"
-            disabled={!myTurn || busy}
+            disabled={!myTurn || busy || held}
             onClick={() => void send(view.drawn !== null ? { type: 'pass' } : { type: 'draw' })}
             data-testid={view.drawn !== null ? 'lastcard-pass' : 'lastcard-draw-button'}
           >
@@ -416,9 +463,11 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
             <span className="relative">
               {!myTurn
                 ? `${nameOf(currentId ?? '')}…`
-                : view.drawn !== null
-                  ? 'Pass'
-                  : 'Draw a card'}
+                : held
+                  ? 'Wait…'
+                  : view.drawn !== null
+                    ? 'Pass'
+                    : 'Draw a card'}
             </span>
           </Button>
           <button
@@ -464,6 +513,39 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
           <button className="label text-onbg underline" onClick={() => setPendingWild(null)}>
             Cancel
           </button>
+        </div>
+      )}
+
+      {caught && (
+        <div
+          key={caught.seq}
+          className="pointer-events-none fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-black/45"
+          role="status"
+          data-testid="uno-caught"
+          data-target={caught.targetId}
+        >
+          <div className="lastcard-call flex flex-col items-center gap-3">
+            <span
+              className="font-bold leading-none text-[#ff6a5f]"
+              style={{
+                fontSize: '4.5rem',
+                textShadow: '0.07em 0.07em 0 #101628, 0 0 0.4em #000',
+                WebkitTextStroke: '0.04em #101628',
+              }}
+            >
+              CAUGHT!
+            </span>
+            <span className="flex max-w-[22rem] items-center gap-2 rounded-[10px] border-2 border-line bg-panel px-3 py-2 text-lg font-bold text-ink shadow-[0_4px_0_#101628]">
+              <Avatar avatar={member(caught.targetId)?.avatar ?? 'fox'} size="md" />
+              <span className="min-w-0">
+                <PlayerName name={nameOf(caught.targetId)} />
+                <span className="block text-sm font-normal opacity-80">
+                  {caught.byId === me ? 'You' : nameOf(caught.byId)} called{' '}
+                  {caught.targetId === me ? 'you' : 'them'} out: +4 cards
+                </span>
+              </span>
+            </span>
+          </div>
         </div>
       )}
 

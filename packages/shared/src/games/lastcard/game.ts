@@ -46,7 +46,8 @@ export const lastCardMoveSchema: z.ZodType<LastCardMove, z.ZodTypeDef, unknown> 
     }),
     z.object({ type: z.literal('draw') }),
     z.object({ type: z.literal('pass') }),
-    z.object({ type: z.literal('lastcard') }),
+    z.object({ type: z.literal('uno') }),
+    z.object({ type: z.literal('callout'), target: z.string().min(1).max(64) }),
   ]);
 
 const optionsSchema = z.object({}).strict() as z.ZodType<LastCardOptions, z.ZodTypeDef, unknown>;
@@ -118,6 +119,8 @@ function createInitialState(
     eventSeq: 0,
     lastEvent: null,
     unoCall: null,
+    callWindow: null,
+    catchCall: null,
   };
 }
 
@@ -126,9 +129,16 @@ function validateMove(state: LastCardState, playerId: string, move: LastCardMove
   const index = indexOf(state, playerId);
   if (index < 0) return { ok: false, error: 'You are not in this game' };
   const me = state.players[index]!;
-  if (move.type === 'lastcard') {
-    if (me.hand.length !== 1 || me.called)
-      return { ok: false, error: 'You can only call UNO! with one card left' };
+  if (move.type === 'uno') {
+    // Right before (play with `uno`) or right after playing the second-to-last card: once somebody
+    // draws, passes or plays it is too late.
+    if (state.callWindow !== playerId)
+      return { ok: false, error: 'Too late: UNO! has to be called before the next player goes' };
+    return { ok: true };
+  }
+  if (move.type === 'callout') {
+    if (move.target === playerId || state.callWindow !== move.target)
+      return { ok: false, error: 'Nobody can be called out right now' };
     return { ok: true };
   }
   if (index !== state.turn) return { ok: false, error: 'Not your turn' };
@@ -184,7 +194,6 @@ function applyMove(
     victim: null,
     skipped: [],
     reversed: false,
-    penalty: null,
     uno: false,
     out: false,
   };
@@ -195,9 +204,20 @@ function applyMove(
     state.unoCall = { seq, playerId };
   };
 
-  if (move.type === 'lastcard') {
-    event.kind = 'lastcard';
+  // Whatever happens next, the player who was on one card is out of time ("the next player started").
+  if (move.type !== 'uno' && move.type !== 'callout') state.callWindow = null;
+
+  if (move.type === 'uno') {
+    event.kind = 'uno';
     callUno();
+    state.callWindow = null;
+  } else if (move.type === 'callout') {
+    event.kind = 'callout';
+    const target = indexOf(state, move.target);
+    const got = drawCards(state, target, 4, rng);
+    event.victim = { playerId: move.target, count: got };
+    state.catchCall = { seq, byId: playerId, targetId: move.target };
+    state.callWindow = null;
   } else if (move.type === 'draw') {
     event.kind = 'draw';
     event.drew = drawCards(state, index, 1, rng);
@@ -220,15 +240,10 @@ function applyMove(
     state.color = info.color ?? (move.color as Color);
     event.color = state.color;
 
-    // Somebody who stayed on one card without pressing UNO! pays for it as soon as another card is thrown.
-    state.players.forEach((other, i) => {
-      if (i !== index && other.hand.length === 1 && !other.called) {
-        drawCards(state, i, 1, rng);
-        event.penalty = other.id;
-      }
-    });
-
-    if (me.hand.length === 1 && move.uno) callUno();
+    if (me.hand.length === 1) {
+      if (move.uno) callUno();
+      else state.callWindow = playerId;
+    }
     if (me.hand.length === 0) {
       state.winner = playerId;
       event.out = true;
@@ -303,10 +318,12 @@ function getPlayerView(state: LastCardState, playerId: string): LastCardView {
     turn: state.turn,
     direction: state.direction,
     drawn: current.id === playerId ? state.drawn : null,
-    mustCall: !!me && me.hand.length === 1 && !me.called && !state.winner,
+    mustCall: !!me && state.callWindow === playerId && !state.winner,
     winner: state.winner,
     lastEvent: state.lastEvent,
     unoCall: state.unoCall,
+    callWindow: state.callWindow,
+    catchCall: state.catchCall,
   };
 }
 
@@ -322,6 +339,9 @@ function bestColor(hand: readonly Card[], rng: Rng): Color {
   return best[rng.int(best.length)] as Color;
 }
 
+/** Chance (percent) that a computer calls out a player who forgot UNO!. */
+const CALLOUT_CHANCE = 85;
+
 /** Computer players (and timed-out or absent humans): plays sensibly, calls UNO!, keeps wilds for later. */
 function autoMove(state: LastCardState, playerId: string, rng: Rng): AutoMove<LastCardMove> {
   const index = indexOf(state, playerId);
@@ -330,6 +350,11 @@ function autoMove(state: LastCardState, playerId: string, rng: Rng): AutoMove<La
     const after = applyMove(state, playerId, move, rng);
     return !!after.winner || after.turn !== index || after.eventSeq === state.eventSeq;
   };
+  // Computers usually catch a player who forgot UNO!.
+  const target = state.callWindow;
+  if (target !== null && target !== playerId && rng.int(100) < CALLOUT_CHANCE) {
+    return { move: { type: 'callout', target }, endsTurn: false };
+  }
   const candidates = (state.drawn !== null ? [state.drawn] : me.hand).filter(
     (c) => validateMove(state, playerId, { type: 'play', card: c, color: 0 }).ok,
   );
@@ -368,8 +393,8 @@ export const lastCardGame: GameDefinition<
   optionsSchema,
   defaultOptions: {},
   moveSchema: lastCardMoveSchema,
-  // Calling UNO! is allowed out of turn and must not buy anybody more time.
-  isFreeMove: (move) => move.type === 'lastcard',
+  // Calling UNO! or calling somebody out is allowed out of turn and must not buy anybody more time.
+  isFreeMove: (move) => move.type === 'uno' || move.type === 'callout',
   createInitialState,
   validateMove,
   applyMove,
@@ -378,13 +403,9 @@ export const lastCardGame: GameDefinition<
   isGameOver: (state) => state.winner !== null,
   getResults,
   autoMove,
-  // Somebody left on one card without UNO! gets a moment to press it before a computer throws a card.
-  settleMs: (state) =>
-    state.players.some(
-      (p) => p.hand.length === 1 && !p.called && p.id !== state.players[state.turn]!.id,
-    )
-      ? 2200
-      : 0,
+  // While somebody can still call UNO! (or be called out) computers hold back, so a human has time to
+  // press the button or catch them before the next card is thrown.
+  settleMs: (state) => (state.callWindow !== null ? 2200 : 0),
   supportsBots: true,
 };
 

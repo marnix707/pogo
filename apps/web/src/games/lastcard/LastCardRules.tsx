@@ -23,10 +23,15 @@ export function LastCardRules({ open, onClose }: { open: boolean; onClose: () =>
           play it when you have no card of the current colour.
         </li>
         <li>
-          <b className="text-neon">UNO!</b> When you are down to <b>one card</b>, press the{' '}
-          <b>UNO!</b> button before the next player throws a card. Forget it and you take a penalty
-          card straight away, so you cannot go out yet. (You can also arm the button while you hold
-          two cards: your next card is played together with UNO!.)
+          <b className="text-neon">UNO!</b> Call it right <b>before or right after</b> you play your
+          second-to-last card: arm the <b>UNO!</b> button while you hold two cards (your next card
+          is played together with it), or press it as soon as you are down to one card. Once the
+          next player plays, draws or passes it is too late.
+        </li>
+        <li>
+          <b className="text-neon">Call out!</b> Somebody forgot UNO!? Tap the red <b>Call out!</b>{' '}
+          button on their seat before the next player goes: they draw <b>four</b> cards. After a
+          card is played down to one, everyone waits a moment so there is time to react.
         </li>
         <li>
           <b className="text-neon">Going out:</b> you cannot finish with an action card or a wild:

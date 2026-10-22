@@ -39,6 +39,8 @@ function setup(hands: Card[][], over: Partial<LastCardState> = {}): LastCardStat
     eventSeq: 0,
     lastEvent: null,
     unoCall: null,
+    callWindow: null,
+    catchCall: null,
     ...over,
   };
 }
@@ -204,70 +206,107 @@ describe('finishing', () => {
   });
 });
 
-describe('UNO!', () => {
-  it('can only be called with one card left, and it counts until the hand changes', () => {
-    const s = setup([
-      [RED(7), RED(8)],
-      [RED(1), RED(2)],
-    ]);
-    expect(game.validateMove(s, 'p0', { type: 'lastcard' }).ok).toBe(false);
-    const one = play(s, 'p0', { type: 'play', card: RED(7) }); // p0 now holds one card, no UNO!
-    expect(game.getPlayerView(one, 'p0').mustCall).toBe(true);
-    const called = play(one, 'p0', { type: 'lastcard' }); // out of turn is fine
-    expect(called.players[0]!.called).toBe(true);
-    expect(called.unoCall).toMatchObject({ playerId: 'p0' });
-    expect(called.turn).toBe(1); // calling does not change the turn
-    expect(game.getPlayerView(called, 'p0').mustCall).toBe(false);
-    expect(game.validateMove(called, 'p0', { type: 'lastcard' }).ok).toBe(false);
-  });
-
-  it('playing the second to last card together with UNO! counts as calling', () => {
-    const s = setup([
-      [RED(7), RED(8)],
-      [RED(1), RED(2)],
-    ]);
-    const one = play(s, 'p0', { type: 'play', card: RED(7), uno: true });
-    expect(one.players[0]!.called).toBe(true);
-    // The next player throws a card: no penalty.
-    const next = play(one, 'p1', { type: 'play', card: RED(1) });
-    expect(next.players[0]!.hand).toHaveLength(1);
-    expect(next.lastEvent?.penalty).toBeNull();
-  });
-
-  it('the penalty: another player throws a card before UNO! was pressed: a card is drawn automatically', () => {
-    const s = setup([
-      [RED(7), RED(8)],
-      [RED(1), RED(2)],
-    ]);
-    const one = play(s, 'p0', { type: 'play', card: RED(7) });
-    const next = play(one, 'p1', { type: 'play', card: RED(1) });
-    expect(next.players[0]!.hand).toHaveLength(2);
-    expect(next.lastEvent?.penalty).toBe('p0');
-    // So p0 cannot go out with the next card any more.
-    const tryOut = play(next, 'p0', { type: 'play', card: RED(8) });
-    expect(tryOut.winner).toBeNull();
-  });
-
-  it('pressing in time avoids the penalty; drawing is not throwing', () => {
-    const s = setup(
+describe('UNO! and calling somebody out', () => {
+  const two = () =>
+    setup(
       [
         [RED(7), RED(8)],
-        [RED(1), YELLOW(2)],
+        [RED(1), YELLOW(2), RED(2)],
       ],
-      { stock: [YELLOW(3), YELLOW(4)] },
+      { stock: [YELLOW(3), YELLOW(4), YELLOW(5), YELLOW(6), YELLOW(7), YELLOW(8), YELLOW(9)] },
     );
+
+  it('opens a window when a play leaves one card without UNO!, and UNO! closes it', () => {
+    const s = two();
+    expect(game.validateMove(s, 'p0', { type: 'uno' }).ok).toBe(false); // two cards: nothing to call
     const one = play(s, 'p0', { type: 'play', card: RED(7) });
-    const drew = play(one, 'p1', { type: 'draw' });
-    expect(drew.players[0]!.hand).toHaveLength(1);
-    const pressed = play(one, 'p0', { type: 'lastcard' });
-    const thrown = play(pressed, 'p1', { type: 'play', card: RED(1) });
-    expect(thrown.players[0]!.hand).toHaveLength(1);
-    expect(thrown.lastEvent?.penalty).toBeNull();
+    expect(one.callWindow).toBe('p0');
+    expect(game.getPlayerView(one, 'p0').mustCall).toBe(true);
+    expect(game.getPlayerView(one, 'p1').mustCall).toBe(false);
+    const called = play(one, 'p0', { type: 'uno' }); // right after: out of turn is fine
+    expect(called.players[0]!.called).toBe(true);
+    expect(called.callWindow).toBeNull();
+    expect(called.unoCall).toMatchObject({ playerId: 'p0' });
+    expect(called.turn).toBe(1); // calling does not change the turn
+    expect(game.validateMove(called, 'p1', { type: 'callout', target: 'p0' }).ok).toBe(false);
   });
 
-  it('is a free move (it must not restart the turn clock)', () => {
-    expect(game.isFreeMove?.({ type: 'lastcard' })).toBe(true);
+  it('calling UNO! together with the second-to-last card (right before) opens no window', () => {
+    const one = play(two(), 'p0', { type: 'play', card: RED(7), uno: true });
+    expect(one.players[0]!.called).toBe(true);
+    expect(one.callWindow).toBeNull();
+    expect(game.validateMove(one, 'p1', { type: 'callout', target: 'p0' }).ok).toBe(false);
+  });
+
+  it('calling somebody out: they draw four, the turn does not change, the window closes', () => {
+    const one = play(two(), 'p0', { type: 'play', card: RED(7) });
+    expect(game.validateMove(one, 'p0', { type: 'callout', target: 'p0' }).ok).toBe(false); // not yourself
+    const caught = play(one, 'p1', { type: 'callout', target: 'p0' });
+    expect(caught.players[0]!.hand).toHaveLength(5);
+    expect(caught.callWindow).toBeNull();
+    expect(caught.turn).toBe(1);
+    expect(caught.lastEvent).toMatchObject({
+      kind: 'callout',
+      playerId: 'p1',
+      victim: { playerId: 'p0', count: 4 },
+    });
+    expect(caught.catchCall).toMatchObject({ byId: 'p1', targetId: 'p0' });
+    // Called out once, not twice; and now it is too late to call UNO!.
+    expect(game.validateMove(caught, 'p1', { type: 'callout', target: 'p0' }).ok).toBe(false);
+    expect(game.validateMove(caught, 'p0', { type: 'uno' }).ok).toBe(false);
+  });
+
+  it('it is too late once the next player plays, draws or passes: nobody is punished', () => {
+    const one = play(two(), 'p0', { type: 'play', card: RED(7) });
+    const played = play(one, 'p1', { type: 'play', card: RED(1) });
+    expect(played.callWindow).toBeNull();
+    expect(played.players[0]!.hand).toHaveLength(1);
+    expect(game.validateMove(played, 'p1', { type: 'callout', target: 'p0' }).ok).toBe(false);
+    expect(game.validateMove(played, 'p0', { type: 'uno' }).ok).toBe(false);
+    const drew = play(one, 'p1', { type: 'draw' });
+    expect(drew.callWindow).toBeNull();
+    expect(drew.players[0]!.hand).toHaveLength(1);
+  });
+
+  it('a later single card (after drawing and playing again) opens a new window', () => {
+    const one = play(two(), 'p0', { type: 'play', card: RED(7) });
+    const late = play(one, 'p1', { type: 'play', card: RED(1) }); // p0 is safe now
+    const again = play(late, 'p0', { type: 'draw' }); // p0 draws: two cards
+    expect(again.players[0]!.hand.length).toBe(2);
+  });
+
+  it('both are free moves (they must not restart the turn clock)', () => {
+    expect(game.isFreeMove?.({ type: 'uno' })).toBe(true);
+    expect(game.isFreeMove?.({ type: 'callout', target: 'p0' })).toBe(true);
     expect(game.isFreeMove?.({ type: 'draw' })).toBe(false);
+  });
+
+  it('computers hold back while a window is open and usually call the player out', () => {
+    const one = play(two(), 'p0', { type: 'play', card: RED(7) });
+    expect(game.settleMs?.(one)).toBeGreaterThan(0);
+    expect(game.settleMs?.(play(one, 'p0', { type: 'uno' }))).toBe(0);
+    let caught = 0;
+    for (let seed = 1; seed <= 100; seed++) {
+      const auto = game.autoMove!(one, 'p1', createSeededRng(seed));
+      if (auto.move.type === 'callout') {
+        caught++;
+        expect(auto.endsTurn).toBe(false);
+        expect(game.validateMove(one, 'p1', auto.move).ok).toBe(true);
+      }
+    }
+    expect(caught).toBeGreaterThan(65);
+    expect(caught).toBeLessThan(100);
+  });
+
+  it('computers never forget UNO! themselves', () => {
+    for (let seed = 1; seed <= 50; seed++) {
+      const s = setup([
+        [RED(7), RED(8)],
+        [RED(1), YELLOW(2)],
+      ]);
+      const auto = game.autoMove!(s, 'p0', createSeededRng(seed));
+      expect(auto.move).toMatchObject({ type: 'play', uno: true });
+    }
   });
 });
 

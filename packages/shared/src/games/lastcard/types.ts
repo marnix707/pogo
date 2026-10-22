@@ -16,21 +16,19 @@ export interface LastCardEvent {
   /** Increases with every move. */
   seq: number;
   playerId: string;
-  kind: 'play' | 'draw' | 'pass' | 'lastcard';
+  kind: 'play' | 'draw' | 'pass' | 'uno' | 'callout';
   /** The card played (kind 'play'). */
   card: Card | null;
   /** The colour chosen with a wild (or the colour of the card). */
   color: Color | null;
   /** Cards the player took from the deck (kind 'draw': 1 or 0 when nothing was left). */
   drew: number;
-  /** The player who had to draw because of a Draw Two / Wild Draw Four, and how many. */
+  /** Who had to draw (a Draw Two / Wild Draw Four, or the player who was called out) and how many. */
   victim: { playerId: string; count: number } | null;
   /** Players whose turn was skipped (a skip, or the victim of a draw card). */
   skipped: string[];
   /** The direction of play was reversed by this move. */
   reversed: boolean;
-  /** The player was left without UNO!: they took a penalty card because this card was thrown. */
-  penalty: string | null;
   /** The move was played together with UNO! (or only called it). */
   uno: boolean;
   /** The player has no cards left. */
@@ -56,13 +54,21 @@ export interface LastCardState {
   lastEvent: LastCardEvent | null;
   /** The latest UNO! call (kept apart from lastEvent: the next move must not hide the animation). */
   unoCall: { seq: number; playerId: string } | null;
+  /**
+   * The player who has just played down to one card without calling UNO!: until somebody draws, passes
+   * or plays (the next player "starts their turn") they may still call it and the others may call them out.
+   */
+  callWindow: string | null;
+  /** The latest call-out (kept apart from lastEvent like unoCall). */
+  catchCall: { seq: number; byId: string; targetId: string } | null;
 }
 
 export type LastCardMove =
   | { type: 'play'; card: Card; color?: Color; uno?: boolean }
   | { type: 'draw' }
   | { type: 'pass' }
-  | { type: 'lastcard' };
+  | { type: 'uno' }
+  | { type: 'callout'; target: string };
 
 export type LastCardOptions = Record<string, never>;
 
@@ -93,4 +99,7 @@ export interface LastCardView {
   winner: string | null;
   lastEvent: LastCardEvent | null;
   unoCall: { seq: number; playerId: string } | null;
+  /** Who can still call UNO! / be called out right now (see LastCardState.callWindow). */
+  callWindow: string | null;
+  catchCall: { seq: number; byId: string; targetId: string } | null;
 }
