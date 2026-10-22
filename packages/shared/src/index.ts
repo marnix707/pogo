@@ -11,4 +11,5 @@ export * from './game/bots';
 export * from './game/testing';
 export * as yatzy from './games/yatzy';
 export * as karma from './games/karma';
+export * as uno from './games/uno';
 export * from './games/registry';

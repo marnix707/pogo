@@ -139,6 +139,14 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'KAR-122', message: 'Play the matching card or skip' },
   { code: 'KAR-123', message: 'Only the matching card can be played now' },
   { code: 'KAR-124', message: 'There is nothing to skip' },
+  { code: 'UNO-101', message: 'You can only call UNO! with one card left' },
+  { code: 'UNO-102', message: 'Play the card you drew, or pass' },
+  { code: 'UNO-103', message: 'Draw a card first' },
+  { code: 'UNO-104', message: 'That card does not match the pile' },
+  { code: 'UNO-105', message: 'Wild Draw Four only when you have no card of the current colour' },
+  { code: 'UNO-106', message: 'You cannot finish with an action card: draw a card instead' },
+  { code: 'UNO-107', message: 'Choose a colour for the wild card' },
+  { code: 'UNO-125', message: /^UNO needs \d+-\d+ players$/ },
   { code: 'KAR-125', message: /^Karma needs \d+-\d+ players$/ },
 ];
 
