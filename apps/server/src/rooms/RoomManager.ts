@@ -153,6 +153,7 @@ export class RoomManager {
       maxPlayers: max,
       options: options.data,
       turnTimeSec: turnTimeSec ?? this.deps.defaultTurnTimeSec,
+      turnTimeChosen: turnTimeSec !== undefined,
       bots,
     });
     this.rooms.set(code, room);

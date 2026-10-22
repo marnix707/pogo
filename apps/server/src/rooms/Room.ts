@@ -88,6 +88,8 @@ export interface RoomInit {
   maxPlayers: number;
   options: unknown;
   turnTimeSec: number;
+  /** The creator picked the timer explicitly (otherwise a lone solo game has none). */
+  turnTimeChosen?: boolean;
   /** Computer players that join when the game starts. */
   bots: number;
 }
@@ -109,6 +111,8 @@ export class Room {
   maxPlayers: number;
   options: unknown;
   turnTimeSec: number;
+  /** The host (or the creator) picked a turn timer: then it is used as picked, also when playing alone. */
+  private turnTimeChosen: boolean;
   /** Number of computer players added when the game starts. */
   bots: number;
   status: RoomStatus = 'lobby';
@@ -142,6 +146,7 @@ export class Room {
     this.maxPlayers = init.maxPlayers;
     this.options = init.options;
     this.turnTimeSec = init.turnTimeSec;
+    this.turnTimeChosen = init.turnTimeChosen ?? false;
     this.bots = init.bots;
     this.members.push({ user: init.host, connected: true, left: false, absentSince: null });
   }
@@ -322,7 +327,10 @@ export class Room {
     this.bots = bots;
     this.options = options;
     if (patch.visibility !== undefined) this.visibility = patch.visibility;
-    if (patch.turnTimeSec !== undefined) this.turnTimeSec = patch.turnTimeSec;
+    if (patch.turnTimeSec !== undefined) {
+      this.turnTimeSec = patch.turnTimeSec;
+      this.turnTimeChosen = true;
+    }
     // Everybody has to confirm the new settings again (except those who locked their Ready).
     this.resetReady();
     this.changed();
@@ -364,6 +372,15 @@ export class Room {
       game && game.id !== this.game.id && member.suggestion !== game.id ? game.id : null;
     this.changed();
     return ok(null);
+  }
+
+  /**
+   * The turn timer in force: playing a solo game alone (nobody else, no computers) there is no clock unless
+   * somebody picked one, so a lone Yatzy game never auto-plays.
+   */
+  get turnTime(): number {
+    const alone = this.game.minPlayers <= 1 && this.bots === 0 && this.memberCount <= 1;
+    return !this.turnTimeChosen && alone ? 0 : this.turnTimeSec;
   }
 
   /** Lobby: press or release Ready. When everybody is ready a short countdown starts the game. */
@@ -506,7 +523,7 @@ export class Room {
     this.turnStartedAt = this.deps.now();
     const bonus = this.state ? (this.game.clockBonusMs?.(this.state) ?? 0) : 0;
     this.turnDeadline =
-      this.turnTimeSec > 0 ? this.turnStartedAt + this.turnTimeSec * 1000 + bonus : null;
+      this.turnTime > 0 ? this.turnStartedAt + this.turnTime * 1000 + bonus : null;
   }
 
   /** The game says the clock keeps running across the move that took `before` to the current state. */
@@ -635,7 +652,7 @@ export class Room {
     // Absent players are only played for when the game has a turn timer: with unlimited time nothing
     // is ever played automatically (a dropped player can come back), except for people who left.
     const autoForAbsent =
-      this.turnTimeSec > 0 ? current.every((m) => this.isAbsent(m)) : current.every((m) => m.left);
+      this.turnTime > 0 ? current.every((m) => this.isAbsent(m)) : current.every((m) => m.left);
     if (current.length > 0 && autoForAbsent) {
       const since = Math.max(this.turnStartedAt, ...current.map((m) => m.absentSince ?? 0));
       candidates.push(since + this.deps.limits.graceMs);
@@ -733,7 +750,7 @@ export class Room {
       maxPlayers: this.maxPlayers,
       bots: this.bots,
       options: this.options,
-      turnTimeSec: this.turnTimeSec,
+      turnTimeSec: this.turnTime,
       status: this.status,
       members: this.members.map((m) => ({
         id: m.user.id,

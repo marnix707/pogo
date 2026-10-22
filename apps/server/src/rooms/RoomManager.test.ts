@@ -196,6 +196,30 @@ describe('a persistent lobby: the host switches the game and everybody stays', (
   });
 });
 
+describe('the turn timer when playing alone', () => {
+  it('is off for a lone solo game (Yatzy) unless somebody picked one; other games keep their default', () => {
+    const { manager, must } = setup();
+    const solo = must(manager.create(a, { gameId: 'yatzy' }));
+    expect(solo.turnTimeSec).toBe(0);
+    // A second player makes it the normal default again...
+    must(manager.join(b, solo.code));
+    expect(must(manager.updateSettings(a.id, { visibility: 'public' })).turnTimeSec).toBe(30);
+    // ...and a Karma lobby (needs two) always has the default.
+    manager.leave(b.id);
+    manager.leave(a.id);
+    expect(must(manager.create(c, { gameId: 'karma' })).turnTimeSec).toBe(30);
+  });
+
+  it('keeps a timer somebody picked, also alone', () => {
+    const { manager, must } = setup();
+    const room = must(manager.create(a, { gameId: 'yatzy' }));
+    expect(room.turnTimeSec).toBe(0);
+    expect(must(manager.updateSettings(a.id, { turnTimeSec: 60 })).turnTimeSec).toBe(60);
+    const explicit = must(manager.create(b, { gameId: 'yatzy', turnTimeSec: 90 }));
+    expect(explicit.turnTimeSec).toBe(90);
+  });
+});
+
 describe('game suggestions', () => {
   it('anybody can suggest a game, everybody sees it, the host choosing clears them', () => {
     const { manager, must, lastRoom } = setup();
