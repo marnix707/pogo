@@ -204,7 +204,7 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
           data-testid="turn-banner"
           data-my-turn={myTurn}
           className={`hud relative flex items-center gap-2 overflow-hidden px-2 py-1 ${
-            myTurn ? '!border-neon !bg-grape' : ''
+            myTurn ? '!border-neon' : ''
           }`}
         >
           {!finished && (
@@ -236,23 +236,6 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
               {hint && ` · ${hint}`}
             </div>
           </div>
-          {!finished && (
-            <div className="text-right">
-              <div
-                className="flex justify-end gap-1.5"
-                aria-label={`${state.rollsLeft} rolls left`}
-              >
-                {Array.from({ length: yatzy.MAX_ROLLS }, (_, i) => (
-                  <span
-                    key={i}
-                    className={`h-3 w-3 rounded-full border-2 ${
-                      i < state.rollsLeft ? 'border-accent bg-accent' : 'border-muted/50'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
           {chrome && (
             <>
               <TileButton
@@ -306,8 +289,25 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
       </div>
 
       {!finished && (
-        <div className="border-t-2 border-edge/60 bg-panel px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 text-ink">
+        <div className="relative border-t-2 border-edge/60 bg-panel px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 text-ink">
           <div className="mx-auto flex max-w-md flex-col gap-2">
+            {/* The rolls left, small, above the dice: only while somebody else is on turn (mine is in the Roll button). */}
+            {!myTurn && (
+              <div
+                className="pointer-events-none absolute inset-x-0 top-[3px] z-10 flex justify-center gap-1"
+                aria-label={`${state.rollsLeft} rolls left`}
+                data-testid="rolls-dots"
+              >
+                {Array.from({ length: yatzy.MAX_ROLLS }, (_, i) => (
+                  <span
+                    key={i}
+                    className={`h-2 w-2 rounded-full border-[1.5px] ${
+                      i < state.rollsLeft ? 'border-accent bg-accent' : 'border-muted/50'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
             <div className="mx-auto grid w-full max-w-[22rem] grid-cols-5 gap-2.5 pt-1">
               {order.map((i) => (
                 <div
