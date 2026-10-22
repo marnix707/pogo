@@ -211,7 +211,7 @@ export function Home({
               ref={stageBox}
               className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden pb-4"
             >
-              <Wordmark shown={landed} width={stageScale.word * 30} />
+              <Wordmark shown={landed} width={stageScale.word * 30} drop={100 * fit} />
               <PogoStage scale={stageScale.frog} onLanded={() => setLanded(true)} />
             </div>
             <div data-in={landed} className="slide-bottom flex flex-col gap-4">

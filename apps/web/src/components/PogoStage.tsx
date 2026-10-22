@@ -101,6 +101,8 @@ export const markIntroSeen = () => {
 
 /** Bounces after landing before he rests; after that he only jumps when tapped. */
 const AUTO_BOUNCES = 3;
+/** The side-view art stands its stick 2 art px right of the front view's: shift it so the stick (and the landing) stays on the centre line. */
+const SIDE_SHIFT = -2;
 const REST: Step = { view: 'front', frame: 'pogo_extend', ms: 0, x: 0, y: 0, fx: [] };
 
 /**
@@ -194,7 +196,9 @@ export function PogoStage({ onLanded, scale }: { onLanded: () => void; scale: nu
       data-testid="pogo-stage"
     >
       {/* the stick waits alone until he lands on it */}
-      {onIntro && <img src={frameUrl('side', 'side_stick')} alt="" style={place(0, 0, box, box)} />}
+      {onIntro && (
+        <img src={frameUrl('side', 'side_stick')} alt="" style={place(SIDE_SHIFT, 0, box, box)} />
+      )}
       {(['side', 'front'] as const).flatMap((view) =>
         Object.keys(view === 'side' ? SIDE_FRAMES : FRONT_FRAMES).map((key) => {
           const frame = key.replace(/^\d+-/, '');
@@ -204,13 +208,16 @@ export function PogoStage({ onLanded, scale }: { onLanded: () => void; scale: nu
               key={`${view}-${key}`}
               src={(view === 'side' ? SIDE_FRAMES : FRONT_FRAMES)[key]}
               alt=""
-              style={{ ...place(step.x, step.y, box, box), visibility: on ? 'visible' : 'hidden' }}
+              style={{
+                ...place(step.x + (view === 'side' ? SIDE_SHIFT : 0), step.y, box, box),
+                visibility: on ? 'visible' : 'hidden',
+              }}
             />
           );
         }),
       )}
       {!started && (
-        <p className="label absolute inset-x-0 top-2 animate-pulse text-center text-onbg">
+        <p className="label absolute inset-x-0 top-2 animate-pulse pl-[0.14em] text-center text-onbg">
           Tap to start
         </p>
       )}
@@ -241,7 +248,16 @@ export function PogoStage({ onLanded, scale }: { onLanded: () => void; scale: nu
 }
 
 /** The POGO letters: pop in from nothing, then breathe (5% up and down). */
-export function Wordmark({ shown, width }: { shown: boolean; width: number }) {
+export function Wordmark({
+  shown,
+  width,
+  drop = 0,
+}: {
+  shown: boolean;
+  width: number;
+  /** Pixels to sit lower than its natural place (moved with `top`: the pop-in animation owns `transform`). */
+  drop?: number;
+}) {
   return (
     <img
       src={wordmarkUrl}
@@ -251,6 +267,7 @@ export function Wordmark({ shown, width }: { shown: boolean; width: number }) {
       // Tilted 10 degrees, with clear space above the toad.
       style={{
         width,
+        top: drop,
         imageRendering: 'pixelated',
         transform: 'rotate(-10deg)',
         marginBottom: width * 0.1,
