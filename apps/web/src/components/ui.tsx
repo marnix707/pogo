@@ -93,6 +93,8 @@ export function Sheet({
   title,
   children,
   full = false,
+  from = 'bottom',
+  dim = true,
 }: {
   open: boolean;
   onClose: () => void;
@@ -100,7 +102,12 @@ export function Sheet({
   children: ReactNode;
   /** Almost the whole screen high (a list that needs the room); the content then fills the sheet. */
   full?: boolean;
+  /** Slide in from the top instead of the bottom (the settings). */
+  from?: 'bottom' | 'top';
+  /** Dim the page behind it (an undimmed sheet still closes on a tap outside it). */
+  dim?: boolean;
 }) {
+  const top = from === 'top';
   const [mounted, setMounted] = useState(open);
   const [closing, setClosing] = useState(false);
   useEffect(() => {
@@ -119,9 +126,9 @@ export function Sheet({
   if (!mounted) return null;
   return (
     <div
-      className={`sheet-backdrop fixed inset-0 z-40 flex items-end justify-center bg-black/60 ${
-        closing ? 'pointer-events-none' : ''
-      }`}
+      className={`sheet-backdrop fixed inset-0 z-40 flex justify-center ${top ? 'items-start' : 'items-end'} ${
+        dim ? 'bg-black/60' : ''
+      } ${closing ? 'pointer-events-none' : ''}`}
       data-closing={closing}
       data-testid="sheet-backdrop"
       onClick={onClose}
@@ -131,7 +138,11 @@ export function Sheet({
         aria-label={title}
         data-closing={closing}
         onClick={(e) => e.stopPropagation()}
-        className="hud menu sheet-panel w-full max-w-lg rounded-b-none ${full ? 'flex h-[94dvh] flex-col overflow-hidden' : 'max-h-[92dvh] overflow-y-auto'} !border-b-0 bg-panel p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl"
+        className={`hud menu w-full max-w-lg bg-panel px-5 shadow-xl ${
+          top
+            ? 'sheet-panel-top rounded-t-none !border-t-0 pb-5 pt-[max(1.25rem,env(safe-area-inset-top))]'
+            : 'sheet-panel rounded-b-none !border-b-0 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5'
+        } ${full ? 'flex h-[94dvh] flex-col overflow-hidden' : 'max-h-[92dvh] overflow-y-auto'}`}
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold uppercase tracking-[0.16em]">{title}</h2>

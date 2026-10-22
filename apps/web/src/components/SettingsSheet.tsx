@@ -25,7 +25,7 @@ export function SettingsSheet({
 }) {
   const settings = useSettings();
   return (
-    <Sheet open={open} onClose={onClose} title="Settings">
+    <Sheet open={open} onClose={onClose} title="Settings" from="top" dim={false}>
       <div className="flex flex-col gap-2">
         {roomCode && (
           <div className="flex items-center justify-between py-2" data-testid="settings-room-code">

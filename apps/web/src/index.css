@@ -209,6 +209,23 @@ button {
 .sheet-panel[data-closing='true'] {
   animation: sheet-down 0.22s ease-in both;
 }
+/* The settings come down from the top instead. */
+@keyframes sheet-from-top {
+  from {
+    transform: translateY(-100%);
+  }
+}
+@keyframes sheet-to-top {
+  to {
+    transform: translateY(-100%);
+  }
+}
+.sheet-panel-top {
+  animation: sheet-from-top 0.25s ease-out both;
+}
+.sheet-panel-top[data-closing='true'] {
+  animation: sheet-to-top 0.22s ease-in both;
+}
 /* Results sequence: the headline starts in the middle, holds, then rises to the top; rows drop in one
    by one (animation-delay is set inline); the buttons come up from the bottom. */
 @keyframes res-head {
@@ -494,6 +511,7 @@ button {
   .res-bottom,
   .sheet-backdrop,
   .sheet-panel,
+  .sheet-panel-top,
   .info-bubble {
     animation: none !important;
   }
