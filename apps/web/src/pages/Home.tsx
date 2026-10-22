@@ -130,54 +130,62 @@ export function Home({
         if (t.clientX - start.x > 70 && Math.abs(t.clientY - start.y) < 60) back();
       }}
     >
-      <header
-        ref={headerEl}
-        data-in={landed}
-        className="slide-top flex items-center gap-2.5 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+1.25rem)]"
-      >
-        {/* Top left: my picture; "Playing as <name>" swipes out next to it for 5 seconds, then slides back. */}
-        <TileButton
-          onClick={() => {
-            setProfileMode('main');
-            setProfileOpen(true);
-          }}
-          aria-label="Your profile"
-          data-testid="home-avatar"
-          data-avatar={user.avatar}
-          className="relative z-10"
+      {/* Only on the menu: the Play screen has no top bar, its first bar is the join-by-code bar (the same
+          height and place as the lobby's bar, so nothing jumps between them). */}
+      {screen === 'menu' && (
+        <header
+          ref={headerEl}
+          data-in={landed}
+          className="slide-top flex items-center gap-2.5 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+1.25rem)]"
         >
-          <span className="text-2xl leading-none" aria-hidden>
-            <AvatarFace avatar={user.avatar} />
-          </span>
-        </TileButton>
-        <div
-          className="min-w-0 flex-1 overflow-hidden"
-          data-testid="home-playing-as"
-          data-open={nameOut}
-        >
-          <p
-            className="label whitespace-nowrap text-onbg/70 transition-transform duration-500 ease-out motion-reduce:transition-none"
-            style={{ transform: nameOut ? 'none' : 'translateX(-110%)' }}
+          {/* Top left: my picture; "Playing as <name>" swipes out next to it for 5 seconds, then slides back. */}
+          <TileButton
+            onClick={() => {
+              setProfileMode('main');
+              setProfileOpen(true);
+            }}
+            aria-label="Your profile"
+            data-testid="home-avatar"
+            data-avatar={user.avatar}
+            className="relative z-10"
           >
-            Playing as{' '}
-            <span data-testid="home-nickname" className="text-onbg">
-              <PlayerName name={displayName(user)} />
+            <span className="text-2xl leading-none" aria-hidden>
+              <AvatarFace avatar={user.avatar} />
             </span>
-          </p>
-        </div>
-        <TileButton
-          onClick={() => setBoardOpen(true)}
-          aria-label="Leaderboard"
-          data-testid="home-leaderboard"
-        >
-          <TrophyIcon className="h-5 w-5" />
-        </TileButton>
-        <TileButton onClick={onSettings} aria-label="Settings" data-testid="settings-button">
-          <SlidersIcon className="h-5 w-5" />
-        </TileButton>
-      </header>
+          </TileButton>
+          <div
+            className="min-w-0 flex-1 overflow-hidden"
+            data-testid="home-playing-as"
+            data-open={nameOut}
+          >
+            <p
+              className="label whitespace-nowrap text-onbg/70 transition-transform duration-500 ease-out motion-reduce:transition-none"
+              style={{ transform: nameOut ? 'none' : 'translateX(-110%)' }}
+            >
+              Playing as{' '}
+              <span data-testid="home-nickname" className="text-onbg">
+                <PlayerName name={displayName(user)} />
+              </span>
+            </p>
+          </div>
+          <TileButton
+            onClick={() => setBoardOpen(true)}
+            aria-label="Leaderboard"
+            data-testid="home-leaderboard"
+          >
+            <TrophyIcon className="h-5 w-5" />
+          </TileButton>
+          <TileButton onClick={onSettings} aria-label="Settings" data-testid="settings-button">
+            <SlidersIcon className="h-5 w-5" />
+          </TileButton>
+        </header>
+      )}
 
-      <main className="flex min-h-0 flex-1 flex-col gap-4 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-1">
+      <main
+        className={`flex min-h-0 flex-1 flex-col gap-4 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] ${
+          screen === 'menu' ? 'pt-1' : 'pt-[calc(env(safe-area-inset-top)+1.25rem)]'
+        }`}
+      >
         {screen === 'menu' && (
           <>
             {landed && <InstallCard variant="banner" />}
