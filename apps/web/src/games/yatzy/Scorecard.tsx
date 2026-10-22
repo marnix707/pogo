@@ -185,7 +185,7 @@ export function Scorecard({
   };
 
   return (
-    <div className="hud hud-ticks">
+    <div className="hud">
       <div className="overflow-x-auto rounded-[4px]">
         <table
           className="w-full border-separate border-spacing-0"
