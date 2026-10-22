@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { readyAll } from './karma-helpers';
 
 // The other specs use reduced motion (no tutorial); this one plays it for real.
-test('Karma tutorial shows on the first game only, can be skipped and replayed from the rules', async ({
+test('Karma tutorial shows every time until "Don\'t show this again" is ticked', async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -43,7 +43,14 @@ test('Karma tutorial shows on the first game only, can be skipped and replayed f
   await page.getByTestId('tutorial-next').click(); // "Got it!"
   await expect(tutorial).toHaveCount(0);
 
-  // Seen once: a reload mid-game does not bring it back, but the rules sheet replays it.
+  // Without the tick it comes back every time (here: after a reload in the same swap phase)...
+  await page.reload();
+  await expect(page.getByTestId('karma-game')).toBeVisible();
+  await expect(tutorial).toBeVisible();
+  // ...until "Don't show this again" is ticked.
+  await page.getByTestId('tutorial-dont-show').check();
+  await page.getByTestId('tutorial-skip').click();
+  await expect(tutorial).toHaveCount(0);
   await page.reload();
   await expect(page.getByTestId('karma-game')).toBeVisible();
   await expect(tutorial).toHaveCount(0);

@@ -109,11 +109,22 @@ export function ModePicker({ room, isHost, setOptions }: LobbyOptionsProps) {
                   data-testid={`karma-rule-${id}`}
                   data-active={on}
                   onClick={() => toggle(`rule:${id}`)}
-                  className={`rounded-full border border-edge/40 px-2.5 py-1 text-xs ${
-                    !on ? 'opacity-35' : isHost ? '' : 'opacity-60'
-                  }`}
+                  className="flex items-center gap-1.5 rounded-full border border-edge/40 px-2.5 py-1 text-xs"
                 >
-                  {r.emoji} {r.name}
+                  {/* The rule itself is greyed out when it is off (or for non-hosts); the tick or
+                      cross behind it always keeps its full colour. */}
+                  <span className={!on ? 'opacity-35' : isHost ? '' : 'opacity-60'}>
+                    {r.emoji} {r.name}
+                  </span>
+                  <span
+                    aria-label={on ? 'on' : 'off'}
+                    data-testid={`karma-rule-mark-${id}`}
+                    data-on={on}
+                    // (the pixel font has no bold weight: the shadow thickens the mark; a dark green reads on the gold box)
+                    className={`text-base font-bold leading-none [text-shadow:0.6px_0_0_currentColor] ${on ? 'text-[#14673a]' : 'text-[#b3271f]'}`}
+                  >
+                    {on ? '✓' : '✕'}
+                  </span>
                 </button>
                 {shown === `rule:${id}` && (
                   <Bubble testId="karma-rule-bubble" align="left">

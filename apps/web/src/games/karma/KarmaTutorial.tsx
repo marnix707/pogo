@@ -10,22 +10,27 @@ export const TUTORIAL_EVENT = 'pogo:karma-tutorial';
 const reducedMotion = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/** True until the player has seen (or skipped) the tutorial once; never with reduced motion. */
-export function shouldShowTutorial(): boolean {
-  if (reducedMotion()) return false;
+/** The player ticked "Don't show this again". */
+export function isTutorialHidden(): boolean {
   try {
-    return localStorage.getItem(KEY) !== '1';
+    return localStorage.getItem(KEY) === '1';
   } catch {
     return false;
   }
 }
 
-export function markTutorialSeen() {
+export function setTutorialHidden(hidden: boolean) {
   try {
-    localStorage.setItem(KEY, '1');
+    if (hidden) localStorage.setItem(KEY, '1');
+    else localStorage.removeItem(KEY);
   } catch {
-    // Storage unavailable: it may show again next time.
+    // Storage unavailable: the choice just doesn't persist.
   }
+}
+
+/** Shown at the start of every Karma game unless "Don't show this again" is ticked; never with reduced motion. */
+export function shouldShowTutorial(): boolean {
+  return !reducedMotion() && !isTutorialHidden();
 }
 
 // The mock table: cards are 5em x 7em at a fixed font size, placed absolutely so a phase can simply
@@ -296,7 +301,8 @@ function MiniCard({ s }: { s: Sprite }) {
  * First-time tutorial: a dark screen with a scripted mini table (swap, Ready, play a card, play
  * several). Self-contained, so it never depends on where the real cards are.
  */
-export function KarmaTutorial({ onDone }: { onDone: () => void }) {
+export function KarmaTutorial({ onDone }: { onDone: (dontShowAgain: boolean) => void }) {
+  const [hide, setHide] = useState(isTutorialHidden);
   // One step at a time, no timers: every tap on the screen (or on Next) goes to the next step,
   // crossing into the next scene when a scene is out of steps.
   const [step, setStep] = useState(0);
@@ -308,7 +314,7 @@ export function KarmaTutorial({ onDone }: { onDone: () => void }) {
   const total = SCENES.reduce((n, sc) => n + sc.phases.length, 0);
   const last = step === total - 1;
 
-  const next = () => (last ? onDone() : setStep(step + 1));
+  const next = () => (last ? onDone(hide) : setStep(step + 1));
 
   return (
     <div
@@ -371,6 +377,20 @@ export function KarmaTutorial({ onDone }: { onDone: () => void }) {
         ))}
       </div>
 
+      <label
+        className="flex cursor-pointer items-center gap-2 text-sm text-white/80"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <input
+          type="checkbox"
+          data-testid="tutorial-dont-show"
+          checked={hide}
+          onChange={(e) => setHide(e.target.checked)}
+          className="h-5 w-5 accent-[#fda200]"
+        />
+        Don&apos;t show this again
+      </label>
+
       <div className="mt-1 flex gap-3">
         {!last && (
           <Button
@@ -378,7 +398,7 @@ export function KarmaTutorial({ onDone }: { onDone: () => void }) {
             variant="ghost"
             onClick={(e) => {
               e.stopPropagation();
-              onDone();
+              onDone(hide);
             }}
           >
             Skip
