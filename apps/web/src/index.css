@@ -92,6 +92,21 @@ body::after {
   --c-dangertext: 122 21 16;
 }
 
+/* Calm boxes in the lobby (the top bar, settings, crew): the blue-slate panel instead of the gold menu colour,
+   so only the game card pops. */
+.menu .hud.calm,
+.hud.calm.menu {
+  --c-panel: 51 68 97;
+  --c-panel2: 36 50 75;
+  --c-edge: 137 154 209;
+  --c-ink: 253 253 253;
+  --c-muted: 191 199 213;
+  --c-neon: 253 162 0;
+  --c-accent: 60 180 255;
+  --c-accentink: 12 20 36;
+  --c-dangertext: 253 160 165;
+}
+
 /* The chat box: grey (the palette's light gray #dcdcdc) instead of the gold menu boxes. */
 .menu .hud.chat-grey,
 .hud.chat-grey.menu {

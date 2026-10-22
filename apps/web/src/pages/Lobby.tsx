@@ -148,7 +148,7 @@ export function Lobby({
         ) : (
           <>
             {/* The bar above the game card: Invite on the left, then the Public / Private rectangle (with the code) and the settings button. */}
-            <Card className="hud-ticks flex h-16 items-center !px-2 !py-0">
+            <Card className="calm hud-ticks flex h-16 items-center !px-2 !py-0">
               <div className="flex w-full items-center gap-2" data-testid="lobby-toolbar">
                 <Button
                   variant="secondary"
@@ -183,6 +183,7 @@ export function Lobby({
                   onClick={onSettings}
                   aria-label="Settings"
                   data-testid="settings-button"
+                  className="calm"
                 >
                   <SlidersIcon className="h-5 w-5" />
                 </TileButton>
@@ -267,7 +268,7 @@ export function Lobby({
                     {(ui?.LobbyOptions || limits) && (
                       <section aria-label="Game settings">
                         {ui?.LobbyOptions && <SectionLabel>Game mode</SectionLabel>}
-                        <Card className="flex flex-col gap-5">
+                        <Card className="calm flex flex-col gap-5">
                           {ui?.LobbyOptions && (
                             <ui.LobbyOptions
                               room={room}
@@ -309,7 +310,7 @@ export function Lobby({
                     {/* Block 2: public or private; a public lobby shows its code under the switch. */}
                     {limits && (
                       <section aria-label="Visibility">
-                        <Card>
+                        <Card className="calm">
                           <Toggle
                             label="Public room"
                             disabled={!isHost}
@@ -327,7 +328,7 @@ export function Lobby({
                     {/* Block 3: computer players. The table size is simply the game's maximum. */}
                     {limits?.supportsBots && (
                       <section aria-label="Computer players">
-                        <Card>
+                        <Card className="calm">
                           <Stepper
                             label="Computer players"
                             disabled={!isHost}
@@ -359,7 +360,7 @@ export function Lobby({
                   <li
                     key={m.id}
                     data-testid={`member-${m.nickname}`}
-                    className="hud flex items-center gap-3 px-3 py-2.5"
+                    className="hud calm flex items-center gap-3 px-3 py-2.5"
                   >
                     <Avatar avatar={m.avatar} dim={!m.connected} />
                     <div className="min-w-0 flex-1">
@@ -397,7 +398,7 @@ export function Lobby({
                   <li
                     key={`bot-${i}`}
                     data-testid={`bot-seat-${i + 1}`}
-                    className="hud flex items-center gap-3 px-3 py-2.5"
+                    className="hud calm flex items-center gap-3 px-3 py-2.5"
                   >
                     <Avatar avatar={BOT_AVATAR} />
                     <div className="min-w-0 flex-1">
