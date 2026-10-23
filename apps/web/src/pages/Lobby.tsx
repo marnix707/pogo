@@ -140,6 +140,17 @@ export function Lobby({
   const isHost = room.hostId === me;
   /** The host opened the list of games (the top card is a button): the settings make room for it. */
   const [choosing, setChoosing] = useState(false);
+  // The Public / Private explanation bubble (closes on a second tap or a tap elsewhere).
+  const [visInfo, setVisInfo] = useState(false);
+  const visRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!visInfo) return;
+    const close = (e: PointerEvent) => {
+      if (!visRef.current?.contains(e.target as Node)) setVisInfo(false);
+    };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [visInfo]);
   /** The settings are folded by default (a fresh lobby, or back from a game); switching games inside the lobby keeps them as they are. */
   const [settingsFold, setSettingsFold] = useState(false);
   // Arriving from the Play screen: the tapped game card morphs to the top of this lobby.
@@ -210,24 +221,47 @@ export function Lobby({
                   Invite
                 </Button>
                 <span className="flex-1" />
-                {/* Public / Private in a rectangle; a public lobby shows its code in it, in blue (gone when private). */}
-                <span
-                  className={`label flex shrink-0 items-center gap-2 rounded border px-1.5 py-0.5 text-[10px] ${
-                    room.visibility === 'public'
-                      ? 'border-accent text-accent'
-                      : 'border-edge/50 text-muted'
-                  }`}
-                >
-                  <span data-testid="room-visibility">
-                    {room.visibility === 'public' ? 'Public' : 'Private'}
-                  </span>
-                  {room.visibility === 'public' && (
-                    <span
-                      data-testid="room-code"
-                      className="select-all text-sm font-bold leading-none tracking-[0.1em] text-accent"
-                    >
-                      {room.code}
+                {/* Public (blue, no code) / Private (shows the code: the only way in). Tap for a short explanation. */}
+                <span className="relative shrink-0" ref={visRef}>
+                  <button
+                    type="button"
+                    data-testid="room-visibility-button"
+                    aria-expanded={visInfo}
+                    onClick={() => setVisInfo((v) => !v)}
+                    className={`label flex items-center gap-2 rounded border px-1.5 py-0.5 text-[10px] ${
+                      room.visibility === 'public'
+                        ? 'border-accent text-accent'
+                        : 'border-edge/50 text-muted'
+                    }`}
+                  >
+                    <span data-testid="room-visibility">
+                      {room.visibility === 'public' ? 'Public' : 'Private'}
                     </span>
+                    {room.visibility !== 'public' && (
+                      <span
+                        data-testid="room-code"
+                        className="select-all text-sm font-bold leading-none tracking-[0.1em] text-accent"
+                      >
+                        {room.code}
+                      </span>
+                    )}
+                  </button>
+                  {visInfo && (
+                    <div
+                      role="status"
+                      data-testid="room-visibility-bubble"
+                      className="info-bubble absolute right-0 top-full z-30 mt-3 w-56 max-w-[70vw]"
+                    >
+                      <span
+                        aria-hidden
+                        className="absolute -top-[7px] right-6 h-3 w-3 rotate-45 border-l-2 border-t-2 border-edge/40 bg-panel2"
+                      />
+                      <div className="relative rounded-lg border-2 border-edge/40 bg-panel2 px-3 py-2 text-left text-sm font-normal normal-case tracking-normal text-ink shadow-lg">
+                        {room.visibility === 'public'
+                          ? 'Anyone in the world can join you!'
+                          : 'Your friends can join using this code.'}
+                      </div>
+                    </div>
                   )}
                 </span>
                 <TileButton
@@ -254,6 +288,19 @@ export function Lobby({
             chevron={choosing ? 'up' : 'down'}
             onClick={() => setChoosing((c) => !c)}
           />
+        )}
+
+        {/* The game's own mode picker (Karma: Normal / Party / Epic) sits right under the game card, dark at 80 %. */}
+        {!choosing && ui?.LobbyOptions && (
+          <div data-testid="lobby-game-options">
+            <Card className="calm !bg-panel/80">
+              <ui.LobbyOptions
+                room={room}
+                isHost={isHost}
+                setOptions={(options) => void api.updateSettings({ options })}
+              />
+            </Card>
+          </div>
         )}
 
         {choosing ? (
@@ -319,17 +366,9 @@ export function Lobby({
                 <div className="min-h-0 overflow-hidden">
                   <div className="flex flex-col gap-5 pb-1">
                     {/* Block 1: the game mode (when the game has one) with the turn timer underneath. */}
-                    {(ui?.LobbyOptions || limits) && (
+                    {limits && (
                       <section aria-label="Game settings">
-                        {ui?.LobbyOptions && <SectionLabel>Game mode</SectionLabel>}
                         <Card className="calm flex flex-col gap-5">
-                          {ui?.LobbyOptions && (
-                            <ui.LobbyOptions
-                              room={room}
-                              isHost={isHost}
-                              setOptions={(options) => void api.updateSettings({ options })}
-                            />
-                          )}
                           {limits && (
                             <div className="flex items-center gap-3">
                               <div className="shrink-0 font-semibold">Turn timer</div>
