@@ -171,7 +171,8 @@ export function Lobby({
   }, [room.gameId]);
   const iAmReady = !!room.members.find((m) => m.id === me)?.ready;
   const iAmLocked = !!room.members.find((m) => m.id === me)?.readyLock;
-  const readyCount = room.members.filter((m) => m.ready).length;
+  // Computers are always ready, so they count on both sides: me alone with one computer reads "Ready 1/2".
+  const readyCount = room.members.filter((m) => m.ready).length + room.bots;
   // A game that needs more seats than there are (people + computers): say so at the Ready button.
   const seatsShort = Math.max(
     0,
@@ -546,7 +547,7 @@ export function Lobby({
               {/* The ready count lives inside the button: "Ready 1/3", then the countdown. */}
               {iAmReady && <span aria-hidden>✓ </span>}
               <span data-testid="lobby-ready-count">
-                Ready {readyCount}/{room.members.length}
+                Ready {readyCount}/{room.members.length + room.bots}
               </span>
               {secondsToStart !== null && (
                 <span data-testid="lobby-countdown" aria-live="polite">
