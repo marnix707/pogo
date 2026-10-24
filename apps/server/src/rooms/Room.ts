@@ -424,9 +424,10 @@ export class Room {
     );
   }
 
-  /** One person with computer players: Ready is a plain Start, no countdown. */
+  /** One person alone (a solo game) or with computer players: Ready is a plain Start, no countdown. */
   private get startsInstantly(): boolean {
-    return this.bots > 0 && this.members.filter((m) => !m.bot && !m.left).length === 1;
+    const alone = this.members.filter((m) => !m.bot && !m.left).length === 1;
+    return alone && (this.bots > 0 || this.game.minPlayers <= 1);
   }
 
   private evaluateStart(): void {

@@ -181,7 +181,10 @@ export function Lobby({
   // The host of a game with computers who lacks players: the button adds a Robo instead of readying up.
   const addRobo = seatsShort > 0 && !!getGame(room.gameId)?.supportsBots && isHost;
   // One person with computers: no waiting for anybody, the button simply starts the game.
-  const startNow = room.bots > 0 && room.members.length === 1 && !addRobo;
+  const startNow =
+    room.members.length === 1 &&
+    (room.bots > 0 || (getGame(room.gameId)?.minPlayers ?? 2) <= 1) &&
+    !addRobo;
   const secondsToStart = useCountdown(room.startsAt, room.serverTime);
   const ui = getGameUi(room.gameId);
   const limits = getGame(room.gameId);
@@ -516,6 +519,16 @@ export function Lobby({
                       <div className="truncate font-bold">{name}</div>
                       <div className="label text-[10px] text-muted">Computer</div>
                     </div>
+                    {/* The host sends the last computer home again (the stepper in Settings does the same). */}
+                    {isHost && i === botSeats.length - 1 && (
+                      <button
+                        onClick={() => void api.updateSettings({ bots: room.bots - 1 })}
+                        data-testid="bot-remove"
+                        className="label min-h-10 rounded-md px-3 text-dangertext"
+                      >
+                        Remove
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>

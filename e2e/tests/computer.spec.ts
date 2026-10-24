@@ -48,7 +48,7 @@ test('a game tap opens the lobby: Yatzy can start solo, Karma needs 2 and offers
   const more = page.getByRole('button', { name: 'More Computer players' });
   await page.getByTestId('home-play').click();
   await page.getByTestId('home-game-yatzy').click();
-  await expect(page.getByTestId('lobby-ready-count')).toHaveText('Ready 0/1');
+  await expect(page.getByTestId('lobby-ready-count')).toHaveText('Start'); // alone in a solo game: a plain Start
   await expect(page.getByTestId('lobby-ready')).toBeEnabled();
   await openLobbySettings(page);
   await expect(more).toHaveCount(0);
