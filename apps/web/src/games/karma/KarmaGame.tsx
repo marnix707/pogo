@@ -8,6 +8,7 @@ import { AvatarFace } from '../../components/AvatarFace';
 import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
 import { useCountdown } from '../../lib/useCountdown';
+import { useTimeWarning } from '../../lib/useTimeWarning';
 import type { GameUiProps } from '../types';
 import { planTap } from './selection';
 import { FourBurn } from './FourBurn';
@@ -826,6 +827,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
       haptic('tap');
     }
   }, [myTurnShown, secondsLeft, game.deadline]);
+
+  useTimeWarning(secondsLeft, myTurnShown);
 
   const wasMyTurn = useRef(myTurnShown);
   useEffect(() => {

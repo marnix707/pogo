@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { yatzy } from '@pogo/shared';
 import { haptic } from '../../lib/haptics';
+import { useTimeWarning } from '../../lib/useTimeWarning';
 import { play } from '../../lib/sound';
 import { useCountdown } from '../../lib/useCountdown';
 import { Button, TimerDrain } from '../../components/ui';
@@ -184,6 +185,7 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
   const allHeld = held.every(Boolean);
   const displayHeld = myTurn ? held : state.held;
   const urgent = secondsLeft !== null && secondsLeft <= 10;
+  useTimeWarning(secondsLeft, myTurn);
   const rollsUsed = yatzy.MAX_ROLLS - state.rollsLeft;
 
   let hint = '';

@@ -121,6 +121,8 @@ Moves: `{type:'roll', held:boolean[5]}` (holds are sent with the roll; ignored o
 
 - Crew rows in the lobby (people and computers) are 80 % opaque (`!bg-panel/80`), like the chat box, so the contour waves show through.
 
+- **Time warning sound**: `useTimeWarning(secondsLeft, active)` (`lib/useTimeWarning.ts`, sound `hurry` in `lib/sound.ts`, a double beep) plays once a second for the last 10 seconds of *my* turn clock in Yatzy, Karma and Last Card (only with a turn timer, respects the sound setting). Add it to any new game with a clock.
+
 - **Rules in the top bar**: `GameUi.titleExtra(room)` (optional) returns text shown right after the game's name in the shared `TopBar` (`title-extra`); Karma returns the emoji of the rules in force (`view.rules`), so Party/Epic games show e.g. "KARMA 🃏 ⚡" at the very top, nothing in normal mode.
 
 - **Seating and whose turn it is**: the opponents' seats run **clockwise from me** (`opponents` in `KarmaGame`): the player after me in the turn order is at the top left, the next one to the right of them, and the player just before me at the top right (so the turn order reads left to right across the top and then comes round to me). The seat of the player whose turn it is has a **yellow (gold) background** (`!bg-neon`, dark text) instead of the old blue border; my own turn box (`karma-timer`) turns yellow on my turn (red + pulse in the last 10 s).

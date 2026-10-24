@@ -4,6 +4,7 @@ import type { RoomMemberView } from '@pogo/shared';
 import { Avatar, Button, TimerDrain } from '../../components/ui';
 import { PlayerName } from '../../components/PlayerName';
 import { haptic } from '../../lib/haptics';
+import { useTimeWarning } from '../../lib/useTimeWarning';
 import { play } from '../../lib/sound';
 import { CardFlipContext, boxOf, resetFlipBoxes } from '../../lib/cardFlip';
 import type { FlipOrigin } from '../../lib/cardFlip';
@@ -183,6 +184,7 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
   const member = (id: string) => room.members.find((m) => m.id === id);
   const nameOf = (id: string) => (id === me ? 'You' : (member(id)?.nickname ?? 'Someone'));
   const secondsLeft = useCountdown(game.deadline, room.serverTime);
+  useTimeWarning(secondsLeft, myTurn);
   const currentId = view.players[view.turn]?.id;
 
   const [busy, setBusy] = useState(false);
