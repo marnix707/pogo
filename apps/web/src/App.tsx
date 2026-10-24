@@ -1,3 +1,4 @@
+import { UpdateNotice } from './components/UpdateNotice';
 import { useEffect, useState } from 'react';
 import type { AuthResponse } from '@pogo/shared';
 import { ToastProvider } from './components/Toast';
@@ -34,6 +35,7 @@ export function App() {
   return (
     <ToastProvider>
       <TopoBackground />
+      <UpdateNotice />
       {loading ? (
         <p className="label p-8 text-center text-onbg">Loading…</p>
       ) : error ? (
