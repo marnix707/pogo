@@ -547,7 +547,8 @@ export function Lobby({
               {/* The ready count lives inside the button: "Ready 1/3", then the countdown. */}
               {iAmReady && <span aria-hidden>✓ </span>}
               <span data-testid="lobby-ready-count">
-                Ready {readyCount}/{room.members.length + room.bots}
+                {seatsShort > 0 && limits?.supportsBots ? 'Add Robo 🤖' : 'Ready'} {readyCount}/
+                {room.members.length + room.bots}
               </span>
               {secondsToStart !== null && (
                 <span data-testid="lobby-countdown" aria-live="polite">
