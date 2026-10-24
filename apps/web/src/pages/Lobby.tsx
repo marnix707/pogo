@@ -172,6 +172,11 @@ export function Lobby({
   const iAmReady = !!room.members.find((m) => m.id === me)?.ready;
   const iAmLocked = !!room.members.find((m) => m.id === me)?.readyLock;
   const readyCount = room.members.filter((m) => m.ready).length;
+  // A game that needs more seats than there are (people + computers): say so at the Ready button.
+  const seatsShort = Math.max(
+    0,
+    (getGame(room.gameId)?.minPlayers ?? 1) - room.members.length - room.bots,
+  );
   const secondsToStart = useCountdown(room.startsAt, room.serverTime);
   const ui = getGameUi(room.gameId);
   const limits = getGame(room.gameId);
@@ -546,6 +551,15 @@ export function Lobby({
               {secondsToStart !== null && (
                 <span data-testid="lobby-countdown" aria-live="polite">
                   {' · '}Starting {secondsToStart}…
+                </span>
+              )}
+              {seatsShort > 0 && (
+                <span
+                  data-testid="lobby-need-players"
+                  className="mt-0.5 block text-[11px] font-normal normal-case leading-none opacity-80"
+                >
+                  Not enough players or computers: need{' '}
+                  {room.members.length + room.bots + seatsShort}
                 </span>
               )}
             </Button>
