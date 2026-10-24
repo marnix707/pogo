@@ -1,0 +1,42 @@
+{
+ "ms_per_frame": 100,
+ "loop": true,
+ "frames": 8,
+ "flame": {
+  "w": 18,
+  "h": 24,
+  "files": [
+   "fire-lofi-flame-00.svg",
+   "fire-lofi-flame-01.svg",
+   "fire-lofi-flame-02.svg",
+   "fire-lofi-flame-03.svg",
+   "fire-lofi-flame-04.svg",
+   "fire-lofi-flame-05.svg",
+   "fire-lofi-flame-06.svg",
+   "fire-lofi-flame-07.svg"
+  ]
+ },
+ "strip": {
+  "w": 32,
+  "h": 14,
+  "files": [
+   "fire-lofi-strip-00.svg",
+   "fire-lofi-strip-01.svg",
+   "fire-lofi-strip-02.svg",
+   "fire-lofi-strip-03.svg",
+   "fire-lofi-strip-04.svg",
+   "fire-lofi-strip-05.svg",
+   "fire-lofi-strip-06.svg",
+   "fire-lofi-strip-07.svg"
+  ],
+  "tiling": "Seamless left-to-right: repeat side by side for any length."
+ },
+ "palette": [
+  "#f2dfc0",
+  "#efb16a",
+  "#e07d3e",
+  "#b9472f",
+  "#8c2d27"
+ ],
+ "anchor": "bottom edge = flat base"
+}

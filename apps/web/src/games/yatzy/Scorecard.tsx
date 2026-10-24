@@ -5,7 +5,7 @@ import type { RoomMemberView } from '@pogo/shared';
 import { AvatarFace } from '../../components/AvatarFace';
 import { DIE_COLOR } from './Die';
 import { CATEGORY_HINT, CATEGORY_LABEL, UPPER_FACE } from './labels';
-import { FireText } from './FireText';
+import { Flames } from './Flames';
 import type { ScoreFxView } from './ScoreFx';
 
 type Category = yatzy.Category;
@@ -105,7 +105,17 @@ export function Scorecard({
               }`}
             >
               {value !== undefined ? (
-                <span className="text-sm font-bold">{value}</span>
+                category === 'yatzy' && value === 50 ? (
+                  // Fire burns behind the 50, one level bigger for every Yatzy hit (the first and each bonus).
+                  <span className="relative inline-block">
+                    <Flames level={1 + totals.get(p.id)!.yatzyBonus / yatzy.YATZY_BONUS} />
+                    <span className="relative text-sm font-bold text-white [text-shadow:0_1px_0_#101628,0_0_3px_#101628]">
+                      {value}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="text-sm font-bold">{value}</span>
+                )
               ) : mine && choosable ? (
                 <button
                   type="button"
@@ -244,8 +254,7 @@ export function Scorecard({
             {showYatzyBonus &&
               computedRow('Yatzy bonus', '+100 each', (id) => {
                 const b = totals.get(id)!.yatzyBonus;
-                // Every extra Yatzy sets the number on fire, a little bigger each time.
-                return b > 0 ? <FireText level={b / yatzy.YATZY_BONUS}>{`+${b}`}</FireText> : '–';
+                return b > 0 ? `+${b}` : '–';
               })}
             {computedRow('Total', '', (id) => String(totals.get(id)!.grandTotal), 'total')}
           </tbody>
