@@ -1,3 +1,4 @@
+import { APP_NUMBER, APP_STAGE, APP_VERSION } from '../lib/version';
 import { useState } from 'react';
 import { readInstallDismissed, useInstall, writeInstallDismissed } from '../lib/install';
 import { CloseIcon, LogoMark } from './icons';
@@ -119,7 +120,18 @@ export function DisplayModeNote() {
       className={`flex items-center gap-2 py-2 text-sm ${standalone ? 'text-neon' : 'text-muted'}`}
     >
       <span className={`h-2 w-2 rounded-full ${standalone ? 'bg-neon' : 'bg-muted/60'}`} />
-      {standalone ? 'Running as an app (fullscreen)' : 'Running in a browser tab'}
+      <span className="flex-1">
+        {standalone ? 'Running as an app (fullscreen)' : 'Running in a browser tab'}
+      </span>
+      {/* The release: POGO v0.7.0 ALPHA (the stage label is dropped at 1.0). */}
+      <span
+        data-testid="app-version"
+        title={`POGO version ${APP_VERSION}`}
+        className="label shrink-0 rounded border border-edge/50 px-1.5 py-0.5 text-[10px] tracking-wider"
+      >
+        POGO v{APP_NUMBER}
+        {APP_STAGE && <span className="ml-1 text-neon">{APP_STAGE}</span>}
+      </span>
     </div>
   );
 }
