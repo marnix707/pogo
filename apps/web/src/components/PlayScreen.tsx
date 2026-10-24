@@ -161,40 +161,43 @@ export function PlayScreen({
       <section aria-label="Games">
         <SectionLabel>Games</SectionLabel>
         <div className="flex flex-col gap-3">
-          {gameUis.map((g) => {
-            // More people in the lobby than the game seats: greyed out, and tapping says why.
-            const tooBig = !!tooBigFor?.(g.id);
-            return (
-              <div key={g.id} className="relative">
-                <GameCard
-                  ui={g}
-                  data-testid={`${gameIdPrefix}-${g.id}`}
-                  disabled={blocked}
-                  dim={tooBig}
-                  className={g.id === currentId ? 'ring-2 ring-neon' : ''}
-                  onClick={() => {
-                    if (tooBig) {
-                      setNote({ id: g.id, n: Date.now() });
-                      return;
-                    }
-                    const el = document.querySelector(`[data-testid="${gameIdPrefix}-${g.id}"]`);
-                    void run(onPick(g, el));
-                  }}
-                />
-                {note?.id === g.id && (
-                  <span
-                    key={note.n}
-                    role="status"
-                    data-testid="party-too-big"
-                    onAnimationEnd={() => setNote(null)}
-                    className="float-note pointer-events-none absolute inset-0 z-10 flex items-center justify-center text-center text-xl font-bold text-white [text-shadow:0_2px_0_#101628,0_0_8px_#101628]"
-                  >
-                    Party size too big!
-                  </span>
-                )}
-              </div>
-            );
-          })}
+          {/* In a lobby the current game is already the card at the top: it is not listed again. */}
+          {gameUis
+            .filter((g) => g.id !== currentId)
+            .map((g) => {
+              // More people in the lobby than the game seats: greyed out, and tapping says why.
+              const tooBig = !!tooBigFor?.(g.id);
+              return (
+                <div key={g.id} className="relative">
+                  <GameCard
+                    ui={g}
+                    data-testid={`${gameIdPrefix}-${g.id}`}
+                    disabled={blocked}
+                    dim={tooBig}
+                    className={g.id === currentId ? 'ring-2 ring-neon' : ''}
+                    onClick={() => {
+                      if (tooBig) {
+                        setNote({ id: g.id, n: Date.now() });
+                        return;
+                      }
+                      const el = document.querySelector(`[data-testid="${gameIdPrefix}-${g.id}"]`);
+                      void run(onPick(g, el));
+                    }}
+                  />
+                  {note?.id === g.id && (
+                    <span
+                      key={note.n}
+                      role="status"
+                      data-testid="party-too-big"
+                      onAnimationEnd={() => setNote(null)}
+                      className="float-note pointer-events-none absolute inset-0 z-10 flex items-center justify-center text-center text-xl font-bold text-white [text-shadow:0_2px_0_#101628,0_0_8px_#101628]"
+                    >
+                      Party size too big!
+                    </span>
+                  )}
+                </div>
+              );
+            })}
         </div>
       </section>
       <section aria-label="Open games">
