@@ -10,7 +10,7 @@ const schema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   HOST_LAN_IPS: z.string().default(''),
   WEB_DIST_DIR: z.string().optional(),
-  TURN_TIME_SEC: z.coerce.number().int().min(0).default(30),
+  TURN_TIME_SEC: z.coerce.number().int().min(0).default(0),
   DISCONNECT_GRACE_SEC: z.coerce.number().int().min(1).default(20),
   ROOM_TTL_SEC: z.coerce.number().int().min(1).default(600),
   GUEST_SIGNUP_LIMIT_PER_MIN: z.coerce.number().int().min(1).default(10),
