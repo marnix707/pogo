@@ -22,6 +22,7 @@ export function TileButton({
 
 export function TopBar({
   title,
+  titleExtra,
   subtitle,
   left,
   actions,
@@ -29,6 +30,8 @@ export function TopBar({
   compact = false,
 }: {
   title: string;
+  /** Small text right after the title (e.g. emoji). */
+  titleExtra?: string;
   subtitle?: string;
   left?: ReactNode;
   /** Extra buttons shown before the settings button. */
@@ -53,6 +56,11 @@ export function TopBar({
           }`}
         >
           <RaisedColon text={title} />
+          {titleExtra && (
+            <span data-testid="title-extra" className="ml-2 tracking-normal">
+              {titleExtra}
+            </span>
+          )}
         </h1>
         {subtitle && <div className="label truncate text-[10px] text-onbg/70">{subtitle}</div>}
       </div>

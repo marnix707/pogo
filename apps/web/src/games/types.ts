@@ -48,4 +48,6 @@ export interface GameUi {
   resultsDelayMs?: (room: RoomView) => number;
   /** Optional custom headline for the results panel (default: "<winner> wins!"). */
   resultsTitle?: (room: RoomView, me: string) => string | undefined;
+  /** Optional text (e.g. emoji of the active rules) shown next to the game's name in the top bar. */
+  titleExtra?: (room: RoomView) => string | undefined;
 }
