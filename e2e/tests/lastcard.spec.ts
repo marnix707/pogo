@@ -2,10 +2,12 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { STRIP, newPlayer, readyAll, openLobbySettings } from './karma-helpers';
 
-/** My turn: play the first playable card (a wild gets red), else draw / pass. Presses UNO! when it is urgent. */
+/** My turn: play the first playable card (a wild gets red), else draw / pass. Presses Last Card! when it is urgent. */
 async function takeUnoTurn(page: Page) {
+  // The Last Card! button only exists while somebody sits on one card; mine says 'urgent', the others' 'callout'.
   const urgent = page.getByTestId('uno-button');
-  if ((await urgent.getAttribute('data-state')) === 'urgent') await urgent.click();
+  if ((await urgent.count()) && (await urgent.getAttribute('data-state')) === 'urgent')
+    await urgent.click();
   const playable = page.locator('[data-testid^=lastcard-card-][data-playable=true]').first();
   if (await playable.count()) {
     await playable.click(STRIP); // neighbouring cards overlap: tap the visible left strip

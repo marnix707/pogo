@@ -19,7 +19,7 @@ import { DirectionRing } from './DirectionRing';
 const LASTCARD_CHROME = 300;
 
 const COLOR_NAMES = ['Red', 'Yellow', 'Green', 'Blue'];
-/** How long the "UNO!" announcement stays on screen. */
+/** How long the "Last Card!" announcement stays on screen. */
 const UNO_CALL_MS = 1900;
 /** After somebody drops to one card without UNO!, the next move waits this long (they can be called out). */
 const CALL_HOLD_MS = 1500;
@@ -62,21 +62,16 @@ function FlyingBack({
   );
 }
 
-/** One opponent: face, name, how many cards they hold, and whether they called UNO!. */
+/** One opponent: face, name, how many cards they hold, and whether they called Last Card!. */
 function Seat({
   player,
   member,
   active,
-  catchable,
-  onCatch,
   elRef,
 }: {
   player: lastcard.LastCardPlayerView;
   member: RoomMemberView | undefined;
   active: boolean;
-  /** This player went to one card without UNO!: they can still be called out. */
-  catchable: boolean;
-  onCatch: () => void;
   /** The seat's element (cards a player draws fly there). */
   elRef: (el: HTMLDivElement | null) => void;
 }) {
@@ -87,8 +82,7 @@ function Seat({
       data-count={player.count}
       data-called={player.called}
       data-active={active}
-      data-catchable={catchable}
-      className={`hud flex min-w-0 flex-1 flex-col items-center gap-1 px-1.5 py-1.5 ${active ? '!bg-neon !text-accentink' : ''} ${catchable ? 'outline outline-2 outline-danger' : ''}`}
+      className={`hud flex min-w-0 flex-1 flex-col items-center gap-1 px-1.5 py-1.5 ${active ? '!bg-neon !text-accentink' : ''}`}
     >
       <div className="flex w-full min-w-0 items-center gap-1.5">
         <Avatar avatar={member?.avatar ?? 'fox'} size="sm" />
@@ -119,18 +113,8 @@ function Seat({
           data-testid={`uno-badge-${player.id}`}
           className="label rounded bg-danger px-1.5 py-0.5 text-[10px] text-white"
         >
-          UNO!
+          Last Card!
         </span>
-      )}
-      {catchable && (
-        <button
-          type="button"
-          onClick={onCatch}
-          data-testid={`uno-callout-${player.id}`}
-          className="lastcard-btn-urgent label w-full rounded bg-danger px-1.5 py-1 text-[11px] text-white"
-        >
-          Call out!
-        </button>
       )}
     </div>
   );
@@ -155,7 +139,7 @@ function describe(
       } else if (ev.skipped.length > 0) {
         text += ` · ${nameOf(ev.skipped[0]!)} ${ev.skipped[0] === me ? 'are' : 'is'} skipped`;
       }
-      if (ev.uno) text += ' · UNO!';
+      if (ev.uno) text += ' · Last Card!';
       if (ev.out) text += ' · out!';
       break;
     case 'draw':
@@ -165,7 +149,7 @@ function describe(
       text = `${who} ${verb('passed', 'passed')}`;
       break;
     case 'uno':
-      text = `${who} ${verb('called', 'called')} UNO!`;
+      text = `${who} ${verb('called', 'called')} Last Card!`;
       break;
     case 'callout':
       text = `${who} called out ${nameOf(ev.victim?.playerId ?? '')} · +${ev.victim?.count ?? 4} cards`;
@@ -189,8 +173,6 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
 
   const [busy, setBusy] = useState(false);
   const [pendingWild, setPendingWild] = useState<lastcard.Card | null>(null);
-  /** Hold two cards on my turn and arm UNO!: the next card is played together with it. */
-  const [armed, setArmed] = useState(false);
   // Like Karma: the first tap selects (lifts) a card, tapping the selected card again plays it.
   const [selected, setSelected] = useState<lastcard.Card | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
@@ -214,9 +196,8 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
   };
 
   const seq = view.lastEvent?.seq ?? 0;
-  // A new move arrived: forget the armed UNO! and the colour picker.
+  // A new move arrived: forget the colour picker.
   useEffect(() => {
-    setArmed(false);
     setPendingWild(null);
   }, [seq]);
 
@@ -242,7 +223,7 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
     wasMyTurn.current = myTurn;
   }, [myTurn]);
 
-  // "UNO!" announcement: shown for everybody when somebody calls it (not for a call made before we joined).
+  // "Last Card!" announcement: shown for everybody when somebody calls it (not for a call made before we joined).
   const [call, setCall] = useState<{ seq: number; playerId: string } | null>(null);
   const seenCall = useRef(view.unoCall?.seq ?? 0);
   const callTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -303,7 +284,6 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
       type: 'play',
       card,
       ...(color !== undefined ? { color } : {}),
-      ...(armed && view.hand.length === 2 ? { uno: true } : {}),
     });
   };
   const tapCard = (card: lastcard.Card) => {
@@ -313,7 +293,7 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
       return;
     }
     if (held) {
-      flashHint('Wait… somebody may call out UNO!');
+      flashHint('Wait… somebody may call Last Card!');
       return;
     }
     if (!canPlay(card)) {
@@ -338,14 +318,14 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
     else playCard(card);
   };
 
-  const unoButton = () => {
-    if (view.mustCall) {
-      void send({ type: 'uno' });
-    } else if (myTurn && view.hand.length === 2) {
-      setArmed((a) => !a);
-    } else {
-      flashHint('UNO! is for when you have one card left');
-    }
+  // A race: while somebody sits on one card without having called, the button is on screen for everybody.
+  // The player with one card presses "Last Card!", the others "Call out!"; whoever is first wins (the server
+  // decides), and a call-out makes the forgetful player draw cards.
+  const callTarget = !finished ? view.callWindow : null;
+  const callButton = () => {
+    if (callTarget === null) return;
+    if (callTarget === me) void send({ type: 'uno' });
+    else void send({ type: 'callout', target: callTarget });
   };
 
   // Sizes (px per em; a card is 5em x 7em): the same as Karma's.
@@ -384,7 +364,6 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
   })();
 
   const color = CARD_COLORS[view.color];
-  const urgent = view.mustCall;
   // ---- card animations (the same slide as Karma's cards: lib/cardFlip.ts) ----------------------
   // Off for the first paint (the table just appears) and with reduced motion.
   const [armed2, setArmed2] = useState(false);
@@ -477,7 +456,6 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
     setSelected(null);
   }, [moveSeq, myTurn]);
 
-  const unoState = urgent ? 'urgent' : armed ? 'armed' : 'idle';
   const event = describe(view.lastEvent, nameOf, me);
 
   return (
@@ -498,8 +476,6 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
               player={p}
               member={member(p.id)}
               active={!finished && p.id === currentId}
-              catchable={!finished && view.callWindow === p.id && p.id !== me}
-              onCatch={() => void send({ type: 'callout', target: p.id })}
               elRef={(el) => {
                 if (el) seatEls.current.set(p.id, el);
                 else seatEls.current.delete(p.id);
@@ -508,14 +484,14 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
           ))}
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-3">
+        <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-3">
           <div className="flex items-center justify-center gap-7">
             <button
               type="button"
               className="relative flex flex-col items-center gap-1 disabled:opacity-100"
               onClick={() =>
                 held
-                  ? flashHint('Wait… somebody may call out UNO!')
+                  ? flashHint('Wait… somebody may call Last Card!')
                   : myTurn && view.drawn === null
                     ? void send({ type: 'draw' })
                     : flashHint(myTurn ? 'Play the card you drew, or pass' : 'Wait for your turn')
@@ -589,10 +565,21 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
             {flash ??
               (view.drawn !== null && myTurn
                 ? 'You drew a card you can play: play it or pass'
-                : armed
-                  ? 'UNO! armed: your next card is played with it'
-                  : event)}
+                : event)}
           </p>
+          {callTarget !== null && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-1 flex justify-center">
+              <button
+                type="button"
+                onClick={callButton}
+                data-testid="uno-button"
+                data-state={callTarget === me ? 'urgent' : 'callout'}
+                className={`lastcard-btn-urgent pointer-events-auto min-h-14 rounded-[10px] border-2 border-line px-5 text-2xl font-bold uppercase tracking-[0.08em] text-white shadow-[0_4px_0_#101628] active:translate-y-[2px] ${callTarget === me ? 'bg-danger' : 'bg-accent !text-accentink'}`}
+              >
+                {callTarget === me ? 'Last Card!' : 'Call out!'}
+              </button>
+            </div>
+          )}
         </div>
 
         <div
@@ -670,15 +657,6 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
                         : 'Draw a card'}
               </span>
             </Button>
-            <button
-              type="button"
-              onClick={unoButton}
-              data-testid="uno-button"
-              data-state={unoState}
-              className={`min-h-14 w-32 rounded-[10px] border-2 border-line px-3 text-2xl font-bold uppercase tracking-[0.08em] shadow-[0_4px_0_#101628] active:translate-y-[2px] ${urgent ? 'lastcard-btn-urgent bg-danger text-white' : armed ? 'bg-neon text-accentink' : 'bg-panel2 text-onbg/70'}`}
-            >
-              UNO!
-            </button>
           </div>
         </div>
 
@@ -761,12 +739,12 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
               <span
                 className="font-bold leading-none text-[#ffd23f]"
                 style={{
-                  fontSize: '5.5rem',
+                  fontSize: '3.6rem',
                   textShadow: '0.07em 0.07em 0 #d9382f, 0.14em 0.14em 0 #101628, 0 0 0.4em #000',
                   WebkitTextStroke: '0.04em #101628',
                 }}
               >
-                UNO!
+                Last Card!
               </span>
               <span className="flex items-center gap-2 rounded-[10px] border-2 border-line bg-panel px-3 py-2 text-xl font-bold text-ink shadow-[0_4px_0_#101628]">
                 <Avatar avatar={member(call.playerId)?.avatar ?? 'fox'} size="md" />
@@ -776,7 +754,7 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
                   }
                 />
                 <span className="text-base font-normal opacity-80">
-                  {call.playerId === me ? 'called UNO!' : 'called UNO!'}
+                  {call.playerId === me ? 'called Last Card!' : 'called Last Card!'}
                 </span>
               </span>
             </div>
