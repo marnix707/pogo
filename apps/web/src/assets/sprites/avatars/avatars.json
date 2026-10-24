@@ -1,0 +1,30 @@
+{
+ "size": 22,
+ "order": [
+  "fox",
+  "cat",
+  "panda",
+  "frog",
+  "owl",
+  "octopus",
+  "unicorn",
+  "penguin",
+  "lion",
+  "koala",
+  "bee"
+ ],
+ "files": {
+  "fox": "avatar-fox.svg",
+  "cat": "avatar-cat.svg",
+  "panda": "avatar-panda.svg",
+  "frog": "avatar-frog.svg",
+  "owl": "avatar-owl.svg",
+  "octopus": "avatar-octopus.svg",
+  "unicorn": "avatar-unicorn.svg",
+  "penguin": "avatar-penguin.svg",
+  "lion": "avatar-lion.svg",
+  "koala": "avatar-koala.svg",
+  "bee": "avatar-bee.svg"
+ },
+ "note": "Transparent 22x22 pixel art; show at 3x (66px) or 4x (88px) with image-rendering: pixelated."
+}
