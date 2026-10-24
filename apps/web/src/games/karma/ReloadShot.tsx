@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
+import { AvatarFace } from '../../components/AvatarFace';
 
 /** How long the cowboy stays (ms), then it is gone. */
 const SHOT_MS = 1300;
 
 /**
- * A fast reload: a cowboy pulls his pistol and fires: PEW! The gun kicks back, a muzzle flash pops and the
+ * A fast reload: the cowboy avatar pulls his pistol and fires: PEW! The gun kicks back, a muzzle flash pops and the
  * cowboy slides in and out. `trigger` changes (to a non-zero number) for every reload; the pistol sound is
  * played by the caller.
  */
@@ -25,7 +26,9 @@ export function ReloadShot({ trigger, name }: { trigger: number; name: string })
       className="reload-shot pointer-events-none fixed inset-x-0 top-[26%] z-40 flex justify-center"
     >
       <div className="relative flex items-end gap-1">
-        <span className="shot-cowboy text-7xl leading-none drop-shadow-[0_4px_0_#101628]">🤠</span>
+        <span className="shot-cowboy inline-block h-20 w-20 leading-none">
+          <AvatarFace avatar="cowboy" fill />
+        </span>
         <span
           className="shot-gun -ml-3 inline-block text-5xl leading-none drop-shadow-[0_3px_0_#101628]"
           style={{ transform: 'scaleX(-1)' }}
