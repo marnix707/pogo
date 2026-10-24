@@ -9,7 +9,7 @@ export const lastCardUi: GameUi = {
   name: 'Last Card',
   emoji: '🎴',
   logo: logoUrl,
-  tagline: 'Match colours and numbers. Press UNO! on your last card.',
+  tagline: 'Match colours and numbers. Be first to shout Last Card!',
   Component: LastCardGame,
   Rules: ({ open, onClose }) => createElement(LastCardRules, { open, onClose }),
   hideScores: true, // the standings are ranked by what is left in the hand

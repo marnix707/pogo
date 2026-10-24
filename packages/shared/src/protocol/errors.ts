@@ -4,7 +4,7 @@
  * behind it, e.g. "Room not found (ROOM-101)".
  *
  * Areas: NET (requests, limits), SYS (server problems), MAIL (sending email), ACC (accounts and
- * sign-in), ADM (admin panel), ROOM (rooms, lobby, ready), GAME (any game), YAT (Yatzy), KAR (Karma).
+ * sign-in), ADM (admin panel), ROOM (rooms, lobby, ready), GAME (any game), YAT (Yatzy), KAR (Karma), LAST (Last Card), SEA (Sea Battle).
  * Codes are `AREA-NNN`; 1xx = the player did something that is not allowed, 5xx = our side broke.
  *
  * To add an error: add a line to KNOWN_ERRORS (exact message, or a regex for messages with a game
@@ -153,6 +153,12 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'LAST-107', message: 'Choose a colour for the wild card' },
   { code: 'LAST-125', message: /^Last Card needs \d+-\d+ players$/ },
   { code: 'KAR-125', message: /^Karma needs \d+-\d+ players$/ },
+  { code: 'SEA-101', message: 'Place all five ships on the board without overlap' },
+  { code: 'SEA-102', message: 'Your fleet is already in position' },
+  { code: 'SEA-103', message: 'The battle has already started' },
+  { code: 'SEA-104', message: 'The battle has not started yet' },
+  { code: 'SEA-105', message: 'You already fired at that square' },
+  { code: 'SEA-125', message: /^Sea Battle needs \d+-\d+ players$/ },
 ];
 
 /** The code for an error message, or SYS-000 when the message is not in the catalogue. */

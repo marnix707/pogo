@@ -1171,3 +1171,113 @@ html.results-open .safe-top-scrim {
 .score-bold {
   animation: score-bold 900ms ease-in-out both;
 }
+
+/* ---- Sea Battle ---- */
+/* The radar that reveals the last hidden ships: tint, rings, a sweeping beam and blips. */
+.radar-tint {
+  background: rgba(2, 30, 18, 0.62);
+  animation: radar-fade-in 400ms ease-out var(--radar-delay, 0ms) both;
+}
+.radar-rings {
+  animation: radar-fade-in 400ms ease-out var(--radar-delay, 0ms) both;
+}
+.radar-sweep {
+  border-radius: 9999px;
+  background: conic-gradient(
+    from 0deg,
+    rgba(110, 255, 160, 0) 0deg,
+    rgba(110, 255, 160, 0) 250deg,
+    rgba(110, 255, 160, 0.42) 350deg,
+    rgba(200, 255, 220, 0.95) 360deg
+  );
+  animation:
+    radar-spin var(--radar-ms, 3200ms) linear var(--radar-delay, 0ms) both,
+    radar-fade-out 500ms ease-in calc(var(--radar-delay, 0ms) + var(--radar-ms, 3200ms)) forwards;
+}
+.radar-blip {
+  opacity: 0;
+  filter: drop-shadow(0 0 4px rgba(120, 255, 170, 0.95));
+  animation: radar-ping 700ms ease-out both;
+}
+@keyframes radar-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes radar-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes radar-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes radar-ping {
+  0% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+/* The coin toss that decides who starts: it flies up, spins and lands on a player's face. */
+.coin-toss {
+  transform-style: preserve-3d;
+  animation: coin-toss 2.4s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+@keyframes coin-toss {
+  0% {
+    transform: translateY(0) rotateY(0deg) scale(0.9);
+  }
+  45% {
+    transform: translateY(-5.5rem) rotateY(calc(var(--turns, 1800deg) * 0.55)) scale(1.25);
+  }
+  100% {
+    transform: translateY(0) rotateY(var(--turns, 1800deg)) scale(1);
+  }
+}
+@keyframes coin-name-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.coin-name {
+  animation: coin-name-in 0.5s ease-out 2.4s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .coin-toss,
+  .coin-name,
+  .radar-tint,
+  .radar-rings {
+    animation: none !important;
+  }
+  .radar-sweep {
+    display: none;
+  }
+  .radar-blip {
+    animation: none;
+    opacity: 1;
+  }
+}

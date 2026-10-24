@@ -1,0 +1,129 @@
+import { useRef, useState } from 'react';
+import { seabattle } from '@pogo/shared';
+import { Board } from './Board';
+import type { DrawnShip } from './Board';
+
+const { BOARD } = seabattle;
+
+/** A Rng backed by Math.random: placement happens on the device, the server only checks the result. */
+export const deviceRng = { int: (n: number) => Math.floor(Math.random() * n) };
+
+interface Drag {
+  kind: seabattle.ShipKind;
+  /** Where inside the ship the finger grabbed it (in squares). */
+  grabX: number;
+  grabY: number;
+  from: seabattle.Ship;
+  startX: number;
+  startY: number;
+  moved: boolean;
+}
+
+/**
+ * Your own sea while placing: drag a ship to a new spot, tap it to turn it. A ship that would overlap
+ * another is shown in red and jumps back when you let go.
+ */
+export function PlacementBoard({
+  cell,
+  fleet,
+  onChange,
+  locked,
+}: {
+  cell: number;
+  fleet: seabattle.Ship[];
+  onChange: (fleet: seabattle.Ship[]) => void;
+  locked: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [drag, setDrag] = useState<Drag | null>(null);
+  const [bad, setBad] = useState<seabattle.ShipKind | null>(null);
+  const [shake, setShake] = useState(false);
+
+  const cellAt = (e: React.PointerEvent): [number, number] => {
+    const rect = ref.current!.getBoundingClientRect();
+    const x = Math.floor((e.clientX - rect.left) / cell);
+    const y = Math.floor((e.clientY - rect.top) / cell);
+    return [Math.max(0, Math.min(BOARD - 1, x)), Math.max(0, Math.min(BOARD - 1, y))];
+  };
+
+  const clampShip = (ship: seabattle.Ship): seabattle.Ship => {
+    const len = seabattle.shipLength(ship.kind);
+    return {
+      ...ship,
+      x: Math.max(0, Math.min(ship.vertical ? BOARD - 1 : BOARD - len, ship.x)),
+      y: Math.max(0, Math.min(ship.vertical ? BOARD - len : BOARD - 1, ship.y)),
+    };
+  };
+
+  const replace = (ship: seabattle.Ship) => fleet.map((s) => (s.kind === ship.kind ? ship : s));
+
+  const onDown = (e: React.PointerEvent) => {
+    if (locked) return;
+    const [cx, cy] = cellAt(e);
+    const ship = fleet.find((s) => seabattle.shipCells(s).some(([x, y]) => x === cx && y === cy));
+    if (!ship) return;
+    ref.current!.setPointerCapture(e.pointerId);
+    setDrag({
+      kind: ship.kind,
+      grabX: cx - ship.x,
+      grabY: cy - ship.y,
+      from: ship,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false,
+    });
+  };
+
+  const onMove = (e: React.PointerEvent) => {
+    if (!drag) return;
+    const far = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) > 6;
+    const moved = drag.moved || far;
+    if (!moved) return;
+    const [cx, cy] = cellAt(e);
+    const next = clampShip({ ...drag.from, x: cx - drag.grabX, y: cy - drag.grabY });
+    setDrag({ ...drag, moved });
+    onChange(replace(next));
+    setBad(seabattle.overlaps(next, fleet) ? drag.kind : null);
+  };
+
+  const onUp = () => {
+    if (!drag) return;
+    const current = fleet.find((s) => s.kind === drag.kind)!;
+    if (drag.moved) {
+      // Dropped on top of another ship: back to where it came from.
+      if (seabattle.overlaps(current, fleet)) onChange(replace(drag.from));
+    } else {
+      // A tap turns the ship around its first square, if it still fits.
+      const turned = clampShip({ ...drag.from, vertical: !drag.from.vertical });
+      if (seabattle.overlaps(turned, fleet)) {
+        setShake(true);
+        setTimeout(() => setShake(false), 300);
+      } else onChange(replace(turned));
+    }
+    setDrag(null);
+    setBad(null);
+  };
+
+  const drawn: DrawnShip[] = fleet.map((ship) => ({
+    ship,
+    lifted: drag?.kind === ship.kind && drag.moved,
+    bad: bad === ship.kind,
+  }));
+
+  return (
+    <Board
+      cell={cell}
+      ships={drawn}
+      boardRef={ref}
+      testId="sb-place-board"
+      dim={locked}
+      overlayProps={{
+        onPointerDown: onDown,
+        onPointerMove: onMove,
+        onPointerUp: onUp,
+        onPointerCancel: onUp,
+        className: shake ? 'animate-pulse' : '',
+      }}
+    />
+  );
+}

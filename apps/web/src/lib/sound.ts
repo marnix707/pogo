@@ -1,7 +1,7 @@
 import { getSettings } from './settings';
 
 export type SoundName =
-  'tap' | 'roll' | 'score' | 'turn' | 'win' | 'error' | 'gun' | 'crunch' | 'deal' | 'hurry';
+  'tap' | 'roll' | 'score' | 'turn' | 'win' | 'error' | 'gun' | 'crunch' | 'deal' | 'hurry' | 'whistle' | 'boom' | 'splash' | 'ping';
 
 let ctx: AudioContext | undefined;
 
@@ -120,6 +120,20 @@ export function play(name: SoundName) {
     case 'score':
       tone(c, 523, 0, 0.12, 'triangle');
       tone(c, 784, 0.1, 0.2, 'triangle');
+      break;
+    case 'whistle':
+      // A bomb falling: a pitch that drops.
+      sweep(c, 'sine', 1100, 260, 0, 0.34, 0.07);
+      break;
+    case 'boom':
+      sweep(c, 'sawtooth', 180, 40, 0, 0.5, 0.16);
+      for (let i = 0; i < 6; i++) tone(c, 90 + Math.random() * 120, i * 0.05, 0.08, 'square', 0.06);
+      break;
+    case 'splash':
+      for (let i = 0; i < 5; i++) tone(c, 700 + Math.random() * 500, i * 0.035, 0.06, 'triangle', 0.05);
+      break;
+    case 'ping':
+      tone(c, 1320, 0, 0.22, 'sine', 0.09);
       break;
     case 'hurry':
       // Time is running out: a double beep (play() is called once a second for the last ten).

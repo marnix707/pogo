@@ -12,4 +12,5 @@ export * from './game/testing';
 export * as yatzy from './games/yatzy';
 export * as karma from './games/karma';
 export * as lastcard from './games/lastcard';
+export * as seabattle from './games/seabattle';
 export * from './games/registry';

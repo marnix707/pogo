@@ -1,0 +1,176 @@
+{
+ "cell": 16,
+ "board": "10x10 cells (160x160 art px). Show at 2x (32px cells) or 3x (48px cells) with image-rendering: pixelated.",
+ "fleet": [
+  {
+   "name": "carrier",
+   "cells": 5,
+   "size_h": [
+    80,
+    16
+   ],
+   "files": {
+    "h": "ships/carrier-h.svg",
+    "v": "ships/carrier-v.svg",
+    "sunk_h": "ships/carrier-sunk-h.svg",
+    "sunk_v": "ships/carrier-sunk-v.svg"
+   }
+  },
+  {
+   "name": "battleship",
+   "cells": 4,
+   "size_h": [
+    64,
+    16
+   ],
+   "files": {
+    "h": "ships/battleship-h.svg",
+    "v": "ships/battleship-v.svg",
+    "sunk_h": "ships/battleship-sunk-h.svg",
+    "sunk_v": "ships/battleship-sunk-v.svg"
+   }
+  },
+  {
+   "name": "cruiser",
+   "cells": 3,
+   "size_h": [
+    48,
+    16
+   ],
+   "files": {
+    "h": "ships/cruiser-h.svg",
+    "v": "ships/cruiser-v.svg",
+    "sunk_h": "ships/cruiser-sunk-h.svg",
+    "sunk_v": "ships/cruiser-sunk-v.svg"
+   }
+  },
+  {
+   "name": "submarine",
+   "cells": 3,
+   "size_h": [
+    48,
+    16
+   ],
+   "files": {
+    "h": "ships/submarine-h.svg",
+    "v": "ships/submarine-v.svg",
+    "sunk_h": "ships/submarine-sunk-h.svg",
+    "sunk_v": "ships/submarine-sunk-v.svg"
+   }
+  },
+  {
+   "name": "destroyer",
+   "cells": 2,
+   "size_h": [
+    32,
+    16
+   ],
+   "files": {
+    "h": "ships/destroyer-h.svg",
+    "v": "ships/destroyer-v.svg",
+    "sunk_h": "ships/destroyer-sunk-h.svg",
+    "sunk_v": "ships/destroyer-sunk-v.svg"
+   }
+  }
+ ],
+ "ship_orientation": "Horizontal ships face right (bow on the right). Vertical ships face down. Place the image on the first cell of the ship.",
+ "tiles": {
+  "water": [
+   "tiles/water-00.svg",
+   "tiles/water-01.svg",
+   "tiles/water-02.svg",
+   "tiles/water-03.svg"
+  ],
+  "water_grid": [
+   "tiles/water-grid-00.svg",
+   "tiles/water-grid-01.svg",
+   "tiles/water-grid-02.svg",
+   "tiles/water-grid-03.svg"
+  ],
+  "ms_per_frame": 400,
+  "note": "Waves tile seamlessly. water-grid has a 1px dark line on its top and left edge; add one line on the far right/bottom of the board."
+ },
+ "markers": {
+  "target": {
+   "files": [
+    "markers/target-00.svg",
+    "markers/target-01.svg"
+   ],
+   "ms_per_frame": 300,
+   "note": "Aim cursor, pulses."
+  },
+  "miss": "markers/miss.svg",
+  "hit": "markers/hit.svg",
+  "burn": {
+   "files": [
+    "markers/burn-00.svg",
+    "markers/burn-01.svg",
+    "markers/burn-02.svg",
+    "markers/burn-03.svg",
+    "markers/burn-04.svg",
+    "markers/burn-05.svg",
+    "markers/burn-06.svg",
+    "markers/burn-07.svg"
+   ],
+   "ms_per_frame": 100,
+   "note": "Loop on top of a hit cell (or of a sunk ship cell)."
+  }
+ },
+ "fx": {
+  "frame_size": [
+   32,
+   32
+  ],
+  "anchor": "Centre the 32x32 frame on the target cell centre (it spills 8px over the neighbouring cells).",
+  "bomb": {
+   "files": [
+    "fx/bomb-00.svg",
+    "fx/bomb-01.svg",
+    "fx/bomb-02.svg",
+    "fx/bomb-03.svg"
+   ],
+   "ms_per_frame": 90
+  },
+  "explosion": {
+   "files": [
+    "fx/explosion-00.svg",
+    "fx/explosion-01.svg",
+    "fx/explosion-02.svg",
+    "fx/explosion-03.svg",
+    "fx/explosion-04.svg",
+    "fx/explosion-05.svg",
+    "fx/explosion-06.svg",
+    "fx/explosion-07.svg",
+    "fx/explosion-08.svg",
+    "fx/explosion-09.svg"
+   ],
+   "ms_per_frame": 80
+  },
+  "splash": {
+   "files": [
+    "fx/splash-00.svg",
+    "fx/splash-01.svg",
+    "fx/splash-02.svg",
+    "fx/splash-03.svg",
+    "fx/splash-04.svg",
+    "fx/splash-05.svg",
+    "fx/splash-06.svg",
+    "fx/splash-07.svg"
+   ],
+   "ms_per_frame": 80
+  }
+ },
+ "sequences": {
+  "shot_hit": [
+   "bomb",
+   "explosion",
+   "then show hit + start burn loop"
+  ],
+  "shot_miss": [
+   "bomb",
+   "splash",
+   "then show miss"
+  ],
+  "sunk": "when every cell of a ship is hit, swap the ship image to its sunk version and keep burn loops on its cells"
+ }
+}

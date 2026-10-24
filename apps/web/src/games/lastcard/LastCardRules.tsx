@@ -25,15 +25,10 @@ export function LastCardRules({ open, onClose }: { open: boolean; onClose: () =>
           at any time).
         </li>
         <li>
-          <b className="text-neon">UNO!</b> Call it right <b>before or right after</b> you play your
-          second-to-last card: arm the <b>UNO!</b> button while you hold two cards (your next card
-          is played together with it), or press it as soon as you are down to one card. Once the
-          next player plays, draws or passes it is too late.
-        </li>
-        <li>
-          <b className="text-neon">Call out!</b> Somebody forgot UNO!? Tap the red <b>Call out!</b>{' '}
-          button on their seat before the next player goes: they draw <b>four</b> cards. After a
-          card is played down to one, everyone waits a moment so there is time to react.
+          <b className="text-neon">Last Card!</b> Down to one card? A pulsing <b>Last Card!</b>{' '}
+          button appears for <b>everybody</b>. It is a race: if you press it first you are safe (and
+          everybody sees the announcement). If somebody else is faster with <b>Call out!</b> you
+          draw <b>four</b> cards. Once the next player plays, draws or passes, it is too late.
         </li>
         <li>
           <b className="text-neon">Going out:</b> you cannot finish with an action card or a wild:
