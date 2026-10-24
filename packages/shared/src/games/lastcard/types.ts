@@ -33,6 +33,8 @@ export interface LastCardEvent {
   uno: boolean;
   /** The player has no cards left. */
   out: boolean;
+  /** The draw penalty waiting for the next player after this move (stacked Draw Two / Four). */
+  pending: number;
 }
 
 export interface LastCardState {
@@ -47,6 +49,11 @@ export interface LastCardState {
   turn: number;
   /** 1 = clockwise (up the seat order), -1 = counter clockwise. */
   direction: 1 | -1;
+  /**
+   * Cards the player to move must draw unless they answer with another Draw Two / Wild Draw Four
+   * (which adds to it). 0 = no penalty waiting.
+   */
+  pending: number;
   /** The player to move has drawn this card and may play it or pass. */
   drawn: Card | null;
   winner: string | null;
@@ -92,6 +99,8 @@ export interface LastCardView {
   /** Index into `players` of the player to move. */
   turn: number;
   direction: 1 | -1;
+  /** The draw penalty waiting for the player to move (see LastCardState.pending). */
+  pending: number;
   /** I drew this card and may play it or pass. */
   drawn: Card | null;
   /** I have one card left and have not pressed UNO! yet. */

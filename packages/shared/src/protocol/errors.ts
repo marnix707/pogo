@@ -148,7 +148,7 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'LAST-102', message: 'Play the card you drew, or pass' },
   { code: 'LAST-103', message: 'Draw a card first' },
   { code: 'LAST-104', message: 'That card does not match the pile' },
-  { code: 'LAST-105', message: 'Wild Draw Four only when you have no card of the current colour' },
+  { code: 'LAST-105', message: 'Answer with a Draw Two or Wild Draw Four, or draw the cards' },
   { code: 'LAST-106', message: 'You cannot finish with an action card: draw a card instead' },
   { code: 'LAST-107', message: 'Choose a colour for the wild card' },
   { code: 'LAST-125', message: /^Last Card needs \d+-\d+ players$/ },

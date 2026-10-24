@@ -15,12 +15,14 @@ export function LastCardRules({ open, onClose }: { open: boolean; onClose: () =>
         <li>
           <b className="text-neon">Action cards:</b> <b>Skip</b> skips the next player,{' '}
           <b>Reverse</b> turns the direction around (with two players you play again),{' '}
-          <b>Draw Two</b> makes the next player take two cards and lose their turn.
+          <b>Draw Two</b> makes the next player take two cards and lose their turn, unless they
+          answer with another <b>Draw Two</b> or a <b>Wild Draw Four</b>: the penalties then add up
+          and the next player faces the total (and the other way round).
         </li>
         <li>
           <b className="text-neon">Wild</b> plays on anything and you choose the colour.{' '}
-          <b>Wild Draw Four</b> does that too and the next player takes four cards, but you may only
-          play it when you have no card of the current colour.
+          <b>Wild Draw Four</b> does that too and the next player takes four cards (it can be played
+          at any time).
         </li>
         <li>
           <b className="text-neon">UNO!</b> Call it right <b>before or right after</b> you play your

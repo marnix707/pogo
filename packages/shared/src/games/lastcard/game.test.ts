@@ -16,6 +16,7 @@ const YELLOW = (n: number) => 25 + n;
 const RED_SKIP = 19;
 const RED_REVERSE = 21;
 const RED_DRAW2 = 23;
+const YELLOW_DRAW2 = 25 + 23;
 const YELLOW_SKIP = 25 + 19;
 const WILD = 100;
 const WILD4 = 104;
@@ -34,6 +35,7 @@ function setup(hands: Card[][], over: Partial<LastCardState> = {}): LastCardStat
     color: 0,
     turn: 0,
     direction: 1,
+    pending: 0,
     drawn: null,
     winner: null,
     eventSeq: 0,
@@ -62,13 +64,16 @@ describe('cards', () => {
     expect(reds.filter((i) => i.value === 9)).toHaveLength(2);
   });
 
-  it('matches by colour or symbol, wilds always; Wild Draw Four only without the colour', () => {
+  it('matches by colour or symbol, wilds (also Draw Four) always', () => {
     expect(canPlayCard(RED(7), RED(5), 0, [])).toBe(true);
     expect(canPlayCard(YELLOW(5), RED(5), 0, [])).toBe(true); // same number
     expect(canPlayCard(YELLOW(6), RED(5), 0, [])).toBe(false);
     expect(canPlayCard(YELLOW_SKIP, RED_SKIP, 0, [])).toBe(true); // same symbol
     expect(canPlayCard(WILD, RED(5), 0, [RED(1)])).toBe(true);
-    expect(canPlayCard(WILD4, RED(5), 0, [RED(1), WILD4])).toBe(false);
+    expect(canPlayCard(WILD4, RED(5), 0, [RED(1), WILD4])).toBe(true); // even holding the colour
+    expect(canPlayCard(RED(7), RED(5), 0, [], 2)).toBe(false); // a penalty is waiting
+    expect(canPlayCard(YELLOW_DRAW2, RED(5), 0, [], 2)).toBe(true); // +2 on anything
+    expect(canPlayCard(WILD4, RED_DRAW2, 0, [], 2)).toBe(true);
     expect(canPlayCard(WILD4, RED(5), 0, [YELLOW(1), WILD4])).toBe(true);
     // After a wild only the chosen colour counts.
     expect(canPlayCard(YELLOW(5), WILD, 2, [])).toBe(false);
@@ -128,24 +133,45 @@ describe('playing', () => {
     expect(play(two, 'p0', { type: 'play', card: RED_REVERSE }).turn).toBe(0);
   });
 
-  it('draw two and wild four make the next player draw and lose the turn', () => {
+  it('draw two and wild four leave a penalty for the next player, who draws it all unless they stack', () => {
     const s = setup([
       [RED_DRAW2, RED(1)],
       [RED(2), RED(4)],
       [RED(3), RED(6)],
     ]);
     const a = play(s, 'p0', { type: 'play', card: RED_DRAW2 });
-    expect(a.players[1]!.hand).toHaveLength(4);
-    expect(a.turn).toBe(2);
+    expect(a.pending).toBe(2);
+    expect(a.turn).toBe(1);
+    const taken = play(a, 'p1', { type: 'draw' });
+    expect(taken.players[1]!.hand).toHaveLength(4);
+    expect(taken.pending).toBe(0);
+    expect(taken.turn).toBe(2);
     const w = setup([
       [WILD4, YELLOW(1)],
       [RED(2), RED(4)],
       [RED(3), RED(6)],
     ]);
     const b = play(w, 'p0', { type: 'play', card: WILD4, color: 1 });
-    expect(b.players[1]!.hand).toHaveLength(6);
-    expect(b.turn).toBe(2);
+    expect(b.pending).toBe(4);
     expect(b.color).toBe(1);
+    expect(play(b, 'p1', { type: 'draw' }).players[1]!.hand).toHaveLength(6);
+  });
+
+  it('a Draw Two and a Wild Draw Four stack on each other', () => {
+    const s = setup([
+      [RED_DRAW2, RED(1)],
+      [WILD4, RED(4)],
+      [YELLOW_DRAW2, RED(6)],
+    ]);
+    const a = play(s, 'p0', { type: 'play', card: RED_DRAW2 });
+    expect(game.validateMove(a, 'p1', { type: 'play', card: RED(4) }).ok).toBe(false);
+    const b = play(a, 'p1', { type: 'play', card: WILD4, color: 2 });
+    expect(b.pending).toBe(6);
+    expect(b.turn).toBe(2);
+    const c = play(b, 'p2', { type: 'play', card: YELLOW_DRAW2 });
+    expect(c.pending).toBe(8);
+    expect(c.turn).toBe(0);
+    expect(play(c, 'p0', { type: 'draw' }).players[0]!.hand).toHaveLength(9);
   });
 
   it('drawing: an unplayable card ends the turn, a playable one may be played or passed', () => {

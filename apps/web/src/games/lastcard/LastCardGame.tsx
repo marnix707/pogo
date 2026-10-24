@@ -149,8 +149,8 @@ function describe(
       text = `${who} ${verb('played', 'played')} ${lastcard.cardLabel(ev.card!)}`;
       if (ev.color !== null && lastcard.isWild(ev.card!)) text += ` → ${COLOR_NAMES[ev.color]}`;
       if (ev.reversed) text += ' · direction reversed';
-      if (ev.victim) {
-        text += ` · ${nameOf(ev.victim.playerId)} ${ev.victim.playerId === me ? 'draw' : 'draws'} ${ev.victim.count}`;
+      if (ev.pending > 0) {
+        text += ` · +${ev.pending} waiting`;
       } else if (ev.skipped.length > 0) {
         text += ` · ${nameOf(ev.skipped[0]!)} ${ev.skipped[0] === me ? 'are' : 'is'} skipped`;
       }
@@ -158,7 +158,7 @@ function describe(
       if (ev.out) text += ' · out!';
       break;
     case 'draw':
-      text = `${who} ${verb('drew', 'drew')} a card`;
+      text = ev.drew > 1 ? `${who} drew ${ev.drew} cards` : `${who} ${verb('drew', 'drew')} a card`;
       break;
     case 'pass':
       text = `${who} ${verb('passed', 'passed')}`;
@@ -290,7 +290,7 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
   const canPlay = (card: lastcard.Card): boolean => {
     if (!myTurn || busy || held) return false;
     if (view.drawn !== null && card !== view.drawn) return false;
-    if (!lastcard.canPlayCard(card, view.top, view.color, view.hand)) return false;
+    if (!lastcard.canPlayCard(card, view.top, view.color, view.hand, view.pending)) return false;
     return !(view.hand.length === 1 && lastcard.isSpecial(card));
   };
 
@@ -316,8 +316,8 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
         flashHint('You cannot finish with an action card: draw one');
       else if (view.drawn !== null && card !== view.drawn)
         flashHint('Play the card you drew, or pass');
-      else if (lastcard.cardInfo(card).kind === 'wild4')
-        flashHint('Wild Draw Four only without a card of the current colour');
+      else if (view.pending > 0)
+        flashHint(`Stack a Draw Two or Four, or draw ${view.pending} cards`);
       else flashHint('That card does not match');
       haptic('error');
       return;
@@ -642,7 +642,9 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
                     ? 'Wait…'
                     : view.drawn !== null
                       ? 'Pass'
-                      : 'Draw a card'}
+                      : view.pending > 0
+                        ? `Draw ${view.pending} cards`
+                        : 'Draw a card'}
               </span>
             </Button>
             <button

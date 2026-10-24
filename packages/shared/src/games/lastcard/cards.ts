@@ -84,13 +84,20 @@ export const freshDeck = (rng: Rng): Card[] =>
 
 /**
  * May `card` be played on `top` (the card on the pile) while the colour in force is `color`?
- * Wild Draw Four only when the hand holds no card of that colour (the official rule; there is no
- * challenge in this game, so it is simply enforced).
+ * Wilds (also the Wild Draw Four) always play: there is no "only without a card of the colour" rule.
+ * While a draw penalty is pending (`pending` > 0) only a Draw Two or a Wild Draw Four may be played, on
+ * either other (the penalties add up), whatever the colour.
  */
-export function canPlayCard(card: Card, top: Card, color: Color, hand: readonly Card[]): boolean {
+export function canPlayCard(
+  card: Card,
+  top: Card,
+  color: Color,
+  _hand: readonly Card[],
+  pending = 0,
+): boolean {
   const info = cardInfo(card);
-  if (info.kind === 'wild') return true;
-  if (info.kind === 'wild4') return !hand.some((c) => cardInfo(c).color === color);
+  if (pending > 0) return info.kind === 'draw2' || info.kind === 'wild4';
+  if (info.kind === 'wild' || info.kind === 'wild4') return true;
   if (info.color === color) return true;
   const t = cardInfo(top);
   if (t.kind === 'wild' || t.kind === 'wild4') return false;

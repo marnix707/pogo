@@ -114,6 +114,7 @@ function createInitialState(
     color: cardInfo(first).color!,
     turn: rng.int(seats.length),
     direction: 1,
+    pending: 0,
     drawn: null,
     winner: null,
     eventSeq: 0,
@@ -154,13 +155,13 @@ function validateMove(state: LastCardState, playerId: string, move: LastCardMove
         return { ok: false, error: 'That card is not in your hand' };
       if (state.drawn !== null && move.card !== state.drawn)
         return { ok: false, error: 'Play the card you drew, or pass' };
-      if (!canPlayCard(move.card, topOf(state), state.color, me.hand)) {
-        return {
-          ok: false,
-          error: isWild(move.card)
-            ? 'Wild Draw Four only when you have no card of the current colour'
-            : 'That card does not match the pile',
-        };
+      if (!canPlayCard(move.card, topOf(state), state.color, me.hand, state.pending)) {
+        if (state.pending > 0)
+          return {
+            ok: false,
+            error: 'Answer with a Draw Two or Wild Draw Four, or draw the cards',
+          };
+        return { ok: false, error: 'That card does not match the pile' };
       }
       if (me.hand.length === 1 && isSpecial(move.card))
         return { ok: false, error: 'You cannot finish with an action card: draw a card instead' };
@@ -196,6 +197,7 @@ function applyMove(
     reversed: false,
     uno: false,
     out: false,
+    pending: prev.pending,
   };
 
   const callUno = () => {
@@ -220,6 +222,17 @@ function applyMove(
     state.callWindow = null;
   } else if (move.type === 'draw') {
     event.kind = 'draw';
+    if (state.pending > 0) {
+      // Nobody stacked on the penalty: take all of it and lose the turn.
+      event.drew = drawCards(state, index, state.pending, rng);
+      event.skipped = [playerId];
+      state.pending = 0;
+      event.pending = 0;
+      state.turn = seatAfter(state, index);
+      for (const p of state.players) if (p.hand.length !== 1) p.called = false;
+      state.lastEvent = event;
+      return state;
+    }
     event.drew = drawCards(state, index, 1, rng);
     const card = me.hand[me.hand.length - 1]!;
     if (event.drew > 0 && canPlayCard(card, topOf(state), state.color, me.hand)) {
@@ -249,11 +262,6 @@ function applyMove(
       event.out = true;
     } else {
       const next = seatAfter(state, index);
-      const penalise = (victim: number, count: number) => {
-        const got = drawCards(state, victim, count, rng);
-        event.victim = { playerId: state.players[victim]!.id, count: got };
-        event.skipped = [state.players[victim]!.id];
-      };
       switch (info.kind) {
         case 'skip':
           event.skipped = [state.players[next]!.id];
@@ -265,13 +273,16 @@ function applyMove(
           // With two players a reverse is a skip: you play again.
           state.turn = state.players.length === 2 ? index : seatAfter(state, index);
           break;
+        // The penalty waits for the next player, who may stack another draw card on it.
         case 'draw2':
-          penalise(next, 2);
-          state.turn = seatAfter(state, index, 2);
+          state.pending += 2;
+          event.pending = state.pending;
+          state.turn = next;
           break;
         case 'wild4':
-          penalise(next, 4);
-          state.turn = seatAfter(state, index, 2);
+          state.pending += 4;
+          event.pending = state.pending;
+          state.turn = next;
           break;
         default:
           state.turn = next;
@@ -317,6 +328,7 @@ function getPlayerView(state: LastCardState, playerId: string): LastCardView {
     stockCount: state.stock.length,
     turn: state.turn,
     direction: state.direction,
+    pending: state.pending,
     drawn: current.id === playerId ? state.drawn : null,
     mustCall: !!me && state.callWindow === playerId && !state.winner,
     winner: state.winner,
