@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Button } from '../../components/ui';
+import logoUrl from '../../assets/sprites/brand/logos/karma.svg';
 import { cardFaceUrl } from './cardArt';
 
 const KEY = 'pogo.karmaTutorialSeen';
@@ -324,95 +325,108 @@ export function KarmaTutorial({ onDone }: { onDone: (dontShowAgain: boolean) => 
       data-scene={scene}
       data-step={step}
       onClick={next}
-      className="fixed inset-0 cursor-pointer z-[80] flex flex-col items-center justify-center gap-3 bg-black/[.97] px-4 text-center text-white"
+      className="fixed inset-0 cursor-pointer z-[80] flex flex-col items-center bg-black/[.97] px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+1.25rem)] text-center text-white"
     >
-      <p className="label text-neon">
-        {current.title} · {scene + 1}/{SCENES.length}
-      </p>
-
-      <div className="relative shrink-0" style={{ width: STAGE_W, height: STAGE_H }} aria-hidden>
-        {p.sprites.map((s) => (
-          <MiniCard key={s.id} s={s} />
-        ))}
-        {p.button && (
-          <div
-            className="absolute"
-            style={{
-              left: p.button.x,
-              top: p.button.y,
-              width: 140,
-              transform: p.button.pressed ? 'scale(0.9)' : undefined,
-              transition: 'transform 150ms',
-            }}
-          >
-            <Button tabIndex={-1} className="pointer-events-none w-full !text-base">
-              {p.button.label}
-            </Button>
-          </div>
-        )}
-        {p.arrow && (
-          <div
-            key={`${scene}-${phase}`}
-            className="tutorial-arrow absolute"
-            data-dir={p.arrow.dir}
-            style={{ left: p.arrow.x - 14, top: p.arrow.y }}
-          >
-            <ArrowIcon dir={p.arrow.dir} />
-          </div>
-        )}
-      </div>
-
-      <p data-testid="tutorial-caption" className="min-h-[4.5rem] max-w-xs text-lg leading-snug">
-        {p.caption}
-      </p>
-
-      <p className="label text-xs text-white/60">Tap anywhere to continue</p>
-
-      <div className="flex gap-1.5" aria-hidden>
-        {SCENES.map((_, i) => (
-          <span
-            key={i}
-            className={`h-2 w-2 rounded-full ${i === scene ? 'bg-neon' : 'bg-white/30'}`}
-          />
-        ))}
-      </div>
-
-      <label
-        className="flex cursor-pointer items-center gap-2 text-sm text-white/80"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <input
-          type="checkbox"
-          data-testid="tutorial-dont-show"
-          checked={hide}
-          onChange={(e) => setHide(e.target.checked)}
-          className="h-5 w-5 accent-[#fda200]"
+      {/* The game's logo with the headline next to it, at the top. */}
+      <div className="flex shrink-0 items-center gap-3" data-testid="tutorial-header">
+        <img
+          src={logoUrl}
+          alt=""
+          className="h-12 w-auto"
+          style={{ imageRendering: 'pixelated', maxWidth: 'none' }}
         />
-        Don&apos;t show this again
-      </label>
+        <h2 className="text-2xl text-white">Tutorial</h2>
+      </div>
+      {/* The rest sits centred in the free space, so the gap above it equals the gap below it. */}
+      <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-3">
+        <p className="label text-neon">
+          {current.title} · {scene + 1}/{SCENES.length}
+        </p>
 
-      <div className="mt-1 flex gap-3">
-        {!last && (
+        <div className="relative shrink-0" style={{ width: STAGE_W, height: STAGE_H }} aria-hidden>
+          {p.sprites.map((s) => (
+            <MiniCard key={s.id} s={s} />
+          ))}
+          {p.button && (
+            <div
+              className="absolute"
+              style={{
+                left: p.button.x,
+                top: p.button.y,
+                width: 140,
+                transform: p.button.pressed ? 'scale(0.9)' : undefined,
+                transition: 'transform 150ms',
+              }}
+            >
+              <Button tabIndex={-1} className="pointer-events-none w-full !text-base">
+                {p.button.label}
+              </Button>
+            </div>
+          )}
+          {p.arrow && (
+            <div
+              key={`${scene}-${phase}`}
+              className="tutorial-arrow absolute"
+              data-dir={p.arrow.dir}
+              style={{ left: p.arrow.x - 14, top: p.arrow.y }}
+            >
+              <ArrowIcon dir={p.arrow.dir} />
+            </div>
+          )}
+        </div>
+
+        <p data-testid="tutorial-caption" className="min-h-[4.5rem] max-w-xs text-lg leading-snug">
+          {p.caption}
+        </p>
+
+        <p className="label text-xs text-white/60">Tap anywhere to continue</p>
+
+        <div className="flex gap-1.5" aria-hidden>
+          {SCENES.map((_, i) => (
+            <span
+              key={i}
+              className={`h-2 w-2 rounded-full ${i === scene ? 'bg-neon' : 'bg-white/30'}`}
+            />
+          ))}
+        </div>
+
+        <label
+          className="flex cursor-pointer items-center gap-2 text-sm text-white/80"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <input
+            type="checkbox"
+            data-testid="tutorial-dont-show"
+            checked={hide}
+            onChange={(e) => setHide(e.target.checked)}
+            className="h-5 w-5 accent-[#fda200]"
+          />
+          Don&apos;t show this again
+        </label>
+
+        <div className="mt-1 flex gap-3">
+          {!last && (
+            <Button
+              data-testid="tutorial-skip"
+              variant="ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDone(hide);
+              }}
+            >
+              Skip
+            </Button>
+          )}
           <Button
-            data-testid="tutorial-skip"
-            variant="ghost"
+            data-testid="tutorial-next"
             onClick={(e) => {
               e.stopPropagation();
-              onDone(hide);
+              next();
             }}
           >
-            Skip
+            {last ? 'Got it!' : 'Next'}
           </Button>
-        )}
-        <Button
-          data-testid="tutorial-next"
-          onClick={(e) => {
-            e.stopPropagation();
-            next();
-          }}
-        >
-          {last ? 'Got it!' : 'Next'}
-        </Button>
+        </div>
       </div>
     </div>
   );
