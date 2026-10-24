@@ -228,7 +228,10 @@ export function PlayScreen({
         {lobby === null ? (
           <p className="label text-onbg/70">Looking for games…</p>
         ) : openGames.length === 0 ? (
-          <div className="hud p-4 text-center text-sm text-muted" data-testid="open-games-empty">
+          <div
+            className="hud chat-grey !bg-panel/80 p-4 text-center text-sm text-muted"
+            data-testid="open-games-empty"
+          >
             No open games right now. Pick a game above to open a lobby, and switch on{' '}
             <b className="text-ink">Public room</b> there so others can join.
           </div>

@@ -59,7 +59,7 @@ test('a game tap opens the lobby: Yatzy can start solo, Karma needs 2 and offers
   await openLobbySettings(page);
   for (let i = 0; i < 4; i++) await more.click();
   await expect(more).toBeDisabled(); // Karma seats at most 5 in total
-  await expect(page.getByTestId('lobby-ready-count')).toHaveText('Ready 4/5');
+  await expect(page.getByTestId('lobby-ready-count')).toHaveText('Start');
   await leaveLobby(page);
   await me.context.close();
 });
@@ -107,7 +107,7 @@ test('a whole game against the computer, from one tap to the result, and a remat
 
   // Back to lobby: the lobby with the computer still configured, and off we go again.
   await page.getByTestId('results-lobby').click();
-  await expect(page.getByTestId('lobby-ready-count')).toHaveText('Ready 1/2');
+  await expect(page.getByTestId('lobby-ready-count')).toHaveText('Start');
   await readyAll(page);
   await expect(page.getByTestId('karma-game')).toHaveAttribute('data-phase', 'swap');
   await expect(page.getByTestId('seat-bot:1')).toContainText('Robo');
@@ -178,7 +178,7 @@ test('a host can add a computer player in the lobby', async ({ browser }) => {
   // Karma needs two players: alone it cannot start until a computer is added.
   await openLobbySettings(page);
   await page.getByRole('button', { name: 'More Computer players' }).click();
-  await expect(page.getByTestId('lobby-ready-count')).toHaveText('Ready 1/2');
+  await expect(page.getByTestId('lobby-ready-count')).toHaveText('Start');
   await readyAll(page);
   await expect(page.getByTestId('seat-bot:1')).toContainText('Robo');
   await page.getByTestId('leave-game').click();

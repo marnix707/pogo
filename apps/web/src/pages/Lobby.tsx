@@ -180,6 +180,8 @@ export function Lobby({
   );
   // The host of a game with computers who lacks players: the button adds a Robo instead of readying up.
   const addRobo = seatsShort > 0 && !!getGame(room.gameId)?.supportsBots && isHost;
+  // One person with computers: no waiting for anybody, the button simply starts the game.
+  const startNow = room.bots > 0 && room.members.length === 1 && !addRobo;
   const secondsToStart = useCountdown(room.startsAt, room.serverTime);
   const ui = getGameUi(room.gameId);
   const limits = getGame(room.gameId);
@@ -550,9 +552,11 @@ export function Lobby({
               }
             >
               {/* The ready count lives inside the button: "Ready 1/3", then the countdown. */}
-              {iAmReady && !addRobo && <span aria-hidden>✓ </span>}
+              {iAmReady && !addRobo && !startNow && <span aria-hidden>✓ </span>}
               <span data-testid="lobby-ready-count">
-                {addRobo ? 'Add Robo 🤖' : 'Ready'} {readyCount}/{room.members.length + room.bots}
+                {startNow
+                  ? 'Start'
+                  : `${addRobo ? 'Add Robo 🤖' : 'Ready'} ${readyCount}/${room.members.length + room.bots}`}
               </span>
               {secondsToStart !== null && (
                 <span data-testid="lobby-countdown" aria-live="polite">

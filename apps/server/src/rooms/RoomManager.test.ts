@@ -960,12 +960,34 @@ describe('computer players', () => {
   });
 
   it('epic mode starts with every rule on, normal mode with none', () => {
+    // Two seats (me + 1 computer): every rule except the jokers, which need more than two players.
     const epic = playOut(1, 3, { mode: 'epic' });
     expect((epic.room.game!.view as { rules: string[] }).rules).toEqual(
+      karma.KARMA_RULES.map((r) => r.id).filter((id) => id !== 'jokers'),
+    );
+    const epic3 = playOut(2, 3, { mode: 'epic' });
+    expect((epic3.room.game!.view as { rules: string[] }).rules).toEqual(
       karma.KARMA_RULES.map((r) => r.id),
     );
     const normal = playOut(1, 3);
     expect((normal.room.game!.view as { rules: string[] }).rules).toEqual([]);
+  });
+
+  it('one person with a computer starts at once on Ready (no countdown); two people still count down', () => {
+    const t = setup();
+    const room = t.must(t.manager.create(a, { gameId: 'karma', bots: 1 }));
+    expect(room.status).toBe('lobby');
+    const started = t.must(t.manager.setReady(a.id, true));
+    expect(started.status).toBe('playing');
+    expect(started.startsAt).toBeNull();
+
+    const t2 = setup();
+    const r2 = t2.must(t2.manager.create(a, { gameId: 'karma', bots: 1 }));
+    t2.must(t2.manager.join(b, r2.code));
+    t2.must(t2.manager.setReady(a.id, true));
+    const both = t2.must(t2.manager.setReady(b.id, true));
+    expect(both.status).toBe('lobby');
+    expect(both.startsAt).not.toBeNull();
   });
 
   it('a rematch always goes back to the lobby now (Ready starts the next game)', () => {
@@ -1117,6 +1139,7 @@ describe('karma: one clock for the whole card swap', () => {
   it('the clock starts after the rules intro when rules are in force (epic)', () => {
     const { view } = startKarma({ mode: 'epic', rules: [] });
     const left = view(a.id).game!.deadline! - view(a.id).serverTime;
-    expect(left).toBe(TURN + karma.rulesIntroMs(karma.KARMA_RULES.length));
+    // Two players: no jokers, so one rule fewer than the catalogue.
+    expect(left).toBe(TURN + karma.rulesIntroMs(karma.KARMA_RULES.length - 1));
   });
 });

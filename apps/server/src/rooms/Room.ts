@@ -424,8 +424,14 @@ export class Room {
     );
   }
 
+  /** One person with computer players: Ready is a plain Start, no countdown. */
+  private get startsInstantly(): boolean {
+    return this.bots > 0 && this.members.filter((m) => !m.bot && !m.left).length === 1;
+  }
+
   private evaluateStart(): void {
-    if (this.canAutoStart())
+    if (this.canAutoStart() && this.startsInstantly) this.startAt = null;
+    else if (this.canAutoStart())
       this.startAt ??= this.deps.now() + (this.deps.limits.startCountdownMs ?? START_COUNTDOWN_MS);
     else this.startAt = null;
   }
@@ -783,7 +789,10 @@ export class Room {
 
   /** Push fresh state to everyone present and re-arm timers. Call after any change. */
   private changed(): void {
-    if (this.status === 'lobby') this.evaluateStart();
+    if (this.status === 'lobby') {
+      this.evaluateStart();
+      if (this.canAutoStart() && this.startsInstantly && this.begin().ok) return;
+    }
     this.broadcast();
     this.schedule();
     this.deps.onChange(this);
