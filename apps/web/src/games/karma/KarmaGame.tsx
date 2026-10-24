@@ -44,8 +44,8 @@ const ACTION_COLUMN_PX = 96;
 
 /** How long the cards of a burn or a failed blind card stay visible on the pile before it resolves. */
 const GHOST_MS = 1100;
-/** A face-down card is flipped in the middle of the screen for this long (the turn takes 3.12s, then it stays ~0.4s). */
-const BLIND_REVEAL_MS = 3560;
+/** An ordinary face-down card: a quick flip (`blind-turn`, 0.7s) and a short hold; no caption, the pile says the rest. */
+const BLIND_REVEAL_MS = 1050;
 /** The card turn itself (`win-turn` in index.css): sounds and the turn hand-over wait for it. */
 const TURN_MS = 3120;
 /** The winning / a later finisher's card: the turn plus a short hold. */
@@ -533,6 +533,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     card: number;
     label: string;
     winner: boolean;
+    /** An ordinary face-down card: a fast flip with no caption (the last card of a player keeps the slow one). */
+    quick?: boolean;
     /** Who played the card that is turning over. */
     by: string;
   } | null>(null);
@@ -721,15 +723,13 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     } else if (ev.kind === 'blind' && ev.cards.length > 0) {
       // Every face-down card is turned over in the middle of the screen first (the same flip as the
       // winning card), playable or not; the game carries on behind it afterwards.
-      const who = latest.current.nameOf(ev.playerId);
       const card = ev.cards[0] as Card;
       setReveal({
         card,
         winner: false,
+        quick: true,
         by: ev.playerId,
-        label: `${who} ${who === 'You' ? 'flip' : 'flips'} ${cardLabel(card)}${
-          ev.failed ? ' · too low!' : ev.burned ? ' · burns 🔥' : ''
-        }`,
+        label: '',
       });
       clearTimeout(revealTimer.current);
       setHiddenOut(ev.cards);
@@ -1453,7 +1453,14 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
         {intro && <RulesIntro mode={view.mode} rules={view.rules} onDone={closeIntro} />}
         {tutorial && !intro && <KarmaTutorial onDone={closeTutorial} />}
         {fourBurn && <FourBurn cards={fourBurn} ms={FOUR_BURN_MS} />}
-        {reveal && <WinReveal card={reveal.card} label={reveal.label} winner={reveal.winner} />}
+        {reveal && (
+          <WinReveal
+            card={reveal.card}
+            label={reveal.label}
+            winner={reveal.winner}
+            quick={reveal.quick}
+          />
+        )}
       </div>
     </CardFlipContext.Provider>
   );

@@ -15,10 +15,13 @@ export function WinReveal({
   card,
   label,
   winner,
+  quick = false,
 }: {
   card: number;
   label: string;
   winner: boolean;
+  /** A plain face-down card: fast flip, light dimming, no caption. */
+  quick?: boolean;
 }) {
   const reduced = prefersReducedMotion();
   const pieces = useMemo(
@@ -37,7 +40,7 @@ export function WinReveal({
   );
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-black/55"
+      className={`pointer-events-none fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 ${quick ? 'bg-black/30' : 'bg-black/55'}`}
       data-testid="win-reveal"
       data-winner={winner}
       aria-hidden
@@ -64,7 +67,7 @@ export function WinReveal({
         ))}
       <div style={{ perspective: '700px' }}>
         <div
-          className={reduced ? 'relative' : 'win-card'}
+          className={reduced ? 'relative' : quick ? 'blind-card' : 'win-card'}
           style={{ width: '110px', height: '154px' }}
         >
           {!reduced && (
@@ -77,13 +80,15 @@ export function WinReveal({
           </div>
         </div>
       </div>
-      <p
-        className={`label rounded-md border-2 border-neon bg-panel px-4 py-2 text-sm text-ink ${
-          reduced ? '' : 'win-label'
-        }`}
-      >
-        {label}
-      </p>
+      {!quick && (
+        <p
+          className={`label rounded-md border-2 border-neon bg-panel px-4 py-2 text-sm text-ink ${
+            reduced ? '' : 'win-label'
+          }`}
+        >
+          {label}
+        </p>
+      )}
     </div>
   );
 }
