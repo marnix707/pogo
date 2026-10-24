@@ -5,14 +5,13 @@ import type { ComponentType } from 'react';
 import type { GameUiProps } from '../games/types';
 import { Confetti } from '../components/Confetti';
 import { TopoBackground } from '../components/TopoBackground';
-import { Button, Sheet } from '../components/ui';
+import { Avatar, Button, Sheet } from '../components/ui';
 import { RegisterNudge } from '../components/RegisterNudge';
 import { ChatPanel } from '../components/ChatPanel';
 import { ArrowLeftIcon, ChatIcon } from '../components/icons';
 import { TileButton, TopBar } from '../components/TopBar';
 import { getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
-import { AvatarFace } from '../components/AvatarFace';
 import { haptic } from '../lib/haptics';
 import { play } from '../lib/sound';
 
@@ -109,9 +108,7 @@ function ResultsPanel({
                   }`}
                   style={delay(HEAD_S + i * ROW_S)}
                 >
-                  <span className="shrink-0 self-center text-xl leading-none" aria-hidden>
-                    <AvatarFace avatar={m?.avatar ?? ''} />
-                  </span>
+                  <Avatar avatar={m?.avatar ?? ''} size="sm" />
                   <span className="min-w-0 truncate text-xl font-bold">
                     <PlayerName name={m?.nickname ?? 'Player'} />
                     {isMe && ' (you)'}

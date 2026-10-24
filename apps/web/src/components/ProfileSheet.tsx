@@ -17,7 +17,7 @@ import {
 } from '../lib/session';
 import { rememberRecoverySaved } from '../lib/players';
 import { AvatarFace } from './AvatarFace';
-import { Button, Sheet } from './ui';
+import { Avatar as AvatarTile, Button, Sheet } from './ui';
 
 export type ProfileMode = 'main' | 'register' | 'login';
 type Step =
@@ -171,9 +171,7 @@ export function ProfileSheet({
 
           {!user.isGuest && (
             <div className="flex items-center gap-3">
-              <span className="hud flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden text-4xl">
-                <AvatarFace avatar={user.avatar} fill />
-              </span>
+              <AvatarTile avatar={user.avatar} size="lg" />
               <div className="flex flex-1 flex-col gap-2">
                 <input
                   ref={file}

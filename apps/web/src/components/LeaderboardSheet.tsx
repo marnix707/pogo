@@ -3,8 +3,7 @@ import { useEffect, useState } from 'react';
 import type { LeaderboardRow } from '@pogo/shared';
 import { gameUis } from '../games/registry';
 import { fetchLeaderboard } from '../lib/session';
-import { AvatarFace } from './AvatarFace';
-import { Sheet } from './ui';
+import { Avatar, Sheet } from './ui';
 
 export function LeaderboardSheet({
   open,
@@ -83,9 +82,7 @@ export function LeaderboardSheet({
                   }`}
                 >
                   <span className="w-6 text-center font-bold">{i + 1}</span>
-                  <span className="flex h-8 w-8 items-center justify-center overflow-hidden text-xl">
-                    <AvatarFace avatar={r.avatar} fill />
-                  </span>
+                  <Avatar avatar={r.avatar} size="sm" />
                   <span className="min-w-0 flex-1 font-bold leading-tight [overflow-wrap:anywhere]">
                     <PlayerName name={r.nickname} />
                   </span>

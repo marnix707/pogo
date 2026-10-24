@@ -4,10 +4,9 @@ import type { PublicRoomSummary } from '@pogo/shared';
 import { gameUis, getGameUi } from '../games/registry';
 import type { GameUi } from '../games/types';
 import type { RoomApi } from '../lib/api';
-import { AvatarFace } from './AvatarFace';
 import { GameCard } from './GameCard';
 import { PlayerName } from './PlayerName';
-import { Button, SectionLabel } from './ui';
+import { Avatar, Button, SectionLabel } from './ui';
 
 function OpenGame({
   room,
@@ -24,12 +23,7 @@ function OpenGame({
   const ui = getGameUi(room.gameId);
   return (
     <li data-testid={`open-game-${room.code}`} className="hud flex items-center gap-3 px-3 py-2.5">
-      <span
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px] border-2 border-neon bg-panel2 text-2xl"
-        aria-hidden
-      >
-        <AvatarFace avatar={room.hostAvatar} />
-      </span>
+      <Avatar avatar={room.hostAvatar} size="md" />
       <div className="min-w-0 flex-1">
         <div className="truncate font-bold">
           <PlayerName name={room.hostNickname} />

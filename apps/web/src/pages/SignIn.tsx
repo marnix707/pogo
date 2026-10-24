@@ -4,7 +4,7 @@ import { AVATARS } from '@pogo/shared';
 import type { AuthResponse } from '@pogo/shared';
 import { Wordmark } from '../components/PogoStage';
 import frogOnStick from '../assets/sprites/brand/frog-pogo.svg';
-import { Button } from '../components/ui';
+import { Avatar, Button } from '../components/ui';
 import { AvatarFace } from '../components/AvatarFace';
 import { forgetPlayer, readPlayers } from '../lib/players';
 import type { SavedPlayer } from '../lib/players';
@@ -228,9 +228,7 @@ export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) 
                   onClick={() => void continueAs(p)}
                   className="hud flex min-w-0 flex-1 items-center gap-3 p-2.5 text-left disabled:opacity-50"
                 >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center text-3xl">
-                    <AvatarFace avatar={p.avatar} />
-                  </span>
+                  <Avatar avatar={p.avatar} size="md" />
                   <span className="min-w-0 flex-1 truncate font-bold">
                     Continue as <PlayerName name={p.nickname} />
                   </span>
