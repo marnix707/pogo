@@ -47,10 +47,10 @@ const GHOST_MS = 1100;
 /** An ordinary face-down card: a quick flip (`blind-turn`, 0.7s) and a short hold; no caption, the pile says the rest. */
 const BLIND_REVEAL_MS = 1050;
 /** The card turn itself (`win-turn` in index.css): sounds and the turn hand-over wait for it. */
-const TURN_MS = 3120;
+const TURN_MS = 2500;
 /** The winning / a later finisher's card: the turn plus a short hold. */
-const WIN_REVEAL_MS = 5200;
-const OUT_REVEAL_MS = 3700;
+const WIN_REVEAL_MS = 4580;
+const OUT_REVEAL_MS = 3080;
 /** After a reveal is gone, moves stay locked this long so every animation has finished. */
 const SETTLE_MS = 400;
 /** A four-of-a-kind burn gets a bigger show: the four cards side by side, dimmed table, then the fire. */

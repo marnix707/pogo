@@ -8,7 +8,7 @@
  */
 export const REVEAL_BASE_MS = 700;
 /** The last face-down card's turn (`TURN_MS` in KarmaGame) plus a beat: keep the two in step. */
-export const AFTER_LAST_CARD_MS = 3120 + 300;
+export const AFTER_LAST_CARD_MS = 2500 + 300;
 /** One card turning: the back shrinks to a line, then the face grows back (`card-*` in index.css). */
 export const REVEAL_FLIP_MS = 700;
 /** How long the turned-over cards stay in view before the results cover the table. */

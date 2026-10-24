@@ -318,7 +318,7 @@ export function GameScreen({
           title={ui.resultsTitle?.(room, me)}
           showScores={!ui.hideScores}
           account={account}
-          confetti={!ui.ownFanfare}
+          confetti
         />
       )}
 

@@ -36,7 +36,7 @@ export const karmaUi: GameUi = {
     // is left from the moment that card has turned, and the standings wait until it is all seen.
     const ev = view?.lastEvent;
     const blindOut = !!ev?.out && ev.kind === 'blind';
-    const blind = blindOut ? (view!.finishOrder[0] === ev.playerId ? 5500 : 4000) : 0;
+    const blind = blindOut ? (view!.finishOrder[0] === ev.playerId ? 4880 : 3380) : 0;
     const n = leftoverCount(view?.leftovers);
     const leftovers = n > 0 ? revealTotalMs(n, revealStartMs(blindOut)) + REVEAL_HOLD_MS : 0;
     return Math.max(blind, leftovers);

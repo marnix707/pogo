@@ -28,7 +28,7 @@ describe('leftover reveal timing', () => {
 
   it('starts after a last face-down card has finished turning (the confetti), else soon', () => {
     expect(revealStartMs(true)).toBe(AFTER_LAST_CARD_MS);
-    expect(revealStartMs(true)).toBeGreaterThan(3120);
+    expect(revealStartMs(true)).toBeGreaterThan(2500);
     expect(revealStartMs(false)).toBe(REVEAL_BASE_MS);
   });
 

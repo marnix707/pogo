@@ -691,7 +691,7 @@ export const karmaGame: GameDefinition<KarmaState, KarmaMove, KarmaOptions, Karm
     if (!ev) return 0;
     // The client's reveal (turn + short hold) plus the beat it waits afterwards (KarmaGame SETTLE_MS).
     // Only face-down cards are turned over; a last card from hand or face-up needs no wait.
-    if (ev.out && ev.kind === 'blind') return state.finishOrder[0] === ev.playerId ? 5600 : 4100;
+    if (ev.out && ev.kind === 'blind') return state.finishOrder[0] === ev.playerId ? 4980 : 3480;
     return ev.kind === 'blind' && !ev.out ? 1450 : 0;
   },
   supportsBots: true,

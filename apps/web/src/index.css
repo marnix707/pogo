@@ -315,8 +315,8 @@ button {
   position: relative;
   transform-style: preserve-3d;
   animation:
-    win-turn 3.12s cubic-bezier(0.22, 0.8, 0.3, 1) both,
-    win-glow 1.4s ease-in-out 3.12s infinite;
+    win-turn 2.5s cubic-bezier(0.22, 0.8, 0.3, 1) both,
+    win-glow 1.4s ease-in-out 2.5s infinite;
 }
 /* An ordinary face-down card: one quick turn, no pause, no glow. */
 @keyframes blind-turn {
@@ -345,8 +345,8 @@ button {
   transform: rotateY(180deg);
 }
 .win-label {
-  /* Only once the card has finished turning over (win-turn is 3.12s). */
-  animation: win-label-in 0.5s ease-out 3.12s both;
+  /* Only once the card has finished turning over (win-turn is 2.5s). */
+  animation: win-label-in 0.5s ease-out 2.5s both;
 }
 .confetti {
   position: absolute;
