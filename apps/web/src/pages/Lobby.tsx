@@ -178,6 +178,8 @@ export function Lobby({
     0,
     (getGame(room.gameId)?.minPlayers ?? 1) - room.members.length - room.bots,
   );
+  // The host of a game with computers who lacks players: the button adds a Robo instead of readying up.
+  const addRobo = seatsShort > 0 && !!getGame(room.gameId)?.supportsBots && isHost;
   const secondsToStart = useCountdown(room.startsAt, room.serverTime);
   const ui = getGameUi(room.gameId);
   const limits = getGame(room.gameId);
@@ -539,16 +541,18 @@ export function Lobby({
             <Button
               className="min-w-0 flex-1 whitespace-nowrap"
               data-testid="lobby-ready"
-              variant={iAmReady ? 'secondary' : 'primary'}
-              aria-pressed={iAmReady}
+              variant={iAmReady && !addRobo ? 'secondary' : 'primary'}
+              aria-pressed={addRobo ? undefined : iAmReady}
+              data-mode={addRobo ? 'add-robo' : 'ready'}
               disabled={!api.online}
-              onClick={() => void api.ready(!iAmReady)}
+              onClick={() =>
+                void (addRobo ? api.updateSettings({ bots: room.bots + 1 }) : api.ready(!iAmReady))
+              }
             >
               {/* The ready count lives inside the button: "Ready 1/3", then the countdown. */}
-              {iAmReady && <span aria-hidden>✓ </span>}
+              {iAmReady && !addRobo && <span aria-hidden>✓ </span>}
               <span data-testid="lobby-ready-count">
-                {seatsShort > 0 && limits?.supportsBots ? 'Add Robo 🤖' : 'Ready'} {readyCount}/
-                {room.members.length + room.bots}
+                {addRobo ? 'Add Robo 🤖' : 'Ready'} {readyCount}/{room.members.length + room.bots}
               </span>
               {secondsToStart !== null && (
                 <span data-testid="lobby-countdown" aria-live="polite">
