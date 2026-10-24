@@ -191,6 +191,8 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
   const [pendingWild, setPendingWild] = useState<lastcard.Card | null>(null);
   /** Hold two cards on my turn and arm UNO!: the next card is played together with it. */
   const [armed, setArmed] = useState(false);
+  // Like Karma: the first tap selects (lifts) a card, tapping the selected card again plays it.
+  const [selected, setSelected] = useState<lastcard.Card | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout>>();
   const flashHint = (message: string) => {
@@ -306,6 +308,7 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
   };
   const tapCard = (card: lastcard.Card) => {
     if (!myTurn) {
+      setSelected(null);
       flashHint('Wait for your turn');
       return;
     }
@@ -322,9 +325,15 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
         flashHint(`Stack a Draw Two or Four, or draw ${view.pending} cards`);
       else flashHint('That card does not match');
       haptic('error');
+      setSelected(null);
       return;
     }
     haptic('tap');
+    if (selected !== card) {
+      setSelected(card);
+      return;
+    }
+    setSelected(null);
     if (lastcard.isWild(card)) setPendingWild(card);
     else playCard(card);
   };
@@ -462,6 +471,12 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
     if (ev.reversed) setRing(ev.seq);
   }, [ev]);
 
+  // A new move (or the turn passing) drops the selection.
+  const moveSeq = view.lastEvent?.seq ?? 0;
+  useEffect(() => {
+    setSelected(null);
+  }, [moveSeq, myTurn]);
+
   const unoState = urgent ? 'urgent' : armed ? 'armed' : 'idle';
   const event = describe(view.lastEvent, nameOf, me);
 
@@ -471,6 +486,10 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
         className="relative flex h-full min-h-0 flex-col"
         data-testid="lastcard-game"
         data-phase={view.phase}
+        // Tapping anywhere that is not a button drops the selection (as in Karma).
+        onClick={(e) => {
+          if (!(e.target as HTMLElement).closest('button')) setSelected(null);
+        }}
       >
         <div className="flex gap-2 px-3 pb-2">
           {opponents.map((p) => (
@@ -605,7 +624,9 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
                     card={c}
                     size={handFont}
                     dimmed={myTurn && !canPlay(c)}
-                    glow={view.drawn === c}
+                    glow={view.drawn === c || (selected === c && myTurn)}
+                    lifted={selected === c && myTurn}
+                    data-selected={selected === c}
                     data-playable={canPlay(c)}
                     onClick={() => tapCard(c)}
                     flip={{

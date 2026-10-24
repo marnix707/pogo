@@ -9,6 +9,7 @@ async function takeUnoTurn(page: Page) {
   const playable = page.locator('[data-testid^=lastcard-card-][data-playable=true]').first();
   if (await playable.count()) {
     await playable.click(STRIP); // neighbouring cards overlap: tap the visible left strip
+    await playable.click(STRIP); // the first tap selects, the second plays
     const picker = page.getByTestId('lastcard-color-picker');
     if (await picker.isVisible()) await page.getByTestId('lastcard-color-0').click();
     return;

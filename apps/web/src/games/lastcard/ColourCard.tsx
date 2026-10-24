@@ -36,6 +36,7 @@ export function ColourCard({
   style?: CSSProperties;
   'data-testid'?: string;
   'data-playable'?: boolean;
+  'data-selected'?: boolean;
 }) {
   const ref = useRef<HTMLElement>(null);
   useCardFlip(ref, flip);
