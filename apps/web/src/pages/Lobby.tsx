@@ -459,7 +459,7 @@ export function Lobby({
                   <li
                     key={m.id}
                     data-testid={`member-${m.nickname}`}
-                    className="hud calm flex items-center gap-3 px-3 py-2.5"
+                    className="hud calm flex items-center gap-3 !bg-panel/80 px-3 py-2.5"
                   >
                     <Avatar avatar={m.avatar} dim={!m.connected} />
                     <div className="min-w-0 flex-1">
@@ -505,7 +505,7 @@ export function Lobby({
                   <li
                     key={`bot-${i}`}
                     data-testid={`bot-seat-${i + 1}`}
-                    className="hud calm flex items-center gap-3 px-3 py-2.5"
+                    className="hud calm flex items-center gap-3 !bg-panel/80 px-3 py-2.5"
                   >
                     <Avatar avatar={BOT_AVATAR} />
                     <div className="min-w-0 flex-1">
