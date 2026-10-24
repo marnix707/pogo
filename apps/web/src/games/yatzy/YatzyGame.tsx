@@ -107,7 +107,8 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
   }, [myTurn]);
 
   async function roll() {
-    if (busy) return;
+    // (No accidental double roll: the button is greyed out until the dice have stopped.)
+    if (busy || !settled) return;
     setBusy(true);
     await sendMove({ type: 'roll', held });
     setBusy(false);
@@ -325,7 +326,7 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
                 <Button
                   data-testid="roll-button"
                   className="relative min-h-11 flex-1 overflow-hidden !px-3"
-                  disabled={busy || state.rollsLeft === 0 || (rolled && allHeld)}
+                  disabled={busy || !settled || state.rollsLeft === 0 || (rolled && allHeld)}
                   onClick={roll}
                 >
                   {/* The turn clock as a draining bar inside the button. */}
