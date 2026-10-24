@@ -77,9 +77,13 @@ const optionsSchema = z
 export const handSizeFor = (rules: readonly string[] | undefined): number =>
   hasRule(rules, 'bigHand') ? BIG_HAND_SIZE : HAND_SIZE;
 
-/** The rules a game starts with: none, all of them (epic) or the ones earned so far (party). */
-function rulesFor(options: KarmaOptions): string[] {
-  if (options.mode === 'epic') return KARMA_RULES.map((r) => r.id);
+/**
+ * The rules a game starts with: none, all of them (epic) or the ones earned so far (party). In epic the
+ * jokers only join when more than two play (people + computers): with two they just mean "play again".
+ */
+export function rulesFor(options: KarmaOptions, seats: number): string[] {
+  if (options.mode === 'epic')
+    return KARMA_RULES.filter((r) => r.id !== 'jokers' || seats > 2).map((r) => r.id);
   if (options.mode === 'party') return options.rules.filter((id) => ruleById(id));
   return [];
 }
@@ -185,7 +189,7 @@ function createInitialState(players: GamePlayer[], options: KarmaOptions, rng: R
   if (players.length < MIN_PLAYERS || players.length > MAX_PLAYERS) {
     throw new Error(`Karma needs ${MIN_PLAYERS}-${MAX_PLAYERS} players`);
   }
-  const rules = rulesFor(options);
+  const rules = rulesFor(options, players.length);
   const ids = players.map((p) => p.id);
   // Party mode, round 2 and later: before anything is dealt, the winner of the last game sets the
   // rules (the hand size depends on them, so the cards are dealt when they confirm).

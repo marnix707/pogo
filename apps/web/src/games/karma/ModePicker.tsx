@@ -44,9 +44,14 @@ function Bubble({
 export function ModePicker({ room, isHost, setOptions }: LobbyOptionsProps) {
   const options = (room.options ?? {}) as { mode?: karma.KarmaMode; rules?: string[] };
   const mode = options.mode ?? 'normal';
+  const seats = room.members.length + room.bots;
   // The rules that are on; Party and Epic list every rule (the ones that are off are greyed out).
   const active =
-    mode === 'epic' ? KARMA_RULES.map((r) => r.id) : mode === 'party' ? (options.rules ?? []) : [];
+    mode === 'epic'
+      ? karma.rulesFor({ mode: 'epic', rules: [], round: 1 }, seats)
+      : mode === 'party'
+        ? (options.rules ?? [])
+        : [];
   const listed = mode === 'normal' ? [] : KARMA_RULES.map((r) => r.id);
   const [shown, setShown] = useState<string | null>(null);
   const toggle = (key: string) => setShown((s) => (s === key ? null : key));

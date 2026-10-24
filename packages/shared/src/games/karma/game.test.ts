@@ -1313,6 +1313,15 @@ describe('fast reload', () => {
   });
 });
 
+describe('epic mode and the jokers', () => {
+  it('jokers only join an epic game with more than two seats', () => {
+    const epic: KarmaOptions = { mode: 'epic', rules: [], round: 1 };
+    const rulesOf = (n: number) => game.createInitialState(seat(n), epic, createSeededRng(3)).rules;
+    expect(rulesOf(2)).toEqual(['bigHand', 'echoThree', 'fastReload']);
+    expect(rulesOf(3)).toEqual(['bigHand', 'echoThree', 'fastReload', 'jokers']);
+  });
+});
+
 describe('joker returns', () => {
   const JOKER_A = 52;
   const JOKER_B = 53;

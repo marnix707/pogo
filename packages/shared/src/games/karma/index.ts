@@ -8,4 +8,5 @@ export {
   effectiveTop,
   activeZone,
   findStarter,
+  rulesFor,
 } from './game';
