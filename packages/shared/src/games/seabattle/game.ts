@@ -63,9 +63,11 @@ const err = (error: string): MoveValidation => ({ ok: false, error });
 const OK: MoveValidation = { ok: true };
 
 /** Milliseconds the clients spend on the coin flip that decides who starts. */
-export const COIN_FLIP_MS = 3600;
+export const COIN_FLIP_MS = 2800;
 /** Time the bomb + blast take to play out on a client. */
 export const SHOT_FX_MS = 1500;
+/** Extra time when a shot sinks a ship: the explosions along it, the wreck going down, the banner. */
+export const SINK_MS = 1800;
 
 function createInitialState(
   players: GamePlayer[],
@@ -283,7 +285,7 @@ export const seaBattleGame: GameDefinition<
     state.phase === 'play' && state.shotCount === 0
       ? COIN_FLIP_MS
       : state.lastEvent
-        ? SHOT_FX_MS
+        ? SHOT_FX_MS + (state.lastEvent.result === 'sunk' ? SINK_MS : 0)
         : 0,
   supportsBots: true,
 };

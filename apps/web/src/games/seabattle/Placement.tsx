@@ -62,7 +62,8 @@ export function PlacementBoard({
     const [cx, cy] = cellAt(e);
     const ship = fleet.find((s) => seabattle.shipCells(s).some(([x, y]) => x === cx && y === cy));
     if (!ship) return;
-    ref.current!.setPointerCapture(e.pointerId);
+    // Capture on the layer that owns these handlers, or the moves and the release never reach them.
+    e.currentTarget.setPointerCapture(e.pointerId);
     setDrag({
       kind: ship.kind,
       grabX: cx - ship.x,
@@ -93,12 +94,22 @@ export function PlacementBoard({
       // Dropped on top of another ship: back to where it came from.
       if (seabattle.overlaps(current, fleet)) onChange(replace(drag.from));
     } else {
-      // A tap turns the ship around its first square, if it still fits.
-      const turned = clampShip({ ...drag.from, vertical: !drag.from.vertical });
-      if (seabattle.overlaps(turned, fleet)) {
+      // A tap turns the ship around its middle, if it still fits (else around its first square).
+      const len = seabattle.shipLength(drag.from.kind);
+      const half = Math.floor((len - 1) / 2);
+      const around = drag.from.vertical
+        ? { ...drag.from, vertical: false, x: drag.from.x - half, y: drag.from.y + half }
+        : { ...drag.from, vertical: true, x: drag.from.x + half, y: drag.from.y - half };
+      const options = [
+        clampShip(around),
+        clampShip({ ...drag.from, vertical: !drag.from.vertical }),
+      ];
+      const turned = options.find((o) => !seabattle.overlaps(o, fleet));
+      if (turned) onChange(replace(turned));
+      else {
         setShake(true);
         setTimeout(() => setShake(false), 300);
-      } else onChange(replace(turned));
+      }
     }
     setDrag(null);
     setBad(null);

@@ -17,7 +17,7 @@ export function CoinFlip({
   iStart: boolean;
 }) {
   // An even number of half turns lands on the front (me), an odd number on the back.
-  const turns = iStart ? '1800deg' : '1980deg';
+  const turns = iStart ? '1440deg' : '1260deg';
   return (
     <div
       className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-10 bg-black/65"

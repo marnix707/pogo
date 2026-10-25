@@ -17,7 +17,8 @@ const { FLEET, isSunk } = seabattle;
 
 /** The radar sweep that reveals the ships nobody found, and when it starts after the last bomb. */
 export const RADAR_MS = 3200;
-export const RADAR_DELAY_MS = seabattle.SHOT_FX_MS;
+// The last shot always sinks the last ship, so the radar waits for the bomb and the sinking.
+export const RADAR_DELAY_MS = seabattle.SHOT_FX_MS + seabattle.SINK_MS;
 
 const nameOfShip = (kind: seabattle.ShipKind) => FLEET.find((f) => f.kind === kind)?.name ?? kind;
 
@@ -78,24 +79,46 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
   }, []);
 
   const [fx, setFx] = useState<{ board: 'enemy' | 'mine'; shot: ShotFxState } | null>(null);
+  // A ship that was just sunk: its explosions, banner and wreck play after the bomb has landed.
+  const [sink, setSink] = useState<{ board: 'enemy' | 'mine'; ship: seabattle.Ship } | null>(null);
+  const pendingSink = useRef<{ board: 'enemy' | 'mine'; ship: seabattle.Ship } | null>(null);
+  const sinkTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(sinkTimer.current), []);
   const seenSeq = useRef(view.lastEvent?.seq ?? 0);
   const startedOver = useRef(view.phase === 'over');
   const ev = view.lastEvent;
   useEffect(() => {
     if (!ev || ev.seq === seenSeq.current) return;
     seenSeq.current = ev.seq;
-    setAim(null);
     const hit = ev.result !== 'miss';
     setFx({ board: ev.by === me ? 'enemy' : 'mine', shot: { seq: ev.seq, x: ev.x, y: ev.y, hit } });
     play('whistle');
+    if (ev.result === 'sunk' && ev.sunk) {
+      const mine = ev.by === me;
+      const ship = (mine ? view.sunk : view.myShips).find((s) => s.kind === ev.sunk);
+      pendingSink.current = ship ? { board: mine ? 'enemy' : 'mine', ship } : null;
+    }
     const land = setTimeout(() => {
       play(hit ? 'boom' : 'splash');
       if (ev.by !== me && hit) haptic('error');
       else haptic('tap');
     }, BOMB_FRAMES * BOMB_FRAME_MS);
     return () => clearTimeout(land);
+    // (Only a new event counts; the ships are read from the view that came with it.)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ev, me]);
-  const fxDone = useCallback(() => setFx(null), []);
+  const fxDone = useCallback(() => {
+    setFx(null);
+    setAim(null);
+    const next = pendingSink.current;
+    pendingSink.current = null;
+    if (!next) return;
+    setSink(next);
+    play('sink');
+    haptic('error');
+    clearTimeout(sinkTimer.current);
+    sinkTimer.current = setTimeout(() => setSink(null), seabattle.SINK_MS);
+  }, []);
 
   // The radar sweeps the sea when the game ends while we watch.
   const [radarOn, setRadarOn] = useState(false);
@@ -108,7 +131,7 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
 
   // ---- aiming --------------------------------------------------------------------------------------
   const [aim, setAim] = useState<{ x: number; y: number } | null>(null);
-  const locked = coin || fx !== null || finished;
+  const locked = coin || fx !== null || sink !== null || finished;
   const send = async (move: unknown) => {
     if (busy) return;
     setBusy(true);
@@ -119,17 +142,13 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
   const tapCell = (x: number, y: number) => {
     if (!myTurn || locked) return;
     if (view.outgoing.some((s) => s.x === x && s.y === y)) return;
-    if (aim && aim.x === x && aim.y === y) {
-      void fire(x, y);
-      return;
-    }
-    haptic('tap');
-    play('tap');
-    setAim({ x, y });
+    // One tap fires. The reticle sits on the square while the bomb is on its way.
+    void fire(x, y);
   };
   const fire = async (x: number, y: number) => {
+    setAim({ x, y });
     const res = await send({ type: 'fire', x, y });
-    if (res?.ok) setAim(null);
+    if (!res?.ok) setAim(null);
   };
 
   // ---- sizes ----------------------------------------------------------------------------------------
@@ -144,7 +163,13 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
   const mini = Math.max(8, Math.floor(cell / 2));
 
   // ---- what to draw ----------------------------------------------------------------------------------
-  const enemyShips: DrawnShip[] = view.sunk.map((ship) => ({ ship, sunk: true }));
+  const going = (board: 'enemy' | 'mine', ship: seabattle.Ship) =>
+    sink?.board === board && sink.ship.kind === ship.kind;
+  const enemyShips: DrawnShip[] = view.sunk.map((ship) => ({
+    ship,
+    sunk: !going('enemy', ship),
+    sinking: going('enemy', ship),
+  }));
   const revealedShips: seabattle.Ship[] = view.revealed;
   const radar =
     finished && radarOn
@@ -153,7 +178,8 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
   if (finished && !radarOn) for (const ship of revealedShips) enemyShips.push({ ship });
   const myShipsDrawn: DrawnShip[] = view.myShips.map((ship) => ({
     ship,
-    sunk: isSunk(ship, view.incoming),
+    sunk: isSunk(ship, view.incoming) && !going('mine', ship),
+    sinking: going('mine', ship),
   }));
 
   const eventText = (() => {
@@ -174,7 +200,7 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
       return view.winner === me ? 'You sank the whole fleet!' : 'Your fleet is lost.';
     }
     if (coin) return 'Who starts?';
-    if (myTurn) return aim ? 'Tap again (or Fire!) to launch' : 'Your turn: pick a square';
+    if (myTurn) return 'Your turn: tap a square to fire';
     return `${nameOf(view.turn)} is aiming…`;
   })();
 
@@ -295,7 +321,8 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
               hideShot={fx?.board === 'enemy' ? fx.shot : null}
               fx={fx?.board === 'enemy' ? fx.shot : null}
               onFxDone={fxDone}
-              target={myTurn && !locked ? aim : null}
+              sinking={sink?.board === 'enemy' ? sink.ship : null}
+              target={aim}
               radar={radar}
               onCell={myTurn && !locked ? tapCell : undefined}
             />
@@ -319,33 +346,8 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
               hideShot={fx?.board === 'mine' ? fx.shot : null}
               fx={fx?.board === 'mine' ? fx.shot : null}
               onFxDone={fxDone}
+              sinking={sink?.board === 'mine' ? sink.ship : null}
             />
-            <div className="mt-auto w-full max-w-sm pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-              <Button
-                className="relative min-h-14 w-full overflow-hidden"
-                variant={myTurn ? 'primary' : 'secondary'}
-                disabled={!myTurn || locked || !aim || busy}
-                onClick={() => aim && void fire(aim.x, aim.y)}
-                data-testid="sb-fire"
-              >
-                <TimerDrain
-                  deadline={game.deadline}
-                  serverTime={room.serverTime}
-                  totalSec={room.turnTimeSec}
-                  urgent={secondsLeft !== null && secondsLeft <= 10}
-                  active={myTurn}
-                />
-                <span className="relative">
-                  {finished
-                    ? 'Game over'
-                    : myTurn
-                      ? aim
-                        ? 'Fire!'
-                        : 'Pick a square'
-                      : `${nameOf(view.turn)}…`}
-                </span>
-              </Button>
-            </div>
           </>
         )}
       </div>

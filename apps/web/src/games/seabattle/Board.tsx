@@ -29,6 +29,8 @@ export interface DrawnShip {
   bad?: boolean;
   /** A ship being dragged. */
   lifted?: boolean;
+  /** The ship that has just been sunk: it shakes and darkens before the wreck shows. */
+  sinking?: boolean;
 }
 
 export interface ShotFxState {
@@ -86,6 +88,60 @@ function BombFx({ fx, cell, onDone }: { fx: ShotFxState; cell: number; onDone: (
   );
 }
 
+/** A ship going down: a chain of blasts along its squares and a banner over the sea. */
+function SinkFx({ ship, cell }: { ship: seabattle.Ship; cell: number }) {
+  const [t, setT] = useState(0);
+  useEffect(() => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const start = performance.now();
+    const id = setInterval(() => setT(performance.now() - start), 40);
+    return () => clearInterval(id);
+  }, []);
+  const cells = seabattle.shipCells(ship);
+  const name = seabattle.FLEET.find((f) => f.kind === ship.kind)?.name ?? 'Ship';
+  return (
+    <div className="pointer-events-none absolute inset-0 z-20" data-testid="sb-sinking">
+      {cells.map(([x, y], i) => {
+        const frame = Math.floor((t - i * 130) / BLAST_FRAME_MS);
+        if (frame < 0 || frame >= EXPLOSION_FRAMES) return null;
+        return (
+          <img
+            key={`${x}-${y}`}
+            src={explosionUrl(frame)}
+            alt=""
+            draggable={false}
+            className="absolute"
+            style={{
+              ...pixel,
+              left: x * cell - cell / 2,
+              top: y * cell - cell / 2,
+              width: cell * 2,
+              height: cell * 2,
+            }}
+          />
+        );
+      })}
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <div className="sunk-pop flex flex-col items-center gap-1" data-testid="sb-sunk-banner">
+          <span
+            className="font-bold leading-none text-[#ff6a5f]"
+            style={{
+              fontSize: Math.max(28, cell * 1.7),
+              textShadow: '0.07em 0.07em 0 #101628, 0 0 0.35em #000',
+              WebkitTextStroke: '0.04em #101628',
+            }}
+          >
+            SUNK!
+          </span>
+          <span className="label rounded-md border-2 border-line bg-panel px-2 py-0.5 text-xs text-ink">
+            {name}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * The radar that shows where the last hidden ships were: a green scope with rings, a sweeping beam,
  * and each ship blips into view when the beam passes over it.
@@ -127,32 +183,27 @@ function Radar({
         className="radar-sweep absolute"
         style={{ left: center - size, top: center - size, width: size * 2, height: size * 2 }}
       />
-      {ships.map((ship) => {
-        const cells = seabattle.shipCells(ship);
-        const cx = cells.reduce((n, [x]) => n + x + 0.5, 0) / cells.length - BOARD / 2;
-        const cy = cells.reduce((n, [, y]) => n + y + 0.5, 0) / cells.length - BOARD / 2;
-        // Clockwise from the top, as the beam travels.
-        const angle = (Math.atan2(cx, -cy) + Math.PI * 2) % (Math.PI * 2);
-        const hitAt = delayMs + (angle / (Math.PI * 2)) * durationMs;
-        return (
+      {/* The hidden ships sit in a layer that a conic mask opens with the beam: a ship shows exactly as far as
+          the arm has swept over it (the mask angle runs 0 to 360 degrees in step with the sweep). */}
+      <div className="radar-reveal absolute inset-0" data-testid="sb-radar-ships">
+        {ships.map((ship) => (
           <img
             key={ship.kind}
             src={shipUrl(ship.kind, ship.vertical)}
             alt=""
             draggable={false}
             data-testid={`sb-radar-ship-${ship.kind}`}
-            className="radar-blip absolute"
+            className="absolute"
             style={{
               ...pixel,
               left: ship.x * cell,
               top: ship.y * cell,
               width: (ship.vertical ? 1 : seabattle.shipLength(ship.kind)) * cell,
               height: (ship.vertical ? seabattle.shipLength(ship.kind) : 1) * cell,
-              animationDelay: `${hitAt}ms`,
             }}
           />
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
 }
@@ -165,6 +216,7 @@ export function Board({
   hideShot = null,
   fx = null,
   onFxDone,
+  sinking = null,
   target = null,
   radar = null,
   onCell,
@@ -181,6 +233,8 @@ export function Board({
   hideShot?: { x: number; y: number } | null;
   fx?: ShotFxState | null;
   onFxDone?: () => void;
+  /** A ship that was just sunk on this sea: the blasts and the banner play over it. */
+  sinking?: seabattle.Ship | null;
   target?: { x: number; y: number } | null;
   radar?: { ships: seabattle.Ship[]; delayMs: number; durationMs: number } | null;
   /** Makes every square a button (for aiming). */
@@ -219,7 +273,7 @@ export function Board({
         touchAction: 'none',
       }}
     >
-      {ships.map(({ ship, sunk, bad, lifted }) => {
+      {ships.map(({ ship, sunk, bad, lifted, sinking: going }) => {
         const len = seabattle.shipLength(ship.kind);
         return (
           <img
@@ -229,7 +283,7 @@ export function Board({
             draggable={false}
             data-testid={`sb-ship-${ship.kind}`}
             data-sunk={!!sunk}
-            className="pointer-events-none absolute"
+            className={`pointer-events-none absolute ${going ? 'ship-sinking' : ''}`}
             style={{
               ...pixel,
               left: ship.x * cell,
@@ -286,6 +340,7 @@ export function Board({
           }}
         />
       )}
+      {sinking && <SinkFx ship={sinking} cell={cell} />}
       {fx && <BombFx fx={fx} cell={cell} onDone={() => onFxDone?.()} />}
       {radar && <Radar cell={cell} {...radar} />}
       {onCell &&

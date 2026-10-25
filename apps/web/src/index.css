@@ -1194,10 +1194,29 @@ html.results-open .safe-top-scrim {
     radar-spin var(--radar-ms, 3200ms) linear var(--radar-delay, 0ms) both,
     radar-fade-out 500ms ease-in calc(var(--radar-delay, 0ms) + var(--radar-ms, 3200ms)) forwards;
 }
-.radar-blip {
-  opacity: 0;
+/* Ships that the beam has touched: a conic mask opens clockwise from the top, exactly as far as the beam. */
+@property --radar-a {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+.radar-reveal {
   filter: drop-shadow(0 0 4px rgba(120, 255, 170, 0.95));
-  animation: radar-ping 700ms ease-out both;
+  -webkit-mask-image: conic-gradient(
+    from 0deg at 50% 50%,
+    #000 var(--radar-a),
+    transparent var(--radar-a)
+  );
+  mask-image: conic-gradient(from 0deg at 50% 50%, #000 var(--radar-a), transparent var(--radar-a));
+  animation: radar-wipe var(--radar-ms, 3200ms) linear var(--radar-delay, 0ms) both;
+}
+@keyframes radar-wipe {
+  from {
+    --radar-a: 0deg;
+  }
+  to {
+    --radar-a: 360deg;
+  }
 }
 @keyframes radar-fade-in {
   from {
@@ -1223,34 +1242,18 @@ html.results-open .safe-top-scrim {
     opacity: 0;
   }
 }
-@keyframes radar-ping {
-  0% {
-    opacity: 0;
-    transform: scale(1.5);
-  }
-  30% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
 /* The coin toss that decides who starts: it flies up, spins and lands on a player's face. */
 .coin-toss {
   transform-style: preserve-3d;
-  animation: coin-toss 2.4s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  /* Up and slowing down, then it simply stays up there showing the one who starts (no fall back down). */
+  animation: coin-toss 1.5s cubic-bezier(0.1, 0.7, 0.25, 1) both;
 }
 @keyframes coin-toss {
   0% {
     transform: translateY(0) rotateY(0deg) scale(0.9);
   }
-  45% {
-    transform: translateY(-5.5rem) rotateY(calc(var(--turns, 1800deg) * 0.55)) scale(1.25);
-  }
   100% {
-    transform: translateY(0) rotateY(var(--turns, 1800deg)) scale(1);
+    transform: translateY(-3rem) rotateY(var(--turns, 1800deg)) scale(1.25);
   }
 }
 @keyframes coin-name-in {
@@ -1264,7 +1267,7 @@ html.results-open .safe-top-scrim {
   }
 }
 .coin-name {
-  animation: coin-name-in 0.5s ease-out 2.4s both;
+  animation: coin-name-in 0.4s ease-out 1.5s both;
 }
 @media (prefers-reduced-motion: reduce) {
   .coin-toss,
@@ -1276,8 +1279,70 @@ html.results-open .safe-top-scrim {
   .radar-sweep {
     display: none;
   }
-  .radar-blip {
+  .radar-reveal {
     animation: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+
+/* A ship going down: it shakes and darkens, then the wreck takes its place; a banner pops over the sea. */
+.ship-sinking {
+  animation: ship-sink 1.5s ease-in forwards;
+}
+@keyframes ship-sink {
+  0% {
+    transform: translate(0, 0);
+    filter: none;
+  }
+  10% {
+    transform: translate(-2px, 1px);
+  }
+  20% {
+    transform: translate(2px, -1px);
+  }
+  30% {
+    transform: translate(-2px, -1px);
+  }
+  40% {
+    transform: translate(2px, 1px);
+  }
+  50% {
+    transform: translate(0, 0);
+    filter: brightness(0.8);
+  }
+  100% {
+    transform: scale(0.93);
+    filter: brightness(0.3) saturate(0.4);
+    opacity: 0.55;
+  }
+}
+.sunk-pop {
+  animation: sunk-pop 1.7s ease-out both;
+}
+@keyframes sunk-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) rotate(-6deg);
+  }
+  18% {
     opacity: 1;
+    transform: scale(1.15) rotate(-3deg);
+  }
+  30% {
+    transform: scale(1) rotate(-3deg);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1) rotate(-3deg) translateY(-0.5rem);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ship-sinking,
+  .sunk-pop {
+    animation: none !important;
   }
 }

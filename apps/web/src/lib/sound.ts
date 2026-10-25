@@ -1,7 +1,21 @@
 import { getSettings } from './settings';
 
 export type SoundName =
-  'tap' | 'roll' | 'score' | 'turn' | 'win' | 'error' | 'gun' | 'crunch' | 'deal' | 'hurry' | 'whistle' | 'boom' | 'splash' | 'ping';
+  | 'tap'
+  | 'roll'
+  | 'score'
+  | 'turn'
+  | 'win'
+  | 'error'
+  | 'gun'
+  | 'crunch'
+  | 'deal'
+  | 'hurry'
+  | 'whistle'
+  | 'boom'
+  | 'splash'
+  | 'ping'
+  | 'sink';
 
 let ctx: AudioContext | undefined;
 
@@ -130,7 +144,14 @@ export function play(name: SoundName) {
       for (let i = 0; i < 6; i++) tone(c, 90 + Math.random() * 120, i * 0.05, 0.08, 'square', 0.06);
       break;
     case 'splash':
-      for (let i = 0; i < 5; i++) tone(c, 700 + Math.random() * 500, i * 0.035, 0.06, 'triangle', 0.05);
+      for (let i = 0; i < 5; i++)
+        tone(c, 700 + Math.random() * 500, i * 0.035, 0.06, 'triangle', 0.05);
+      break;
+    case 'sink':
+      // A ship going down: two blasts and a long falling groan.
+      sweep(c, 'sawtooth', 140, 35, 0, 0.35, 0.14);
+      sweep(c, 'sawtooth', 120, 30, 0.25, 0.4, 0.12);
+      sweep(c, 'triangle', 420, 70, 0.5, 1.1, 0.07);
       break;
     case 'ping':
       tone(c, 1320, 0, 0.22, 'sine', 0.09);
