@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { seabattle } from '@pogo/shared';
 import type { GameUiProps } from '../types';
-import { Button, TimerDrain } from '../../components/ui';
+import { Avatar, Button, TimerDrain } from '../../components/ui';
+import { PlayerName } from '../../components/PlayerName';
 import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
 import { useCountdown } from '../../lib/useCountdown';
 import { useTimeWarning } from '../../lib/useTimeWarning';
-import { BOMB_FRAMES, BOMB_FRAME_MS, bombMs, shipUrl } from './art';
+import { BOMB_FRAMES, BOMB_FRAME_MS, bombMs } from './art';
 import { Board } from './Board';
 import type { DrawnShip, ShotFxState } from './Board';
 import { CoinFlip } from './CoinFlip';
@@ -19,34 +20,6 @@ export const RADAR_MS = 3200;
 export const RADAR_DELAY_MS = seabattle.SHOT_FX_MS;
 
 const nameOfShip = (kind: seabattle.ShipKind) => FLEET.find((f) => f.kind === kind)?.name ?? kind;
-
-/** The five ships as small icons: a wreck once it is sunk. */
-function FleetStrip({ label, sunk, testId }: { label: string; sunk: Set<string>; testId: string }) {
-  return (
-    <div className="flex flex-col gap-1" data-testid={testId}>
-      <span className="label text-[10px] text-onbg/80">{label}</span>
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        {FLEET.map((f) => (
-          <img
-            key={f.kind}
-            src={shipUrl(f.kind, false, sunk.has(f.kind))}
-            alt={f.name}
-            title={f.name}
-            data-sunk={sunk.has(f.kind)}
-            draggable={false}
-            style={{
-              imageRendering: 'pixelated',
-              width: f.length * 8,
-              height: 8,
-              maxWidth: 'none',
-              opacity: sunk.has(f.kind) ? 0.7 : 1,
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function useBoxSize(ref: React.RefObject<HTMLElement>) {
   const [size, setSize] = useState({ w: 360, h: 560 });
@@ -163,7 +136,7 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
   const placing = view.phase === 'place';
   const cell = useMemo(() => {
     const byWidth = Math.floor((w - 24) / 10);
-    const chrome = placing ? 190 : 250;
+    const chrome = placing ? 250 : 250;
     const byHeight = placing ? Math.floor((h - chrome) / 10) : Math.floor((h - chrome) / 15);
     const c = Math.max(16, Math.min(32, byWidth, byHeight));
     return placing ? c : c - (c % 2);
@@ -171,8 +144,6 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
   const mini = Math.max(8, Math.floor(cell / 2));
 
   // ---- what to draw ----------------------------------------------------------------------------------
-  const enemySunk = new Set(view.sunk.map((s) => s.kind));
-  const mySunk = new Set(view.myShips.filter((s) => isSunk(s, view.incoming)).map((s) => s.kind));
   const enemyShips: DrawnShip[] = view.sunk.map((ship) => ({ ship, sunk: true }));
   const revealedShips: seabattle.Ship[] = view.revealed;
   const radar =
@@ -207,6 +178,50 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
     return `${nameOf(view.turn)} is aiming…`;
   })();
 
+  const timerTotal = room.turnTimeSec;
+  const contender = (id: string, mine: boolean) => {
+    const m = memberOf(id);
+    const active = !finished && (placing ? !view.ready[id] : view.turn === id);
+    return (
+      <div
+        className="flex min-w-0 flex-1 flex-col items-center gap-1"
+        data-testid={`sb-player-${mine ? 'me' : 'opponent'}`}
+        data-active={active}
+      >
+        {/* The turn clock of whoever is up, as a small draining bar (like the reference game). */}
+        <div className="relative h-2 w-20 overflow-hidden rounded-full bg-black/35">
+          {active && timerTotal > 0 && (
+            <TimerDrain
+              deadline={game.deadline}
+              serverTime={room.serverTime}
+              totalSec={timerTotal}
+              urgent={secondsLeft !== null && secondsLeft <= 10}
+              active
+            />
+          )}
+        </div>
+        <span
+          className={
+            active ? 'rounded-[8px] ring-2 ring-neon ring-offset-2 ring-offset-transparent' : ''
+          }
+        >
+          <Avatar avatar={m?.avatar ?? 'fox'} size="md" />
+        </span>
+        <span className="max-w-full truncate text-sm font-bold text-onbg">
+          <PlayerName name={m?.nickname ?? (mine ? 'You' : 'Opponent')} />
+        </span>
+        {placing && view.ready[id] && (
+          <span
+            className="label text-[10px] text-neon"
+            data-testid={`sb-ready-${mine ? 'me' : 'opponent'}`}
+          >
+            ✓ Ready
+          </span>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div
       className="relative flex h-full min-h-0 flex-col"
@@ -214,12 +229,12 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
       data-phase={view.phase}
     >
       <div ref={area} className="flex min-h-0 flex-1 flex-col items-center gap-2 px-3 pb-2">
-        <p
-          className="label min-h-[1.25rem] pt-1 text-center text-sm text-onbg"
-          data-testid="sb-status"
-        >
-          {status}
-        </p>
+        {/* Who plays whom: me, VS, the opponent. The one who is up has the gold ring and the clock. */}
+        <div className="flex w-full max-w-sm items-start justify-center gap-2 pt-1">
+          {contender(me, true)}
+          <span className="label self-center pt-3 text-xl text-onbg">VS</span>
+          {contender(view.opponent, false)}
+        </div>
 
         {placing ? (
           <>
@@ -229,6 +244,9 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
               onChange={setFleet}
               locked={iAmReady || busy}
             />
+            <p className="label text-center text-sm text-onbg" data-testid="sb-status">
+              {status}
+            </p>
             <p className="max-w-[20rem] text-center text-xs text-onbg/80">
               {iAmReady
                 ? 'Your fleet is in position.'
@@ -269,42 +287,39 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
           </>
         ) : (
           <>
-            <div className="relative">
-              <Board
-                cell={cell}
-                testId="sb-enemy-board"
-                ships={enemyShips}
-                shots={view.outgoing}
-                hideShot={fx?.board === 'enemy' ? fx.shot : null}
-                fx={fx?.board === 'enemy' ? fx.shot : null}
-                onFxDone={fxDone}
-                target={myTurn && !locked ? aim : null}
-                radar={radar}
-                onCell={myTurn && !locked ? tapCell : undefined}
-              />
+            <Board
+              cell={cell}
+              testId="sb-enemy-board"
+              ships={enemyShips}
+              shots={view.outgoing}
+              hideShot={fx?.board === 'enemy' ? fx.shot : null}
+              fx={fx?.board === 'enemy' ? fx.shot : null}
+              onFxDone={fxDone}
+              target={myTurn && !locked ? aim : null}
+              radar={radar}
+              onCell={myTurn && !locked ? tapCell : undefined}
+            />
+            <div className="min-h-[2.75rem] text-center" aria-live="polite">
+              <p
+                className="text-sm font-bold text-onbg"
+                data-testid="sb-event"
+                data-seq={view.shotCount}
+              >
+                {eventText}
+              </p>
+              <p className="label text-[11px] text-onbg/80" data-testid="sb-status">
+                {status}
+              </p>
             </div>
-            <p
-              className="min-h-[1.25rem] text-center text-sm text-onbg"
-              data-testid="sb-event"
-              data-seq={view.shotCount}
-            >
-              {eventText}
-            </p>
-            <div className="flex w-full max-w-sm items-start gap-3">
-              <Board
-                cell={mini}
-                testId="sb-my-board"
-                ships={myShipsDrawn}
-                shots={view.incoming}
-                hideShot={fx?.board === 'mine' ? fx.shot : null}
-                fx={fx?.board === 'mine' ? fx.shot : null}
-                onFxDone={fxDone}
-              />
-              <div className="flex min-w-0 flex-1 flex-col gap-2">
-                <FleetStrip label="Enemy fleet" sunk={enemySunk} testId="sb-enemy-fleet" />
-                <FleetStrip label="Your fleet" sunk={mySunk} testId="sb-my-fleet" />
-              </div>
-            </div>
+            <Board
+              cell={mini}
+              testId="sb-my-board"
+              ships={myShipsDrawn}
+              shots={view.incoming}
+              hideShot={fx?.board === 'mine' ? fx.shot : null}
+              fx={fx?.board === 'mine' ? fx.shot : null}
+              onFxDone={fxDone}
+            />
             <div className="mt-auto w-full max-w-sm pb-[max(0.5rem,env(safe-area-inset-bottom))]">
               <Button
                 className="relative min-h-14 w-full overflow-hidden"

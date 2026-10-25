@@ -16,8 +16,8 @@ import {
   shipUrl,
   splashUrl,
   targetUrl,
-  waterUrl,
 } from './art';
+import { BOARD_ART_PX, boardUrl } from './art';
 import { useFrame } from './useFrame';
 
 const { BOARD } = seabattle;
@@ -192,7 +192,7 @@ export function Board({
   /** Pointer handlers on a transparent layer over the sea (placing ships by dragging). */
   overlayProps?: React.HTMLAttributes<HTMLDivElement>;
 }) {
-  const water = useFrame(400);
+  const animated = !matchMedia('(prefers-reduced-motion: reduce)').matches;
   const flame = useFrame(100);
   const reticle = useFrame(300);
   const size = cell * BOARD;
@@ -209,11 +209,13 @@ export function Board({
         width: size,
         height: size,
         boxSizing: 'content-box',
-        backgroundImage: `url(${waterUrl(water)})`,
-        backgroundSize: `${cell}px ${cell}px`,
+        // The artist's animated board (waves + grid lines): 161 art px = 10 cells and the closing line.
+        backgroundImage: `url(${boardUrl(animated)})`,
+        backgroundSize: `${(BOARD_ART_PX * cell) / 16}px ${(BOARD_ART_PX * cell) / 16}px`,
+        backgroundRepeat: 'no-repeat',
         imageRendering: 'pixelated',
-        borderRight: `${line}px solid #101628`,
-        borderBottom: `${line}px solid #101628`,
+        paddingRight: line,
+        paddingBottom: line,
         touchAction: 'none',
       }}
     >

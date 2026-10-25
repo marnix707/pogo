@@ -17,8 +17,8 @@ const ships = load(
     import: 'default',
   }) as Urls,
 );
-const tiles = load(
-  import.meta.glob('../../assets/sprites/battle/tiles/*.svg', {
+const boards = load(
+  import.meta.glob('../../assets/sprites/battle/board/*.svg', {
     eager: true,
     query: '?url',
     import: 'default',
@@ -45,9 +45,10 @@ const two = (n: number) => String(n).padStart(2, '0');
 export const shipUrl = (kind: seabattle.ShipKind, vertical: boolean, sunk = false): string =>
   ships[`${kind}${sunk ? '-sunk' : ''}-${vertical ? 'v' : 'h'}`] ?? '';
 
-export const WATER_FRAMES = 4;
-export const waterUrl = (frame: number): string =>
-  tiles[`water-grid-${two(frame % WATER_FRAMES)}`] ?? '';
+/** The sea with its grid (161 x 161 art px: 10 cells of 16 plus the closing line). The animated file loops its own waves. */
+export const BOARD_ART_PX = 161;
+export const boardUrl = (animated: boolean): string =>
+  (animated ? boards['board-animated'] : boards['board-00']) ?? '';
 
 export const BURN_FRAMES = 8;
 export const burnUrl = (frame: number): string => markers[`burn-${two(frame % BURN_FRAMES)}`] ?? '';
@@ -71,7 +72,7 @@ export const bombMs = (hit: boolean): number =>
 /** Every ship picture, so they can be loaded up front. */
 export const allArt = (): string[] => [
   ...Object.values(ships),
-  ...Object.values(tiles),
+  ...Object.values(boards),
   ...Object.values(markers),
   ...Object.values(fx),
 ];
