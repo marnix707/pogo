@@ -32,8 +32,12 @@ services:
       WEB_PORT: ${WEB_PORT:-5173}
       DATABASE_URL: ${DATABASE_URL:-postgresql://pogo:pogo_dev_password@db:5432/pogo?schema=public}
       DIRECT_URL: ${DIRECT_URL:-${DATABASE_URL:-postgresql://pogo:pogo_dev_password@db:5432/pogo?schema=public}}
-      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-dev-only-change-me}
+      JWT_SECRET: '${JWT_SECRET:?JWT_SECRET is missing - run make env to create .env}'
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      # The emailed-code mailbox endpoint (GET /api/dev/last-mail) exists only when this is 1 (local e2e); `make up-lan` turns it off.
+      DEV_MAILBOX: ${DEV_MAILBOX:-1}
+      # How many proxies sit in front (production only; see render.yaml). Unset = trust X-Forwarded-For fully.
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       HOST_LAN_IPS: ${HOST_LAN_IPS:-}
       DISCONNECT_GRACE_SEC: ${DISCONNECT_GRACE_SEC:-20}
@@ -58,7 +62,8 @@ services:
       MAIL_FROM: ${MAIL_FROM:-POGO <no-reply@pogo.local>}
       CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING:-true}
     ports:
-      - '${SERVER_PORT:-3000}:3000'
+      # Local only by default (`make up`); `make up-lan` binds all interfaces for phone testing.
+      - '${BIND_ADDR:-127.0.0.1}:${SERVER_PORT:-3000}:3000'
     volumes:
       - .:/app
       # Keep node_modules inside the container; never share with the host.
@@ -84,7 +89,7 @@ services:
       API_PROXY_TARGET: ${API_PROXY_TARGET:-http://server:3000}
       CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING:-true}
     ports:
-      - '${WEB_PORT:-5173}:5173'
+      - '${BIND_ADDR:-127.0.0.1}:${WEB_PORT:-5173}:5173'
     volumes:
       - .:/app
       - /app/node_modules

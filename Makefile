@@ -3,16 +3,20 @@ export HOST_LAN_IPS := $(shell ./scripts/lan-ips.sh)
 RUN := docker compose run --rm --no-deps -w /app server
 
 .DEFAULT_GOAL := help
-.PHONY: help env up down logs ps urls test e2e lint typecheck format migrate db-reset db-shell shell lock clean
+.PHONY: help env up up-lan down logs ps urls test e2e lint typecheck format migrate db-reset db-shell shell lock clean
 
 help: ## Show this help
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
 
-env: ## Create .env from .env.example if missing
-	@test -f .env || (cp .env.example .env && echo "Created .env from .env.example")
+env: ## Create .env from .env.example if missing (with a random JWT secret)
+	@test -f .env || (cp .env.example .env && sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$$(openssl rand -hex 32)|" .env && echo "Created .env from .env.example")
 
 up: env ## Build and start everything (detached), then print URLs
 	docker compose up --build --renew-anon-volumes -d --wait
+	@$(MAKE) --no-print-directory urls
+
+up-lan: env ## Like `up`, but reachable from your phone on the Wi-Fi (trusted networks only)
+	BIND_ADDR=0.0.0.0 DEV_MAILBOX=0 docker compose up --build --renew-anon-volumes -d --wait
 	@$(MAKE) --no-print-directory urls
 
 down: ## Stop everything (keeps the database volume)

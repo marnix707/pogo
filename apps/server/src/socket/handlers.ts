@@ -28,6 +28,7 @@ import type { BanList } from '../admin/moderation';
 import type { TokenService } from '../auth/tokens';
 import type { UserStore } from '../auth/userStore';
 import type { RoomManager } from '../rooms/RoomManager';
+import { forwardedClientIp } from '../clientIp';
 import { createRateLimiter } from './rateLimit';
 
 export interface SocketData {
@@ -53,13 +54,16 @@ interface Deps {
   bans: BanList;
   /** Read the client address from X-Forwarded-For (behind the host's proxy). */
   trustProxy: boolean;
+  /** Proxies in front of the server (see clientIp.ts); unset = trust the whole header. */
+  trustProxyHops?: number;
   log: FastifyBaseLogger;
 }
 
-function socketIp(socket: Socket | PogoSocket, trustProxy: boolean): string | null {
-  const forwarded = socket.handshake.headers['x-forwarded-for'];
-  const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim();
-  return (trustProxy && first) || socket.handshake.address || null;
+function socketIp(socket: Socket | PogoSocket, trustProxy: boolean, hops?: number): string | null {
+  const client = trustProxy
+    ? forwardedClientIp(socket.handshake.headers['x-forwarded-for'], hops)
+    : null;
+  return client || socket.handshake.address || null;
 }
 
 export function registerSocketHandlers({
@@ -69,6 +73,7 @@ export function registerSocketHandlers({
   tokens,
   bans,
   trustProxy,
+  trustProxyHops,
   log,
 }: Deps): void {
   io.use(async (socket, next) => {
@@ -77,7 +82,7 @@ export function registerSocketHandlers({
     const user = userId ? await users.get(userId) : null;
     if (!user) return next(new Error('unauthorized'));
     // Banned accounts (and, except for staff, banned IP addresses) are turned away.
-    const ip = socketIp(socket, trustProxy);
+    const ip = socketIp(socket, trustProxy, trustProxyHops);
     const ban = bans.forUser(user.id) ?? (isStaff(user) ? null : bans.forIp(ip));
     if (ban)
       return next(Object.assign(new Error('banned'), { data: { message: banMessage(ban) } }));

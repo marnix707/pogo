@@ -24,6 +24,7 @@ import { registerAuthRoutes } from './http/authRoutes';
 import { createBrevoMailer, createLogMailer, createSmtpMailer } from './mail/mailer';
 import type { Mailer } from './mail/mailer';
 import { recordFinishedGame } from './stats/record';
+import { registerSecurityHeaders } from './http/securityHeaders';
 import { registerStatic } from './http/static';
 import { RoomManager } from './rooms/RoomManager';
 import { LOBBY_CHANNEL, registerSocketHandlers, userChannel } from './socket/handlers';
@@ -52,8 +53,14 @@ export async function buildApp(deps: AppDeps) {
   const { config } = deps;
   // Behind Render's proxy the real client IP is in X-Forwarded-For; without this every user
   // would share one rate-limit bucket.
-  const app = Fastify({ logger: deps.logger ?? false, trustProxy: config.isProd });
+  const trustProxy: boolean | ((address: string, hop: number) => boolean) = !config.isProd
+    ? false
+    : config.trustProxyHops === undefined
+      ? true
+      : (_address, hop) => hop < config.trustProxyHops!;
+  const app = Fastify({ logger: deps.logger ?? false, trustProxy });
 
+  registerSecurityHeaders(app, { production: config.isProd, webDistDir: config.webDistDir });
   await app.register(cors, { origin: config.corsOrigins });
   // Only the API is rate limited; static assets are not.
   await app.register(rateLimit, {
@@ -171,7 +178,7 @@ export async function buildApp(deps: AppDeps) {
     devEmails: config.devEmails,
     limitScale: config.isProd ? 1 : 100,
     // Handy for tests and local development; never in production.
-    devMailbox: useLog && !config.isProd ? logMailer : undefined,
+    devMailbox: useLog && !config.isProd && (config.devMailbox ?? true) ? logMailer : undefined,
   });
   if (config.webDistDir) await registerStatic(app, config.webDistDir);
 
@@ -229,6 +236,7 @@ export async function buildApp(deps: AppDeps) {
     tokens,
     bans,
     trustProxy: config.isProd,
+    trustProxyHops: config.trustProxyHops,
     log: app.log,
   });
   registerAdminRoutes(app, {

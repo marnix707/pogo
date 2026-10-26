@@ -39,6 +39,10 @@ const schema = z.object({
   /** Comma separated emails that become admin when they register or log in. */
   ADMIN_EMAILS: z.string().default(''),
   DEV_EMAILS: z.string().default(''),
+  /** `GET /api/dev/last-mail` (emailed codes for e2e); only ever outside production and with MAIL_MODE=log. */
+  DEV_MAILBOX: z.enum(['0', '1']).default('0'),
+  /** Proxies in front of the server (Render). Unset = trust the whole X-Forwarded-For header (spoofable). */
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(1).max(5).optional(),
 });
 
 /**
@@ -94,6 +98,9 @@ export interface AppConfig {
   /** Lowercase emails that become admin on register/login (optional in tests). */
   adminEmails?: string[];
   devEmails?: string[];
+  devMailbox?: boolean;
+  /** Number of trusted proxies in front of the server; undefined = trust X-Forwarded-For fully. */
+  trustProxyHops?: number;
 }
 
 const list = (value: string) =>
@@ -108,6 +115,12 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     throw new Error('MAIL_MODE=smtp needs SMTP_HOST (plus SMTP_PORT, SMTP_USER, SMTP_PASSWORD)');
   if (env.MAIL_MODE === 'brevo' && !env.BREVO_API_KEY)
     throw new Error('MAIL_MODE=brevo needs BREVO_API_KEY');
+  // The dev secrets are public (the repo and .env.example): a production server must never run with them.
+  if (
+    env.NODE_ENV === 'production' &&
+    /dev-only|change-?me|^(secret|password)/i.test(env.JWT_SECRET)
+  )
+    throw new Error('JWT_SECRET looks like a development placeholder: set a long random value');
   const origins = list(env.CORS_ORIGINS);
   return {
     nodeEnv: env.NODE_ENV,
@@ -134,5 +147,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     mailFrom: env.MAIL_FROM,
     adminEmails: list(env.ADMIN_EMAILS).map((e) => e.toLowerCase()),
     devEmails: list(env.DEV_EMAILS).map((e) => e.toLowerCase()),
+    devMailbox: env.DEV_MAILBOX === '1',
+    trustProxyHops: env.TRUST_PROXY_HOPS,
   };
 }

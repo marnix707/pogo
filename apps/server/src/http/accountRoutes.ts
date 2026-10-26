@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
-import { mailFailure } from '../errors';
+import { AppError, mailFailure } from '../errors';
 import type { FastifyInstance } from 'fastify';
 import {
   deleteAccountSchema,
@@ -26,6 +26,12 @@ import { authenticate } from './authRoutes';
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const MAX_CODE_ATTEMPTS = 5;
+/** At most this many codes per address and purpose per hour (each new code is five more guesses). */
+const MAX_CODES_PER_HOUR = 3;
+/** This many wrong passwords for one account within the window lock logging in to it for the window. */
+const MAX_LOGIN_FAILS = 10;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const TOO_MANY = 'Too many attempts. Please wait a minute and try again.';
 export const MAX_AVATAR_BYTES = 80_000;
 /** Looks like nothing real, so a login for an unknown email costs the same as a wrong password. */
 const DUMMY_HASH = `${'00'.repeat(16)}:${'00'.repeat(64)}`;
@@ -109,6 +115,17 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
       app.log.warn({ err }, 'audit log write failed');
     }
   };
+  /** When codes were sent per address + purpose, and wrong passwords per address (in memory: one instance). */
+  const codesSent = new Map<string, number[]>();
+  const loginFails = new Map<string, number[]>();
+  const recent = (map: Map<string, number[]>, key: string, windowMs: number) => {
+    const t = now();
+    const list = (map.get(key) ?? []).filter((at) => t - at < windowMs);
+    if (list.length) map.set(key, list);
+    else map.delete(key);
+    if (map.size > 10_000) map.clear(); // never grows without bound
+    return list;
+  };
   const tight = (max: number) => ({
     config: { rateLimit: { max: max * (deps.limitScale ?? 1), timeWindow: '1 minute' } },
   });
@@ -126,6 +143,13 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
     userId: string | null,
     who: PublicUser | null,
   ) {
+    const key = `${purpose}:${email}`;
+    const sent = recent(codesSent, key, 60 * 60 * 1000);
+    if (sent.length >= MAX_CODES_PER_HOUR) {
+      await note('code-throttled', who, `${purpose} code to ${mask(email)}`);
+      throw new AppError(429, 'NET-003', TOO_MANY);
+    }
+    codesSent.set(key, [...sent, now()]);
     const code = newCode();
     await users.putCode(email, purpose, {
       codeHash: hashCode(deps.secret, email, code),
@@ -189,9 +213,15 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
   app.post('/api/auth/login', tight(10), async (req, reply) => {
     const input = parse(loginSchema, req.body);
     if (!input.ok) return reply.code(400).send({ error: input.error });
+    const failKey = input.data.email;
+    if (recent(loginFails, failKey, LOGIN_WINDOW_MS).length >= MAX_LOGIN_FAILS) {
+      await note('login-locked', null, mask(input.data.email));
+      return reply.code(429).send({ error: TOO_MANY });
+    }
     const found = await users.getByEmail(input.data.email);
     const ok = await verifyPassword(input.data.password, found?.passwordHash ?? DUMMY_HASH);
     if (!found || !found.passwordHash || !ok) {
+      loginFails.set(failKey, [...recent(loginFails, failKey, LOGIN_WINDOW_MS), now()]);
       await note('login-failed', found?.user ?? null, mask(input.data.email));
       return reply.code(401).send({ error: 'Wrong email or password' });
     }
@@ -210,7 +240,12 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
     // Same answer whether or not the address has an account.
     if (found?.passwordHash) {
       await note('reset-requested', found.user, mask(input.data.email));
-      await sendCode(input.data.email, 'reset', found.user.id, found.user);
+      try {
+        await sendCode(input.data.email, 'reset', found.user.id, found.user);
+      } catch (err) {
+        // Throttled: the answer stays the same, or it would tell whether the address has an account.
+        if (!(err instanceof AppError && err.statusCode === 429)) throw err;
+      }
     }
     return { ok: true };
   });
