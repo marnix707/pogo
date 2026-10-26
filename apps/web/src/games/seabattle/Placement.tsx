@@ -37,6 +37,10 @@ export function PlacementBoard({
   const ref = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [bad, setBad] = useState<seabattle.ShipKind | null>(null);
+  // While dragging the ship moves only here (a cheap local render); the game screen hears about it on drop.
+  const [live, setLive] = useState<seabattle.Ship | null>(null);
+  const liveRef = useRef<seabattle.Ship | null>(null);
+  const shown = live ? fleet.map((s) => (s.kind === live.kind ? live : s)) : fleet;
   const [shake, setShake] = useState(false);
 
   const cellAt = (e: React.PointerEvent): [number, number] => {
@@ -82,17 +86,22 @@ export function PlacementBoard({
     if (!moved) return;
     const [cx, cy] = cellAt(e);
     const next = clampShip({ ...drag.from, x: cx - drag.grabX, y: cy - drag.grabY });
-    setDrag({ ...drag, moved });
-    onChange(replace(next));
+    if (!drag.moved) setDrag({ ...drag, moved });
+    const prev = liveRef.current;
+    if (prev && prev.x === next.x && prev.y === next.y) return; // still on the same square: nothing to redraw
+    liveRef.current = next;
+    setLive(next);
     setBad(seabattle.overlaps(next, fleet) ? drag.kind : null);
   };
 
   const onUp = () => {
     if (!drag) return;
-    const current = fleet.find((s) => s.kind === drag.kind)!;
+    const current = liveRef.current ?? drag.from;
+    liveRef.current = null;
+    setLive(null);
     if (drag.moved) {
       // Dropped on top of another ship: back to where it came from.
-      if (seabattle.overlaps(current, fleet)) onChange(replace(drag.from));
+      if (!seabattle.overlaps(current, fleet)) onChange(replace(current));
     } else {
       // A tap turns the ship around its middle, if it still fits (else around its first square).
       const len = seabattle.shipLength(drag.from.kind);
@@ -115,7 +124,7 @@ export function PlacementBoard({
     setBad(null);
   };
 
-  const drawn: DrawnShip[] = fleet.map((ship) => ({
+  const drawn: DrawnShip[] = shown.map((ship) => ({
     ship,
     lifted: drag?.kind === ship.kind && drag.moved,
     bad: bad === ship.kind,
