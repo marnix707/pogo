@@ -334,7 +334,7 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
             ) : (
               <>
                 {/* The arrow points at whoever is up and sits right next to the seconds: "< 23" / "23 >". */}
-                {view.turn === me && (
+                {timerTotal > 0 && view.turn === me && (
                   <span
                     className="turn-arrow text-base font-bold leading-none text-neon"
                     style={{ ['--nudge' as string]: '-2px' }}
@@ -350,7 +350,7 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
                     {secondsLeft}
                   </span>
                 )}
-                {view.turn !== me && (
+                {timerTotal > 0 && view.turn !== me && (
                   <span
                     className="turn-arrow text-base font-bold leading-none text-neon"
                     style={{ ['--nudge' as string]: '2px' }}
