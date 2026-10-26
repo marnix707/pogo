@@ -225,6 +225,7 @@ export function Board({
   testId,
   dim = false,
   overlayProps,
+  still = false,
 }: {
   cell: number;
   ships?: DrawnShip[];
@@ -245,13 +246,15 @@ export function Board({
   dim?: boolean;
   /** Pointer handlers on a transparent layer over the sea (placing ships by dragging). */
   overlayProps?: React.HTMLAttributes<HTMLDivElement>;
+  /** Draw the still sea (placing ships: an animated background makes dragging stutter on phones). */
+  still?: boolean;
 }) {
-  const animated = !matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const flame = useFrame(100);
-  const reticle = useFrame(300);
+  const animated = !still && !matchMedia('(prefers-reduced-motion: reduce)').matches;
   const size = cell * BOARD;
   const line = Math.max(1, cell / 16);
   const burning = shots.filter((s) => s.hit && !hideShots.some((h) => h.x === s.x && h.y === s.y));
+  const flame = useFrame(100, burning.length > 0);
+  const reticle = useFrame(300, !!target);
   return (
     <div
       ref={boardRef}

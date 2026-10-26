@@ -136,6 +136,7 @@ export function PlacementBoard({
       ships={drawn}
       boardRef={ref}
       testId="sb-place-board"
+      still
       dim={locked}
       overlayProps={{
         onPointerDown: onDown,
