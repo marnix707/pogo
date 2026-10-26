@@ -59,7 +59,7 @@ function BombFx({ fx, cell, onDone }: { fx: ShotFxState; cell: number; onDone: (
         clearInterval(id);
         onDone();
       } else setT(elapsed);
-    }, 30);
+    }, 16);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fx.seq]);
@@ -79,11 +79,10 @@ function BombFx({ fx, cell, onDone }: { fx: ShotFxState; cell: number; onDone: (
       className="pointer-events-none absolute z-20"
       style={{
         ...pixel,
-        // Twice the size of the art's own 2 x 2 squares: the blast fills a 4 x 4 square area.
-        left: fx.x * cell - cell * 1.5,
-        top: fx.y * cell - cell * 1.5,
-        width: cell * 4,
-        height: cell * 4,
+        left: fx.x * cell - cell / 2,
+        top: fx.y * cell - cell / 2,
+        width: cell * 2,
+        height: cell * 2,
       }}
     />
   );
@@ -95,7 +94,7 @@ function SinkFx({ ship, cell }: { ship: seabattle.Ship; cell: number }) {
   useEffect(() => {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const start = performance.now();
-    const id = setInterval(() => setT(performance.now() - start), 40);
+    const id = setInterval(() => setT(performance.now() - start), 16);
     return () => clearInterval(id);
   }, []);
   const cells = seabattle.shipCells(ship);
@@ -103,7 +102,7 @@ function SinkFx({ ship, cell }: { ship: seabattle.Ship; cell: number }) {
   return (
     <div className="pointer-events-none absolute inset-0 z-20" data-testid="sb-sinking">
       {cells.map(([x, y], i) => {
-        const frame = Math.floor((t - i * 70) / BLAST_FRAME_MS);
+        const frame = Math.floor((t - i * 40) / BLAST_FRAME_MS);
         if (frame < 0 || frame >= EXPLOSION_FRAMES) return null;
         return (
           <img
@@ -114,10 +113,10 @@ function SinkFx({ ship, cell }: { ship: seabattle.Ship; cell: number }) {
             className="absolute"
             style={{
               ...pixel,
-              left: x * cell - cell * 1.5,
-              top: y * cell - cell * 1.5,
-              width: cell * 4,
-              height: cell * 4,
+              left: x * cell - cell / 2,
+              top: y * cell - cell / 2,
+              width: cell * 2,
+              height: cell * 2,
             }}
           />
         );
@@ -322,14 +321,7 @@ export function Board({
           alt=""
           draggable={false}
           className="pointer-events-none absolute z-[4]"
-          // The flames are twice as big as the square, centred on it.
-          style={{
-            ...pixel,
-            left: s.x * cell - cell / 2,
-            top: s.y * cell - cell / 2,
-            width: cell * 2,
-            height: cell * 2,
-          }}
+          style={{ ...pixel, left: s.x * cell, top: s.y * cell, width: cell, height: cell }}
         />
       ))}
       {target && (

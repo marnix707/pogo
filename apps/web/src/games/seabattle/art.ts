@@ -58,10 +58,10 @@ export const targetUrl = (frame: number): string => markers[`target-${two(frame 
 
 /** The bomb animation: 4 falling frames (90 ms), then a blast (10 x 80 ms) or a splash (8 x 80 ms). */
 export const BOMB_FRAMES = 4;
-export const BOMB_FRAME_MS = 90;
+export const BOMB_FRAME_MS = 45;
 export const EXPLOSION_FRAMES = 10;
 export const SPLASH_FRAMES = 8;
-export const BLAST_FRAME_MS = 80;
+export const BLAST_FRAME_MS = 40;
 export const bombUrl = (frame: number): string => fx[`bomb-${two(frame)}`] ?? '';
 export const explosionUrl = (frame: number): string => fx[`explosion-${two(frame)}`] ?? '';
 export const splashUrl = (frame: number): string => fx[`splash-${two(frame)}`] ?? '';

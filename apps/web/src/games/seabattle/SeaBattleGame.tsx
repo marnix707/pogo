@@ -24,7 +24,7 @@ export const RADAR_START_MS = 200;
  * The winner watches the last ship go down (bomb + sinking) and "You won!" pops up in the middle of the
  * standings; the loser skips the sinking and goes straight from the bomb to the radar.
  */
-export const END_MS = 3300;
+export const END_MS = 2600;
 
 const nameOfShip = (kind: seabattle.ShipKind) => FLEET.find((f) => f.kind === kind)?.name ?? kind;
 
@@ -286,27 +286,40 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
           {contender(me, true)}
           {/* Between the players: an arrow to whoever is up and, with a turn timer, the seconds left. */}
           <div
-            className="flex w-14 shrink-0 flex-col items-center self-center pt-3"
+            className="flex w-16 shrink-0 items-center justify-center gap-1 self-center pt-3"
             data-testid="sb-turn-arrow"
             data-turn={placing ? 'both' : finished ? 'none' : view.turn === me ? 'me' : 'opponent'}
           >
             {placing || finished ? (
               <span className="label text-xl text-onbg">VS</span>
             ) : (
-              <span
-                className="turn-arrow text-3xl font-bold leading-none text-neon"
-                style={{ ['--nudge' as string]: view.turn === me ? '-3px' : '3px' }}
-              >
-                {view.turn === me ? '◀' : '▶'}
-              </span>
-            )}
-            {!placing && !finished && timerTotal > 0 && secondsLeft !== null && (
-              <span
-                className={`label text-lg leading-none ${secondsLeft <= 10 ? 'text-dangertext' : 'text-onbg'}`}
-                data-testid="sb-countdown"
-              >
-                {secondsLeft}
-              </span>
+              <>
+                {/* The arrow points at whoever is up and sits right next to the seconds: "< 23" / "23 >". */}
+                {view.turn === me && (
+                  <span
+                    className="turn-arrow text-base font-bold leading-none text-neon"
+                    style={{ ['--nudge' as string]: '-2px' }}
+                  >
+                    ◀
+                  </span>
+                )}
+                {timerTotal > 0 && secondsLeft !== null && (
+                  <span
+                    className={`label text-lg leading-none ${secondsLeft <= 10 ? 'text-dangertext' : 'text-onbg'}`}
+                    data-testid="sb-countdown"
+                  >
+                    {secondsLeft}
+                  </span>
+                )}
+                {view.turn !== me && (
+                  <span
+                    className="turn-arrow text-base font-bold leading-none text-neon"
+                    style={{ ['--nudge' as string]: '2px' }}
+                  >
+                    ▶
+                  </span>
+                )}
+              </>
             )}
           </div>
           {contender(view.opponent, false)}

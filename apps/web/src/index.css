@@ -1288,7 +1288,7 @@ html.results-open .safe-top-scrim {
 
 /* A ship going down: it shakes and darkens, then the wreck takes its place; a banner pops over the sea. */
 .ship-sinking {
-  animation: ship-sink 0.9s ease-in forwards;
+  animation: ship-sink 0.75s ease-in forwards;
 }
 @keyframes ship-sink {
   0% {
@@ -1318,7 +1318,7 @@ html.results-open .safe-top-scrim {
   }
 }
 .sunk-pop {
-  animation: sunk-pop 1s ease-out both;
+  animation: sunk-pop 0.85s ease-out both;
 }
 @keyframes sunk-pop {
   0% {

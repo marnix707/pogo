@@ -65,9 +65,9 @@ const OK: MoveValidation = { ok: true };
 /** Milliseconds the clients spend on the coin flip that decides who starts. */
 export const COIN_FLIP_MS = 2800;
 /** Time the bomb + blast take to play out on a client. */
-export const SHOT_FX_MS = 1500;
+export const SHOT_FX_MS = 800;
 /** Extra time when a shot sinks a ship: the explosions along it, the wreck going down, the banner. */
-export const SINK_MS = 1100;
+export const SINK_MS = 900;
 
 function createInitialState(
   players: GamePlayer[],
