@@ -162,7 +162,8 @@ function applyMove(state: SeaBattleState, playerId: PlayerId, move: SeaBattleMov
     ...state,
     players,
     phase: win ? 'over' : 'play',
-    turn: win ? playerId : target.id,
+    // A hit (a sunk ship included) gives another shot; a miss hands the turn over.
+    turn: win || hit ? playerId : target.id,
     winner: win ? playerId : null,
     shotCount: state.shotCount + 1,
     lastEvent: event,
@@ -245,14 +246,14 @@ function autoMove(state: SeaBattleState, playerId: PlayerId, rng: Rng): AutoMove
   const targets = candidates.filter(([x, y]) => free(x, y));
   if (targets.length > 0) {
     const [x, y] = targets[rng.int(targets.length)] as [number, number];
-    return { move: { type: 'fire', x, y }, endsTurn: true };
+    return { move: { type: 'fire', x, y }, endsTurn: !shipAt(target.ships, x, y) };
   }
   const all: [number, number][] = [];
   for (let y = 0; y < BOARD; y++) for (let x = 0; x < BOARD; x++) if (free(x, y)) all.push([x, y]);
   const parity = all.filter(([x, y]) => (x + y) % 2 === 0);
   const pool = parity.length > 0 ? parity : all;
   const [x, y] = pool[rng.int(pool.length)] as [number, number];
-  return { move: { type: 'fire', x, y }, endsTurn: true };
+  return { move: { type: 'fire', x, y }, endsTurn: !shipAt(target.ships, x, y) };
 }
 
 export const seaBattleGame: GameDefinition<

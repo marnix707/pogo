@@ -1346,3 +1346,21 @@ html.results-open .safe-top-scrim {
     animation: none !important;
   }
 }
+
+/* The arrow between the players points at whoever is up and nudges that way. */
+.turn-arrow {
+  animation: turn-arrow 0.8s ease-in-out infinite alternate;
+}
+@keyframes turn-arrow {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(var(--nudge, 3px));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .turn-arrow {
+    animation: none;
+  }
+}

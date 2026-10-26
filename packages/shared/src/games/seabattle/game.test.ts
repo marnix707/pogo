@@ -62,7 +62,7 @@ describe('Sea Battle', () => {
     expect(v.ok).toBe(false);
   });
 
-  it('alternates turns, reports hit / miss / sunk, and never lets you shoot a square twice', () => {
+  it('a miss passes the turn, a hit gives another shot, a sunk ship too; never the same square twice', () => {
     const rng = createSeededRng(3);
     let s = started();
     const me = s.first;
@@ -71,11 +71,14 @@ describe('Sea Battle', () => {
     s = game.applyMove(s, me, { type: 'fire', x: 9, y: 9 }, rng);
     expect(s.lastEvent?.result).toBe('miss');
     expect(s.turn).toBe(other);
-    s = game.applyMove(s, other, { type: 'fire', x: 0, y: 4 }, rng); // destroyer, first cell
+    s = game.applyMove(s, other, { type: 'fire', x: 0, y: 4 }, rng); // destroyer, first square
     expect(s.lastEvent?.result).toBe('hit');
-    s = game.applyMove(s, me, { type: 'fire', x: 9, y: 8 }, rng);
+    expect(s.turn).toBe(other); // a hit: go again
     s = game.applyMove(s, other, { type: 'fire', x: 1, y: 4 }, rng);
     expect(s.lastEvent).toMatchObject({ result: 'sunk', sunk: 'destroyer', win: false });
+    expect(s.turn).toBe(other); // sinking a ship: go again
+    s = game.applyMove(s, other, { type: 'fire', x: 8, y: 8 }, rng); // water
+    expect(s.turn).toBe(me);
     expect(game.validateMove(s, me, { type: 'fire', x: 9, y: 9 }).ok).toBe(false);
   });
 
@@ -85,18 +88,9 @@ describe('Sea Battle', () => {
     s = { ...s, turn: 'a', first: 'a' };
     expect(game.getPlayerView(s, 'a').revealed).toEqual([]);
     expect(game.getPlayerView(s, 'a')).not.toHaveProperty('players');
-    // a sinks all of b's ships; b only ever hits water in the bottom rows.
-    const cells = rows().flatMap(shipCells);
-    cells.forEach(([x, y], i) => {
+    // a sinks all of b's ships in one go (every shot is a hit, so a keeps the turn); b never fires.
+    for (const [x, y] of rows().flatMap(shipCells))
       s = game.applyMove(s, 'a', { type: 'fire', x, y }, rng);
-      if (s.phase !== 'over')
-        s = game.applyMove(
-          s,
-          'b',
-          { type: 'fire', x: i % BOARD, y: 9 - Math.floor(i / BOARD) },
-          rng,
-        );
-    });
     expect(s.phase).toBe('over');
     expect(s.winner).toBe('a');
     expect(s.lastEvent?.win).toBe(true);
@@ -132,7 +126,6 @@ describe('Sea Battle', () => {
     let s = started();
     s = { ...s, turn: 'a', first: 'a' };
     s = game.applyMove(s, 'a', { type: 'fire', x: 2, y: 0 }, rng); // carrier cell
-    s = game.applyMove(s, 'b', { type: 'fire', x: 9, y: 9 }, rng);
     const next = game.autoMove!(s, 'a', rng).move;
     expect(next.type).toBe('fire');
     if (next.type === 'fire') expect(Math.abs(next.x - 2) + Math.abs(next.y - 0)).toBe(1);

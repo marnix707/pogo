@@ -18,8 +18,9 @@ export function SeaBattleRules({ open, onClose }: { open: boolean; onClose: () =
         </li>
         <li>
           <b className="text-neon">Your turn:</b> tap a square on the enemy sea: that is your shot.
-          One shot per turn: it is a hit, a miss, or sinks a ship when every square of it is hit.
-          You are told when a ship goes down, never which one is where.
+          Each shot is a hit, a miss, or sinks a ship when every square of it is hit.{' '}
+          <b>A hit lets you shoot again</b>; a miss passes the turn. You are told when a ship goes
+          down, never which one is where.
         </li>
         <li>
           <b className="text-neon">The end:</b> the first to sink the whole enemy fleet wins. A

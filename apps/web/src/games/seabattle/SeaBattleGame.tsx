@@ -200,9 +200,12 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
     if (!ev) return '';
     const mine = ev.by === me;
     if (ev.result === 'miss') return mine ? 'You missed: only water.' : `${nameOf(ev.by)} missed.`;
-    if (ev.result === 'hit') return mine ? 'Direct hit!' : `${nameOf(ev.by)} hit your ship!`;
+    if (ev.result === 'hit')
+      return mine ? 'Direct hit! Fire again.' : `${nameOf(ev.by)} hit your ship and fires again!`;
     const ship = ev.sunk ? nameOfShip(ev.sunk) : 'ship';
-    return mine ? `You sunk their ${ship}!` : `${nameOf(ev.by)} sunk your ${ship}!`;
+    return mine
+      ? `You sunk their ${ship}! Fire again.`
+      : `${nameOf(ev.by)} sunk your ${ship} and fires again!`;
   })();
 
   const status = (() => {
@@ -273,7 +276,31 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
         {/* Who plays whom: me, VS, the opponent. The one who is up has the gold ring and the clock. */}
         <div className="flex w-full max-w-sm items-start justify-center gap-2 pt-1">
           {contender(me, true)}
-          <span className="label self-center pt-3 text-xl text-onbg">VS</span>
+          {/* Between the players: an arrow to whoever is up and, with a turn timer, the seconds left. */}
+          <div
+            className="flex w-14 shrink-0 flex-col items-center self-center pt-3"
+            data-testid="sb-turn-arrow"
+            data-turn={placing ? 'both' : finished ? 'none' : view.turn === me ? 'me' : 'opponent'}
+          >
+            {placing || finished ? (
+              <span className="label text-xl text-onbg">VS</span>
+            ) : (
+              <span
+                className="turn-arrow text-3xl font-bold leading-none text-neon"
+                style={{ ['--nudge' as string]: view.turn === me ? '-3px' : '3px' }}
+              >
+                {view.turn === me ? '◀' : '▶'}
+              </span>
+            )}
+            {!placing && !finished && timerTotal > 0 && secondsLeft !== null && (
+              <span
+                className={`label text-lg leading-none ${secondsLeft <= 10 ? 'text-dangertext' : 'text-onbg'}`}
+                data-testid="sb-countdown"
+              >
+                {secondsLeft}
+              </span>
+            )}
+          </div>
           {contender(view.opponent, false)}
         </div>
 
