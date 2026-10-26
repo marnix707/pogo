@@ -133,6 +133,12 @@ export async function buildApp(deps: AppDeps) {
     }
     return { developer: credit.developer };
   });
+  // How many people are connected right now (distinct users with an open socket), for the home screen.
+  app.get('/api/online', async () => {
+    let players = 0;
+    for (const name of io.sockets.adapter.rooms.keys()) if (name.startsWith('user:')) players += 1;
+    return { players };
+  });
   app.get('/api/healthz', async () => {
     await deps.healthCheck();
     return { ok: true, app: APP_NAME };

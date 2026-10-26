@@ -12,7 +12,7 @@ import type { ProfileMode } from '../components/ProfileSheet';
 import { PlayScreen } from '../components/PlayScreen';
 import { Avatar, Button, SectionLabel } from '../components/ui';
 import { rememberGameCard } from '../lib/cardMorph';
-import { fetchDeveloper } from '../lib/session';
+import { fetchDeveloper, fetchOnline } from '../lib/session';
 import { TileButton } from '../components/TopBar';
 import { getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
@@ -79,6 +79,13 @@ export function Home({
   const [developer, setDeveloper] = useState<string | null>(null);
   useEffect(() => {
     void fetchDeveloper().then(setDeveloper);
+  }, []);
+  const [online, setOnline] = useState<number | null>(null);
+  useEffect(() => {
+    const load = () => void fetchOnline().then(setOnline);
+    load();
+    const id = window.setInterval(load, 30_000);
+    return () => window.clearInterval(id);
   }, []);
   const [profileOpen, setProfileOpen] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
@@ -209,6 +216,11 @@ export function Home({
               </div>
             </div>
             <div data-in={landed} className="slide-bottom flex flex-col gap-4">
+              {online !== null && online > 0 && (
+                <p className="label text-center text-onbg/70" data-testid="home-online">
+                  There {online === 1 ? 'is 1 player' : `are ${online} players`} online
+                </p>
+              )}
               <Button
                 data-testid="home-play"
                 variant="gold"

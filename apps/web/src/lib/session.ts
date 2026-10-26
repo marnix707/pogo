@@ -200,6 +200,13 @@ export const fetchDeveloper = (): Promise<string | null> =>
     .then((b) => b?.developer ?? null)
     .catch(() => null);
 
+/** How many players are online right now (null when unknown). */
+export const fetchOnline = (): Promise<number | null> =>
+  fetch('/api/online')
+    .then((r) => (r.ok ? (r.json() as Promise<{ players?: number }>) : null))
+    .then((b) => (typeof b?.players === 'number' ? b.players : null))
+    .catch(() => null);
+
 export const fetchLeaderboard = (game: string) =>
   request<{ entries: LeaderboardRow[] }>('GET', `/api/leaderboard?game=${game}`, null).then(
     (r) => r.entries,
