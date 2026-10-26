@@ -7,7 +7,7 @@ import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
 import { useCountdown } from '../../lib/useCountdown';
 import { useTimeWarning } from '../../lib/useTimeWarning';
-import { BOMB_FRAMES, BOMB_FRAME_MS, bombMs } from './art';
+import { BOMB_FRAMES, BOMB_FRAME_MS, bombMs, shipUrl } from './art';
 import { Board } from './Board';
 import type { DrawnShip, ShotFxState } from './Board';
 import { CoinFlip } from './CoinFlip';
@@ -27,6 +27,38 @@ export const RADAR_START_MS = 200;
 export const END_MS = 2600;
 
 const nameOfShip = (kind: seabattle.ShipKind) => FLEET.find((f) => f.kind === kind)?.name ?? kind;
+
+/** The enemy fleet as five small ships: the ones you have sunk show as wrecks, the rest are still afloat. */
+function EnemyFleet({ sunk }: { sunk: Set<string> }) {
+  return (
+    <div
+      className="flex items-center justify-center gap-3"
+      data-testid="sb-enemy-fleet"
+      aria-label="Enemy ships still afloat"
+    >
+      {FLEET.map((f) => {
+        const down = sunk.has(f.kind);
+        return (
+          <img
+            key={f.kind}
+            src={shipUrl(f.kind, false, down)}
+            alt={`${f.name}${down ? ' (sunk)' : ''}`}
+            title={f.name}
+            data-sunk={down}
+            draggable={false}
+            style={{
+              imageRendering: 'pixelated',
+              width: f.length * 10,
+              height: 10,
+              maxWidth: 'none',
+              opacity: down ? 0.55 : 1,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
 
 function useBoxSize(ref: React.RefObject<HTMLElement>) {
   const [size, setSize] = useState({ w: 360, h: 560 });
@@ -174,7 +206,7 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
   const placing = view.phase === 'place';
   const cell = useMemo(() => {
     const byWidth = Math.floor((w - 24) / 10);
-    const chrome = placing ? 250 : 250;
+    const chrome = placing ? 250 : 275;
     const byHeight = placing ? Math.floor((h - chrome) / 10) : Math.floor((h - chrome) / 15);
     const c = Math.max(16, Math.min(32, byWidth, byHeight));
     return placing ? c : c - (c % 2);
@@ -401,6 +433,7 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
                 {status}
               </p>
             </div>
+            <EnemyFleet sunk={new Set(view.sunk.map((s) => s.kind))} />
             <Board
               cell={mini}
               testId="sb-my-board"
