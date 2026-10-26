@@ -1,9 +1,19 @@
 import { PlayerName } from '../components/PlayerName';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BOT_AVATAR, BOT_NAMES, getGame } from '@pogo/shared';
-import type { ChatMessage, PublicRoomSummary, RoomView } from '@pogo/shared';
-import { ChevronIcon, CrownIcon, LockIcon, SlidersIcon } from '../components/icons';
+import type {
+  AVATARS,
+  AuthResponse,
+  ChatMessage,
+  PublicRoomSummary,
+  PublicUser,
+  RoomView,
+} from '@pogo/shared';
+import { ChevronIcon, CrownIcon, LockIcon, SlidersIcon, TrophyIcon } from '../components/icons';
 import { ChatPanel } from '../components/ChatPanel';
+import { LeaderboardSheet } from '../components/LeaderboardSheet';
+import { ProfileSheet } from '../components/ProfileSheet';
+import type { ProfileMode } from '../components/ProfileSheet';
 import { GameCard } from '../components/GameCard';
 import { JoinBar, PlayScreen } from '../components/PlayScreen';
 import { Avatar, Button, Card, SectionLabel, Toggle } from '../components/ui';
@@ -125,6 +135,12 @@ export function Lobby({
   onSettings,
   lobbyList,
   watchLobby,
+  user,
+  token,
+  onUser,
+  onSession,
+  onSignOut,
+  onProfile,
 }: {
   room: RoomView;
   me: string;
@@ -135,8 +151,18 @@ export function Lobby({
   /** The open public games (for the game list the host sees after tapping the game card). */
   lobbyList: PublicRoomSummary[] | null;
   watchLobby: () => () => void;
+  /** For the profile and leaderboard buttons in the top bar. */
+  user: PublicUser;
+  token: string;
+  onUser: (user: PublicUser) => void;
+  onSession: (auth: AuthResponse) => void;
+  onSignOut: () => void;
+  onProfile: (profile: { nickname: string; avatar: (typeof AVATARS)[number] }) => Promise<void>;
 }) {
   const toast = useToast();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [boardOpen, setBoardOpen] = useState(false);
+  const [profileMode, setProfileMode] = useState<ProfileMode>('main');
   const isHost = room.hostId === me;
   /** The host opened the list of games (the top card is a button): the settings make room for it. */
   const [choosing, setChoosing] = useState(false);
@@ -225,6 +251,18 @@ export function Lobby({
             {/* The bar above the game card: Invite on the left, then the Public / Private rectangle (with the code) and the settings button. */}
             <Card className="calm hud-ticks flex h-16 items-center !px-2 !py-0">
               <div className="flex w-full items-center gap-2" data-testid="lobby-toolbar">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileMode('main');
+                    setProfileOpen(true);
+                  }}
+                  aria-label="Your profile"
+                  data-testid="lobby-avatar"
+                  className="shrink-0 active:translate-y-px"
+                >
+                  <Avatar avatar={user.avatar} size="sm" />
+                </button>
                 <Button
                   variant="secondary"
                   aria-label="Invite friends"
@@ -277,6 +315,14 @@ export function Lobby({
                     </div>
                   )}
                 </span>
+                <TileButton
+                  onClick={() => setBoardOpen(true)}
+                  aria-label="Leaderboard"
+                  data-testid="lobby-leaderboard"
+                  className="calm"
+                >
+                  <TrophyIcon className="h-5 w-5" />
+                </TileButton>
                 <TileButton
                   onClick={onSettings}
                   aria-label="Settings"
@@ -608,6 +654,28 @@ export function Lobby({
           </div>
         </div>
       </div>
+      <LeaderboardSheet
+        open={boardOpen}
+        onClose={() => setBoardOpen(false)}
+        me={user.id}
+        isGuest={user.isGuest}
+        onRegister={() => {
+          setBoardOpen(false);
+          setProfileMode('register');
+          setProfileOpen(true);
+        }}
+      />
+      <ProfileSheet
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        user={user}
+        token={token}
+        initial={profileMode}
+        onProfile={onProfile}
+        onUser={onUser}
+        onSession={onSession}
+        onSignOut={onSignOut}
+      />
     </div>
   );
 }

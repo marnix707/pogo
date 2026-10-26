@@ -59,8 +59,6 @@ export function Scorecard({
   const active = state.players.find((p) => currentIds.includes(p.id) && p.id !== me);
   const otherPreview =
     active && state.dice.length > 0 ? yatzy.getPreviewScores(state.dice, active.scorecard) : {};
-  // The +100 row only takes up space once someone has earned it.
-  const showYatzyBonus = state.players.some((p) => p.yatzyBonuses > 0);
 
   function row(category: Category) {
     const choosable = category in preview;
@@ -106,11 +104,11 @@ export function Scorecard({
             >
               {value !== undefined ? (
                 category === 'yatzy' && value === 50 ? (
-                  // Fire burns behind the 50, one level bigger for every Yatzy hit (the first and each bonus).
+                  // Fire burns behind the 50, one level bigger for every Yatzy hit; each bonus adds 100 to the number (150, 250...).
                   <span className="relative inline-block">
                     <Flames level={1 + totals.get(p.id)!.yatzyBonus / yatzy.YATZY_BONUS} />
                     <span className="relative text-sm font-bold text-white [text-shadow:0_1px_0_#101628,0_0_3px_#101628]">
-                      {value}
+                      {value + totals.get(p.id)!.yatzyBonus}
                     </span>
                   </span>
                 ) : (
@@ -251,11 +249,6 @@ export function Scorecard({
               <td colSpan={state.players.length + 1} className="h-1.5 bg-edge/20 p-0" />
             </tr>
             {yatzy.LOWER_CATEGORIES.map(row)}
-            {showYatzyBonus &&
-              computedRow('Yatzy bonus', '+100 each', (id) => {
-                const b = totals.get(id)!.yatzyBonus;
-                return b > 0 ? `+${b}` : '–';
-              })}
             {computedRow('Total', '', (id) => String(totals.get(id)!.grandTotal), 'total')}
           </tbody>
         </table>

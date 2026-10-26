@@ -162,6 +162,18 @@ export function Shell({
         onSettings={openSettings}
         lobbyList={lobby}
         watchLobby={watchLobby}
+        user={session.user}
+        token={session.token}
+        onUser={onUser}
+        onSession={onSession}
+        onSignOut={onSignOut}
+        onProfile={async (profile) => {
+          try {
+            onUser(await updateProfile(session.token, profile));
+          } catch (e) {
+            toast.show((e as Error).message, 'error');
+          }
+        }}
       />
     );
   } else {

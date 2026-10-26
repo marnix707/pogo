@@ -19,7 +19,7 @@ const FLAME_H = 24;
 
 /**
  * Lo-fi pixel fire (the artist's 8-frame flame, 100 ms a frame) burning behind a Yatzy "50": `level` is the
- * number of Yatzys hit. Level 1 is a small flame; every further Yatzy makes it bigger and, from level 3 on, adds
+ * number of Yatzys hit. Level 1 is a medium flame; every further Yatzy makes it bigger and, from level 3 on, adds
  * another flame beside it (capped at 6). Sits at the bottom of its (relative) parent, behind the text.
  */
 export function Flames({ level }: { level: number }) {
@@ -31,7 +31,7 @@ export function Flames({ level }: { level: number }) {
     return () => clearInterval(id);
   }, []);
   if (frames.length === 0) return null;
-  const scale = 0.6 + (l - 1) * 0.3; // whole-pixel scaling is not possible at this size; keep it crisp anyway
+  const scale = 0.6 + l * 0.3; // whole-pixel scaling is not possible at this size; keep it crisp anyway
   const count = l >= 5 ? 3 : l >= 3 ? 2 : 1;
   return (
     <span
