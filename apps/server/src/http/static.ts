@@ -7,11 +7,11 @@ export async function registerStatic(app: FastifyInstance, root: string) {
   await app.register(fastifyStatic, {
     root,
     cacheControl: false, // set per file below
-    setHeaders(res, filePath) {
+    setHeaders(reply, filePath) {
       // Vite fingerprints everything in /assets, so it can be cached forever; HTML must revalidate.
-      res.setHeader(
+      reply.header(
         'cache-control',
-        filePath.includes(`${sep}assets${sep}`)
+        filePath.includes(`${sep}assets${sep}`) || filePath.includes('/assets/')
           ? 'public, max-age=31536000, immutable'
           : 'no-cache',
       );
