@@ -2,7 +2,7 @@ import { createElement } from 'react';
 import type { GameUi } from '../types';
 import logoUrl from '../../assets/sprites/brand/logos/sea-battle.svg';
 import { allArt } from './art';
-import { SeaBattleGame, RADAR_TOTAL_MS } from './SeaBattleGame';
+import { SeaBattleGame, END_MS } from './SeaBattleGame';
 import { SeaBattleRules } from './SeaBattleRules';
 
 // Load the pictures once the app starts, so the sea is there the moment the game opens.
@@ -18,5 +18,5 @@ export const seaBattleUi: GameUi = {
   Rules: ({ open, onClose }) => createElement(SeaBattleRules, { open, onClose }),
   hideScores: true,
   // The last bomb, the radar that shows the ships nobody found, and a beat before the standings.
-  resultsDelayMs: () => RADAR_TOTAL_MS + 1200,
+  resultsDelayMs: () => END_MS,
 };

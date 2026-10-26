@@ -16,11 +16,15 @@ import { PlacementBoard, deviceRng } from './Placement';
 const { FLEET, isSunk } = seabattle;
 
 /** The radar sweep that reveals the ships nobody found, and when it starts after the last bomb. */
-export const RADAR_MS = 3200;
+export const RADAR_MS = 1700;
 /** The radar starts this long after the last bomb and the last ship's sinking have really finished. */
-export const RADAR_START_MS = 300;
-/** Bomb + sinking (the radar waits for both to be done) + the radar start + the sweep: the standings wait for all of it. */
-export const RADAR_TOTAL_MS = seabattle.SHOT_FX_MS + seabattle.SINK_MS + RADAR_START_MS + RADAR_MS;
+export const RADAR_START_MS = 200;
+/**
+ * When the standings take over after the last shot: the same for both players, so they arrive together.
+ * The winner watches the last ship go down (bomb + sinking) and "You won!" pops up in the middle of the
+ * standings; the loser skips the sinking and goes straight from the bomb to the radar.
+ */
+export const END_MS = 3300;
 
 const nameOfShip = (kind: seabattle.ShipKind) => FLEET.find((f) => f.kind === kind)?.name ?? kind;
 
@@ -90,15 +94,18 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
   const startedOver = useRef(view.phase === 'over');
   // The last shot ended the game: the radar follows once its bomb and its sinking are done.
   const winPending = useRef(false);
+  const iWon = useRef(false);
   const ev = view.lastEvent;
   useEffect(() => {
     if (!ev || ev.seq === seenSeq.current) return;
     seenSeq.current = ev.seq;
     winPending.current = ev.win;
+    iWon.current = ev.win && ev.by === me;
     const hit = ev.result !== 'miss';
     setFx({ board: ev.by === me ? 'enemy' : 'mine', shot: { seq: ev.seq, x: ev.x, y: ev.y, hit } });
     play('whistle');
-    if (ev.result === 'sunk' && ev.sunk) {
+    // (The loser does not get the sinking of their last ship: the radar follows the bomb at once.)
+    if (ev.result === 'sunk' && ev.sunk && !(ev.win && ev.by !== me)) {
       const mine = ev.by === me;
       const ship = (mine ? view.sunk : view.myShips).find((s) => s.kind === ev.sunk);
       pendingSink.current = ship ? { board: mine ? 'enemy' : 'mine', ship } : null;
@@ -118,6 +125,7 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
   const startRadar = useCallback(() => {
     if (!winPending.current) return;
     winPending.current = false;
+    if (iWon.current) return; // the winner goes straight to the standings: nothing was left to find
     setRadarOn(true);
     setTimeout(() => play('ping'), RADAR_START_MS);
   }, []);
