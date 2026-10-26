@@ -77,8 +77,6 @@ services:
         sync: false
 
       # Gameplay timings (same defaults as .env.example)
-      - key: TURN_TIME_SEC
-        sync: false
       - key: DISCONNECT_GRACE_SEC
         sync: false
       - key: ROOM_TTL_SEC

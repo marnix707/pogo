@@ -10,7 +10,6 @@ const schema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   HOST_LAN_IPS: z.string().default(''),
   WEB_DIST_DIR: z.string().optional(),
-  TURN_TIME_SEC: z.coerce.number().int().min(0).default(0),
   DISCONNECT_GRACE_SEC: z.coerce.number().int().min(1).default(20),
   ROOM_TTL_SEC: z.coerce.number().int().min(1).default(600),
   GUEST_SIGNUP_LIMIT_PER_MIN: z.coerce.number().int().min(1).default(10),
@@ -74,7 +73,7 @@ export interface AppConfig {
   lanIps: string[];
   /** Built web app to serve (production). Unset in dev, where Vite serves the web app. */
   webDistDir?: string;
-  /** Default seconds per turn action in new rooms (0 = no timer). */
+  /** Default seconds per turn action in new rooms: always 0 (Off) in the real app. */
   turnTimeSec: number;
   /** How long a disconnected player is waited for before being auto-skipped / dropped from a lobby. */
   disconnectGraceMs: number;
@@ -121,7 +120,8 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     logLevel: env.LOG_LEVEL,
     lanIps: list(env.HOST_LAN_IPS),
     webDistDir: env.WEB_DIST_DIR || undefined,
-    turnTimeSec: env.TURN_TIME_SEC,
+    // Every new room starts with the turn timer Off, for every game (not an environment setting; tests inject their own).
+    turnTimeSec: 0,
     disconnectGraceMs: env.DISCONNECT_GRACE_SEC * 1000,
     roomTtlMs: env.ROOM_TTL_SEC * 1000,
     guestSignupLimitPerMin: env.GUEST_SIGNUP_LIMIT_PER_MIN,
