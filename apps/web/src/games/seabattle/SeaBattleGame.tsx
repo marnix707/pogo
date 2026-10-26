@@ -116,31 +116,36 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [fx, setFx] = useState<{ board: 'enemy' | 'mine'; shot: ShotFxState } | null>(null);
+  // Shots can be on their way at the same time (after a hit you may fire again before the bomb has landed).
+  const [fxs, setFxs] = useState<{ board: 'enemy' | 'mine'; shot: ShotFxState }[]>([]);
   // A ship that was just sunk: its explosions, banner and wreck play after the bomb has landed.
   const [sink, setSink] = useState<{ board: 'enemy' | 'mine'; ship: seabattle.Ship } | null>(null);
-  const pendingSink = useRef<{ board: 'enemy' | 'mine'; ship: seabattle.Ship } | null>(null);
+  const pendingSinks = useRef(new Map<number, { board: 'enemy' | 'mine'; ship: seabattle.Ship }>());
   const sinkTimer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => () => clearTimeout(sinkTimer.current), []);
   const seenSeq = useRef(view.lastEvent?.seq ?? 0);
   const startedOver = useRef(view.phase === 'over');
   // The last shot ended the game: the radar follows once its bomb and its sinking are done.
-  const winPending = useRef(false);
+  const winSeq = useRef<number | null>(null);
   const iWon = useRef(false);
   const ev = view.lastEvent;
   useEffect(() => {
     if (!ev || ev.seq === seenSeq.current) return;
     seenSeq.current = ev.seq;
-    winPending.current = ev.win;
+    if (ev.win) winSeq.current = ev.seq;
     iWon.current = ev.win && ev.by === me;
     const hit = ev.result !== 'miss';
-    setFx({ board: ev.by === me ? 'enemy' : 'mine', shot: { seq: ev.seq, x: ev.x, y: ev.y, hit } });
+    const entry = {
+      board: (ev.by === me ? 'enemy' : 'mine') as 'enemy' | 'mine',
+      shot: { seq: ev.seq, x: ev.x, y: ev.y, hit },
+    };
+    setFxs((list) => [...list, entry]);
     play('whistle');
     // (The loser does not get the sinking of their last ship: the radar follows the bomb at once.)
     if (ev.result === 'sunk' && ev.sunk && !(ev.win && ev.by !== me)) {
       const mine = ev.by === me;
       const ship = (mine ? view.sunk : view.myShips).find((s) => s.kind === ev.sunk);
-      pendingSink.current = ship ? { board: mine ? 'enemy' : 'mine', ship } : null;
+      if (ship) pendingSinks.current.set(ev.seq, { board: mine ? 'enemy' : 'mine', ship });
     }
     const land = setTimeout(() => {
       play(hit ? 'boom' : 'splash');
@@ -154,35 +159,40 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
   // The radar sweeps the sea when the game ends while we watch, and only once everything before it
   // (the last bomb, the last ship going down) has finished.
   const [radarOn, setRadarOn] = useState(false);
-  const startRadar = useCallback(() => {
-    if (!winPending.current) return;
-    winPending.current = false;
+  const startRadar = useCallback((seq: number) => {
+    if (winSeq.current !== seq) return;
+    winSeq.current = null;
     if (iWon.current) return; // the winner goes straight to the standings: nothing was left to find
     setRadarOn(true);
     setTimeout(() => play('ping'), RADAR_START_MS);
   }, []);
-  const fxDone = useCallback(() => {
-    setFx(null);
-    setAim(null);
-    const next = pendingSink.current;
-    pendingSink.current = null;
-    if (!next) {
-      startRadar();
-      return;
-    }
-    setSink(next);
-    play('sink');
-    haptic('error');
-    clearTimeout(sinkTimer.current);
-    sinkTimer.current = setTimeout(() => {
-      setSink(null);
-      startRadar();
-    }, seabattle.SINK_MS);
-  }, [startRadar]);
+  const fxDone = useCallback(
+    (seq: number) => {
+      setFxs((list) => list.filter((f) => f.shot.seq !== seq));
+      const next = pendingSinks.current.get(seq);
+      pendingSinks.current.delete(seq);
+      if (!next) {
+        startRadar(seq);
+        return;
+      }
+      setSink(next);
+      play('sink');
+      haptic('error');
+      clearTimeout(sinkTimer.current);
+      sinkTimer.current = setTimeout(() => {
+        setSink(null);
+        startRadar(seq);
+      }, seabattle.SINK_MS);
+    },
+    [startRadar],
+  );
 
   // ---- aiming --------------------------------------------------------------------------------------
-  const [aim, setAim] = useState<{ x: number; y: number } | null>(null);
-  const locked = coin || fx !== null || sink !== null || finished;
+  // One tap fires. The board only stays shut for the moment the server needs to answer (so a miss cannot be
+  // followed by a second tap that is out of turn); after a hit you can fire again while the bomb is still falling.
+  const [inflight, setInflight] = useState(false);
+  useEffect(() => setInflight(false), [view.shotCount]);
+  const locked = coin || finished || inflight;
   const send = async (move: unknown) => {
     if (busy) return;
     setBusy(true);
@@ -193,13 +203,10 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
   const tapCell = (x: number, y: number) => {
     if (!myTurn || locked) return;
     if (view.outgoing.some((s) => s.x === x && s.y === y)) return;
-    // One tap fires. The reticle sits on the square while the bomb is on its way.
-    void fire(x, y);
-  };
-  const fire = async (x: number, y: number) => {
-    setAim({ x, y });
-    const res = await send({ type: 'fire', x, y });
-    if (!res?.ok) setAim(null);
+    setInflight(true);
+    void sendMove({ type: 'fire', x, y }).then((res) => {
+      if (!res.ok) setInflight(false);
+    });
   };
 
   // ---- sizes ----------------------------------------------------------------------------------------
@@ -236,7 +243,7 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
   }));
 
   const eventText = (() => {
-    if (fx) return 'Bomb away…';
+    if (fxs.length > 0) return 'Bomb away…';
     if (!ev) return '';
     const mine = ev.by === me;
     if (ev.result === 'miss') return mine ? 'You missed: only water.' : `${nameOf(ev.by)} missed.`;
@@ -413,11 +420,10 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
               testId="sb-enemy-board"
               ships={enemyShips}
               shots={view.outgoing}
-              hideShot={fx?.board === 'enemy' ? fx.shot : null}
-              fx={fx?.board === 'enemy' ? fx.shot : null}
+              hideShots={fxs.filter((f) => f.board === 'enemy').map((f) => f.shot)}
+              fxs={fxs.filter((f) => f.board === 'enemy').map((f) => f.shot)}
               onFxDone={fxDone}
               sinking={sink?.board === 'enemy' ? sink.ship : null}
-              target={aim}
               radar={radar}
               onCell={myTurn && !locked ? tapCell : undefined}
             />
@@ -439,8 +445,8 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
               testId="sb-my-board"
               ships={myShipsDrawn}
               shots={view.incoming}
-              hideShot={fx?.board === 'mine' ? fx.shot : null}
-              fx={fx?.board === 'mine' ? fx.shot : null}
+              hideShots={fxs.filter((f) => f.board === 'mine').map((f) => f.shot)}
+              fxs={fxs.filter((f) => f.board === 'mine').map((f) => f.shot)}
               onFxDone={fxDone}
               sinking={sink?.board === 'mine' ? sink.ship : null}
             />

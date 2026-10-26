@@ -213,8 +213,8 @@ export function Board({
   cell,
   ships = [],
   shots = [],
-  hideShot = null,
-  fx = null,
+  hideShots = [],
+  fxs = [],
   onFxDone,
   sinking = null,
   target = null,
@@ -230,9 +230,9 @@ export function Board({
   ships?: DrawnShip[];
   shots?: seabattle.Shot[];
   /** A shot whose marker is not shown yet (its bomb is still falling). */
-  hideShot?: { x: number; y: number } | null;
-  fx?: ShotFxState | null;
-  onFxDone?: () => void;
+  hideShots?: { x: number; y: number }[];
+  fxs?: ShotFxState[];
+  onFxDone?: (seq: number) => void;
   /** A ship that was just sunk on this sea: the blasts and the banner play over it. */
   sinking?: seabattle.Ship | null;
   target?: { x: number; y: number } | null;
@@ -251,9 +251,7 @@ export function Board({
   const reticle = useFrame(300);
   const size = cell * BOARD;
   const line = Math.max(1, cell / 16);
-  const burning = shots.filter(
-    (s) => s.hit && !(hideShot && hideShot.x === s.x && hideShot.y === s.y),
-  );
+  const burning = shots.filter((s) => s.hit && !hideShots.some((h) => h.x === s.x && h.y === s.y));
   return (
     <div
       ref={boardRef}
@@ -302,7 +300,7 @@ export function Board({
         );
       })}
       {shots
-        .filter((s) => !(hideShot && hideShot.x === s.x && hideShot.y === s.y))
+        .filter((s) => !hideShots.some((h) => h.x === s.x && h.y === s.y))
         .map((s) => (
           <img
             key={`${s.x}-${s.y}`}
@@ -341,7 +339,9 @@ export function Board({
         />
       )}
       {sinking && <SinkFx ship={sinking} cell={cell} />}
-      {fx && <BombFx fx={fx} cell={cell} onDone={() => onFxDone?.()} />}
+      {fxs.map((f) => (
+        <BombFx key={f.seq} fx={f} cell={cell} onDone={() => onFxDone?.(f.seq)} />
+      ))}
       {radar && <Radar cell={cell} {...radar} />}
       {onCell &&
         Array.from({ length: BOARD * BOARD }, (_, i) => {
