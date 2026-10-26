@@ -17,8 +17,10 @@ const { FLEET, isSunk } = seabattle;
 
 /** The radar sweep that reveals the ships nobody found, and when it starts after the last bomb. */
 export const RADAR_MS = 3200;
-// The last shot always sinks the last ship, so the radar waits for the bomb and the sinking.
-export const RADAR_DELAY_MS = seabattle.SHOT_FX_MS + seabattle.SINK_MS;
+/** The radar starts this long after the last bomb and the last ship's sinking have really finished. */
+export const RADAR_START_MS = 300;
+/** Bomb + sinking (the radar waits for both to be done) + the radar start + the sweep: the standings wait for all of it. */
+export const RADAR_TOTAL_MS = seabattle.SHOT_FX_MS + seabattle.SINK_MS + RADAR_START_MS + RADAR_MS;
 
 const nameOfShip = (kind: seabattle.ShipKind) => FLEET.find((f) => f.kind === kind)?.name ?? kind;
 
@@ -86,10 +88,13 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
   useEffect(() => () => clearTimeout(sinkTimer.current), []);
   const seenSeq = useRef(view.lastEvent?.seq ?? 0);
   const startedOver = useRef(view.phase === 'over');
+  // The last shot ended the game: the radar follows once its bomb and its sinking are done.
+  const winPending = useRef(false);
   const ev = view.lastEvent;
   useEffect(() => {
     if (!ev || ev.seq === seenSeq.current) return;
     seenSeq.current = ev.seq;
+    winPending.current = ev.win;
     const hit = ev.result !== 'miss';
     setFx({ board: ev.by === me ? 'enemy' : 'mine', shot: { seq: ev.seq, x: ev.x, y: ev.y, hit } });
     play('whistle');
@@ -107,27 +112,33 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
     // (Only a new event counts; the ships are read from the view that came with it.)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ev, me]);
+  // The radar sweeps the sea when the game ends while we watch, and only once everything before it
+  // (the last bomb, the last ship going down) has finished.
+  const [radarOn, setRadarOn] = useState(false);
+  const startRadar = useCallback(() => {
+    if (!winPending.current) return;
+    winPending.current = false;
+    setRadarOn(true);
+    setTimeout(() => play('ping'), RADAR_START_MS);
+  }, []);
   const fxDone = useCallback(() => {
     setFx(null);
     setAim(null);
     const next = pendingSink.current;
     pendingSink.current = null;
-    if (!next) return;
+    if (!next) {
+      startRadar();
+      return;
+    }
     setSink(next);
     play('sink');
     haptic('error');
     clearTimeout(sinkTimer.current);
-    sinkTimer.current = setTimeout(() => setSink(null), seabattle.SINK_MS);
-  }, []);
-
-  // The radar sweeps the sea when the game ends while we watch.
-  const [radarOn, setRadarOn] = useState(false);
-  useEffect(() => {
-    if (view.phase !== 'over' || startedOver.current) return;
-    setRadarOn(true);
-    const ping = setTimeout(() => play('ping'), RADAR_DELAY_MS);
-    return () => clearTimeout(ping);
-  }, [view.phase]);
+    sinkTimer.current = setTimeout(() => {
+      setSink(null);
+      startRadar();
+    }, seabattle.SINK_MS);
+  }, [startRadar]);
 
   // ---- aiming --------------------------------------------------------------------------------------
   const [aim, setAim] = useState<{ x: number; y: number } | null>(null);
@@ -173,9 +184,11 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
   const revealedShips: seabattle.Ship[] = view.revealed;
   const radar =
     finished && radarOn
-      ? { ships: revealedShips, delayMs: RADAR_DELAY_MS, durationMs: RADAR_MS }
+      ? { ships: revealedShips, delayMs: RADAR_START_MS, durationMs: RADAR_MS }
       : null;
-  if (finished && !radarOn) for (const ship of revealedShips) enemyShips.push({ ship });
+  // (A game opened already finished shows the survivors at once; one that ends live waits for the radar.)
+  if (finished && !radarOn && startedOver.current)
+    for (const ship of revealedShips) enemyShips.push({ ship });
   const myShipsDrawn: DrawnShip[] = view.myShips.map((ship) => ({
     ship,
     sunk: isSunk(ship, view.incoming) && !going('mine', ship),
@@ -215,7 +228,9 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
         data-active={active}
       >
         {/* The turn clock of whoever is up, as a small draining bar (like the reference game). */}
-        <div className="relative h-2 w-20 overflow-hidden rounded-full bg-black/35">
+        <div
+          className={`relative h-2 w-20 overflow-hidden rounded-full ${timerTotal > 0 ? 'bg-black/35' : ''}`}
+        >
           {active && timerTotal > 0 && (
             <TimerDrain
               deadline={game.deadline}
