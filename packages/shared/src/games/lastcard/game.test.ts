@@ -10,7 +10,8 @@ const players = (n: number): GamePlayer[] =>
   Array.from({ length: n }, (_, i) => ({ id: `p${i}`, nickname: `P${i}`, avatar: 'fox' }));
 
 // Card ids: red 0-24 (0 = "0", 1-9 numbers, 19-20 skip, 21-22 reverse, 23-24 draw two),
-// yellow 25-49, green 50-74, blue 75-99, wild 100-103, wild four 104-107.
+// yellow 25-49, green 50-74, blue 75-99, wild 100-103, wild four 104-107, shield 108-109,
+// blue ghost 110-111, red skull 112-113.
 const RED = (n: number) => n; // 1-9
 const YELLOW = (n: number) => 25 + n;
 const RED_SKIP = 19;
@@ -20,6 +21,10 @@ const YELLOW_DRAW2 = 25 + 23;
 const YELLOW_SKIP = 25 + 19;
 const WILD = 100;
 const WILD4 = 104;
+const SHIELD = 108;
+const GHOST = 110;
+const SKULL = 112;
+const BLUE = (n: number) => 75 + n;
 
 const rng = createSeededRng(7);
 
@@ -36,6 +41,7 @@ function setup(hands: Card[][], over: Partial<LastCardState> = {}): LastCardStat
     turn: 0,
     direction: 1,
     pending: 0,
+    pendingFrom: null,
     drawn: null,
     winner: null,
     eventSeq: 0,
@@ -49,13 +55,23 @@ function setup(hands: Card[][], over: Partial<LastCardState> = {}): LastCardStat
 const play = (s: LastCardState, id: string, move: LastCardMove) => game.applyMove(s, id, move, rng);
 
 describe('cards', () => {
-  it('the deck has the standard 108 cards', () => {
+  it('the deck has the standard 108 cards plus 2 shields, 2 ghosts and 2 skulls', () => {
     const kinds: Record<string, number> = {};
     for (let c = 0; c < DECK_SIZE; c++) {
       const k = cardInfo(c).kind;
       kinds[k] = (kinds[k] ?? 0) + 1;
     }
-    expect(kinds).toEqual({ number: 76, skip: 8, reverse: 8, draw2: 8, wild: 4, wild4: 4 });
+    expect(kinds).toEqual({
+      number: 76,
+      skip: 8,
+      reverse: 8,
+      draw2: 8,
+      wild: 4,
+      wild4: 4,
+      shield: 2,
+      ghost: 2,
+      skull: 2,
+    });
     // One 0 and two of each 1-9 per colour.
     const reds = Array.from({ length: 25 }, (_, i) => cardInfo(i)).filter(
       (i) => i.kind === 'number',
@@ -77,6 +93,115 @@ describe('cards', () => {
     expect(canPlayCard(WILD4, RED(5), 0, [YELLOW(1), WILD4])).toBe(true);
     // After a wild only the chosen colour counts.
     expect(canPlayCard(YELLOW(5), WILD, 2, [])).toBe(false);
+  });
+});
+
+describe('shield, ghost and skull', () => {
+  it('a shield only plays against a waiting penalty; ghost and skull match their colour or their kind', () => {
+    expect(canPlayCard(SHIELD, RED(5), 0, [])).toBe(false);
+    expect(canPlayCard(SHIELD, RED(5), 0, [], 2)).toBe(true);
+    expect(canPlayCard(GHOST, RED(5), 0, [], 2)).toBe(false); // a penalty is waiting
+    expect(canPlayCard(GHOST, RED(5), 0, [])).toBe(false); // blue ghost on red
+    expect(canPlayCard(GHOST, BLUE(5), 3, [])).toBe(true);
+    expect(canPlayCard(GHOST, GHOST + 1, 0, [])).toBe(true); // ghost on ghost
+    expect(canPlayCard(SKULL, RED(5), 0, [])).toBe(true);
+    expect(canPlayCard(SKULL, BLUE(5), 3, [])).toBe(false);
+    expect(canPlayCard(RED(7), SHIELD, 0, [])).toBe(true); // the colour in force still counts
+  });
+
+  it('the shield sends the whole penalty back to whoever played the last draw card', () => {
+    let s = setup([
+      [RED_DRAW2, RED(1)],
+      [SHIELD, YELLOW(1)],
+      [RED(2), RED(3)],
+    ]);
+    s = play(s, 'p0', { type: 'play', card: RED_DRAW2 });
+    expect(s.pending).toBe(2);
+    expect(s.pendingFrom).toBe('p0');
+    s = play(s, 'p1', { type: 'play', card: SHIELD });
+    expect(s.pending).toBe(2);
+    expect(s.turn).toBe(0);
+    expect(s.color).toBe(0); // colourless: the colour stays
+    expect(s.pendingFrom).toBe('p1');
+    expect(s.lastEvent).toMatchObject({ reflectedTo: 'p0', card: SHIELD });
+    // p0 has to take it (or answer with another draw card / shield).
+    const drawn = play(s, 'p0', { type: 'draw' });
+    expect(drawn.players[0]!.hand).toHaveLength(3);
+    expect(drawn.pending).toBe(0);
+    expect(drawn.pendingFrom).toBeNull();
+    expect(drawn.turn).toBe(1);
+  });
+
+  it('with two players a shield bounces back and the sender may stack on top', () => {
+    let s = setup([
+      [WILD4, YELLOW_DRAW2, RED(1)],
+      [SHIELD, YELLOW(1)],
+    ]);
+    s = play(s, 'p0', { type: 'play', card: WILD4, color: 0 });
+    s = play(s, 'p1', { type: 'play', card: SHIELD });
+    expect(s.turn).toBe(0);
+    expect(s.pending).toBe(4);
+    s = play(s, 'p0', { type: 'play', card: YELLOW_DRAW2 });
+    expect(s.pending).toBe(6);
+    expect(s.turn).toBe(1);
+  });
+
+  it('a shield without a waiting penalty is refused with a clear message', () => {
+    const s = setup([
+      [SHIELD, RED(1), RED(2)],
+      [RED(3), RED(4)],
+    ]);
+    expect(game.validateMove(s, 'p0', { type: 'play', card: SHIELD })).toMatchObject({
+      ok: false,
+      error: 'A Shield only blocks a waiting draw penalty',
+    });
+  });
+
+  it('the blue ghost makes everybody with fewer cards than me draw two', () => {
+    const s = setup(
+      [
+        [GHOST, BLUE(1), BLUE(2), BLUE(3)], // 3 cards left after the ghost
+        [YELLOW(1), YELLOW(2)], // fewer: draws
+        [YELLOW(3), YELLOW(4), YELLOW(5)], // equal: safe
+        [YELLOW(6), YELLOW(7), YELLOW(8), YELLOW(9)], // more: safe
+      ],
+      { color: 3, pile: [BLUE(5)] },
+    );
+    const after = play(s, 'p0', { type: 'play', card: GHOST });
+    expect(after.players.map((p) => p.hand.length)).toEqual([3, 4, 3, 4]);
+    expect(after.lastEvent?.victims).toEqual([{ playerId: 'p1', count: 2 }]);
+    expect(after.color).toBe(3);
+    expect(after.turn).toBe(1); // no skip: the turn passes on normally
+  });
+
+  it('the red skull makes everybody without a red card draw two (wilds are not red)', () => {
+    const s = setup([
+      [SKULL, RED(1), RED(2)],
+      [YELLOW(1), YELLOW(2)], // no red: draws
+      [WILD, RED(3)], // has red: safe
+      [WILD, WILD4], // wilds are not red: draws
+    ]);
+    const after = play(s, 'p0', { type: 'play', card: SKULL });
+    expect(after.players.map((p) => p.hand.length)).toEqual([2, 4, 2, 4]);
+    expect(after.lastEvent?.victims.map((v) => v.playerId)).toEqual(['p1', 'p3']);
+    expect(after.color).toBe(0);
+  });
+
+  it('you cannot finish with them', () => {
+    const s = setup([[SKULL], [RED(3), RED(4)]]);
+    expect(game.validateMove(s, 'p0', { type: 'play', card: SKULL }).ok).toBe(false);
+  });
+
+  it('a computer answers a waiting penalty with a shield when it has one', () => {
+    let s = setup([
+      [RED_DRAW2, RED(1), RED(2)],
+      [SHIELD, WILD4, YELLOW_DRAW2],
+    ]);
+    s = play(s, 'p0', { type: 'play', card: RED_DRAW2 });
+    expect(game.autoMove!(s, 'p1', createSeededRng(1)).move).toMatchObject({
+      type: 'play',
+      card: SHIELD,
+    });
   });
 });
 

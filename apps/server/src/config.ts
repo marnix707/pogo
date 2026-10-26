@@ -42,7 +42,11 @@ const schema = z.object({
   /** `GET /api/dev/last-mail` (emailed codes for e2e); only ever outside production and with MAIL_MODE=log. */
   DEV_MAILBOX: z.enum(['0', '1']).default('0'),
   /** Proxies in front of the server (Render). Unset = trust the whole X-Forwarded-For header (spoofable). */
-  TRUST_PROXY_HOPS: z.coerce.number().int().min(1).max(5).optional(),
+  // (an empty value, as docker compose passes it, means unset)
+  TRUST_PROXY_HOPS: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.coerce.number().int().min(1).max(5).optional(),
+  ),
 });
 
 /**

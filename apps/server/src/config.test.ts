@@ -60,3 +60,15 @@ describe('loadConfig brevo key', () => {
     expect(cfg.brevoApiKey).toBe('xkeysib-abc123');
   });
 });
+
+describe('loadConfig proxy hops', () => {
+  it('treats an empty value as unset and reads a number', () => {
+    const base = { DATABASE_URL: 'postgresql://x', JWT_SECRET: 'x'.repeat(32) };
+    expect(
+      loadConfig({ ...base, TRUST_PROXY_HOPS: '' } as NodeJS.ProcessEnv).trustProxyHops,
+    ).toBeUndefined();
+    expect(loadConfig({ ...base, TRUST_PROXY_HOPS: '2' } as NodeJS.ProcessEnv).trustProxyHops).toBe(
+      2,
+    );
+  });
+});

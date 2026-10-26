@@ -25,6 +25,10 @@ export interface LastCardEvent {
   drew: number;
   /** Who had to draw (a Draw Two / Wild Draw Four, or the player who was called out) and how many. */
   victim: { playerId: string; count: number } | null;
+  /** Everyone who had to draw because of a Blue Ghost or a Red Skull, with how many. */
+  victims: { playerId: string; count: number }[];
+  /** A Shield sent the waiting penalty back to this player (who played the last draw card). */
+  reflectedTo: string | null;
   /** Players whose turn was skipped (a skip, or the victim of a draw card). */
   skipped: string[];
   /** The direction of play was reversed by this move. */
@@ -54,6 +58,8 @@ export interface LastCardState {
    * (which adds to it). 0 = no penalty waiting.
    */
   pending: number;
+  /** Who played the last draw card of the waiting penalty (a Shield sends it back to them). */
+  pendingFrom: string | null;
   /** The player to move has drawn this card and may play it or pass. */
   drawn: Card | null;
   winner: string | null;

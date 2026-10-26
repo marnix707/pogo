@@ -15,7 +15,10 @@ export type SoundName =
   | 'boom'
   | 'splash'
   | 'ping'
-  | 'sink';
+  | 'sink'
+  | 'shield'
+  | 'ghost'
+  | 'skull';
 
 let ctx: AudioContext | undefined;
 
@@ -182,6 +185,22 @@ export function play(name: SoundName) {
       // A card slid across the table: a soft swish and a tick.
       noise(c, 0, 0.12, 0.18, 2500);
       tone(c, 700, 0.1, 0.05, 'triangle', 0.06);
+      break;
+    case 'shield':
+      // A bright metallic clang: two high partials that ring out.
+      tone(c, 1320, 0, 0.35, 'triangle', 0.1);
+      tone(c, 1980, 0, 0.25, 'sine', 0.06);
+      noise(c, 0, 0.05, 0.3, 3500);
+      break;
+    case 'ghost':
+      // A wobbling "wooo" that slides up and down.
+      sweep(c, 'sine', 300, 520, 0, 0.35, 0.12);
+      sweep(c, 'sine', 520, 260, 0.3, 0.45, 0.1);
+      break;
+    case 'skull':
+      // A low, dark knell with a rattle.
+      sweep(c, 'sawtooth', 160, 60, 0, 0.5, 0.12);
+      noise(c, 0.02, 0.18, 0.2, 1200);
       break;
     case 'gun':
       // A pistol shot: the crack, the thump and a short "pew" that slides down.

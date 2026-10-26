@@ -6,15 +6,17 @@ import type { Rng } from '../../game/rng';
  *    colour k = c % 25: 0 = the single "0", 1-9 and 10-18 = the numbers 1-9 twice, 19-20 skip,
  *    21-22 reverse, 23-24 draw two.
  *  - 100-103: wild, 104-107: wild draw four.
+ *  - 108-109: shield (colourless), 110-111: blue ghost, 112-113: red skull.
  */
 export type Card = number;
 
-export const DECK_SIZE = 108;
+export const DECK_SIZE = 114;
 export const COLORS = ['red', 'yellow', 'green', 'blue'] as const;
 export type Color = 0 | 1 | 2 | 3;
 export const COLOR_NAME: Record<Color, string> = { 0: 'Red', 1: 'Yellow', 2: 'Green', 3: 'Blue' };
 
-export type CardKind = 'number' | 'skip' | 'reverse' | 'draw2' | 'wild' | 'wild4';
+export type CardKind =
+  'number' | 'skip' | 'reverse' | 'draw2' | 'wild' | 'wild4' | 'shield' | 'ghost' | 'skull';
 
 export interface CardInfo {
   kind: CardKind;
@@ -25,6 +27,9 @@ export interface CardInfo {
 }
 
 export function cardInfo(card: Card): CardInfo {
+  if (card >= 112) return { kind: 'skull', color: 0, value: null };
+  if (card >= 110) return { kind: 'ghost', color: 3, value: null };
+  if (card >= 108) return { kind: 'shield', color: null, value: null };
   if (card >= 104) return { kind: 'wild4', color: null, value: null };
   if (card >= 100) return { kind: 'wild', color: null, value: null };
   const color = Math.floor(card / 25) as Color;
@@ -38,7 +43,8 @@ export function cardInfo(card: Card): CardInfo {
 
 /** Everything that is not a plain number card. */
 export const isSpecial = (card: Card): boolean => cardInfo(card).kind !== 'number';
-export const isWild = (card: Card): boolean => card >= 100;
+/** The wilds (they ask for a colour); the shield is colourless but never asks for one. */
+export const isWild = (card: Card): boolean => card >= 100 && card < 108;
 
 /** Points of a card left in a hand (ranks the losers). */
 export function cardPoints(card: Card): number {
@@ -63,6 +69,12 @@ export function cardLabel(card: Card): string {
       return 'Wild';
     case 'wild4':
       return 'Wild Draw Four';
+    case 'shield':
+      return 'Shield';
+    case 'ghost':
+      return 'Blue Ghost';
+    case 'skull':
+      return 'Red Skull';
   }
 }
 
@@ -85,8 +97,9 @@ export const freshDeck = (rng: Rng): Card[] =>
 /**
  * May `card` be played on `top` (the card on the pile) while the colour in force is `color`?
  * Wilds (also the Wild Draw Four) always play: there is no "only without a card of the colour" rule.
- * While a draw penalty is pending (`pending` > 0) only a Draw Two or a Wild Draw Four may be played, on
- * either other (the penalties add up), whatever the colour.
+ * While a draw penalty is pending (`pending` > 0) only a Draw Two, a Wild Draw Four or a Shield may be played
+ * (the penalties add up; a Shield sends the whole stack back), whatever the colour. A Shield cannot be played
+ * otherwise. The blue ghost and the red skull match their colour or another card of their own kind.
  */
 export function canPlayCard(
   card: Card,
@@ -96,10 +109,11 @@ export function canPlayCard(
   pending = 0,
 ): boolean {
   const info = cardInfo(card);
-  if (pending > 0) return info.kind === 'draw2' || info.kind === 'wild4';
+  if (pending > 0) return info.kind === 'draw2' || info.kind === 'wild4' || info.kind === 'shield';
+  if (info.kind === 'shield') return false;
   if (info.kind === 'wild' || info.kind === 'wild4') return true;
   if (info.color === color) return true;
   const t = cardInfo(top);
-  if (t.kind === 'wild' || t.kind === 'wild4') return false;
+  if (t.kind === 'wild' || t.kind === 'wild4' || t.kind === 'shield') return false;
   return t.kind === info.kind && t.value === info.value;
 }

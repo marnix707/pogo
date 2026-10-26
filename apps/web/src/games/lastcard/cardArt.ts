@@ -26,6 +26,7 @@ export function cardFileName(card: lastcard.Card): string {
   const info = lastcard.cardInfo(card);
   if (info.kind === 'wild') return 'wild';
   if (info.kind === 'wild4') return 'wild-draw4';
+  if (info.kind === 'shield') return 'shield';
   const color = COLOR_FILE[info.color!];
   return `${color}-${info.kind === 'number' ? info.value : info.kind}`;
 }

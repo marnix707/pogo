@@ -25,6 +25,13 @@ export function LastCardRules({ open, onClose }: { open: boolean; onClose: () =>
           at any time).
         </li>
         <li>
+          <b className="text-neon">Special cards:</b> the <b>Shield</b> can only be played against a
+          waiting draw penalty: the whole penalty goes <b>back</b> to the player who played the last
+          draw card. The <b>Blue Ghost</b> (play it on blue or another ghost) makes everybody who
+          holds fewer cards than you do draw two. The <b>Red Skull</b> (on red or another skull)
+          makes everybody without a red card draw two.
+        </li>
+        <li>
           <b className="text-neon">Last Card!</b> Down to one card? A pulsing <b>Last Card!</b>{' '}
           button appears for <b>everybody</b>. It is a race: if you press it first you are safe (and
           everybody sees the announcement). If somebody else is faster with <b>Call out!</b> you

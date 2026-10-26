@@ -88,6 +88,21 @@ function drawCards(state: LastCardState, index: number, count: number, rng: Rng)
   return taken;
 }
 
+/** Ghost and skull: every other player who matches `rule` draws two cards; the event lists who and how many. */
+function punish(
+  state: LastCardState,
+  by: number,
+  event: LastCardEvent,
+  rng: Rng,
+  rule: (p: LastCardPlayerState) => boolean,
+): void {
+  const victims = state.players.flatMap((p, i) => (i !== by && rule(p) ? [i] : []));
+  for (const i of victims) {
+    const count = drawCards(state, i, 2, rng);
+    if (count > 0) event.victims.push({ playerId: state.players[i]!.id, count });
+  }
+}
+
 function createInitialState(
   players: GamePlayer[],
   _options: LastCardOptions,
@@ -115,6 +130,7 @@ function createInitialState(
     turn: rng.int(seats.length),
     direction: 1,
     pending: 0,
+    pendingFrom: null,
     drawn: null,
     winner: null,
     eventSeq: 0,
@@ -159,8 +175,10 @@ function validateMove(state: LastCardState, playerId: string, move: LastCardMove
         if (state.pending > 0)
           return {
             ok: false,
-            error: 'Answer with a Draw Two or Wild Draw Four, or draw the cards',
+            error: 'Answer with a Draw Two, Wild Draw Four or Shield, or draw the cards',
           };
+        if (cardInfo(move.card).kind === 'shield')
+          return { ok: false, error: 'A Shield only blocks a waiting draw penalty' };
         return { ok: false, error: 'That card does not match the pile' };
       }
       if (me.hand.length === 1 && isSpecial(move.card))
@@ -193,6 +211,8 @@ function applyMove(
     color: null,
     drew: 0,
     victim: null,
+    victims: [],
+    reflectedTo: null,
     skipped: [],
     reversed: false,
     uno: false,
@@ -227,6 +247,7 @@ function applyMove(
       event.drew = drawCards(state, index, state.pending, rng);
       event.skipped = [playerId];
       state.pending = 0;
+      state.pendingFrom = null;
       event.pending = 0;
       state.turn = seatAfter(state, index);
       for (const p of state.players) if (p.hand.length !== 1) p.called = false;
@@ -250,7 +271,8 @@ function applyMove(
     state.pile.push(move.card);
     state.drawn = null;
     const info = cardInfo(move.card);
-    state.color = info.color ?? (move.color as Color);
+    // A Shield is colourless: the colour in force stays.
+    state.color = info.kind === 'shield' ? state.color : (info.color ?? (move.color as Color));
     event.color = state.color;
 
     if (me.hand.length === 1) {
@@ -276,12 +298,32 @@ function applyMove(
         // The penalty waits for the next player, who may stack another draw card on it.
         case 'draw2':
           state.pending += 2;
+          state.pendingFrom = playerId;
           event.pending = state.pending;
           state.turn = next;
           break;
         case 'wild4':
           state.pending += 4;
+          state.pendingFrom = playerId;
           event.pending = state.pending;
+          state.turn = next;
+          break;
+        // The whole waiting penalty goes back to whoever played the last draw card, who may answer in turn.
+        case 'shield': {
+          const back = state.players.findIndex((p) => p.id === state.pendingFrom);
+          state.turn = back >= 0 ? back : next;
+          event.reflectedTo = state.players[state.turn]!.id;
+          state.pendingFrom = playerId;
+          break;
+        }
+        // Everybody (but me) holding fewer cards than I do now draws two.
+        case 'ghost':
+          punish(state, index, event, rng, (p) => p.hand.length < me.hand.length);
+          state.turn = next;
+          break;
+        // Everybody (but me) without a red card draws two.
+        case 'skull':
+          punish(state, index, event, rng, (p) => !p.hand.some((c) => cardInfo(c).color === 0));
           state.turn = next;
           break;
         default:
@@ -377,6 +419,8 @@ function autoMove(state: LastCardState, playerId: string, rng: Rng): AutoMove<La
   // Coloured cards first (action cards before plain numbers: they hurt the others), wilds last.
   const score = (c: Card) => {
     const kind = cardInfo(c).kind;
+    // A Shield is only playable against a waiting penalty, where it is the best answer.
+    if (kind === 'shield') return 5;
     return kind === 'wild' ? 0 : kind === 'wild4' ? -1 : kind === 'number' ? 2 : 3;
   };
   const best = Math.max(...candidates.map(score));
@@ -417,7 +461,12 @@ export const lastCardGame: GameDefinition<
   autoMove,
   // While somebody can still call UNO! (or be called out) computers hold back, so a human has time to
   // press the button or catch them before the next card is thrown.
-  settleMs: (state) => (state.callWindow !== null ? 2200 : 0),
+  settleMs: (state) => {
+    if (state.callWindow !== null) return 2200;
+    const e = state.lastEvent;
+    // Ghost, skull and shield have their own little show.
+    return e && (e.victims.length > 0 || e.reflectedTo !== null) ? 1400 : 0;
+  },
   supportsBots: true,
 };
 

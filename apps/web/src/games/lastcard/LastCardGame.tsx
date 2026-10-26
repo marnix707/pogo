@@ -134,7 +134,14 @@ function describe(
       text = `${who} ${verb('played', 'played')} ${lastcard.cardLabel(ev.card!)}`;
       if (ev.color !== null && lastcard.isWild(ev.card!)) text += ` → ${COLOR_NAMES[ev.color]}`;
       if (ev.reversed) text += ' · direction reversed';
-      if (ev.pending > 0) {
+      if (ev.reflectedTo) text += ` · +${ev.pending} goes back to ${nameOf(ev.reflectedTo)}!`;
+      if (ev.victims.length > 0)
+        text += ` · ${ev.victims.map((v) => nameOf(v.playerId)).join(' & ')} draw${
+          ev.victims.length === 1 && ev.victims[0]!.playerId !== me ? 's' : ''
+        } 2`;
+      if (ev.reflectedTo) {
+        // (said above)
+      } else if (ev.pending > 0) {
         text += ` · +${ev.pending} waiting`;
       } else if (ev.skipped.length > 0) {
         text += ` · ${nameOf(ev.skipped[0]!)} ${ev.skipped[0] === me ? 'are' : 'is'} skipped`;
@@ -207,7 +214,11 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
     const ev = view.lastEvent;
     if (!ev || ev.seq === lastSeq.current) return;
     lastSeq.current = ev.seq;
-    if (ev.victim?.playerId === me) {
+    const kind = ev.card === null ? null : lastcard.cardInfo(ev.card).kind;
+    if (kind === 'shield' || kind === 'ghost' || kind === 'skull') {
+      play(kind);
+      if (ev.victims.some((v) => v.playerId === me) || ev.reflectedTo === me) haptic('error');
+    } else if (ev.victim?.playerId === me) {
       play('error');
       haptic('error');
     } else if (ev.playerId !== me) {
@@ -238,6 +249,25 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
     callTimer.current = setTimeout(() => setCall(null), UNO_CALL_MS);
   }, [view.unoCall, me]);
   useEffect(() => () => clearTimeout(callTimer.current), []);
+
+  // Shield, Blue Ghost and Red Skull get a short banner of their own (not for a move made before we joined).
+  const [special, setSpecial] = useState<{
+    seq: number;
+    kind: 'shield' | 'ghost' | 'skull';
+  } | null>(null);
+  const seenSpecial = useRef(view.lastEvent?.seq ?? 0);
+  const specialTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => {
+    const e = view.lastEvent;
+    if (!e || e.seq === seenSpecial.current) return;
+    seenSpecial.current = e.seq;
+    const kind = e.kind === 'play' && e.card !== null ? lastcard.cardInfo(e.card).kind : null;
+    if (kind !== 'shield' && kind !== 'ghost' && kind !== 'skull') return;
+    setSpecial({ seq: e.seq, kind });
+    clearTimeout(specialTimer.current);
+    specialTimer.current = setTimeout(() => setSpecial(null), 1500);
+  }, [view.lastEvent]);
+  useEffect(() => () => clearTimeout(specialTimer.current), []);
 
   // Called out: a red announcement for everybody (not for one made before we joined).
   const [caught, setCaught] = useState<{ seq: number; byId: string; targetId: string } | null>(
@@ -302,7 +332,9 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
       else if (view.drawn !== null && card !== view.drawn)
         flashHint('Play the card you drew, or pass');
       else if (view.pending > 0)
-        flashHint(`Stack a Draw Two or Four, or draw ${view.pending} cards`);
+        flashHint(`Stack a Draw Two or Four, play a Shield, or draw ${view.pending} cards`);
+      else if (lastcard.cardInfo(card).kind === 'shield')
+        flashHint('A Shield only blocks a waiting draw penalty');
       else flashHint('That card does not match');
       haptic('error');
       setSelected(null);
@@ -383,16 +415,17 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
     box ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : null;
   const ev = view.lastEvent;
   /** How many cards just came into my hand from the deck (a draw, a Draw Two / Four, a call-out). */
+  const myPunishment = ev?.victims.find((v) => v.playerId === me)?.count ?? 0;
   const dealtToMe =
     !ev || ev.playerId !== me
       ? ev?.victim?.playerId === me
         ? ev.victim.count
-        : 0
+        : myPunishment
       : ev.kind === 'draw'
         ? ev.drew
         : ev.victim?.playerId === me
           ? ev.victim.count
-          : 0;
+          : myPunishment;
   /** A card newly in my hand grows out of the middle of the deck, one after another. */
   const handOrigin = (): FlipOrigin | null =>
     dealtToMe > 0 ? centre(boxOf(stockEl.current)) : null;
@@ -420,6 +453,8 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
       dealt.push({ id: ev.playerId, count: ev.drew });
     if (ev.victim && ev.victim.playerId !== me)
       dealt.push({ id: ev.victim.playerId, count: ev.victim.count });
+    for (const v of ev.victims)
+      if (v.playerId !== me) dealt.push({ id: v.playerId, count: v.count });
     const next = dealt.flatMap(({ id, count }) => {
       const to = centre(boxOf(seatEls.current.get(id)));
       return to
@@ -758,6 +793,32 @@ export function LastCardGame({ room, me, sendMove }: GameUiProps) {
                 </span>
               </span>
             </div>
+          </div>
+        )}
+        {special && (
+          <div
+            key={special.seq}
+            className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+            role="status"
+            data-testid="special-banner"
+            data-kind={special.kind}
+          >
+            <span
+              className="lastcard-call font-bold leading-none"
+              style={{
+                fontSize: '3.4rem',
+                color:
+                  special.kind === 'shield'
+                    ? '#ffd23f'
+                    : special.kind === 'ghost'
+                      ? '#8fd3ff'
+                      : '#fd5f55',
+                textShadow: '0.07em 0.07em 0 #101628, 0 0 0.4em #000',
+                WebkitTextStroke: '0.04em #101628',
+              }}
+            >
+              {special.kind === 'shield' ? 'SHIELD!' : special.kind === 'ghost' ? 'BOO!' : 'SKULL!'}
+            </span>
           </div>
         )}
         {flights.map((f) => (
