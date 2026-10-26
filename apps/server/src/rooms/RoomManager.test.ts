@@ -53,6 +53,24 @@ function setup(maskText: (text: string) => string = maskProfanity) {
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
+describe('test dice (developers only)', () => {
+  it('is refused for normal players and makes every roll a Yatzy for a developer', () => {
+    const { manager, lastRoom, must } = setup();
+    const dev: PublicUser = { ...user(9), isDev: true };
+    must(manager.create(a, { gameId: 'yatzy' }));
+    expect(manager.updateSettings(a.id, { testDice: true })).toMatchObject({
+      ok: false,
+      error: 'Only developers can use test dice',
+    });
+    must(manager.create(dev, { gameId: 'yatzy' }));
+    expect(must(manager.updateSettings(dev.id, { testDice: true })).testDice).toBe(true);
+    must(manager.start(dev.id));
+    must(manager.move(dev.id, { type: 'roll', held: [false, false, false, false, false] }));
+    const dice = (lastRoom(dev.id)?.game?.view as { dice: number[] }).dice;
+    expect(new Set(dice).size).toBe(1);
+  });
+});
+
 describe('creating and joining', () => {
   it('creates a room with a 5-char code and the creator as host', () => {
     const { manager, must } = setup();

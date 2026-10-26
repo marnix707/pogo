@@ -1,4 +1,11 @@
-import { BOT_AVATAR, BOT_NAMES, botId, displayName, failResult } from '@pogo/shared';
+import {
+  BOT_AVATAR,
+  BOT_NAMES,
+  botId,
+  createFixedRng,
+  displayName,
+  failResult,
+} from '@pogo/shared';
 import type {
   AdminRoomRow,
   AnyGameDefinition,
@@ -115,7 +122,14 @@ export class Room {
   private turnTimeChosen: boolean;
   /** Number of computer players added when the game starts. */
   bots: number;
+  /** Developer test game: fixed dice, never recorded. */
+  testDice = false;
   status: RoomStatus = 'lobby';
+
+  /** The Rng in force: a test game rolls a fixed face. */
+  private get rng(): Rng {
+    return this.testDice ? createFixedRng(6) : this.deps.rng;
+  }
 
   private members: Member[] = [];
   private messages: ChatMessage[] = [];
@@ -298,6 +312,14 @@ export class Room {
     if (userId !== this.hostId) return fail('Only the host can change settings');
     if (this.status !== 'lobby') return fail('Settings are locked once the game has started');
 
+    if (patch.testDice !== undefined && patch.testDice !== this.testDice) {
+      if (patch.testDice) {
+        if (!this.members.find((m) => m.user.id === userId)?.user.isDev)
+          return fail('Only developers can use test dice');
+        if (this.game.id !== 'yatzy') return fail('Test dice are only for Yatzy');
+      }
+      this.testDice = patch.testDice;
+    }
     let { maxPlayers, options, bots } = this;
     if (patch.maxPlayers !== undefined) {
       if (patch.maxPlayers < this.game.minPlayers || patch.maxPlayers > this.game.maxPlayers) {
@@ -350,6 +372,7 @@ export class Room {
       return fail(`${game.name} supports at most ${game.maxPlayers} players`);
     }
     this.game = game;
+    this.testDice = false;
     this.options = game.defaultOptions;
     this.maxPlayers = game.maxPlayers;
     this.bots = game.supportsBots ? Math.min(this.bots, game.maxPlayers - this.memberCount) : 0;
@@ -467,7 +490,7 @@ export class Room {
       return fail('Too many players for this game');
     }
 
-    this.state = this.game.createInitialState(players, this.options, this.deps.rng);
+    this.state = this.game.createInitialState(players, this.options, this.rng);
     this.results = undefined;
     this.gameNo += 1;
     this.status = 'playing';
@@ -511,7 +534,7 @@ export class Room {
     if (!check.ok) return fail(check.error);
 
     const before = this.state;
-    this.state = this.game.applyMove(this.state, userId, parsed.data, this.deps.rng);
+    this.state = this.game.applyMove(this.state, userId, parsed.data, this.rng);
     // A free move (sharing which dice are kept) must not buy more time, and neither must a move in a
     // phase with one clock for everybody (the card swap).
     if (!this.game.isFreeMove?.(parsed.data) && !this.clockKept(before)) {
@@ -551,6 +574,7 @@ export class Room {
   }
 
   private reportFinished(results: GameResults): void {
+    if (this.testDice) return; // a developer's test game never counts
     const humans = this.members.filter((m) => !m.bot).map((m) => m.user.id);
     try {
       this.deps.onGameFinished({
@@ -577,8 +601,8 @@ export class Room {
     let endsTurn = true;
     const before = this.state;
     for (const id of this.game.getCurrentPlayers(this.state)) {
-      const auto = autoMove.call(this.game, this.state, id, this.deps.rng);
-      this.state = this.game.applyMove(this.state, id, auto.move, this.deps.rng);
+      const auto = autoMove.call(this.game, this.state, id, this.rng);
+      this.state = this.game.applyMove(this.state, id, auto.move, this.rng);
       endsTurn = endsTurn && auto.endsTurn;
     }
     if (endsTurn) {
@@ -629,8 +653,8 @@ export class Room {
     const before = this.state;
     for (const id of this.game.getCurrentPlayers(this.state)) {
       if (!this.members.find((m) => m.user.id === id)?.bot) continue;
-      const auto = autoMove.call(this.game, this.state, id, this.deps.rng);
-      this.state = this.game.applyMove(this.state, id, auto.move, this.deps.rng);
+      const auto = autoMove.call(this.game, this.state, id, this.rng);
+      this.state = this.game.applyMove(this.state, id, auto.move, this.rng);
       if (this.game.isGameOver(this.state)) break;
     }
     this.nextAutoAt = null;
@@ -756,6 +780,7 @@ export class Room {
       minPlayers: this.game.minPlayers,
       maxPlayers: this.maxPlayers,
       bots: this.bots,
+      ...(this.testDice ? { testDice: true } : {}),
       options: this.options,
       turnTimeSec: this.turnTime,
       status: this.status,

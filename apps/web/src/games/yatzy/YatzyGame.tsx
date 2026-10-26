@@ -202,7 +202,15 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       {scoreFx.overlay}
-      <header className="px-4 pb-1.5 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
+      <header className="relative px-4 pb-1.5 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
+        {room.testDice && (
+          <span
+            data-testid="test-game-tag"
+            className="label pointer-events-none absolute left-1/2 top-[env(safe-area-inset-top)] z-10 -translate-x-1/2 rounded bg-danger px-1.5 text-[9px] text-white"
+          >
+            Test game: not counted
+          </span>
+        )}
         <div
           data-testid="turn-banner"
           data-my-turn={myTurn}

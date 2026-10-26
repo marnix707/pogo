@@ -82,6 +82,8 @@ export interface RoomView {
   maxPlayers: number;
   /** Computer players that will join when the game starts. */
   bots: number;
+  /** Developer test game: every roll is a Yatzy and the game is not recorded anywhere. */
+  testDice?: boolean;
   options: unknown;
   turnTimeSec: number;
   status: RoomStatus;

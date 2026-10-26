@@ -105,6 +105,8 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'ROOM-122', message: / needs at least \d+ player/ },
   { code: 'ROOM-123', message: 'Unknown game' },
   { code: 'ROOM-124', message: 'Only the host can change the game' },
+  { code: 'ROOM-126', message: 'Only developers can use test dice' },
+  { code: 'ROOM-127', message: 'Test dice are only for Yatzy' },
   { code: 'ROOM-125', message: 'The game can only be changed in the lobby' },
 
   // ---- GAME: any game ----

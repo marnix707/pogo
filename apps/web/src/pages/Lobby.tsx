@@ -477,6 +477,20 @@ export function Lobby({
                       </section>
                     )}
 
+                    {/* Developers only: every roll is a Yatzy; the game is not recorded anywhere. */}
+                    {limits && user.isDev && room.gameId === 'yatzy' && (
+                      <section aria-label="Test dice">
+                        <Card className="calm">
+                          <Toggle
+                            label="Test dice: every roll a Yatzy (not recorded)"
+                            disabled={!isHost}
+                            checked={!!room.testDice}
+                            onChange={(on) => void api.updateSettings({ testDice: on })}
+                          />
+                        </Card>
+                      </section>
+                    )}
+
                     {/* Block 3: computer players. The table size is simply the game's maximum. */}
                     {limits?.supportsBots && (
                       <section aria-label="Computer players">

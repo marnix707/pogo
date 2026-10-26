@@ -115,6 +115,8 @@ export const roomSettingsSchema = z.object({
   options: z.unknown().optional(),
   turnTimeSec: turnTimeSchema.optional(),
   bots: z.number().int().min(0).max(8).optional(),
+  /** Developers only: every roll is a Yatzy (and the game is not recorded). */
+  testDice: z.boolean().optional(),
 });
 export type RoomSettingsInput = z.input<typeof roomSettingsSchema>;
 
