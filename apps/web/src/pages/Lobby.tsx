@@ -261,7 +261,7 @@ export function Lobby({
                   data-testid="lobby-avatar"
                   className="shrink-0 active:translate-y-px"
                 >
-                  <Avatar avatar={user.avatar} size="sm" />
+                  <Avatar avatar={user.avatar} size="md" />
                 </button>
                 <Button
                   variant="secondary"
