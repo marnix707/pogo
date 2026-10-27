@@ -1,7 +1,11 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PlayingCard } from './PlayingCard';
 
 const CONFETTI = ['#FD5F55', '#009CFD', '#FDA200', '#74CCA8', '#F7F1E4', '#AE65FF'];
+
+/** A plain face-down card: the turn (`blind-turn` in index.css) and then the flight down to the pile. */
+export const BLIND_TURN_MS = 2100;
+export const BLIND_FLY_MS = 600;
 
 const prefersReducedMotion = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -24,6 +28,36 @@ export function WinReveal({
   quick?: boolean;
 }) {
   const reduced = prefersReducedMotion();
+  // A plain face-down card: once it has turned, it flies down to the pile while the dimming fades away slowly.
+  const fly = useRef<HTMLDivElement>(null);
+  const face = useRef<HTMLDivElement>(null);
+  const [leaving, setLeaving] = useState(false);
+  useEffect(() => {
+    if (!quick || reduced) return;
+    const t = setTimeout(() => {
+      setLeaving(true);
+      const from = face.current?.getBoundingClientRect();
+      const pile = document.querySelector('[data-testid="pile-top"]')?.getBoundingClientRect();
+      if (!fly.current || !from || !pile || pile.width === 0) {
+        // Nowhere to land (e.g. the pile burned): the card just melts away with the dimming.
+        fly.current?.animate([{ opacity: 1 }, { opacity: 0 }], {
+          duration: BLIND_FLY_MS,
+          fill: 'forwards',
+        });
+        return;
+      }
+      const dx = pile.left + pile.width / 2 - (from.left + from.width / 2);
+      const dy = pile.top + pile.height / 2 - (from.top + from.height / 2);
+      fly.current.animate(
+        [
+          { transform: 'translate(0, 0) scale(1)' },
+          { transform: `translate(${dx}px, ${dy}px) scale(${pile.width / from.width})` },
+        ],
+        { duration: BLIND_FLY_MS, easing: 'cubic-bezier(0.45, 0, 0.25, 1)', fill: 'forwards' },
+      );
+    }, BLIND_TURN_MS);
+    return () => clearTimeout(t);
+  }, [quick, reduced]);
   const pieces = useMemo(
     () =>
       Array.from({ length: 48 }, (_, i) => ({
@@ -40,7 +74,8 @@ export function WinReveal({
   );
   return (
     <div
-      className={`pointer-events-none fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 ${quick ? 'bg-black/30' : 'bg-black/55'}`}
+      className={`pointer-events-none fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 transition-colors ease-in-out ${quick ? (leaving ? 'bg-black/0' : 'bg-black/30') : 'bg-black/55'}`}
+      style={quick ? { transitionDuration: `${BLIND_FLY_MS}ms` } : undefined}
       data-testid="win-reveal"
       data-winner={winner}
       aria-hidden
@@ -65,8 +100,9 @@ export function WinReveal({
             }
           />
         ))}
-      <div style={{ perspective: '700px' }}>
+      <div ref={fly} style={{ perspective: '700px' }}>
         <div
+          ref={face}
           className={reduced ? 'relative' : quick ? 'blind-card' : 'win-card'}
           style={{ width: '110px', height: '154px' }}
         >
