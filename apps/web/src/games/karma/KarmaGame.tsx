@@ -15,7 +15,7 @@ import { FourBurn } from './FourBurn';
 import { useCardScale } from '../../lib/cardScale';
 import { handLayout } from '../../lib/handLayout';
 import { REVEAL_FLIP_MS, leftoverCount, revealPlan, revealStartMs } from './reveal';
-import { BurnFire } from './BurnFire';
+import { BurnFire, MiniFlame } from './BurnFire';
 import { BLIND_FLY_AT_MS, BLIND_FLY_MS, WinReveal } from './WinReveal';
 import { RoundScreen } from './RoundScreen';
 import { RulesIntro } from './RulesIntro';
@@ -1225,7 +1225,12 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
               )}
               <span className="label absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-onbg">
                 {`Pile ${shownPile.length}`}
-                {view.burned > 0 && ` · 🔥 ${view.burned}`}
+                {view.burned > 0 && (
+                  <>
+                    {' · '}
+                    <MiniFlame scale={0.6} /> {view.burned}
+                  </>
+                )}
                 {/* With jokers the direction of play can turn around: show which way it goes. */}
                 {view.rules.includes('jokers') && (
                   <span

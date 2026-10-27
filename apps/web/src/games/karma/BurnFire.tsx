@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-const frames = Object.entries(
+export const frames = Object.entries(
   import.meta.glob('../../assets/sprites/fire/fire-lofi-flame-*.svg', {
     eager: true,
     query: '?url',
@@ -64,5 +64,31 @@ export function BurnFire({
         }}
       />
     </span>
+  );
+}
+
+/** A tiny looping lo-fi flame for text (next to the burned-cards count): the same art, no growing or fading. */
+export function MiniFlame({ scale = 0.6 }: { scale?: number }) {
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    if (reduced() || frames.length === 0) return;
+    const id = setInterval(() => setFrame((f) => (f + 1) % frames.length), 100);
+    return () => clearInterval(id);
+  }, []);
+  if (frames.length === 0) return null;
+  return (
+    <img
+      src={frames[frame % frames.length]}
+      alt="burned"
+      draggable={false}
+      data-testid="mini-flame"
+      className="inline-block align-text-bottom"
+      style={{
+        width: ART_W * scale,
+        height: ART_H * scale,
+        maxWidth: 'none',
+        imageRendering: 'pixelated',
+      }}
+    />
   );
 }
