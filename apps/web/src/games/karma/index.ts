@@ -1,5 +1,4 @@
 import { createElement } from 'react';
-import { karma } from '@pogo/shared';
 import type { GameUi } from '../types';
 import logoUrl from '../../assets/sprites/brand/logos/karma.svg';
 import { KarmaGame } from './KarmaGame';
@@ -40,12 +39,6 @@ export const karmaUi: GameUi = {
     const n = leftoverCount(view?.leftovers);
     const leftovers = n > 0 ? revealTotalMs(n, revealStartMs(blindOut)) + REVEAL_HOLD_MS : 0;
     return Math.max(blind, leftovers);
-  },
-  // The emoji of the rules in force, next to the game's name in the top bar.
-  titleExtra(room) {
-    const view = room.game?.view as { rules?: string[] } | undefined;
-    const icons = (view?.rules ?? []).map((id) => karma.ruleById(id)?.emoji).filter(Boolean);
-    return icons.length ? icons.join(' ') : undefined;
   },
   // "<name> won!" for everybody but the winner (who gets the generic "You won!").
   resultsTitle(room, me) {

@@ -30,7 +30,7 @@
 
 - The "No open games right now" box on the Play screen (`open-games-empty`) is grey (`chat-grey`) at 80 % opacity like the chat.
 
-- **Rules in the top bar**: `GameUi.titleExtra(room)` (optional) returns text shown right after the game's name in the shared `TopBar` (`title-extra`); Karma returns the emoji of the rules in force (`view.rules`), so Party/Epic games show e.g. "KARMA 🃏 ⚡" at the very top, nothing in normal mode.
+- **Rule emojis**: the emoji of the rules in force (`view.rules`, Party / Epic) show in the middle-right of the table, right above the event text (`karma-rule-emojis`), nothing in normal mode. (`GameUi.titleExtra` still exists for a game that wants text next to its name in the shared `TopBar`; Karma no longer uses it.)
 
 - **Seating and whose turn it is**: the opponents' seats run **clockwise from me** (`opponents` in `KarmaGame`): the player after me in the turn order is at the top left, the next one to the right of them, and the player just before me at the top right (so the turn order reads left to right across the top and then comes round to me). The seat of the player whose turn it is has a **yellow (gold) background** (`!bg-neon`, dark text) instead of the old blue border; my own turn box (`karma-timer`) turns yellow on my turn (red + pulse in the last 10 s).
 

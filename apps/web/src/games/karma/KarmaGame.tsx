@@ -1241,6 +1241,19 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
           </div>
 
           <div className="min-w-0 flex-1">
+            {/* The emoji of the rules in force (party / epic), right above the event text. */}
+            {view.rules.length > 0 && (
+              <p
+                data-testid="karma-rule-emojis"
+                className="mb-1 text-lg leading-none"
+                aria-label="Rules in force"
+              >
+                {view.rules
+                  .map((id) => karma.ruleById(id)?.emoji)
+                  .filter(Boolean)
+                  .join(' ')}
+              </p>
+            )}
             <div
               className="flex flex-col gap-1.5"
               data-testid="karma-event"
