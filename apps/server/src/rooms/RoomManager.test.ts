@@ -1086,10 +1086,11 @@ describe('computer players', () => {
     expect(both.startsAt).not.toBeNull();
   });
 
-  it('a rematch always goes back to the lobby now (Ready starts the next game)', () => {
+  it('Play again (the host, not to the lobby) starts the next game at once with the same computers', () => {
     const { manager, must } = playOut();
     const next = must(manager.rematch(a.id));
-    expect(next.status).toBe('lobby');
+    expect(next.status).toBe('playing');
+    expect(next.members.map((m) => m.nickname)).toEqual(['User1', 'Robo', 'Bolt']);
   });
 
   it('a rematch to the lobby removes the computer seats, keeps the setting, and brings them back on start', () => {

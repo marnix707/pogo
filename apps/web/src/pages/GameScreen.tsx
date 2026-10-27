@@ -172,6 +172,17 @@ function ResultsPanel({
               </>
             ) : (
               <>
+                {/* Playing alone (with or without computers): Play again starts the next game at once. */}
+                {room.members.filter((m) => !m.bot && !m.left).length === 1 && (
+                  <Button
+                    variant="gold"
+                    data-testid="results-again"
+                    disabled={!api.online}
+                    onClick={() => void api.rematch(false)}
+                  >
+                    Play again
+                  </Button>
+                )}
                 {/* Lobby takes everybody back to the room's lobby (Ready starts the next game). */}
                 <Button
                   data-testid="results-lobby"

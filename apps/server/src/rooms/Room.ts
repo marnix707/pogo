@@ -534,7 +534,8 @@ export class Room {
     this.status = 'lobby';
     this.turnDeadline = null;
     this.nextAutoAt = null;
-    if (!toLobby && this.game.restartOnRematch?.(this.options) && this.start(userId).ok)
+    // "Play again" (not toLobby): the host starts the next game at once, with the same people and computers.
+    if (!toLobby && (this.game.restartOnRematch?.(this.options) ?? true) && this.start(userId).ok)
       return ok(null);
     this.changed();
     return ok(null);
