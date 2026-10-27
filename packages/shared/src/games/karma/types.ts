@@ -79,6 +79,10 @@ export interface KarmaState {
 export interface KarmaPick {
   playerId: string;
   choices: string[];
+  /** The one rule the picker has switched (on or off) so far; they may change only one. */
+  changed: string | null;
+  /** The picker chose to skip: keep the rules as they are. Confirming needs a change or a skip. */
+  skip: boolean;
 }
 
 export type KarmaMove =
@@ -89,8 +93,13 @@ export type KarmaMove =
   | { type: 'pickup' }
   /** Fast reload: pass on playing a drawn matching card; the turn moves on. */
   | { type: 'skipReload' }
-  /** Phase `pick`: the picker switches one rule on or off (everybody sees it live). */
+  /**
+   * Phase `pick`: the picker switches one rule on or off (everybody sees it live). Only one rule can be
+   * changed: choosing another rule takes the first change back, and the same rule again undoes it.
+   */
   | { type: 'toggleRule'; rule: string }
+  /** Phase `pick`: choose to change nothing (takes a change back); again = deselect. */
+  | { type: 'skipRules' }
   /** Phase `pick`: the picker is done; the cards are dealt and the swap phase starts. */
   | { type: 'confirmRules' };
 

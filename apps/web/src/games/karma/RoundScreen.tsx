@@ -23,8 +23,9 @@ function RuleBox({ on }: { on: boolean }) {
 
 /**
  * Party mode, round 2 and later: before the cards are dealt the winner of the last game sets the
- * rules. They tick or untick rules (everybody else watches it happen live) and confirm; the
- * confirm button drains like every other clock. A full-screen overlay on top of the (still empty)
+ * rules. They may change exactly ONE rule (on or off; picking another takes the first back) or choose
+ * the "Skip" list item to change nothing; everybody else watches it happen live. The Confirm button
+ * stays greyed out until a rule was changed or Skip was chosen, and drains like every other clock. A full-screen overlay on top of the (still empty)
  * table, so it is the first thing a new round shows.
  */
 export function RoundScreen({ room, me, sendMove }: GameUiProps) {
@@ -36,6 +37,8 @@ export function RoundScreen({ room, me, sendMove }: GameUiProps) {
   const mine = pick.playerId === me;
   const chooser = room.members.find((m) => m.id === pick.playerId)?.nickname ?? 'The winner';
   const urgent = secondsLeft !== null && secondsLeft <= 10;
+  // Confirm needs a decision: one rule changed, or Skip chosen.
+  const decided = pick.changed !== null || pick.skip;
   return (
     <div
       data-testid="round-screen"
@@ -52,7 +55,7 @@ export function RoundScreen({ room, me, sendMove }: GameUiProps) {
         </h2>
         <p className="round-sub label text-center text-sm text-neon">
           {mine
-            ? '🎉 You won the last game: set the rules'
+            ? '🎉 You won the last game: change ONE rule, or skip'
             : `🎉 ${chooser} won the last game and sets the rules…`}
         </p>
 
@@ -66,11 +69,12 @@ export function RoundScreen({ room, me, sendMove }: GameUiProps) {
                 <button
                   data-testid={`round-rule-${id}`}
                   data-active={on}
+                  data-changed={pick.changed === id}
                   aria-pressed={on}
                   disabled={!mine}
                   onClick={() => void sendMove({ type: 'toggleRule', rule: id })}
                   className={`hud flex w-full items-center gap-3 rounded-lg border-2 px-3 py-2.5 text-left transition ${
-                    on ? 'border-neon' : 'border-edge/30'
+                    pick.changed === id ? 'border-neon' : 'border-edge/30'
                   } ${mine ? 'active:scale-[0.98]' : 'opacity-80'}`}
                 >
                   <span className="text-3xl leading-none">{rule.emoji}</span>
@@ -85,6 +89,38 @@ export function RoundScreen({ room, me, sendMove }: GameUiProps) {
               </li>
             );
           })}
+          {/* Skipping is a list item, not a button: it only selects "change nothing"; Confirm does the rest. */}
+          <li
+            className="round-row"
+            style={{ animationDelay: `${0.5 + pick.choices.length * 0.15}s` }}
+          >
+            <button
+              data-testid="round-skip"
+              data-selected={pick.skip}
+              aria-pressed={pick.skip}
+              disabled={!mine}
+              onClick={() => void sendMove({ type: 'skipRules' })}
+              className={`hud flex w-full items-center gap-3 rounded-lg border-2 px-3 py-2.5 text-left transition ${
+                pick.skip ? 'border-neon' : 'border-edge/30'
+              } ${mine ? 'active:scale-[0.98]' : 'opacity-80'}`}
+            >
+              <span className="text-3xl leading-none">⏭️</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-base font-bold leading-tight">Skip</span>
+                <span className="block text-xs leading-tight text-muted">
+                  Keep the rules as they are
+                </span>
+              </span>
+              <span
+                aria-hidden
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px] border-2 text-2xl font-bold leading-none ${
+                  pick.skip ? 'border-neon bg-neon/20 text-neon' : 'border-edge/40 text-transparent'
+                }`}
+              >
+                ✓
+              </span>
+            </button>
+          </li>
         </ul>
 
         <div className="mt-auto pt-2">
@@ -92,7 +128,7 @@ export function RoundScreen({ room, me, sendMove }: GameUiProps) {
             data-testid="round-confirm"
             className="relative w-full overflow-hidden"
             variant={mine ? 'primary' : 'secondary'}
-            disabled={!mine}
+            disabled={!mine || !decided}
             onClick={() => void sendMove({ type: 'confirmRules' })}
           >
             <TimerDrain

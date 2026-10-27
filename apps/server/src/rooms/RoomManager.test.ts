@@ -884,7 +884,12 @@ describe('computer players', () => {
   function humanMove(view: KView, me: string, jitter: () => number): unknown {
     const mine = view.players.find((p) => p.id === me)!;
     if (view.phase === 'swap') return { type: 'ready' };
-    if (view.phase === 'pick') return { type: 'confirmRules' };
+    if (view.phase === 'pick') {
+      const pick = (view as { pick: { changed: string | null; skip: boolean } | null }).pick;
+      return pick && pick.changed === null && !pick.skip
+        ? { type: 'skipRules' }
+        : { type: 'confirmRules' };
+    }
     if (view.reload) return { type: 'skipReload' }; // fast reload: a tired human just skips
     if (view.mustPickUp) return { type: 'pickup' }; // a too-low blind card is on the pile
     const zone = karma.activeZone(mine);
@@ -970,8 +975,8 @@ describe('computer players', () => {
       must(manager.move(a.id, { type: 'confirmRules' }));
       expect(view().players.find((p) => p.id === a.id)!.handCount).toBe(4);
     } else {
-      // A computer keeps the rules as they are and confirms by itself.
-      vi.advanceTimersByTime(BOT);
+      // A computer keeps the rules as they are: it skips, then confirms (two paced steps).
+      vi.advanceTimersByTime(BOT + 2 * STEP);
       expect(view().rules).toEqual([]);
     }
     expect(view().phase).toBe('swap');

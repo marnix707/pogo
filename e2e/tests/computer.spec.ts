@@ -25,7 +25,8 @@ async function playUntilResults(page: Page, limitMs = 200_000) {
     if (Date.now() - started > limitMs)
       throw new Error('the game against the computer did not finish');
     // A burn flame must go away by itself (it once got stuck for the rest of the game).
-    if (await page.getByTestId('burn-flash').isVisible())
+    // (.first(): the pile flame and the four-of-a-kind overlay can both be up at once)
+    if (await page.getByTestId('burn-flash').first().isVisible())
       await expect(page.getByTestId('burn-flash')).toHaveCount(0, { timeout: 4000 });
     const s = await snapshot(page);
     if (!s.myTurn) {
@@ -33,9 +34,12 @@ async function playUntilResults(page: Page, limitMs = 200_000) {
       continue;
     }
     await takeTurn(page, s);
+    // A tap right after a face-down card's flip is ignored on purpose (moves stay locked a moment), so if
+    // nothing happened the loop simply looks again and takes the turn once more.
     await expect
-      .poll(async () => (await snapshot(page)).event, { timeout: 10_000 })
-      .not.toBe(s.event);
+      .poll(async () => (await snapshot(page)).event, { timeout: 4000 })
+      .not.toBe(s.event)
+      .catch(() => undefined);
   }
   return sawWinnerReveal;
 }

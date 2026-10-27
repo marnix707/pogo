@@ -61,6 +61,7 @@ export const karmaMoveSchema: z.ZodType<KarmaMove, z.ZodTypeDef, unknown> = z.di
     z.object({ type: z.literal('skipReload') }),
     z.object({ type: z.literal('toggleRule'), rule: z.string().max(40) }),
     z.object({ type: z.literal('confirmRules') }),
+    z.object({ type: z.literal('skipRules') }),
   ],
 );
 
@@ -223,7 +224,9 @@ function createInitialState(players: GamePlayer[], options: KarmaOptions, rng: R
     lastEvent: null,
     mode: options.mode,
     rules,
-    pick: picker ? { playerId: picker, choices: KARMA_RULES.map((r) => r.id) } : null,
+    pick: picker
+      ? { playerId: picker, choices: KARMA_RULES.map((r) => r.id), changed: null, skip: false }
+      : null,
     round: options.round,
     direction: 1,
     reload: null,
@@ -233,13 +236,18 @@ function createInitialState(players: GamePlayer[], options: KarmaOptions, rng: R
 function validateMove(state: KarmaState, playerId: string, move: KarmaMove): MoveValidation {
   if (state.phase === 'over') return err('The game is over');
   if (state.phase === 'pick') {
-    if (move.type !== 'toggleRule' && move.type !== 'confirmRules')
+    if (move.type !== 'toggleRule' && move.type !== 'confirmRules' && move.type !== 'skipRules')
       return err('The rules are being chosen');
     if (state.pick?.playerId !== playerId) return err('Only the last winner sets the rules');
-    if (move.type === 'confirmRules') return OK;
+    if (move.type === 'skipRules') return OK;
+    // Confirm needs a decision: one rule changed, or skip chosen.
+    if (move.type === 'confirmRules')
+      return state.pick.changed !== null || state.pick.skip
+        ? OK
+        : err('Change one rule, or choose to skip');
     return state.pick!.choices.includes(move.rule) ? OK : err('Pick one of the offered rules');
   }
-  if (move.type === 'toggleRule' || move.type === 'confirmRules')
+  if (move.type === 'toggleRule' || move.type === 'confirmRules' || move.type === 'skipRules')
     return err('There are no rules to choose now');
   const idx = state.players.findIndex((p) => p.id === playerId);
   const me = state.players[idx];
@@ -441,11 +449,24 @@ function applyMoveInner(
   if (!check.ok) throw new Error(check.error);
 
   const s = structuredClone(state);
-  if (move.type === 'toggleRule') {
-    // Switch the rule: on becomes off, off becomes on.
-    s.rules = s.rules.includes(move.rule)
-      ? s.rules.filter((id) => id !== move.rule)
-      : [...s.rules, move.rule];
+  if (move.type === 'toggleRule' || move.type === 'skipRules') {
+    const pick = s.pick!;
+    // Switch a rule: on becomes off, off becomes on.
+    const flip = (rule: string) => {
+      s.rules = s.rules.includes(rule) ? s.rules.filter((id) => id !== rule) : [...s.rules, rule];
+    };
+    // Only one rule can be changed: the earlier change is taken back first.
+    if (pick.changed !== null) flip(pick.changed);
+    if (move.type === 'skipRules') {
+      // Choosing skip takes any change back; choosing it again deselects it.
+      pick.skip = !pick.skip;
+      pick.changed = null;
+    } else {
+      const same = pick.changed === move.rule;
+      pick.changed = same ? null : move.rule;
+      if (!same) flip(move.rule);
+      pick.skip = false;
+    }
     return s;
   }
   if (move.type === 'confirmRules') {
@@ -621,8 +642,11 @@ function autoMove(state: KarmaState, playerId: string, rng: Rng): AutoMove<Karma
   let move: KarmaMove;
 
   if (state.phase === 'pick') {
-    // A computer, an absent player or a timeout keeps the rules as they are.
-    move = { type: 'confirmRules' };
+    // A computer, an absent player or a timeout keeps the rules as they are: skip, then confirm.
+    move =
+      state.pick!.changed === null && !state.pick!.skip
+        ? { type: 'skipRules' }
+        : { type: 'confirmRules' };
   } else if (state.phase === 'play' && state.reload) {
     // Fast reload (computer, absent player, timeout): play the matching cards.
     const match = me.hand.filter((c) => rankOf(c) === state.reload!.rank);
@@ -674,7 +698,7 @@ export const karmaGame: GameDefinition<KarmaState, KarmaMove, KarmaOptions, Karm
     pickerId: state.finishOrder[0],
   }),
   // Changing a rule is free: it does not restart the picker's clock.
-  isFreeMove: (move) => move.type === 'toggleRule',
+  isFreeMove: (move) => move.type === 'toggleRule' || move.type === 'skipRules',
   // The swap phase has one clock for everybody: it starts with the phase and no swap or Ready (yours,
   // an opponent's or a computer's) resets it; when it runs out, everybody who is not ready is played.
   keepsClock: (before, after) => before.phase === 'swap' && after.phase === 'swap',

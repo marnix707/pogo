@@ -1161,6 +1161,8 @@ describe('modes and rules', () => {
       expect(s.pick).toEqual({
         playerId: 'p2',
         choices: ['bigHand', 'echoThree', 'fastReload', 'jokers'],
+        changed: null,
+        skip: false,
       });
       expect(s.rules).toEqual(['bigHand']); // carried over, ready to be switched
       expect(game.getCurrentPlayers(s)).toEqual(['p2']);
@@ -1181,15 +1183,48 @@ describe('modes and rules', () => {
       const on = game.applyMove(s, 'p2', { type: 'toggleRule', rule: 'echoThree' }, rng);
       expect(on.rules).toEqual(['bigHand', 'echoThree']);
       expect(game.getPlayerView(on, 'p1').rules).toEqual(['bigHand', 'echoThree']);
-      const off = game.applyMove(on, 'p2', { type: 'toggleRule', rule: 'bigHand' }, rng);
-      expect(off.rules).toEqual(['echoThree']);
       expect(game.isFreeMove!({ type: 'toggleRule', rule: 'bigHand' })).toBe(true);
+      expect(game.isFreeMove!({ type: 'skipRules' })).toBe(true);
       expect(game.isFreeMove!({ type: 'confirmRules' })).toBe(false);
+    });
+
+    it('only ONE rule can be changed: another choice takes the first back, the same one undoes it', () => {
+      const s = party();
+      const first = game.applyMove(s, 'p2', { type: 'toggleRule', rule: 'echoThree' }, rng);
+      expect(first.rules).toEqual(['bigHand', 'echoThree']);
+      expect(first.pick).toMatchObject({ changed: 'echoThree', skip: false });
+      // choosing another rule replaces the change (echoThree is back off, bigHand is now off)
+      const second = game.applyMove(first, 'p2', { type: 'toggleRule', rule: 'bigHand' }, rng);
+      expect(second.rules).toEqual([]);
+      expect(second.pick).toMatchObject({ changed: 'bigHand' });
+      // the same rule again = no change
+      const undone = game.applyMove(second, 'p2', { type: 'toggleRule', rule: 'bigHand' }, rng);
+      expect(undone.rules).toEqual(['bigHand']);
+      expect(undone.pick).toMatchObject({ changed: null, skip: false });
+    });
+
+    it('confirming needs a change or a skip; skip takes a change back and can be deselected', () => {
+      const s = party();
+      expect(game.validateMove(s, 'p2', { type: 'confirmRules' })).toMatchObject({
+        ok: false,
+        error: 'Change one rule, or choose to skip',
+      });
+      const changed = game.applyMove(s, 'p2', { type: 'toggleRule', rule: 'echoThree' }, rng);
+      expect(game.validateMove(changed, 'p2', { type: 'confirmRules' }).ok).toBe(true);
+      const skipped = game.applyMove(changed, 'p2', { type: 'skipRules' }, rng);
+      expect(skipped.rules).toEqual(['bigHand']); // the change was taken back
+      expect(skipped.pick).toMatchObject({ changed: null, skip: true });
+      expect(game.validateMove(skipped, 'p2', { type: 'confirmRules' }).ok).toBe(true);
+      const deselected = game.applyMove(skipped, 'p2', { type: 'skipRules' }, rng);
+      expect(deselected.pick).toMatchObject({ changed: null, skip: false });
+      expect(game.validateMove(deselected, 'p2', { type: 'confirmRules' }).ok).toBe(false);
+      expect(game.validateMove(s, 'p1', { type: 'skipRules' }).ok).toBe(false); // only the picker
     });
 
     it('confirming deals the cards for the chosen rules and starts the swap phase', () => {
       const s = party();
-      const bigger = game.applyMove(s, 'p2', { type: 'confirmRules' }, createSeededRng(1));
+      const kept = game.applyMove(s, 'p2', { type: 'skipRules' }, rng);
+      const bigger = game.applyMove(kept, 'p2', { type: 'confirmRules' }, createSeededRng(1));
       expect(bigger.phase).toBe('swap');
       expect(bigger.pick).toBeNull();
       expect(bigger.players[0]!.hand).toHaveLength(4); // big hand was on
@@ -1203,7 +1238,11 @@ describe('modes and rules', () => {
 
     it('auto-play (computer, absent player, timeout) confirms the rules unchanged', () => {
       const s = party();
-      expect(game.autoMove!(s, 'p2', rng).move).toEqual({ type: 'confirmRules' });
+      const skip = game.autoMove!(s, 'p2', rng);
+      expect(skip.move).toEqual({ type: 'skipRules' });
+      expect(skip.endsTurn).toBe(false);
+      const next = game.applyMove(s, 'p2', skip.move, rng);
+      expect(game.autoMove!(next, 'p2', rng).move).toEqual({ type: 'confirmRules' });
     });
 
     it('the next options carry the round, the rules and the winner who picks next', () => {
