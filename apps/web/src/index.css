@@ -660,11 +660,40 @@ button {
   opacity: 0;
   animation: four-card-in 0.38s cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards;
 }
+/* The pixel flame of a burning pile (BurnFire): it grows smoothly out of its base, burns, then shrinks and fades. */
+@keyframes burn-fire {
+  0% {
+    opacity: 0;
+    transform: scale(0.1);
+  }
+  22% {
+    opacity: 1;
+    transform: scale(0.85);
+  }
+  42% {
+    transform: scale(1.08);
+  }
+  72% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.45) translateY(-12%);
+  }
+}
+.burn-fire {
+  transform-origin: 50% 100%;
+  animation: burn-fire ease-in-out both;
+}
 .four-fire {
   opacity: 0;
   animation: four-fire-in 0.5s ease-out forwards;
 }
 @media (prefers-reduced-motion: reduce) {
+  .burn-fire {
+    animation: none;
+  }
   .four-card,
   .four-fire {
     opacity: 1;

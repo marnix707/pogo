@@ -1,3 +1,4 @@
+import { BurnFire } from './BurnFire';
 import { PlayingCard } from './PlayingCard';
 type Card = number;
 
@@ -23,13 +24,8 @@ export function FourBurn({ cards, ms }: { cards: Card[]; ms: number }) {
           </span>
         ))}
       </div>
-      <span
-        data-testid="burn-flash"
-        className="four-fire text-7xl leading-none"
-        style={{ animationDelay: '1000ms' }}
-      >
-        🔥
-      </span>
+      {/* The pixel flame grows out of the middle after the cards have landed and fades with the overlay. */}
+      <BurnFire scale={9} delayMs={900} durationMs={Math.max(900, ms - 900)} />
     </div>
   );
 }

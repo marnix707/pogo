@@ -15,6 +15,7 @@ import { FourBurn } from './FourBurn';
 import { useCardScale } from '../../lib/cardScale';
 import { handLayout } from '../../lib/handLayout';
 import { REVEAL_FLIP_MS, leftoverCount, revealPlan, revealStartMs } from './reveal';
+import { BurnFire } from './BurnFire';
 import { BLIND_FLY_MS, BLIND_TURN_MS, WinReveal } from './WinReveal';
 import { RoundScreen } from './RoundScreen';
 import { RulesIntro } from './RulesIntro';
@@ -1218,12 +1219,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
               )}
               {/* Only over an empty pile: as soon as new cards land the fire must not cover them. */}
               {flame && shownPile.length === 0 && (
-                <span
-                  data-testid="burn-flash"
-                  className="animate-pop absolute inset-0 flex items-center justify-center text-6xl"
-                  aria-hidden
-                >
-                  🔥
+                <span className="pointer-events-none absolute inset-0 flex items-end justify-center">
+                  <BurnFire scale={5} durationMs={1500} />
                 </span>
               )}
               <span className="label absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-onbg">
