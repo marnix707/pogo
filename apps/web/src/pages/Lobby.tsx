@@ -168,17 +168,6 @@ export function Lobby({
   const isHost = room.hostId === me;
   /** The host opened the list of games (the top card is a button): the settings make room for it. */
   const [choosing, setChoosing] = useState(false);
-  // The Public / Private explanation bubble (closes on a second tap or a tap elsewhere).
-  const [visInfo, setVisInfo] = useState(false);
-  const visRef = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    if (!visInfo) return;
-    const close = (e: PointerEvent) => {
-      if (!visRef.current?.contains(e.target as Node)) setVisInfo(false);
-    };
-    document.addEventListener('pointerdown', close);
-    return () => document.removeEventListener('pointerdown', close);
-  }, [visInfo]);
   /** The settings are folded by default (a fresh lobby, or back from a game); switching games inside the lobby keeps them as they are. */
   const [settingsFold, setSettingsFold] = useState(false);
   // Arriving from the Play screen: the tapped game card morphs to the top of this lobby.
@@ -274,49 +263,6 @@ export function Lobby({
                   Invite
                 </Button>
                 <span className="flex-1" />
-                {/* Public (blue, no code) / Private (shows the code: the only way in). Tap for a short explanation. */}
-                <span className="relative shrink-0" ref={visRef}>
-                  <button
-                    type="button"
-                    data-testid="room-visibility-button"
-                    aria-expanded={visInfo}
-                    onClick={() => setVisInfo((v) => !v)}
-                    className={`label flex items-center gap-2 rounded border px-1.5 py-0.5 text-[10px] ${
-                      room.visibility === 'public'
-                        ? 'border-accent text-accent'
-                        : 'border-edge/50 text-muted'
-                    }`}
-                  >
-                    <span data-testid="room-visibility">
-                      {room.visibility === 'public' ? 'Public' : 'Private'}
-                    </span>
-                    {room.visibility !== 'public' && (
-                      <span
-                        data-testid="room-code"
-                        className="select-all text-sm font-bold leading-none tracking-[0.1em] text-accent"
-                      >
-                        {room.code}
-                      </span>
-                    )}
-                  </button>
-                  {visInfo && (
-                    <div
-                      role="status"
-                      data-testid="room-visibility-bubble"
-                      className="info-bubble absolute right-0 top-full z-30 mt-3 w-56 max-w-[70vw]"
-                    >
-                      <span
-                        aria-hidden
-                        className="absolute -top-[7px] right-6 h-3 w-3 rotate-45 border-l-2 border-t-2 border-edge/40 bg-panel2"
-                      />
-                      <div className="relative rounded-lg border-2 border-edge/40 bg-panel2 px-3 py-2 text-left text-sm font-normal normal-case tracking-normal text-ink shadow-lg">
-                        {room.visibility === 'public'
-                          ? 'Anyone in the world can join you!'
-                          : 'Your friends can join using this code.'}
-                      </div>
-                    </div>
-                  )}
-                </span>
                 <TileButton
                   onClick={() => setBoardOpen(true)}
                   aria-label="Leaderboard"
@@ -464,12 +410,31 @@ export function Lobby({
                       </section>
                     )}
 
-                    {/* Block 2: public or private; a public lobby shows its code under the switch. */}
+                    {/* Block 2: public or private; a private lobby shows its code under the label, the switch on the right. */}
                     {limits && (
                       <section aria-label="Visibility">
                         <Card className="calm">
+                          <span data-testid="room-visibility" className="sr-only">
+                            {room.visibility === 'public' ? 'Public' : 'Private'}
+                          </span>
                           <Toggle
                             label="Public room"
+                            // Private: the code is the only way in, shown right here under the label.
+                            hint={
+                              room.visibility === 'public' ? (
+                                'Anyone in the world can join you'
+                              ) : (
+                                <>
+                                  Code{' '}
+                                  <span
+                                    data-testid="room-code"
+                                    className="select-all text-lg font-bold leading-none tracking-[0.1em] text-accent"
+                                  >
+                                    {room.code}
+                                  </span>
+                                </>
+                              )
+                            }
                             disabled={!isHost}
                             checked={room.visibility === 'public'}
                             onChange={(isPublic) =>
