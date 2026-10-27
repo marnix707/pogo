@@ -293,6 +293,11 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
           fx={scoreFx.view}
           onSelect={(c) => {
             if (!settled) return;
+            // Tapping the selected box again scores it (the Score button still works too).
+            if (c === selected) {
+              void score();
+              return;
+            }
             setSelected(c);
             haptic('tap');
           }}
