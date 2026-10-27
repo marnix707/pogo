@@ -402,6 +402,7 @@ export class Room {
    * somebody picked one, so a lone Yatzy game never auto-plays.
    */
   get turnTime(): number {
+    if (this.game.ignoresTurnClock?.(this.options as never)) return 0;
     const alone = this.game.minPlayers <= 1 && this.bots === 0 && this.memberCount <= 1;
     return !this.turnTimeChosen && alone ? 0 : this.turnTimeSec;
   }
@@ -781,6 +782,7 @@ export class Room {
       maxPlayers: this.maxPlayers,
       bots: this.bots,
       ...(this.testDice ? { testDice: true } : {}),
+      ...(this.game.ignoresTurnClock?.(this.options as never) ? { noClock: true } : {}),
       options: this.options,
       turnTimeSec: this.turnTime,
       status: this.status,

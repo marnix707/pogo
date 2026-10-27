@@ -119,6 +119,7 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'YAT-103', message: 'Invalid hold selection' },
   { code: 'YAT-104', message: 'Release at least one die to roll' },
   { code: 'YAT-105', message: 'Category not available' },
+  { code: 'YAT-106', message: 'You have filled every box' },
 
   // ---- KAR: Karma ----
   { code: 'KAR-101', message: 'Swap cards and press Ready first' },

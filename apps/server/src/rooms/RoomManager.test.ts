@@ -214,6 +214,29 @@ describe('a persistent lobby: the host switches the game and everybody stays', (
   });
 });
 
+describe('Yatzy live mode', () => {
+  it('has no turn clock, and both players are up and roll at the same time', () => {
+    const { manager, lastRoom, must } = setup();
+    const { code } = must(manager.create(a, { gameId: 'yatzy' }));
+    must(manager.join(b, code));
+    must(manager.updateSettings(a.id, { turnTimeSec: 60 }));
+    const room = must(manager.updateSettings(a.id, { options: { mode: 'live' } }));
+    expect(room).toMatchObject({ noClock: true, turnTimeSec: 0 });
+    must(manager.start(a.id));
+    const game = lastRoom(a.id)!.game!;
+    expect(game.currentPlayers.sort()).toEqual([a.id, b.id].sort());
+    expect(game.deadline).toBeNull();
+    // Both roll without waiting for each other; each only sees their own dice.
+    must(manager.move(b.id, { type: 'roll', held: [false, false, false, false, false] }));
+    must(manager.move(a.id, { type: 'roll', held: [false, false, false, false, false] }));
+    const dice = (id: string) => (lastRoom(id)!.game!.view as { dice: number[] }).dice;
+    expect(dice(a.id)).toHaveLength(5);
+    expect(dice(b.id)).toHaveLength(5);
+    const turnBased = must(manager.create(user(5), { gameId: 'yatzy' }));
+    expect(turnBased.noClock).toBeUndefined();
+  });
+});
+
 describe('the turn timer when playing alone', () => {
   it('is off for a lone solo game (Yatzy) unless somebody picked one; other games keep their default', () => {
     const { manager, must } = setup();

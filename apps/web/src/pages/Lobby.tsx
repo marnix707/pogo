@@ -350,7 +350,7 @@ export function Lobby({
         )}
 
         {/* The game's own mode picker (Karma: Normal / Party / Epic) sits right under the game card, dark at 80 %. */}
-        {!choosing && ui?.LobbyOptions && (
+        {!choosing && ui?.LobbyOptions && (ui.showLobbyOptions?.(room) ?? true) && (
           <div data-testid="lobby-game-options">
             <Card className="calm !bg-panel/80">
               <ui.LobbyOptions
@@ -430,7 +430,9 @@ export function Lobby({
                         <Card className="calm flex flex-col gap-5">
                           {limits && (
                             <div className="flex items-center gap-3">
-                              <div className="shrink-0 font-semibold">Turn timer</div>
+                              <div className="shrink-0 font-semibold">
+                                {room.noClock ? 'No timer (live)' : 'Turn timer'}
+                              </div>
                               <div
                                 className="grid flex-1 grid-cols-4 gap-1.5"
                                 data-testid="turn-timer"
@@ -439,7 +441,7 @@ export function Lobby({
                                   <button
                                     key={t.value}
                                     aria-pressed={room.turnTimeSec === t.value}
-                                    disabled={!isHost}
+                                    disabled={!isHost || !!room.noClock}
                                     onClick={() =>
                                       void api.updateSettings({ turnTimeSec: t.value })
                                     }

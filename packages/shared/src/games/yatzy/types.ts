@@ -34,9 +34,17 @@ export interface YatzyPlayerState {
   scorecard: Scorecard;
   /** Number of extra-Yatzy bonuses (+100 each) earned. */
   yatzyBonuses: number;
+  /** Live mode only: this player's own dice, kept dice and rolls left (turn-based shares one set). */
+  dice?: number[];
+  held?: boolean[];
+  rollsLeft?: number;
 }
 
+/** `turns`: one player at a time (the classic game). `live`: everybody plays at once, the totals are compared at the end. */
+export type YatzyMode = 'turns' | 'live';
+
 export interface YatzyState {
+  mode: YatzyMode;
   players: YatzyPlayerState[];
   currentPlayerIndex: number;
   /** 1-based, 1..13. */
@@ -55,4 +63,6 @@ export type YatzyMove =
   | { type: 'hold'; held: boolean[] }
   | { type: 'score'; category: Category };
 
-export type YatzyOptions = Record<string, never>;
+export interface YatzyOptions {
+  mode: YatzyMode;
+}

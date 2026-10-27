@@ -84,6 +84,8 @@ export interface RoomView {
   bots: number;
   /** Developer test game: every roll is a Yatzy and the game is not recorded anywhere. */
   testDice?: boolean;
+  /** The game's options have no turn clock (Yatzy live): the lobby's timer setting does nothing. */
+  noClock?: boolean;
   options: unknown;
   turnTimeSec: number;
   status: RoomStatus;

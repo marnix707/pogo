@@ -23,6 +23,8 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
   const game = room.game!;
   const state = game.view as yatzy.YatzyState;
   const finished = room.status === 'finished';
+  // Live: everybody plays at once with their own dice (the server maps mine into the usual fields).
+  const live = state.mode === 'live';
   const myTurn = !finished && game.currentPlayers.includes(me);
   const currentId = game.currentPlayers[0];
   const current = room.members.find((m) => m.id === currentId);
@@ -195,7 +197,7 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
     else if (state.rollsLeft === 0) hint = 'Pick a category';
     else if (allHeld) hint = 'Release a die';
     else hint = 'Hold or pick';
-  } else if (!finished) {
+  } else if (!finished && !live) {
     hint = 'Rolling…';
   }
 
@@ -240,11 +242,19 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
           )}
           <div className="min-w-0 flex-1 pl-1">
             <div className="truncate text-base font-bold uppercase leading-tight tracking-[0.1em]">
-              {finished ? 'Game over' : myTurn ? 'Your turn' : `${current?.nickname ?? '…'}'s turn`}
+              {finished
+                ? 'Game over'
+                : live
+                  ? myTurn
+                    ? 'Live'
+                    : 'You are done!'
+                  : myTurn
+                    ? 'Your turn'
+                    : `${current?.nickname ?? '…'}'s turn`}
             </div>
             <div className="label truncate text-[10px] text-muted">
-              Round {state.round}/{yatzy.ROUNDS}
-              {hint && ` · ${hint}`}
+              {live ? 'Box' : 'Round'} {state.round}/{yatzy.ROUNDS}
+              {live && !myTurn && !finished ? ' · waiting for the others' : hint && ` · ${hint}`}
             </div>
           </div>
           {chrome && (
@@ -285,7 +295,8 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
           state={state}
           members={room.members}
           me={me}
-          currentIds={game.currentPlayers}
+          // (Live: everybody is "up", so only my own column is marked.)
+          currentIds={live ? game.currentPlayers.filter((id) => id === me) : game.currentPlayers}
           preview={preview}
           previewHidden={!settled}
           selected={selected}
@@ -366,6 +377,15 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
                       ? 'Pick a category'
                       : 'Score'}
                 </Button>
+              </div>
+            ) : live ? (
+              <div className="flex min-h-11 items-center justify-center">
+                <p
+                  className="label text-center text-[11px] leading-none text-muted"
+                  data-testid="live-done"
+                >
+                  Your card is full: waiting for the others…
+                </p>
               </div>
             ) : (
               <div className="flex min-h-11 flex-col items-center justify-center gap-1.5">

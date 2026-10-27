@@ -64,6 +64,8 @@ export interface GameDefinition<State, Move, Options, PlayerView = State> {
    * clock, so it cannot be used to stall.
    */
   isFreeMove?(move: Move): boolean;
+  /** The room's options turn the turn clock off (e.g. Yatzy's live mode: everybody plays at once, nobody waits). */
+  ignoresTurnClock?(options: Options): boolean;
   /**
    * The turn clock keeps running across this move instead of restarting (e.g. a phase everybody
    * acts in at once, like Karma's card swap: one deadline for the whole phase, no matter who moves).

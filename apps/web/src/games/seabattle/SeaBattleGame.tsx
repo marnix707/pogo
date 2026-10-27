@@ -16,7 +16,7 @@ import { PlacementBoard, deviceRng } from './Placement';
 const { FLEET, isSunk } = seabattle;
 
 /** The radar sweep that reveals the ships nobody found, and when it starts after the last bomb. */
-export const RADAR_MS = 1700;
+export const RADAR_MS = 2200;
 /** The radar starts this long after the last bomb and the last ship's sinking have really finished. */
 export const RADAR_START_MS = 200;
 /**
@@ -25,6 +25,10 @@ export const RADAR_START_MS = 200;
  * standings; the loser skips the sinking and goes straight from the bomb to the radar.
  */
 export const END_MS = 2600;
+/** After the beam has gone all the way round, the finished radar stays on screen at least this long. */
+export const RADAR_HOLD_MS = 500;
+/** When the loser's standings take over: the last bomb, the whole sweep (360 degrees) and the hold. */
+export const RADAR_END_MS = seabattle.SHOT_FX_MS + RADAR_START_MS + RADAR_MS + RADAR_HOLD_MS;
 
 const nameOfShip = (kind: seabattle.ShipKind) => FLEET.find((f) => f.kind === kind)?.name ?? kind;
 

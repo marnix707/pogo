@@ -104,6 +104,8 @@ export function useScoreFx(state: yatzy.YatzyState): {
     for (const p of state.players) {
       const old = before.players.find((q) => q.id === p.id);
       if (!old) continue;
+      // Live: the dice in the view are mine, so only my own boxes get the dice animation.
+      if (state.mode === 'live' && p.id !== state.players[state.currentPlayerIndex]?.id) continue;
       const category = yatzy.CATEGORIES.find(
         (c) => p.scorecard[c] !== undefined && old.scorecard[c] === undefined,
       );

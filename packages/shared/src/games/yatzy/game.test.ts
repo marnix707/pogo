@@ -12,7 +12,7 @@ const players = (n: number): GamePlayer[] =>
   Array.from({ length: n }, (_, i) => ({ id: `p${i + 1}`, nickname: `P${i + 1}`, avatar: 'fox' }));
 
 const none = [false, false, false, false, false];
-const start = (n = 2) => game.createInitialState(players(n), {}, createSeededRng(1));
+const start = (n = 2) => game.createInitialState(players(n), { mode: 'turns' }, createSeededRng(1));
 const ROLL: YatzyMove = { type: 'roll', held: none };
 
 function play(state: YatzyState, id: string, move: YatzyMove, faces: number[] = []): YatzyState {
@@ -31,8 +31,10 @@ describe('setup', () => {
   });
 
   it('rejects 0 or 7 players and supports solo', () => {
-    expect(() => game.createInitialState([], {}, createSeededRng(1))).toThrow();
-    expect(() => game.createInitialState(players(7), {}, createSeededRng(1))).toThrow();
+    expect(() => game.createInitialState([], { mode: 'turns' }, createSeededRng(1))).toThrow();
+    expect(() =>
+      game.createInitialState(players(7), { mode: 'turns' }, createSeededRng(1)),
+    ).toThrow();
     expect(start(1).players).toHaveLength(1);
   });
 
@@ -211,7 +213,7 @@ describe('extra Yatzys', () => {
 describe('full games', () => {
   function playToEnd(n: number, seed: number) {
     const rng = createSeededRng(seed);
-    let s = game.createInitialState(players(n), {}, rng);
+    let s = game.createInitialState(players(n), { mode: 'turns' }, rng);
     let scoreMoves = 0;
     let guard = 0;
     while (!game.isGameOver(s)) {
@@ -297,7 +299,7 @@ describe('wire schemas', () => {
     expect(game.moveSchema.safeParse(null).success).toBe(false);
   });
 
-  it('accepts empty options and rejects unknown ones', () => {
+  it('accepts empty options (turn based) and rejects unknown ones', () => {
     expect(game.optionsSchema.safeParse({}).success).toBe(true);
     expect(game.optionsSchema.safeParse({ extra: 1 }).success).toBe(false);
   });
@@ -305,5 +307,103 @@ describe('wire schemas', () => {
   it('shows every player the same (public) view', () => {
     const s = start();
     expect(game.getPlayerView(s, 'p2')).toBe(s);
+  });
+});
+
+describe('live mode (everybody plays at once)', () => {
+  const live = (n = 3) => game.createInitialState(players(n), { mode: 'live' }, createSeededRng(1));
+
+  it('defaults to turn based and parses the mode option', () => {
+    expect(game.optionsSchema.safeParse({}).success).toBe(true);
+    expect((game.optionsSchema.safeParse({}) as { data: { mode: string } }).data.mode).toBe(
+      'turns',
+    );
+    expect(game.optionsSchema.safeParse({ mode: 'live' }).success).toBe(true);
+    expect(game.optionsSchema.safeParse({ mode: 'sideways' }).success).toBe(false);
+    expect(game.ignoresTurnClock!({ mode: 'live' })).toBe(true);
+    expect(game.ignoresTurnClock!({ mode: 'turns' })).toBe(false);
+  });
+
+  it('everybody is up at once and rolls their own dice in any order', () => {
+    let s = live();
+    expect(game.getCurrentPlayers(s)).toEqual(['p1', 'p2', 'p3']);
+    s = play(s, 'p3', ROLL, [1, 2, 3, 4, 5]);
+    s = play(s, 'p1', ROLL, [6, 6, 6, 6, 6]);
+    expect(s.players[2]!.dice).toEqual([1, 2, 3, 4, 5]);
+    expect(s.players[0]!.dice).toEqual([6, 6, 6, 6, 6]);
+    expect(s.players[1]!.dice).toEqual([]); // p2 has not rolled yet
+    expect(s.players[2]!.rollsLeft).toBe(2);
+    expect(s.players[1]!.rollsLeft).toBe(3);
+  });
+
+  it('each player sees only their own dice, everybody sees every scorecard', () => {
+    let s = live();
+    s = play(s, 'p1', ROLL, [6, 6, 6, 6, 6]);
+    s = play(s, 'p2', ROLL, [1, 2, 3, 4, 5]);
+    const v1 = game.getPlayerView(s, 'p1');
+    expect(v1.dice).toEqual([6, 6, 6, 6, 6]);
+    expect(v1.rollsLeft).toBe(2);
+    expect(v1.currentPlayerIndex).toBe(0);
+    expect(JSON.stringify(v1)).not.toContain('[1,2,3,4,5]'); // p2's dice never leave the server
+    const v2 = game.getPlayerView(s, 'p2');
+    expect(v2.dice).toEqual([1, 2, 3, 4, 5]);
+    expect(v2.currentPlayerIndex).toBe(1);
+    s = play(s, 'p1', { type: 'score', category: 'sixes' });
+    expect(game.getPlayerView(s, 'p2').players[0]!.scorecard.sixes).toBe(30);
+    expect(game.getPlayerView(s, 'p1').round).toBe(2); // my own progress
+  });
+
+  it('scoring only touches my own card and resets only my dice', () => {
+    let s = live(2);
+    s = play(s, 'p1', ROLL, [6, 6, 6, 6, 6]);
+    s = play(s, 'p2', ROLL, [2, 2, 2, 3, 3]);
+    s = play(s, 'p1', { type: 'score', category: 'yatzy' });
+    expect(s.players[0]!.scorecard.yatzy).toBe(50);
+    expect(s.players[0]!.dice).toEqual([]);
+    expect(s.players[0]!.rollsLeft).toBe(3);
+    expect(s.players[1]!.dice).toEqual([2, 2, 2, 3, 3]); // untouched
+    expect(s.players[1]!.scorecard).toEqual({});
+    expect(game.getCurrentPlayers(s)).toEqual(['p1', 'p2']);
+  });
+
+  it('is not turn based: a score before rolling is still refused, as are rolls past three', () => {
+    let s = live(2);
+    expect(game.validateMove(s, 'p2', { type: 'score', category: 'chance' }).ok).toBe(false);
+    for (let i = 0; i < 3; i++) s = play(s, 'p2', ROLL, [1, 2, 3, 4, 5]);
+    expect(game.validateMove(s, 'p2', ROLL).ok).toBe(false);
+    expect(game.validateMove(s, 'p1', ROLL).ok).toBe(true); // p1 still has all their rolls
+    expect(game.validateMove(s, 'nobody', ROLL).ok).toBe(false);
+  });
+
+  it('a finished player drops out; the game ends when everybody is full; totals decide', () => {
+    let s = live(2);
+    const fill = (id: string, faces: number[]) => {
+      for (const c of CATEGORIES) {
+        s = play(s, id, ROLL, faces);
+        s = play(s, id, { type: 'score', category: c });
+      }
+    };
+    fill('p1', [6, 6, 6, 6, 6]);
+    expect(game.getCurrentPlayers(s)).toEqual(['p2']);
+    expect(game.isGameOver(s)).toBe(false);
+    expect(game.validateMove(s, 'p1', ROLL)).toMatchObject({
+      ok: false,
+      error: 'You have filled every box',
+    });
+    fill('p2', [1, 1, 1, 1, 1]);
+    expect(game.isGameOver(s)).toBe(true);
+    expect(game.getCurrentPlayers(s)).toEqual([]);
+    const { rankings } = game.getResults(s);
+    expect(rankings.map((r) => r.playerId)).toEqual(['p1', 'p2']);
+    expect(rankings[0]!.score).toBeGreaterThan(rankings[1]!.score);
+    expect(game.getPlayerView(s, 'p1').round).toBe(ROUNDS);
+  });
+
+  it('auto-play acts for the named player with that player’s own dice', () => {
+    let s = live(2);
+    s = play(s, 'p2', ROLL, [6, 6, 6, 6, 6]);
+    expect(game.autoMove!(s, 'p1', createSeededRng(1)).move).toMatchObject({ type: 'roll' });
+    const auto = game.autoMove!(s, 'p2', createSeededRng(1));
+    expect(auto.move).toMatchObject({ type: 'score', category: 'yatzy' });
   });
 });
