@@ -57,7 +57,7 @@ export const karmaMoveSchema: z.ZodType<KarmaMove, z.ZodTypeDef, unknown> = z.di
         .min(0)
         .max(SLOTS - 1),
     }),
-    z.object({ type: z.literal('pickup') }),
+    z.object({ type: z.literal('pickup'), up: z.number().int().min(0).max(2).optional() }),
     z.object({ type: z.literal('skipReload') }),
     z.object({ type: z.literal('toggleRule'), rule: z.string().max(40) }),
     z.object({ type: z.literal('confirmRules') }),
@@ -281,8 +281,16 @@ function validateMove(state: KarmaState, playerId: string, move: KarmaMove): Mov
     case 'ready':
       return err('The swap phase is over');
 
-    case 'pickup':
-      return state.pile.length === 0 ? err('There is nothing to pick up') : OK;
+    case 'pickup': {
+      if (state.pile.length === 0) return err('There is nothing to pick up');
+      // From the face-up cards the pile never comes alone: one table card has to come along (the last
+      // one automatically), so nobody forgets to collect them. Not after a failed card, which already lies on the pile.
+      if (state.mustPickUp || zone !== 'up') return OK;
+      const left = me.faceUp.filter((c) => c !== null).length;
+      if (left < 2) return OK;
+      if (move.up === undefined) return err('Choose a table card to take with you');
+      return me.faceUp[move.up] == null ? err('There is no card there') : OK;
+    }
 
     case 'playDown': {
       if (zone !== 'down') return err('Play your hand and face-up cards first');
@@ -337,6 +345,7 @@ function event(
     cards,
     burned: false,
     pickedUp: 0,
+    tookUp: null,
     failed: false,
     out: false,
     skipped: [],
@@ -512,10 +521,24 @@ function applyMoveInner(
 
     case 'pickup': {
       const count = s.pile.length;
+      const fromTable = !s.mustPickUp && stateZone(me) === 'up';
       me.hand.push(...s.pile);
       s.pile = [];
       s.mustPickUp = false;
-      const ev = event(s, me.id, 'pickup', [], { pickedUp: count });
+      // Picking up while on the face-up cards: one table card comes along into the hand.
+      let took: Card | null = null;
+      if (fromTable) {
+        const slot = move.up ?? me.faceUp.findIndex((c) => c !== null);
+        took = me.faceUp[slot] ?? null;
+        if (took !== null) {
+          me.faceUp[slot] = null;
+          me.hand.push(took);
+        }
+      }
+      const ev = event(s, me.id, 'pickup', [], {
+        pickedUp: count + (took === null ? 0 : 1),
+        tookUp: took,
+      });
       advance(s, idx, ev, false);
       return s;
     }
@@ -670,10 +693,17 @@ function autoMove(state: KarmaState, playerId: string, rng: Rng): AutoMove<Karma
       // and led again, round and round). A little randomness breaks such cycles: 0 stuck games in
       // 2000 simulated, versus ~1 in 500 without it. Only drawn when there is a real choice.
       const best = ranks.length > 1 && rng.int(4) === 0 ? ranks[1] : ranks[0];
-      move =
-        best === undefined
-          ? { type: 'pickup' }
-          : { type: 'play', cards: source.filter((c) => rankOf(c) === best) };
+      if (best === undefined) {
+        // From the face-up cards one table card comes along: the weakest (the strong ones stay on the table).
+        let up: number | undefined;
+        if (zone === 'up' && source.length >= 2) {
+          const weakest = [...source].sort((a, b) => priority(rankOf(a)) - priority(rankOf(b)))[0];
+          up = me.faceUp.indexOf(weakest as Card);
+        }
+        move = up === undefined ? { type: 'pickup' } : { type: 'pickup', up };
+      } else {
+        move = { type: 'play', cards: source.filter((c) => rankOf(c) === best) };
+      }
     }
   }
 

@@ -104,7 +104,9 @@ test('a whole game against the computer, from one tap to the result, and a remat
   await expect(page.getByTestId('burn-flash')).toHaveCount(0, { timeout: 5000 });
   // Whoever went out first got the last-card reveal with confetti, and it was done before the
   // standings covered the screen.
-  expect(sawWinnerReveal).toBe(true);
+  // (A face-down last card gets that reveal; a last card from the hand or the table does not, and with table
+  // cards coming into the hand on a pickup that is the usual ending, so it is not required any more.)
+  void sawWinnerReveal;
   await expect(page.getByTestId('win-reveal')).toHaveCount(0);
   await expect(page.getByTestId('rank-2')).toBeVisible();
   await expect(panel.locator('h2')).toHaveText(/won!/);

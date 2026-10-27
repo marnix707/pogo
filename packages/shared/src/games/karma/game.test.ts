@@ -831,6 +831,61 @@ describe('face-up and face-down cards', () => {
     expect(after.turn).toBe(1);
   });
 
+  it('picking up from the face-up cards takes one table card along: the player must choose it', () => {
+    // Table cards 4, 8, 8 and the opponent threw a jack: nothing fits, the pile must be picked up.
+    const s = table([{ faceUp: [card(4), card(8), card(8, 1)] }, { hand: [card(9)] }], {
+      pile: [card(11)],
+    });
+    bad(s, 'p1', { type: 'pickup' }, 'Choose a table card');
+    bad(s, 'p1', { type: 'pickup', up: 3 as number }, undefined); // not a slot
+    const emptySlot = table([{ faceUp: [card(4), null, card(8)] }, {}], { pile: [card(11)] });
+    ok(emptySlot, 'p1', { type: 'pickup', up: 0 });
+    ok(s, 'p1', { type: 'pickup', up: 1 });
+    const after = move(s, 'p1', { type: 'pickup', up: 1 });
+    expect(hand(after, 0)).toEqual([card(11), card(8)]);
+    expect(after.players[0]!.faceUp).toEqual([card(4), null, card(8, 1)]);
+    expect(after.pile).toEqual([]);
+    expect(after.lastEvent).toMatchObject({ kind: 'pickup', pickedUp: 2, tookUp: card(8) });
+    expect(after.turn).toBe(1);
+    // an empty slot cannot be chosen
+    const gap = table([{ faceUp: [card(4), null, card(8)] }, {}], { pile: [card(11)] });
+    bad(gap, 'p1', { type: 'pickup', up: 1 }, 'no card there');
+  });
+
+  it('with one table card left it comes along by itself', () => {
+    const s = table([{ faceUp: [null, card(4), null] }, {}], { pile: [card(11)] });
+    ok(s, 'p1', { type: 'pickup' });
+    const after = move(s, 'p1', { type: 'pickup' });
+    expect(hand(after, 0)).toEqual([card(11), card(4)]);
+    expect(after.players[0]!.faceUp).toEqual([null, null, null]);
+    expect(after.lastEvent).toMatchObject({ pickedUp: 2, tookUp: card(4) });
+  });
+
+  it('picking up from the hand, from face-down cards or after a failed card takes no table card', () => {
+    const fromHand = table([{ hand: [card(3)], faceUp: [card(8), card(9), card(5)] }, {}], {
+      pile: [card(11)],
+    });
+    const h = move(fromHand, 'p1', { type: 'pickup' });
+    expect(hand(h, 0)).toEqual([card(3), card(11)]);
+    expect(h.players[0]!.faceUp).toEqual([card(8), card(9), card(5)]);
+    expect(h.lastEvent).toMatchObject({ tookUp: null });
+    // a failed face-up card already lies on the pile: the pickup is plain
+    const tried = table([{ faceUp: [card(4), card(9), card(8)] }, {}], { pile: [card(12)] });
+    const failed = move(tried, 'p1', { type: 'play', cards: [card(4)] });
+    const after = move(failed, 'p1', { type: 'pickup' });
+    expect(hand(after, 0)).toEqual([card(12), card(4)]);
+    expect(after.players[0]!.faceUp).toEqual([null, card(9), card(8)]);
+    expect(after.lastEvent).toMatchObject({ tookUp: null });
+  });
+
+  it('a computer takes its weakest table card along (the strong ones stay on the table)', () => {
+    // (an ace on the pile: nothing on the table is high enough; a fresh Rng keeps the shared one's sequence)
+    const s = table([{ faceUp: [card(9), card(4), card(6)] }, {}], { pile: [card(14)] });
+    const auto = game.autoMove!(s, 'p1', createSeededRng(1));
+    expect(auto.move).toEqual({ type: 'pickup', up: 1 });
+    expect(game.validateMove(s, 'p1', auto.move).ok).toBe(true);
+  });
+
   it('a hand card still has to be playable', () => {
     const s = table([{ hand: [card(4)] }, {}], { pile: [card(12)] });
     bad(s, 'p1', { type: 'play', cards: [card(4)] }, 'Too low');

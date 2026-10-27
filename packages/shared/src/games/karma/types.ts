@@ -31,8 +31,10 @@ export interface KarmaEvent {
   cards: Card[];
   /** The pile was burned (a 10 or four of a kind). */
   burned: boolean;
-  /** Cards taken into the hand (a pickup). */
+  /** Cards taken into the hand (a pickup, a table card taken along included). */
   pickedUp: number;
+  /** The face-up table card that came along with the pile (a pickup from the face-up zone), or null. */
+  tookUp: number | null;
   /** A face-down card turned out too low: it lies on the pile and its owner must pick the pile up. */
   failed: boolean;
   /** The player has no cards left. */
@@ -90,7 +92,12 @@ export type KarmaMove =
   | { type: 'ready' }
   | { type: 'play'; cards: Card[] }
   | { type: 'playDown'; index: number }
-  | { type: 'pickup' }
+  /**
+   * Take the pile. While playing from the face-up cards (hand and deck empty) it also takes one of them into
+   * the hand: `up` = the slot of the table card to take along (needed with 2+ face-up cards; the last one comes
+   * automatically). Not after a failed card (that card already lies on the pile) and not from hand or face-down cards.
+   */
+  | { type: 'pickup'; up?: number }
   /** Fast reload: pass on playing a drawn matching card; the turn moves on. */
   | { type: 'skipReload' }
   /**

@@ -156,6 +156,7 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'KAR-123', message: 'Only the matching card can be played now' },
   { code: 'KAR-124', message: 'There is nothing to skip' },
   { code: 'KAR-126', message: 'Change one rule, or choose to skip' },
+  { code: 'KAR-127', message: 'Choose a table card to take with you' },
   { code: 'LAST-101', message: 'Too late: UNO! has to be called before the next player goes' },
   { code: 'LAST-108', message: 'Nobody can be called out right now' },
   { code: 'LAST-102', message: 'Play the card you drew, or pass' },

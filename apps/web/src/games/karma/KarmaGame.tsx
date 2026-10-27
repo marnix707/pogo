@@ -383,7 +383,11 @@ function describeEvent(
   const who = nameOf(ev.playerId);
   const parts: string[] = [];
   if (ev.kind === 'pickup') {
-    parts.push(`${who} picked up all the cards!`);
+    parts.push(
+      ev.tookUp === null
+        ? `${who} picked up all the cards!`
+        : `${who} picked up all the cards and took ${cardLabel(ev.tookUp)} from the table!`,
+    );
   } else if (ev.kind === 'blind') {
     const c = cardLabel(ev.cards[0] as Card);
     parts.push(ev.failed ? `${who} flipped ${c}, too low!` : `${who} flipped ${c}`);
@@ -934,7 +938,18 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   }
 
   function pickUpPile() {
+    // From the face-up cards the pile never comes alone: the player has to choose a table card to take along.
+    if (mustChooseTable) {
+      haptic('error');
+      return flashHint('Choose one of your table cards to take with you');
+    }
     void send({ type: 'pickup' });
+  }
+
+  /** Picking up the pile together with the table card in this slot. */
+  function pickUpWith(slot: number) {
+    haptic('tap');
+    void send({ type: 'pickup', up: slot });
   }
 
   /** Tap the pile: pick it up when nothing can be played, otherwise look at the last two moves. */
@@ -998,6 +1013,11 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
     (view.mustPickUp ||
       (zone !== 'down' && !activeCards.some((c) => c !== null && canPlayRank(pile, rankOf(c)))));
 
+  // Picking up while on my face-up cards (not after a failed card): one of them has to come along with the pile.
+  // With one left it comes by itself; with two or more I must choose (the pile is blocked until I do).
+  const upLeft = (mine?.faceUp ?? []).filter((c) => c !== null).length;
+  const mustChooseTable = mustPickUp && !view.mustPickUp && zone === 'up' && upLeft >= 2;
+
   // A fast reload (a drawn card matches what was just played): a cowboy fires his pistol, for everybody.
   const [reloadShot, setReloadShot] = useState(0);
   const lastReloadSeq = useRef(view.lastEvent?.seq ?? 0);
@@ -1038,7 +1058,9 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
       ? view.mustPickUp
         ? 'Too low! Tap the pile to pick it up'
         : zone === 'up'
-          ? 'Nothing playable: try a face-up card, or tap the pile to pick it up'
+          ? upLeft >= 2
+            ? 'Nothing playable: tap one of your table cards to take it with the pile'
+            : 'Nothing playable: tap the pile to pick it up (your last table card comes along)'
           : 'Nothing you can play: tap the pile to pick it up'
       : hint);
 
@@ -1093,6 +1115,10 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
               selected: swapUp === slot,
               float: true,
             };
+          if (playing && zone === 'up' && myTurn && mustChooseTable) {
+            // Pick-up time: every table card floats; tapping one takes it along with the pile.
+            return { onClick: () => pickUpWith(slot), float: true };
+          }
           if (playing && zone === 'up') {
             return {
               onClick: () => tapCard(card),
@@ -1184,7 +1210,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
               data-testid="pile"
               data-count={pile.length}
               data-must-pick={mustPickUp}
-              className={`relative ${mustPickUp ? 'pile-pulse' : ''}`}
+              data-choose-table={mustChooseTable}
+              className={`relative ${mustPickUp && !mustChooseTable ? 'pile-pulse' : ''}`}
               role="button"
               aria-label="Pile: tap to see the last two moves"
               onClick={(e) => {

@@ -973,7 +973,12 @@ describe('computer players', () => {
     const ranks = [...new Set(source.map(karma.rankOf))]
       .filter((r) => karma.canPlayRank(view.pile, r))
       .sort((x, y) => (x === 10 ? 200 : x === 2 ? 100 : x) - (y === 10 ? 200 : y === 2 ? 100 : y));
-    if (ranks.length === 0) return { type: 'pickup' };
+    if (ranks.length === 0) {
+      // From the face-up cards one table card has to come along with the pile.
+      return zone === 'up' && source.length >= 2
+        ? { type: 'pickup', up: mine.faceUp.findIndex((c) => c !== null) }
+        : { type: 'pickup' };
+    }
     const rank = ranks.length > 1 && jitter() < 0.25 ? ranks[1] : ranks[0];
     return { type: 'play', cards: source.filter((c) => karma.rankOf(c) === rank) };
   }
