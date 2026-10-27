@@ -330,7 +330,7 @@ button {
 .blind-card {
   position: relative;
   transform-style: preserve-3d;
-  animation: blind-turn 2.1s cubic-bezier(0.22, 0.8, 0.3, 1) both;
+  animation: blind-turn 1.8s cubic-bezier(0.22, 0.8, 0.3, 1) both;
 }
 .win-face {
   position: absolute;

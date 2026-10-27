@@ -16,7 +16,7 @@ import { useCardScale } from '../../lib/cardScale';
 import { handLayout } from '../../lib/handLayout';
 import { REVEAL_FLIP_MS, leftoverCount, revealPlan, revealStartMs } from './reveal';
 import { BurnFire } from './BurnFire';
-import { BLIND_FLY_MS, BLIND_TURN_MS, WinReveal } from './WinReveal';
+import { BLIND_FLY_AT_MS, BLIND_FLY_MS, WinReveal } from './WinReveal';
 import { RoundScreen } from './RoundScreen';
 import { RulesIntro } from './RulesIntro';
 import {
@@ -46,7 +46,7 @@ const ACTION_COLUMN_PX = 96;
 /** How long the cards of a burn or a failed blind card stay visible on the pile before it resolves. */
 const GHOST_MS = 1100;
 /** An ordinary face-down card: a flip (`blind-turn`, 2.1s = the original 3.12s turn at 1.5x) and a short hold; no caption, the pile says the rest. */
-const BLIND_REVEAL_MS = BLIND_TURN_MS + BLIND_FLY_MS;
+const BLIND_REVEAL_MS = BLIND_FLY_AT_MS + BLIND_FLY_MS;
 /** The card turn itself (`win-turn` in index.css): sounds and the turn hand-over wait for it. */
 const TURN_MS = 2500;
 /** The winning / a later finisher's card: the turn plus a short hold. */

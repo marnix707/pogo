@@ -4,7 +4,9 @@ import { PlayingCard } from './PlayingCard';
 const CONFETTI = ['#FD5F55', '#009CFD', '#FDA200', '#74CCA8', '#F7F1E4', '#AE65FF'];
 
 /** A plain face-down card: the turn (`blind-turn` in index.css) and then the flight down to the pile. */
-export const BLIND_TURN_MS = 2100;
+export const BLIND_TURN_MS = 1800;
+/** The flight to the pile starts before the turn has fully settled (the ease-out tail is nearly still): this much into the turn. */
+export const BLIND_FLY_AT_MS = 1450;
 export const BLIND_FLY_MS = 600;
 
 const prefersReducedMotion = () =>
@@ -55,7 +57,7 @@ export function WinReveal({
         ],
         { duration: BLIND_FLY_MS, easing: 'cubic-bezier(0.45, 0, 0.25, 1)', fill: 'forwards' },
       );
-    }, BLIND_TURN_MS);
+    }, BLIND_FLY_AT_MS);
     return () => clearTimeout(t);
   }, [quick, reduced]);
   const pieces = useMemo(
