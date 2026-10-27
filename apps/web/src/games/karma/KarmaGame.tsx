@@ -1216,7 +1216,8 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                   );
                 })
               )}
-              {flame && (
+              {/* Only over an empty pile: as soon as new cards land the fire must not cover them. */}
+              {flame && shownPile.length === 0 && (
                 <span
                   data-testid="burn-flash"
                   className="animate-pop absolute inset-0 flex items-center justify-center text-6xl"
