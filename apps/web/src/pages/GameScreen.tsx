@@ -13,6 +13,7 @@ import { TileButton, TopBar } from '../components/TopBar';
 import { getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
 import { haptic } from '../lib/haptics';
+import { useCountdown } from '../lib/useCountdown';
 import { play } from '../lib/sound';
 
 /** Seconds the headline sits in the middle before it moves up, and the gap between the revealed rows. */
@@ -54,6 +55,8 @@ function ResultsPanel({
     document.documentElement.classList.add('results-open');
     return () => document.documentElement.classList.remove('results-open');
   }, []);
+  // Everybody locked Ready: the next game follows by itself (a countdown), unless somebody unlocks or leaves.
+  const nextIn = useCountdown(room.autoNextAt ?? null, room.serverTime);
   const results = room.game?.results;
   if (!results) return null;
   const isHost = room.hostId === me;
@@ -137,23 +140,51 @@ function ResultsPanel({
             className="res-bottom flex flex-col gap-3"
             style={delay(rowsDone + (account?.isGuest ? 0.9 : 0.4))}
           >
-            <>
-              {/* Lobby takes everybody back to the room's lobby (Ready starts the next game). */}
-              <Button
-                data-testid="results-lobby"
-                disabled={!api.online}
-                onClick={() => void api.rematch(true)}
-              >
-                Lobby
-              </Button>
-              <Button
-                variant="secondary"
-                data-testid="results-leave"
-                onClick={() => void api.leave()}
-              >
-                Exit
-              </Button>
-            </>
+            {room.autoNextAt ? (
+              <>
+                {/* Everybody locked Ready: the next match starts by itself. Leaving the loop is an explicit choice. */}
+                <p
+                  className="label text-center text-sm text-onbg"
+                  data-testid="results-next-match"
+                  role="status"
+                >
+                  Keep playing: next match starts in {Math.max(0, nextIn ?? 0)}s
+                </p>
+                <Button
+                  variant="gold"
+                  data-testid="results-leave-next"
+                  disabled={!api.online}
+                  onClick={() => void api.readyLock(false)}
+                >
+                  Leave next match
+                </Button>
+                <Button
+                  variant="danger"
+                  data-testid="results-leave"
+                  onClick={() => void api.leave()}
+                >
+                  Leave game
+                </Button>
+              </>
+            ) : (
+              <>
+                {/* Lobby takes everybody back to the room's lobby (Ready starts the next game). */}
+                <Button
+                  data-testid="results-lobby"
+                  disabled={!api.online}
+                  onClick={() => void api.rematch(true)}
+                >
+                  Lobby
+                </Button>
+                <Button
+                  variant="secondary"
+                  data-testid="results-leave"
+                  onClick={() => void api.leave()}
+                >
+                  Exit
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

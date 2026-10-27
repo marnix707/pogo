@@ -31,6 +31,8 @@ export interface RoomLimits {
   botMs: number;
   /** Pause between everybody being ready and the game starting (default START_COUNTDOWN_MS). */
   startCountdownMs?: number;
+  /** After a game, with everybody's Ready locked: how long the results stay before the next game starts by itself (default AUTO_NEXT_MS). */
+  autoNextMs?: number;
 }
 
 export interface RoomDeps {
@@ -69,6 +71,8 @@ export interface FinishedGame {
 const CHAT_HISTORY_LIMIT = 100;
 /** After the last person is ready, the game starts this long later (anybody can cancel by un-readying). */
 export const START_COUNTDOWN_MS = 3000;
+/** The results stay this long when everybody locked Ready, then the next game starts by itself. */
+export const AUTO_NEXT_MS = 12_000;
 
 interface Member {
   user: PublicUser;
@@ -423,7 +427,9 @@ export class Room {
    * another game or the group comes back from a game, so a group can cycle through games quickly.
    */
   setReadyLock(userId: string, locked: boolean): Result<null> {
-    if (this.status !== 'lobby') return fail('The game has already started');
+    // On the results screen a Ready lock can still be taken off ("Leave next match"), not put on.
+    if (this.status !== 'lobby' && !(this.status === 'finished' && !locked))
+      return fail('The game has already started');
     const member = this.members.find((m) => m.user.id === userId && !m.left && !m.bot);
     if (!member) return fail('You are not in this room');
     member.readyLock = locked;
@@ -435,6 +441,16 @@ export class Room {
   /** A change everybody has to confirm: Ready goes off, except for people who locked it. */
   private resetReady(): void {
     for (const m of this.members) m.ready = !!m.readyLock;
+  }
+
+  /** When the next game starts by itself after this one (everybody locked Ready), or null. */
+  private autoNextAt: number | null = null;
+
+  /** Everybody still in the room has locked Ready: the games keep coming until somebody unlocks or leaves. */
+  private autoNextEligible(): boolean {
+    if (this.status !== 'finished') return false;
+    const people = this.members.filter((m) => !m.bot && !m.left);
+    return people.length > 0 && people.every((m) => m.readyLock);
   }
 
   /** Everybody present is ready and there are enough players (computer players count as seats). */
@@ -708,6 +724,7 @@ export class Room {
       }
     }
     if (this.status === 'lobby' && this.startAt !== null) wakes.push(this.startAt);
+    if (this.status === 'finished' && this.autoNextAt !== null) wakes.push(this.autoNextAt);
     const botAt = this.botDue();
     if (botAt !== null) wakes.push(botAt);
     const action = this.actionDeadline();
@@ -747,6 +764,16 @@ export class Room {
         this.afterMembershipChange(m.user.id);
         if (this.destroyed) return;
       }
+    }
+
+    // Everybody kept Ready locked: the next game follows the results by itself, without a stop in the lobby.
+    if (this.status === 'finished' && this.autoNextAt !== null && now >= this.autoNextAt) {
+      if (this.autoNextEligible() && this.rematch(this.hostId, true).ok) {
+        if (this.canAutoStart() && this.begin().ok) return;
+      }
+      this.autoNextAt = null;
+      this.changed();
+      return;
     }
 
     if (this.status === 'lobby' && this.startAt !== null && now >= this.startAt) {
@@ -798,6 +825,7 @@ export class Room {
         suggestion: m.bot ? null : (m.suggestion ?? null),
       })),
       startsAt: this.status === 'lobby' ? this.startAt : null,
+      autoNextAt: this.status === 'finished' ? this.autoNextAt : null,
       serverTime: this.deps.now(),
     };
     if (this.status === 'lobby') return base;
@@ -817,6 +845,11 @@ export class Room {
 
   /** Push fresh state to everyone present and re-arm timers. Call after any change. */
   private changed(): void {
+    if (this.status === 'finished') {
+      this.autoNextAt = this.autoNextEligible()
+        ? (this.autoNextAt ?? this.deps.now() + (this.deps.limits.autoNextMs ?? AUTO_NEXT_MS))
+        : null;
+    } else this.autoNextAt = null;
     if (this.status === 'lobby') {
       this.evaluateStart();
       if (this.canAutoStart() && this.startsInstantly && this.begin().ok) return;

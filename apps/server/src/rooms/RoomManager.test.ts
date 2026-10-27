@@ -289,6 +289,56 @@ describe('game suggestions', () => {
   });
 });
 
+describe('automatic next game', () => {
+  const finishGame = (
+    manager: ReturnType<typeof setup>['manager'],
+    must: ReturnType<typeof setup>['must'],
+  ) => {
+    for (let i = 0; i < GOAL; i++) {
+      must(manager.move(a.id, { type: 'step' }));
+      if (i < GOAL - 1) must(manager.move(b.id, { type: 'step' }));
+    }
+  };
+
+  it('starts the next game by itself when everybody locked Ready, and stops when somebody unlocks', () => {
+    const { manager, lastRoom, must } = setup();
+    const { code } = must(manager.create(a, { gameId: 'race' }));
+    must(manager.join(b, code));
+    must(manager.setReadyLock(a.id, true));
+    must(manager.setReadyLock(b.id, true));
+    vi.advanceTimersByTime(4_000); // the 3 s countdown
+    expect(lastRoom(a.id)!.status).toBe('playing');
+    finishGame(manager, must);
+    const done = lastRoom(a.id)!;
+    expect(done.status).toBe('finished');
+    expect(done.autoNextAt).toBeGreaterThan(done.serverTime ?? 0);
+    // The results stay a while, then the next game starts without a stop in the lobby.
+    vi.advanceTimersByTime(13_000);
+    const next = lastRoom(b.id)!;
+    expect(next.status).toBe('playing');
+    expect(next.autoNextAt ?? null).toBeNull();
+
+    // Round two: b unlocks during the results, so nothing starts by itself.
+    finishGame(manager, must);
+    expect(lastRoom(a.id)!.autoNextAt).toBeTruthy();
+    must(manager.setReadyLock(b.id, false));
+    expect(lastRoom(a.id)!.autoNextAt ?? null).toBeNull();
+    vi.advanceTimersByTime(30_000);
+    expect(lastRoom(a.id)!.status).toBe('finished');
+  });
+
+  it('does not loop when somebody never locked', () => {
+    const { manager, lastRoom, must } = setup();
+    const { code } = must(manager.create(a, { gameId: 'race' }));
+    must(manager.join(b, code));
+    must(manager.setReadyLock(a.id, true));
+    must(manager.setReady(b.id, true));
+    vi.advanceTimersByTime(4_000);
+    finishGame(manager, must);
+    expect(lastRoom(a.id)!.autoNextAt ?? null).toBeNull();
+  });
+});
+
 describe('locked ready', () => {
   it('stays on across setting changes and a switched game; cancelling unlocks it', () => {
     const { manager, must } = setup();

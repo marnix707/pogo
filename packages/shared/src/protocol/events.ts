@@ -92,6 +92,8 @@ export interface RoomView {
   members: RoomMemberView[];
   /** Server time (ms) at which the game starts by itself (everybody is ready), or null. */
   startsAt: number | null;
+  /** Server time (ms) when the next game starts by itself (everybody locked Ready after this one), or null. */
+  autoNextAt?: number | null;
   game?: RoomGameView;
   serverTime: number;
 }
