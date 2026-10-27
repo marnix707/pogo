@@ -57,6 +57,12 @@ export const TrophyIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+export const FriendsIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base} strokeWidth={2} {...p}>
+    <path d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20v-1.5a5 5 0 0 1 5-5h3a5 5 0 0 1 5 5V20M16.5 4.6a3.5 3.5 0 0 1 0 6.8M18.5 13.6a5 5 0 0 1 3 4.6V20" />
+  </svg>
+);
+
 export const CrownIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base} strokeWidth={2} {...p}>
     <path d="M4 18h16M5 8l4 4 3-6 3 6 4-4-1.5 10h-11z" fill="currentColor" />

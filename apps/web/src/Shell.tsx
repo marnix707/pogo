@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatError } from '@pogo/shared';
 import type { AuthResponse, Result, RoomSettingsInput } from '@pogo/shared';
 import { ChatBanner } from './components/ChatBanner';
+import { FriendsProvider } from './friends/FriendsProvider';
 import { markIntroSeen } from './components/PogoStage';
 import { ConnectionBanner } from './components/ConnectionBanner';
 import { SettingsSheet } from './components/SettingsSheet';
@@ -50,6 +51,9 @@ export function Shell({
     watchLobby,
     request,
     banned,
+    socialTick,
+    onDm,
+    onInvite,
   } = useRealtime(session.token);
   const toast = useToast();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -196,7 +200,15 @@ export function Shell({
   }
 
   return (
-    <>
+    <FriendsProvider
+      token={session.token}
+      me={session.user}
+      room={room}
+      socialTick={socialTick}
+      onDm={onDm}
+      onInvite={onInvite}
+      joinRoom={(code) => api.join(code)}
+    >
       <ConnectionBanner connection={connection} />
       {room && <ChatBanner key={room.code} messages={messages} me={session.user.id} />}
       {screen}
@@ -249,6 +261,6 @@ export function Shell({
           setRegisterOpen(true);
         }}
       />
-    </>
+    </FriendsProvider>
   );
 }

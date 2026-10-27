@@ -122,7 +122,6 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'YAT-106', message: 'You have filled every box' },
   { code: 'FRI-101', message: 'Register to use friends' },
   { code: 'FRI-102', message: 'You cannot add yourself' },
-  { code: 'FRI-103', message: 'Player not found' },
   { code: 'FRI-104', message: 'You are already friends' },
   { code: 'FRI-105', message: 'You cannot add this player' },
   { code: 'FRI-106', message: 'Too many friends or open requests' },

@@ -1,4 +1,5 @@
 import { PlayerName } from './PlayerName';
+import { ProfileTap } from '../friends/ProfileTap';
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { CHAT_MAX_LENGTH } from '@pogo/shared';
@@ -63,7 +64,9 @@ export function ChatPanel({
                 className={`flex max-w-[92%] items-start gap-2 ${mine ? 'flex-row-reverse self-end' : 'self-start'}`}
               >
                 {/* The icon sits on the outer edge, a square two text lines high. */}
-                <Avatar avatar={m.avatar} size="chat" />
+                <ProfileTap id={m.userId}>
+                  <Avatar avatar={m.avatar} size="chat" />
+                </ProfileTap>
                 <div
                   className={`flex min-w-0 flex-col gap-0.5 ${mine ? 'items-end' : 'items-start'}`}
                 >

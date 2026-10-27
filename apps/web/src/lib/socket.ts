@@ -4,6 +4,8 @@ import type { Socket } from 'socket.io-client';
 import type {
   ChatMessage,
   ClientToServerEvents,
+  DirectMessageView,
+  GameInviteView,
   LeaveReason,
   PublicRoomSummary,
   Result,
@@ -29,6 +31,10 @@ export function useRealtime(token: string) {
   const [lobby, setLobby] = useState<PublicRoomSummary[] | null>(null);
   /** Set when the server refuses this player because of a ban. */
   const [banned, setBanned] = useState<string | null>(null);
+  /** Bumps when friends, requests or blocks changed (the friends list refetches). */
+  const [socialTick, setSocialTick] = useState(0);
+  const dmListeners = useRef(new Set<(m: DirectMessageView) => void>());
+  const inviteListeners = useRef(new Set<(i: GameInviteView) => void>());
   const roomCodeRef = useRef<string>();
   const lobbyWatchers = useRef(0);
 
@@ -77,6 +83,9 @@ export function useRealtime(token: string) {
       ),
     );
     socket.on('lobby:list', setLobby);
+    socket.on('social:update', () => setSocialTick((t) => t + 1));
+    socket.on('dm:message', (m) => dmListeners.current.forEach((fn) => fn(m)));
+    socket.on('game:invite', (i) => inviteListeners.current.forEach((fn) => fn(i)));
 
     return () => {
       socket.disconnect();
@@ -115,6 +124,15 @@ export function useRealtime(token: string) {
     };
   }, []);
 
+  const onDm = useCallback((fn: (m: DirectMessageView) => void) => {
+    dmListeners.current.add(fn);
+    return () => void dmListeners.current.delete(fn);
+  }, []);
+  const onInvite = useCallback((fn: (i: GameInviteView) => void) => {
+    inviteListeners.current.add(fn);
+    return () => void inviteListeners.current.delete(fn);
+  }, []);
+
   const markRead = useCallback(() => {
     setReadUpTo((current) => Math.max(current, ...messages.map((m) => m.id)));
   }, [messages]);
@@ -131,5 +149,8 @@ export function useRealtime(token: string) {
     watchLobby,
     request,
     banned,
+    socialTick,
+    onDm,
+    onInvite,
   };
 }

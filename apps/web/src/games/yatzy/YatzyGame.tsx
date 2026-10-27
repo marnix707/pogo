@@ -7,6 +7,7 @@ import { useCountdown } from '../../lib/useCountdown';
 import { Button, TimerDrain } from '../../components/ui';
 import { ArrowLeftIcon, ChatIcon, SlidersIcon } from '../../components/icons';
 import { TileButton } from '../../components/TopBar';
+import { FriendsButton } from '../../friends/FriendsButton';
 import type { GameUiProps } from '../types';
 import { Die } from './Die';
 import { Scorecard } from './Scorecard';
@@ -259,6 +260,7 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
           </div>
           {chrome && (
             <>
+              <FriendsButton small />
               <TileButton
                 small
                 onClick={chrome.onChat}

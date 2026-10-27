@@ -14,6 +14,7 @@ import { Avatar, Button, SectionLabel } from '../components/ui';
 import { rememberGameCard } from '../lib/cardMorph';
 import { fetchDeveloper, fetchOnline } from '../lib/session';
 import { TileButton } from '../components/TopBar';
+import { FriendsButton } from '../friends/FriendsButton';
 import { getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
 import { AvatarFace } from '../components/AvatarFace';
@@ -186,6 +187,7 @@ export function Home({
           >
             <TrophyIcon className="h-5 w-5" />
           </TileButton>
+          <FriendsButton />
           <TileButton onClick={onSettings} aria-label="Settings" data-testid="settings-button">
             <SlidersIcon className="h-5 w-5" />
           </TileButton>

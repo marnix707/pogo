@@ -1,4 +1,5 @@
 import { PlayerName } from '../components/PlayerName';
+import { ProfileTap } from '../friends/ProfileTap';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BOT_AVATAR, BOT_NAMES, getGame } from '@pogo/shared';
 import type {
@@ -18,6 +19,7 @@ import { GameCard } from '../components/GameCard';
 import { JoinBar, PlayScreen } from '../components/PlayScreen';
 import { Avatar, Button, Card, SectionLabel, Toggle } from '../components/ui';
 import { TileButton } from '../components/TopBar';
+import { FriendsButton } from '../friends/FriendsButton';
 import { useToast } from '../components/Toast';
 import { getGameUi } from '../games/registry';
 import { morphFrom, takeGameCardRect } from '../lib/cardMorph';
@@ -323,6 +325,7 @@ export function Lobby({
                 >
                   <TrophyIcon className="h-5 w-5" />
                 </TileButton>
+                <FriendsButton className="calm" />
                 <TileButton
                   onClick={onSettings}
                   aria-label="Settings"
@@ -530,7 +533,9 @@ export function Lobby({
                     data-testid={`member-${m.nickname}`}
                     className="hud calm flex items-center gap-3 !bg-panel/80 px-3 py-2.5"
                   >
-                    <Avatar avatar={m.avatar} dim={!m.connected} />
+                    <ProfileTap id={m.id} me={me}>
+                      <Avatar avatar={m.avatar} dim={!m.connected} />
+                    </ProfileTap>
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-bold">
                         <PlayerName name={m.nickname} />

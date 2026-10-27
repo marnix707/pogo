@@ -1,4 +1,5 @@
 import { PlayerName } from '../components/PlayerName';
+import { ProfileTap } from '../friends/ProfileTap';
 import { useEffect, useRef, useState } from 'react';
 import type { ChatMessage, RoomView } from '@pogo/shared';
 import type { ComponentType } from 'react';
@@ -10,6 +11,7 @@ import { RegisterNudge } from '../components/RegisterNudge';
 import { ChatPanel } from '../components/ChatPanel';
 import { ArrowLeftIcon, ChatIcon } from '../components/icons';
 import { TileButton, TopBar } from '../components/TopBar';
+import { FriendsButton } from '../friends/FriendsButton';
 import { getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
 import { haptic } from '../lib/haptics';
@@ -111,7 +113,9 @@ function ResultsPanel({
                   }`}
                   style={delay(HEAD_S + i * ROW_S)}
                 >
-                  <Avatar avatar={m?.avatar ?? ''} size="sm" />
+                  <ProfileTap id={r.playerId} me={me}>
+                    <Avatar avatar={m?.avatar ?? ''} size="sm" />
+                  </ProfileTap>
                   <span className="min-w-0 truncate text-xl font-bold">
                     <PlayerName name={m?.nickname ?? 'Player'} />
                     {isMe && ' (you)'}
@@ -283,6 +287,7 @@ export function GameScreen({
           onSettings={onSettings}
           actions={
             <>
+              <FriendsButton small />
               {ui.Rules && (
                 <TileButton
                   small

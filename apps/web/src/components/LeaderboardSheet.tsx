@@ -1,4 +1,5 @@
 import { PlayerName } from './PlayerName';
+import { ProfileTap } from '../friends/ProfileTap';
 import { useEffect, useState } from 'react';
 import type { LeaderboardRow } from '@pogo/shared';
 import { gameUis } from '../games/registry';
@@ -82,7 +83,9 @@ export function LeaderboardSheet({
                   }`}
                 >
                   <span className="w-6 text-center font-bold">{i + 1}</span>
-                  <Avatar avatar={r.avatar} size="sm" />
+                  <ProfileTap id={r.userId} me={me}>
+                    <Avatar avatar={r.avatar} size="sm" />
+                  </ProfileTap>
                   <span className="min-w-0 flex-1 font-bold leading-tight [overflow-wrap:anywhere]">
                     <PlayerName name={r.nickname} />
                   </span>
