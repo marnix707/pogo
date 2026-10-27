@@ -44,8 +44,8 @@ const ACTION_COLUMN_PX = 96;
 
 /** How long the cards of a burn or a failed blind card stay visible on the pile before it resolves. */
 const GHOST_MS = 1100;
-/** An ordinary face-down card: a quick flip (`blind-turn`, 0.7s) and a short hold; no caption, the pile says the rest. */
-const BLIND_REVEAL_MS = 1050;
+/** An ordinary face-down card: a flip (`blind-turn`, 2.1s = the original 3.12s turn at 1.5x) and a short hold; no caption, the pile says the rest. */
+const BLIND_REVEAL_MS = 2450;
 /** The card turn itself (`win-turn` in index.css): sounds and the turn hand-over wait for it. */
 const TURN_MS = 2500;
 /** The winning / a later finisher's card: the turn plus a short hold. */
