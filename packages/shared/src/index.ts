@@ -4,6 +4,7 @@ export * from './protocol/schemas';
 export * from './protocol/events';
 export * from './protocol/errors';
 export * from './protocol/roles';
+export * from './protocol/friends';
 export * from './moderation/profanity';
 export * from './game/types';
 export * from './game/rng';

@@ -120,6 +120,16 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'YAT-104', message: 'Release at least one die to roll' },
   { code: 'YAT-105', message: 'Category not available' },
   { code: 'YAT-106', message: 'You have filled every box' },
+  { code: 'FRI-101', message: 'Register to use friends' },
+  { code: 'FRI-102', message: 'You cannot add yourself' },
+  { code: 'FRI-103', message: 'Player not found' },
+  { code: 'FRI-104', message: 'You are already friends' },
+  { code: 'FRI-105', message: 'You cannot add this player' },
+  { code: 'FRI-106', message: 'Too many friends or open requests' },
+  { code: 'FRI-107', message: 'There is no such friend request' },
+  { code: 'FRI-108', message: 'You are not friends' },
+  { code: 'FRI-109', message: 'You cannot message this player' },
+  { code: 'FRI-111', message: 'You are not in a lobby' },
 
   // ---- KAR: Karma ----
   { code: 'KAR-101', message: 'Swap cards and press Ready first' },

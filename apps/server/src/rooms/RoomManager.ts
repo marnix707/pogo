@@ -230,6 +230,14 @@ export class RoomManager {
     return this.roomOfUser.get(userId) ?? null;
   }
 
+  /** Where a player is right now (for the friends list and game invites). */
+  roomInfoOf(
+    userId: string,
+  ): { code: string; gameId: string; status: 'lobby' | 'playing' | 'finished' } | null {
+    const room = this.roomFor(userId);
+    return room ? { code: room.code, gameId: room.game.id, status: room.status } : null;
+  }
+
   /** Every room, for the admin panel. */
   listAll(): AdminRoomRow[] {
     return [...this.rooms.values()].map((r) => r.adminSummary());

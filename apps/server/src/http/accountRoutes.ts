@@ -51,6 +51,8 @@ export interface AccountDeps {
   bans?: BanList;
   /** Where sign-ups, email requests and logins are noted for the admin panel's Log tab. */
   moderation?: ModerationStore;
+  /** Called after an account was deleted (friends, messages and blocks go with it). */
+  onDeleted?: (userId: string) => Promise<void>;
   /** Emails that become admin when they register or log in (the first admin of a new install). */
   adminEmails?: string[];
   devEmails?: string[];
@@ -325,6 +327,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
       }
     }
     await users.delete(me.id);
+    await deps.onDeleted?.(me.id);
     return { ok: true };
   });
 

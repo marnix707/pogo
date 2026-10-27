@@ -18,6 +18,9 @@ import type { ModerationStore } from './admin/moderation';
 import { createTokenService } from './auth/tokens';
 import { AppError } from './errors';
 import type { UserStore } from './auth/userStore';
+import { registerFriendRoutes } from './http/friendRoutes';
+import { createMemoryFriendStore } from './social/friendStore';
+import type { FriendStore } from './social/friendStore';
 import { registerAccountRoutes } from './http/accountRoutes';
 import { registerAdminRoutes } from './http/adminRoutes';
 import { registerAuthRoutes } from './http/authRoutes';
@@ -44,6 +47,8 @@ export interface AppDeps {
   startCountdownMs?: number;
   /** Sends the emailed codes. Default: from `config.mailMode` (log in dev, SMTP in production). */
   mailer?: Mailer;
+  /** Friends, blocks, mutes and private messages. Default: in memory (tests). */
+  friends?: FriendStore;
   /** Bans and the staff log. Default: in memory (tests). */
   moderation?: ModerationStore;
   logger?: boolean | object;
@@ -74,6 +79,7 @@ export async function buildApp(deps: AppDeps) {
     }),
   });
 
+  const friends = deps.friends ?? createMemoryFriendStore();
   const tokens = createTokenService(config.jwtSecret);
   const moderation = deps.moderation ?? createMemoryModerationStore();
   const bans = new BanList(moderation);
@@ -174,6 +180,7 @@ export async function buildApp(deps: AppDeps) {
     secret: config.jwtSecret,
     bans,
     moderation,
+    onDeleted: (id) => friends.purge(id),
     adminEmails: config.adminEmails,
     devEmails: config.devEmails,
     limitScale: config.isProd ? 1 : 100,
@@ -238,6 +245,20 @@ export async function buildApp(deps: AppDeps) {
     trustProxy: config.isProd,
     trustProxyHops: config.trustProxyHops,
     log: app.log,
+  });
+  registerFriendRoutes(app, {
+    users: deps.users,
+    friends,
+    tokens,
+    roomInfoOf: (userId) => manager.roomInfoOf(userId),
+    isOnline: (userId) => (io.sockets.adapter.rooms.get(userChannel(userId))?.size ?? 0) > 0,
+    push: {
+      update: (userId) => io.to(userChannel(userId)).emit('social:update'),
+      message: (userId, message) => io.to(userChannel(userId)).emit('dm:message', message),
+      invite: (userId, invite) => io.to(userChannel(userId)).emit('game:invite', invite),
+    },
+    maskText: config.profanityFilter ? maskProfanity : (text) => text,
+    limitScale: config.isProd ? 1 : 100,
   });
   registerAdminRoutes(app, {
     users: deps.users,

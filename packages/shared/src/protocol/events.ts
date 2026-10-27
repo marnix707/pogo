@@ -16,6 +16,8 @@ import type {
   Visibility,
 } from './schemas';
 
+import type { DirectMessageView, GameInviteView } from './friends';
+
 export interface HelloMessage {
   message: string;
   serverTime: number;
@@ -130,6 +132,12 @@ export interface ServerToClientEvents {
   'chat:message': (message: ChatMessage) => void;
   /** The room's recent messages, sent when you join or reconnect. */
   'chat:history': (messages: ChatMessage[]) => void;
+  /** Friends, requests or blocks changed: fetch GET /api/friends again. */
+  'social:update': () => void;
+  /** A private message for me (muted senders are not pushed). */
+  'dm:message': (message: DirectMessageView) => void;
+  /** A friend invites me into their lobby. */
+  'game:invite': (invite: GameInviteView) => void;
 }
 
 export interface ClientToServerEvents {

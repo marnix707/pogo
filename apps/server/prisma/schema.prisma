@@ -102,3 +102,55 @@ model AuditLog {
 
   @@index([at])
 }
+
+/// One row per pair of players (ids stored sorted): a pending request or an accepted friendship.
+model Friendship {
+  id          String    @id @default(uuid())
+  userLowId   String
+  userHighId  String
+  requestedBy String
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  @@unique([userLowId, userHighId])
+  @@index([userHighId])
+}
+
+/// `blockerId` does not want to hear from `blockedId`.
+model UserBlock {
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+/// `muterId` stays friends with `mutedId` but gets no banners, sounds or unread badges from them.
+model UserMute {
+  muterId   String
+  mutedId   String
+  createdAt DateTime @default(now())
+
+  @@id([muterId, mutedId])
+}
+
+/// A private message between two friends (the last ~200 per pair are kept).
+model DirectMessage {
+  id        String    @id @default(uuid())
+  fromId    String
+  toId      String
+  text      String
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  @@index([fromId, toId, createdAt])
+  @@index([toId, readAt])
+}
+
+/// A player's personal invite code (the link is /?friend=<code>).
+model FriendCode {
+  userId String @id
+  code   String @unique
+}
