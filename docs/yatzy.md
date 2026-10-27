@@ -1,0 +1,9 @@
+# Yatzy game logic (modes turn based / live, scoring, joker rules)
+
+(Detail moved out of CLAUDE.md: read this when working on the area. Keep it updated with changes.)
+
+## Yatzy (packages/shared/src/games/yatzy)
+
+**Modes** (`YatzyOptions.mode`, default `turns`): **Turn based** is the classic game below; **Live** (`live`) lets everybody play at the same time: every player has their own `dice`/`held`/`rollsLeft` in `YatzyPlayerState`, `getCurrentPlayers` is everybody with an open box, a finished player drops out (`You have filled every box`, YAT-106), the game ends when all cards are full and the totals are compared (same ranking). Dice are private: `getPlayerView` maps *my* dice, holds, rolls and progress into the usual `dice/held/rollsLeft/round/currentPlayerIndex` fields and strips the others' desks, so the UI works on the same shape (in live ScoreFx only animates my own boxes; others' boxes just appear). Live has **no turn timer** (`GameDefinition.ignoresTurnClock(options)`, `RoomView.noClock`: the lobby's timer buttons are disabled and labelled "No timer (live)"). `autoMove(state, playerId)` plays for the named player. The mode picker sits under the game card like Karma's (`YatzyModePicker`: 🔁 Turn based / ⚡ Live, `yatzy-mode-turns|live`, tap the chosen one again for a bubble) and is **hidden when playing alone** (`GameUi.showLobbyOptions`: one person, both modes are the same). Live UI: banner "Live / Box n/13", "You are done!" + `live-done` message while the others finish. Tests: `game.test.ts` "live mode", `RoomManager.test.ts` "Yatzy live mode".
+
+Moves: `{type:'roll', held:boolean[5]}` (holds are sent with the roll; ignored on the first roll) and `{type:'score', category}`. Standard Joker rules: with Yatzy box filled, a further Yatzy forces the matching upper box, else any open lower box (full house/straights at full value), else any upper box for 0; +100 only if the Yatzy box holds 50. `getPreviewScores` drives the UI score preview.
