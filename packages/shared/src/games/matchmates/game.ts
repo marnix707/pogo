@@ -289,7 +289,7 @@ function settle(c: Ctx) {
   for (let guard = 0; guard < 60 && c.opp.hp > 0; guard++) {
     const m = findMatches(c.board);
     if (m.cells.size > 0) {
-      if (!c.attacked) c.longest = Math.max(c.longest, m.longest);
+      if (!c.attacked) c.longest = Math.max(c.longest, m.biggest);
       clearMatches(c, m.cells);
       continue;
     }

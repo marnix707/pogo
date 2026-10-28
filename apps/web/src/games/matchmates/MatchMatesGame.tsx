@@ -405,7 +405,7 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
     });
     // What the move earned besides damage: said out loud, with a pop on the hit points.
     if (ev.heal > 0) {
-      say(`Line of ${ev.longest}: +${ev.heal} HP!`, 'good', t);
+      say(`Match of ${ev.longest}: +${ev.heal} HP!`, 'good', t);
       at(t, () => {
         play('score');
         const [hx, hy] = ev.by === me ? [30, 44] : [108, 44];

@@ -19,10 +19,13 @@ export interface Matches {
   cells: Set<number>;
   /** Length of the longest straight line. */
   longest: number;
+  /** Tiles in the biggest shape: lines that cross (an L, a T, a plus) count as one match. */
+  biggest: number;
 }
 
 export function findMatches(board: readonly MateCell[]): Matches {
   const cells = new Set<number>();
+  const runs: number[][] = [];
   let longest = 0;
   const scan = (outer: number, inner: number, at: (o: number, i: number) => number) => {
     for (let o = 0; o < outer; o++) {
@@ -34,7 +37,12 @@ export function findMatches(board: readonly MateCell[]): Matches {
         const len = i - start;
         if (len >= 3 && matchable(prev)) {
           longest = Math.max(longest, len);
-          for (let j = start; j < i; j++) cells.add(at(o, j));
+          const run: number[] = [];
+          for (let j = start; j < i; j++) {
+            cells.add(at(o, j));
+            run.push(at(o, j));
+          }
+          runs.push(run);
         }
         start = i;
       }
@@ -42,7 +50,26 @@ export function findMatches(board: readonly MateCell[]): Matches {
   };
   scan(ROWS, COLS, (o, i) => cellAt(o, i));
   scan(COLS, ROWS, (o, i) => cellAt(i, o));
-  return { cells, longest };
+  // Lines that share a tile are one shape (union of the runs).
+  const group = runs.map((_, i) => i);
+  const find = (i: number): number => (group[i] === i ? i : (group[i] = find(group[i] as number)));
+  const owner = new Map<number, number>();
+  runs.forEach((run, i) => {
+    for (const c of run) {
+      const other = owner.get(c);
+      if (other === undefined) owner.set(c, i);
+      else group[find(i)] = find(other);
+    }
+  });
+  const sizes = new Map<number, Set<number>>();
+  runs.forEach((run, i) => {
+    const root = find(i);
+    const set = sizes.get(root) ?? new Set<number>();
+    for (const c of run) set.add(c);
+    sizes.set(root, set);
+  });
+  const biggest = Math.max(longest, ...[...sizes.values()].map((s) => s.size));
+  return { cells, longest, biggest };
 }
 
 export const adjacent = (a: number, b: number): boolean =>

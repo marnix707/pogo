@@ -277,6 +277,28 @@ describe('Pet Match', () => {
     }
   });
 
+  it('six tiles in a corner (an L) count like a line of six', () => {
+    const base = start(6);
+    const board = quiet();
+    // 4 across the top + 3 down the left, sharing the corner: 6 tiles of earth.
+    for (const c of [0, 1, 2]) set(board, 0, c, 'earth');
+    for (const r of [1, 2]) set(board, r, 0, 'earth');
+    set(board, 0, 3, 'water');
+    set(board, 1, 3, 'earth');
+    const players = base.players.map((p) =>
+      p.id === 'a' ? { ...p, hp: 50 } : p,
+    ) as MatesState['players'];
+    const s: MatesState = { ...base, board, players, turn: 'a', first: 'a', movesLeft: 2 };
+    const after = matesGame.applyMove(
+      s,
+      'a',
+      { type: 'swap', a: cellAt(0, 3), b: cellAt(1, 3) },
+      createSeededRng(2),
+    );
+    expect(after.lastEvent?.longest).toBeGreaterThanOrEqual(6);
+    expect(after.lastEvent).toMatchObject({ heal: 5, extraMove: true });
+  });
+
   it('a line of five heals 5 and gives an extra move', () => {
     const base = start(6);
     const board = quiet();
