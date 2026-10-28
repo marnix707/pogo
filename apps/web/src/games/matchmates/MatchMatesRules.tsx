@@ -36,8 +36,9 @@ export function MatchMatesRules({ open, onClose }: { open: boolean; onClose: () 
           </ul>
         </li>
         <li>
-          <b className="text-neon">Combos:</b> every line of <b>4</b> gives you an extra move, a
-          line of <b>5 or more</b> also heals you 5 and a line of <b>6 or more</b> also hits for 5.
+          <b className="text-neon">Combos:</b> every match of <b>4</b> gives you an extra move, a
+          match of <b>5 or more</b> also heals you 5 and a match of <b>6 or more</b> also hits for
+          5. Lines that cross (an L or a T) count together, so six tiles in a corner count as six.
         </li>
         <li>
           <b className="text-neon">Berries:</b> match berries to collect them. Spend 4 on{' '}
