@@ -1,0 +1,131 @@
+import type { PlayerId } from '../../game/types';
+
+export const MIN_PLAYERS = 2;
+export const MAX_PLAYERS = 2;
+
+export const COLS = 8;
+export const ROWS = 8;
+export const CELLS = COLS * ROWS;
+
+export const ELEMENTS = ['fire', 'water', 'earth', 'electric', 'psychic'] as const;
+export type Element = (typeof ELEMENTS)[number];
+
+export const STAGES = ['stadium', 'forest', 'lava', 'frost', 'reactor', 'swamp'] as const;
+export type StageId = (typeof STAGES)[number];
+
+/** What sits on a board square. `mystery` only exists in views: the real tile is hidden from the players. */
+export type TileKind = Element | 'berry' | 'bomb' | 'mystery';
+
+export interface MateCell {
+  k: TileKind;
+  /** Frozen (Frost Lake): cannot be swapped until after the next move. */
+  frozen?: true;
+  /** Bomb countdown (Reactor): explodes in a cross when it reaches 0. */
+  fuse?: number;
+  /** Covered by a "?" tile (Swamp). The state keeps the real tile; the view hides it. */
+  hidden?: true;
+}
+
+export type MatesMove =
+  | { type: 'pick'; elements: [Element, Element]; stage: StageId }
+  | { type: 'swap'; a: number; b: number }
+  | { type: 'evolve'; slot: number }
+  | { type: 'boost'; slot: number };
+
+export interface MatesOptions {
+  /** Bigger combos give more: 4 = extra move, 5 = + heal 5, 6+ = + 5 damage. */
+  matchBonus: boolean;
+}
+
+export interface MateMonster {
+  element: Element;
+  evolved: boolean;
+  mana: number;
+}
+
+export interface MatePlayer {
+  id: PlayerId;
+  hp: number;
+  maxHp: number;
+  monsters: MateMonster[];
+  berries: number;
+  picked: boolean;
+  pickStage: StageId | null;
+  /** Moves added to (+) or taken from (-) this player's next turn. */
+  moveDelta: number;
+}
+
+/** One cascade step the client plays: the squares that went, then the board after gravity and refill. */
+export interface MateStep {
+  cleared: number[];
+  board: MateCell[];
+  /** A bomb went off. */
+  bomb?: true;
+  /** An ability changed these squares. */
+  changed?: number[];
+  /** No move was left: a fresh board. */
+  shuffled?: true;
+}
+
+export interface MateFire {
+  /** The attack plays after this many steps. */
+  step: number;
+  owner: PlayerId;
+  slot: number;
+  element: Element;
+  evolved: boolean;
+  damage: number;
+  heal: number;
+}
+
+export interface MateEvent {
+  seq: number;
+  by: PlayerId;
+  kind: 'swap' | 'evolve' | 'boost';
+  a?: number;
+  b?: number;
+  slot?: number;
+  /** The board right after the swap, before anything cleared. */
+  swapped?: MateCell[];
+  steps: MateStep[];
+  fires: MateFire[];
+  /** Longest line of the move. */
+  longest: number;
+  extraMove: boolean;
+  win: boolean;
+}
+
+export interface MatesState {
+  phase: 'pick' | 'play' | 'over';
+  players: [MatePlayer, MatePlayer];
+  options: MatesOptions;
+  stage: StageId;
+  board: MateCell[];
+  first: PlayerId;
+  turn: PlayerId;
+  movesLeft: number;
+  extraUsed: boolean;
+  winner: PlayerId | null;
+  moveCount: number;
+  lastEvent: MateEvent | null;
+}
+
+export interface MatesView {
+  phase: MatesState['phase'];
+  me: PlayerId;
+  opponent: PlayerId;
+  /** My side first, then the opponent. The opponent's picks stay hidden until both have picked. */
+  players: MatePlayer[];
+  /** Who has picked while picking. */
+  picked: Record<PlayerId, boolean>;
+  stage: StageId | null;
+  options: MatesOptions;
+  board: MateCell[];
+  first: PlayerId;
+  turn: PlayerId;
+  movesLeft: number;
+  extraUsed: boolean;
+  winner: PlayerId | null;
+  moveCount: number;
+  lastEvent: MateEvent | null;
+}
