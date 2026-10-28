@@ -5,6 +5,8 @@ const px = { imageRendering: 'pixelated' } as const;
 
 /** The attack timeline in ms (the shape of `attack-demo-template.html`, one orbit instead of two). */
 export const ATTACK = {
+  /** A pause before the spirit leaves, so what filled the bar is seen first. */
+  lead: 350,
   flyEnd: 400,
   circleEnd: 1100,
   shootEnd: 1400,

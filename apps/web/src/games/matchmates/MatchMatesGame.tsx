@@ -125,8 +125,10 @@ const ELEMENT_COLOR: Record<matchmates.Element, string> = {
   psychic: '#935adc',
 };
 /** Flight time of a tile and the most the flights of one cascade step may spread over. */
-const FLY_MS = 260;
-const FLY_SPREAD_MS = 360;
+const FLY_MS = 200;
+const FLY_SPREAD_MS = 200;
+/** How long a +n total stays over a bar before it moves away. */
+const TALLY_MS = 3000;
 
 const centerOf = (testId: string): { x: number; y: number } | null => {
   const el = document.querySelector(`[data-testid="${testId}"]`);
@@ -261,7 +263,8 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
           },
           to: [tx, ty - 14],
         };
-        at(t, () => {
+        // A short pause first: the +n totals over the bars are seen before the attack starts.
+        at(t + ATTACK.lead, () => {
           setAtk(fx$);
           setNote({
             id: ++noteId + ev.seq * 100,
@@ -270,7 +273,7 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
           });
         });
         // The hit: the target shakes and flashes, the number floats up.
-        at(t + ATTACK.hit, () => {
+        at(t + ATTACK.lead + ATTACK.hit, () => {
           play('boom');
           setHit({ owner: target, slot: f.slot });
           setPops((p) => [
@@ -298,7 +301,7 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
               : []),
           ]);
         });
-        at(t + ATTACK.hit + 450, () => setHit(null));
+        at(t + ATTACK.lead + ATTACK.hit + 450, () => setHit(null));
         at(t + FIRE_MS, () => setAtk(null));
         t += FIRE_MS;
       }
@@ -360,6 +363,10 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
                 { key: g.target + i, x: to.x, y: to.y, n: n + 1 },
               ]);
             });
+            // ...and it moves away 3 seconds after its last change.
+            at(t + n * stagger + FLY_MS + TALLY_MS, () =>
+              setTallies((all) => all.filter((x) => x.key !== g.target + i || x.n !== n + 1)),
+            );
           });
         }
         setFlights((all) => [...all, ...flying]);
@@ -395,7 +402,6 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
       setHit(null);
       setGlow(null);
       setFlights([]);
-      setTallies([]);
     });
     // What the move earned besides damage: said out loud, with a pop on the hit points.
     if (ev.heal > 0) {
@@ -629,6 +635,7 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
         @keyframes mates-turn { 0%{opacity:0;transform:scale(.3) rotate(-8deg)} 20%{opacity:1;transform:scale(1.25) rotate(3deg)} 35%{transform:scale(1) rotate(0)} 80%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.4)} }
         @keyframes mates-slide { 0%{transform:translate(calc(var(--sx) * (100% + 2px)), calc(var(--sy) * (100% + 2px))) scale(1.12)} 100%{transform:translate(0,0) scale(1)} }
         @keyframes mates-fly { 0%{opacity:1;transform:translate(0,0) scale(1.1)} 100%{opacity:.9;transform:translate(var(--fx),var(--fy)) scale(.45)} }
+        @keyframes mates-tally-away { 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-16px)} }
         @keyframes mates-tally { 0%{transform:translate(-50%,-50%) scale(.6)} 50%{transform:translate(-50%,-50%) scale(1.35)} 100%{transform:translate(-50%,-50%) scale(1)} }
         @keyframes mates-note { 0%{opacity:0;transform:scale(.5)} 18%{opacity:1;transform:scale(1.15)} 30%{transform:scale(1)} 85%{opacity:1} 100%{opacity:0;transform:translateY(-14px)} }
         @keyframes mates-charge { 0%{filter:brightness(1);transform:scaleX(var(--flip)) translateX(0)} 25%{transform:scaleX(var(--flip)) translateX(-2px)} 50%{transform:scaleX(var(--flip)) translateX(2px)} 75%{transform:scaleX(var(--flip)) translateX(-3px) scale(1.06)} 100%{filter:brightness(5) saturate(0);transform:scaleX(var(--flip)) translateX(3px) scale(1.15)} }
@@ -1108,16 +1115,22 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
           ))}
           {tallies.map((t) => (
             <span
-              key={`${t.key}-${t.n}`}
+              key={t.key}
               data-testid="mates-tally"
-              className="absolute text-xl font-black text-white [text-shadow:0_2px_0_#101628,0_0_6px_#101628]"
+              className="absolute"
               style={{
                 left: t.x,
                 top: t.y - 18,
-                animation: 'mates-tally 200ms ease-out both',
+                animation: `mates-tally-away 500ms ease-in ${TALLY_MS - 500}ms both`,
               }}
             >
-              +{t.n}
+              <span
+                key={t.n}
+                className="block text-xl font-black text-white [text-shadow:0_2px_0_#101628,0_0_6px_#101628]"
+                style={{ animation: 'mates-tally 200ms ease-out both' }}
+              >
+                +{t.n}
+              </span>
             </span>
           ))}
         </div>
