@@ -287,8 +287,14 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
                   },
                 ]
               : []),
+            // The drain takes mana from both of the opponent's pets: a number over each.
             ...(f.drain
-              ? [{ id: ++popId + ev.seq * 100, x: tx, y: ty - 36, text: `-${f.drain} mana` }]
+              ? SCREEN.slots[target === me ? 'me' : 'opp'].map(([sx, sy], n) => ({
+                  id: ++popId + ev.seq * 100 + n * 10,
+                  x: sx,
+                  y: sy + 8,
+                  text: `-${f.drain} mana`,
+                }))
               : []),
           ]);
         });
