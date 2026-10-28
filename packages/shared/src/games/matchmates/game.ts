@@ -185,6 +185,8 @@ interface Ctx {
   kinds: string[];
   heal: number;
   bonusDamage: number;
+  /** A special attack fired during this move: what it clears and what falls after it never counts for combos. */
+  attacked: boolean;
 }
 
 const clone = (b: readonly MateCell[]): MateCell[] => b.map((c) => ({ ...c }));
@@ -223,6 +225,7 @@ function fireReady(c: Ctx): boolean {
     while (m.mana >= spec.cost && c.opp.hp > 0) {
       m.mana -= spec.cost;
       any = true;
+      c.attacked = true;
       const damage = spec.damage[form];
       hurt(c.opp, damage);
       const power = spec.power[form];
@@ -286,7 +289,7 @@ function settle(c: Ctx) {
   for (let guard = 0; guard < 60 && c.opp.hp > 0; guard++) {
     const m = findMatches(c.board);
     if (m.cells.size > 0) {
-      c.longest = Math.max(c.longest, m.longest);
+      if (!c.attacked) c.longest = Math.max(c.longest, m.longest);
       clearMatches(c, m.cells);
       continue;
     }
@@ -413,6 +416,7 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
     kinds: [],
     heal: 0,
     bonusDamage: 0,
+    attacked: false,
   };
   const event: MateEvent = {
     seq: state.moveCount + 1,

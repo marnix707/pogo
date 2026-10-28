@@ -326,6 +326,16 @@ describe('Pet Match', () => {
     const fire = (after: MatesState) => after.lastEvent!.fires[0]!;
     const hpOf = (after: MatesState, id: string) => after.players.find((p) => p.id === id)!.hp;
 
+    it('tiles cleared by an attack (and what falls after it) never give an extra move', () => {
+      for (const el of ['fire', 'electric', 'water', 'earth', 'psychic'] as const) {
+        for (const evolved of [false, true]) {
+          const after = fireWith(el, evolved);
+          expect(after.lastEvent!.longest).toBeLessThanOrEqual(3);
+          expect(after.lastEvent!.extraMove).toBe(false);
+        }
+      }
+    });
+
     it('earth heals as much as it hurts', () => {
       expect(fire(fireWith('earth', false))).toMatchObject({ damage: 10, heal: 10 });
       const after = fireWith('earth', true);
