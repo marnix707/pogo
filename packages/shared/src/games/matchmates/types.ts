@@ -35,9 +35,14 @@ export type MatesMove =
   | { type: 'evolve'; slot: number }
   | { type: 'boost'; slot: number };
 
+/** Starting hit points a room can pick (the first is the default). */
+export const HP_CHOICES = [100, 125, 150, 200] as const;
+
 export interface MatesOptions {
-  /** Bigger combos give more: 4 = extra move, 5 = + heal 5, 6+ = + 5 damage. */
+  /** Every 4+ line gives an extra move (not once per turn) and a 6+ line also deals 5. */
   matchBonus: boolean;
+  /** Starting hit points of both pets' owners (one of HP_CHOICES). */
+  hp: number;
 }
 
 export interface MateMonster {
@@ -67,6 +72,8 @@ export interface MateStep {
   bomb?: true;
   /** An ability changed these squares. */
   changed?: number[];
+  /** An ability cleared these squares (a column, a block). */
+  ability?: true;
   /** No move was left: a fresh board. */
   shuffled?: true;
 }
@@ -79,7 +86,12 @@ export interface MateFire {
   element: Element;
   evolved: boolean;
   damage: number;
+  /** Hit points the owner got back. */
   heal: number;
+  /** Mana taken from each of the opponent's monsters (psychic). */
+  drain?: number;
+  /** Squares the attack cleared (fire, electric) or turned into water (water). */
+  cells?: number[];
 }
 
 export interface MateEvent {
@@ -95,6 +107,10 @@ export interface MateEvent {
   fires: MateFire[];
   /** Longest line of the move. */
   longest: number;
+  /** A swap that made no match: the tiles stay swapped and the turn is lost. */
+  noMatch: boolean;
+  /** Hit points the mover got back from a line of 5 or more. */
+  heal: number;
   extraMove: boolean;
   win: boolean;
 }

@@ -108,6 +108,9 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'ROOM-126', message: 'Only developers can use test dice' },
   { code: 'ROOM-127', message: 'Test dice are only for Yatzy' },
   { code: 'ROOM-125', message: 'The game can only be changed in the lobby' },
+  { code: 'ROOM-128', message: 'You are watching this game' },
+  { code: 'ROOM-129', message: 'Too many people are watching this game' },
+  { code: 'ROOM-130', message: 'Only public games can be watched' },
 
   // ---- GAME: any game ----
   { code: 'GAME-101', message: 'Not your turn' },

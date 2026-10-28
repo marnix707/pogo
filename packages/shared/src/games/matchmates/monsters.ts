@@ -9,8 +9,12 @@ export interface MonsterSpec {
   damage: [number, number];
   /** What the attack does besides damage, by form. */
   ability: string;
-  /** Water: tiles turned into water. Earth: berries gained. Electric: opponent moves lost. Psychic: berries and mana stolen. */
+  /** Fire: columns cleared. Water: tiles turned into water. Electric: width of the cleared block (2 high). Psychic: mana drained from each of the opponent's monsters. */
   power: [number, number];
+  /** Earth: hit points healed. */
+  heal: [number, number];
+  /** Short text on screen when the attack fires, by form. */
+  effect: [string, string];
 }
 
 export const BERRIES_TO_EVOLVE = 4;
@@ -21,41 +25,51 @@ export const MONSTERS: Readonly<Record<Element, MonsterSpec>> = {
     element: 'fire',
     names: ['Embit', 'Blazemaw'],
     cost: 6,
-    damage: [10, 20],
-    ability: 'Ember Burst: pure fire damage.',
-    power: [0, 0],
+    damage: [20, 25],
+    ability: 'Column Blast: damage, and a random column counts as matched (evolved: two columns).',
+    power: [1, 2],
+    heal: [0, 0],
+    effect: ['Column blast!', 'Double column blast!'],
   },
   water: {
     element: 'water',
     names: ['Puddlo', 'Tidalurk'],
     cost: 7,
     damage: [10, 20],
-    ability: 'Tidal Splash: damage and turns random tiles into water.',
-    power: [3, 4],
+    ability: 'Tidal Splash: damage, and turns 3 random tiles into water.',
+    power: [3, 3],
+    heal: [0, 0],
+    effect: ['3 tiles to water!', '3 tiles to water!'],
   },
   earth: {
     element: 'earth',
     names: ['Sprigg', 'Thornback'],
     cost: 7,
-    damage: [10, 20],
-    ability: 'Harvest: damage and grows berries for you.',
-    power: [2, 4],
+    damage: [10, 15],
+    ability: 'Harvest: damage, and heals you by the same amount.',
+    power: [0, 0],
+    heal: [10, 15],
+    effect: ['Heal +10', 'Heal +15'],
   },
   electric: {
     element: 'electric',
     names: ['Zappip', 'Voltusk'],
     cost: 6,
-    damage: [10, 20],
-    ability: 'Overload: damage, and the opponent has one move less next turn.',
-    power: [1, 1],
+    damage: [5, 10],
+    ability: 'Overload: damage, and a random 2x2 block counts as matched (evolved: 3x2).',
+    power: [2, 3],
+    heal: [0, 0],
+    effect: ['Spark 2x2!', 'Spark 3x2!'],
   },
   psychic: {
     element: 'psychic',
     names: ['Mindle', 'Oracull'],
     cost: 6,
     damage: [10, 15],
-    ability: 'Pickpocket: damage, and steals berries and mana.',
-    power: [1, 2],
+    ability: 'Mana Drain: damage, and every monster of the opponent loses 2 mana (evolved: 3).',
+    power: [2, 3],
+    heal: [0, 0],
+    effect: ['Mana drain -2!', 'Mana drain -3!'],
   },
 };
 

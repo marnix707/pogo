@@ -4,7 +4,7 @@ import type { GameUiProps } from '../types';
 import { Avatar, Button, TimerDrain } from '../../components/ui';
 import { PlayerName } from '../../components/PlayerName';
 import { haptic } from '../../lib/haptics';
-import { chainSound, play } from '../../lib/sound';
+import { chainSound, play, tick } from '../../lib/sound';
 import { useCountdown } from '../../lib/useCountdown';
 import { useTimeWarning } from '../../lib/useTimeWarning';
 import { ARENA, arenaUrl, iceUrl, monsterSize, monsterUrl, tileUrl } from './art';
@@ -22,6 +22,8 @@ const {
   STEP_MS,
   FIRE_MS,
   SWAP_MS,
+  EVOLVE_MS,
+  NOTE_MS,
 } = matchmates;
 
 const px = { imageRendering: 'pixelated' } as const;
@@ -35,6 +37,33 @@ interface Anim {
   drops?: number[];
   /** Changes with every drop so the animation restarts. */
   key: number;
+  /** The two squares that just swapped: they slide from each other's place. */
+  swap?: [number, number];
+  /** Squares whose tile flies away (to a mana bar or the berries) instead of popping. */
+  flown?: Set<number>;
+}
+/** A miniature tile flying from the board to the bar it fills (like the Yatzy dice flying into the box). */
+interface Flight {
+  id: number;
+  src: string;
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  size: number;
+  delay: number;
+}
+/** The running total that pops up where the tiles land: +1, +2, +3... */
+interface Tally {
+  key: string;
+  x: number;
+  y: number;
+  n: number;
+}
+interface Note {
+  id: number;
+  text: string;
+  tone: 'good' | 'bad' | 'info';
 }
 interface Spark {
   id: number;
@@ -66,7 +95,18 @@ interface Pop {
   id: number;
   owner: string;
   text: string;
+  tone?: 'heal';
 }
+/** Flight time of a tile and the most the flights of one cascade step may spread over. */
+const FLY_MS = 260;
+const FLY_SPREAD_MS = 360;
+
+const centerOf = (testId: string): { x: number; y: number } | null => {
+  const el = document.querySelector(`[data-testid="${testId}"]`);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+};
 
 /** Horizontal spot of a player's monsters on their battle pad (art pixels from the pad centre). */
 const SLOT_DX = [-9, 10];
@@ -118,6 +158,14 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   const [pops, setPops] = useState<Pop[]>([]);
   const [combo, setCombo] = useState<{ id: number; level: number } | null>(null);
   const [sparks, setSparks] = useState<Spark[]>([]);
+  const [flights, setFlights] = useState<Flight[]>([]);
+  const [tallies, setTallies] = useState<Tally[]>([]);
+  const [note, setNote] = useState<Note | null>(null);
+  const [evolve, setEvolve] = useState<{
+    owner: string;
+    slot: number;
+    phase: 'charge' | 'pop';
+  } | null>(null);
   // The coin flip after the draft (also when the game is opened right at its start).
   const [coin, setCoin] = useState(view.phase === 'play' && view.moveCount === 0);
   const lastPhase = useRef(view.phase);
@@ -148,8 +196,46 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     let board = ev.swapped ?? view.board;
     let key = 0;
     let sparkId = 0;
-    if (ev.swapped) setAnim({ board, flash: new Set(), key });
+    let flightId = 0;
+    let noteId = 0;
+    const who = ev.by === me ? 'me' : 'opp';
+    const mover = view.players.find((p) => p.id === ev.by);
+    const say = (text: string, tone: Note['tone'], ms: number) =>
+      at(ms, () => setNote({ id: ++noteId + ev.seq * 100, text, tone }));
+    if (ev.swapped)
+      setAnim({
+        board,
+        flash: new Set(),
+        key,
+        swap: ev.a !== undefined && ev.b !== undefined ? [ev.a, ev.b] : undefined,
+      });
     t += SWAP_MS;
+    if (ev.noMatch) {
+      say('No match: turn lost!', 'bad', t);
+      play('error');
+      t += NOTE_MS;
+    }
+    if (ev.kind === 'evolve' && ev.slot !== undefined) {
+      const slot = ev.slot;
+      const evolvedNow = mover?.monsters[slot]?.element;
+      // Charge up (glow, shake, rising notes), then the new form pops out in a flash.
+      at(t, () => setEvolve({ owner: ev.by, slot, phase: 'charge' }));
+      for (let n = 0; n < 5; n++) at(t + n * 200, () => chainSound(n));
+      say(`${evolvedNow ? MONSTERS[evolvedNow].names[0] : 'Your pet'} is evolving...`, 'info', t);
+      at(t + EVOLVE_MS * 0.55, () => {
+        setEvolve({ owner: ev.by, slot, phase: 'pop' });
+        play('win');
+        haptic('success');
+        if (evolvedNow)
+          setNote({
+            id: ++noteId + ev.seq * 100,
+            text: `${MONSTERS[evolvedNow].names[1]}!`,
+            tone: 'good',
+          });
+      });
+      at(t + EVOLVE_MS, () => setEvolve(null));
+      t += EVOLVE_MS;
+    }
     let popId = 0;
     const fireAt = (k: number) => {
       for (const f of ev.fires.filter((x) => x.step === k)) {
@@ -157,9 +243,27 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         at(t, () => {
           setLunge({ owner: f.owner, slot: f.slot });
           play('boom');
+          setNote({
+            id: ++noteId + ev.seq * 100,
+            text: MONSTERS[f.element].effect[f.evolved ? 1 : 0],
+            tone: 'info',
+          });
           setPops((p) => [
             ...p,
             { id: ++popId + ev.seq * 100, owner: target, text: `-${f.damage}` },
+            ...(f.heal > 0
+              ? [
+                  {
+                    id: ++popId + ev.seq * 100,
+                    owner: f.owner,
+                    text: `+${f.heal}`,
+                    tone: 'heal' as const,
+                  },
+                ]
+              : []),
+            ...(f.drain
+              ? [{ id: ++popId + ev.seq * 100, owner: target, text: `-${f.drain} mana` }]
+              : []),
           ]);
         });
         at(t + FIRE_MS - 100, () => setLunge(null));
@@ -170,8 +274,57 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       fireAt(i);
       const before = board;
       const cleared = step.cleared;
+      // Tiles that fill one of the mover's bars (or the berries) fly there and count up, like Yatzy dice.
+      const groups = new Map<string, { target: string; cells: number[]; src: string }>();
+      if (!step.bomb && !reducedMotion()) {
+        for (const cell of cleared) {
+          const tile = before[cell];
+          if (!tile) continue;
+          let target: string | null = null;
+          if (tile.k === 'berry') target = `mates-berries-${who}`;
+          else {
+            const slot = mover?.monsters.findIndex((m) => m.element === tile.k) ?? -1;
+            if (slot >= 0) target = `mates-mana-${who}-${slot}`;
+          }
+          if (!target) continue;
+          const g = groups.get(target) ?? { target, cells: [], src: tileUrl(tile) };
+          g.cells.push(cell);
+          groups.set(target, g);
+        }
+      }
       at(t, () => {
-        setAnim({ board: before, flash: new Set(cleared), key });
+        const flown = new Set<number>();
+        const flying: Flight[] = [];
+        for (const g of groups.values()) {
+          const to = centerOf(g.target);
+          if (!to) continue;
+          const stagger = Math.max(25, Math.min(110, FLY_SPREAD_MS / g.cells.length));
+          g.cells.forEach((cell, n) => {
+            const from = centerOf(`mates-cell-${cell}`);
+            if (!from) return;
+            flown.add(cell);
+            flying.push({
+              id: ++flightId + ev.seq * 1000 + i * 100,
+              src: g.src,
+              x: from.x,
+              y: from.y,
+              dx: to.x - from.x,
+              dy: to.y - from.y,
+              size: 28,
+              delay: n * stagger,
+            });
+            // Each arrival raises the running total over the bar.
+            at(t + n * stagger + FLY_MS, () => {
+              tick(n);
+              setTallies((all) => [
+                ...all.filter((x) => x.key !== g.target + i),
+                { key: g.target + i, x: to.x, y: to.y, n: n + 1 },
+              ]);
+            });
+          });
+        }
+        setFlights((all) => [...all, ...flying]);
+        setAnim({ board: before, flash: new Set(cleared), key, flown });
         chainSound(i);
         if (i >= 1) setCombo({ id: ev.seq * 100 + i, level: i + 1 });
         if (i >= 1)
@@ -200,11 +353,31 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     at(t, () => {
       setAnim(null);
       setLunge(null);
+      setFlights([]);
+      setTallies([]);
     });
-    at(t + 900, () => {
+    // What the move earned besides damage: said out loud, with a pop on the hit points.
+    if (ev.heal > 0) {
+      say(`Line of ${ev.longest}: +${ev.heal} HP!`, 'good', t);
+      at(t, () => {
+        play('score');
+        setPops((p) => [
+          ...p,
+          { id: ++popId + ev.seq * 100, owner: ev.by, text: `+${ev.heal}`, tone: 'heal' },
+        ]);
+      });
+      t += NOTE_MS;
+    }
+    if (ev.extraMove) {
+      say('Extra move!', 'good', t);
+      at(t, () => play('turn'));
+      t += NOTE_MS;
+    }
+    at(t + 700, () => {
       setPops([]);
       setCombo(null);
       setSparks([]);
+      setNote(null);
     });
     return () => {
       timers.forEach(clearTimeout);
@@ -212,6 +385,10 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       setLunge(null);
       setCombo(null);
       setSparks([]);
+      setFlights([]);
+      setTallies([]);
+      setNote(null);
+      setEvolve(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view.moveCount]);
@@ -320,6 +497,15 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         @keyframes mates-fall { 0%{transform:translateY(calc(var(--drop) * -100%))} 68%{transform:translateY(0)} 82%{transform:translateY(-7%)} 100%{transform:translateY(0)} }
         @keyframes mates-spark { 0%{opacity:1;transform:translate(0,0) scale(.6)} 100%{opacity:0;transform:translate(var(--dx),70px) scale(1.1)} }
         @keyframes mates-combo { 0%{opacity:0;transform:scale(.4) rotate(-6deg)} 25%{opacity:1;transform:scale(1.25) rotate(3deg)} 100%{opacity:0;transform:scale(1) translateY(-30px)} }
+        @keyframes mates-slide { 0%{transform:translate(calc(var(--sx) * (100% + 2px)), calc(var(--sy) * (100% + 2px))) scale(1.12)} 100%{transform:translate(0,0) scale(1)} }
+        @keyframes mates-fly { 0%{opacity:1;transform:translate(0,0) scale(1.1)} 100%{opacity:.9;transform:translate(var(--fx),var(--fy)) scale(.45)} }
+        @keyframes mates-tally { 0%{transform:translate(-50%,-50%) scale(.6)} 50%{transform:translate(-50%,-50%) scale(1.35)} 100%{transform:translate(-50%,-50%) scale(1)} }
+        @keyframes mates-note { 0%{opacity:0;transform:scale(.5)} 18%{opacity:1;transform:scale(1.15)} 30%{transform:scale(1)} 85%{opacity:1} 100%{opacity:0;transform:translateY(-14px)} }
+        @keyframes mates-charge { 0%{filter:brightness(1);transform:scaleX(var(--flip)) translateX(0)} 25%{transform:scaleX(var(--flip)) translateX(-2px)} 50%{transform:scaleX(var(--flip)) translateX(2px)} 75%{transform:scaleX(var(--flip)) translateX(-3px) scale(1.06)} 100%{filter:brightness(5) saturate(0);transform:scaleX(var(--flip)) translateX(3px) scale(1.15)} }
+        @keyframes mates-evolve-pop { 0%{filter:brightness(5) saturate(0);transform:scaleX(var(--flip)) scale(.7)} 45%{filter:brightness(2);transform:scaleX(var(--flip)) scale(1.25)} 100%{filter:none;transform:scaleX(var(--flip)) scale(1)} }
+        @keyframes mates-glow-up { 0%{opacity:0;transform:translate(-50%,-50%) scale(.3)} 100%{opacity:1;transform:translate(-50%,-50%) scale(1)} }
+        @keyframes mates-glow-out { 0%{opacity:1;transform:translate(-50%,-50%) scale(1)} 100%{opacity:0;transform:translate(-50%,-50%) scale(1.8)} }
+        @keyframes mates-burst { 0%{opacity:1;transform:translate(-50%,0) scale(.5)} 100%{opacity:0;transform:translate(calc(-50% + var(--ex)),var(--ey)) scale(1.3)} }
         @keyframes mates-shake { 0%,100%{transform:translate(0)} 20%{transform:translate(-3px,2px)} 40%{transform:translate(3px,-2px)} 60%{transform:translate(-2px,-2px)} 80%{transform:translate(2px,2px)} }
       `}</style>
 
@@ -369,7 +555,10 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         />
         {sides.map(({ p, pad, flip }) =>
           p.monsters.map((m, slot) => {
-            const [w, h] = monsterSize(m.evolved);
+            const evolving = evolve?.owner === p.id && evolve.slot === slot ? evolve.phase : null;
+            // While it charges up the old form still shows; the new one pops out of the flash.
+            const shownEvolved = m.evolved && evolving !== 'charge';
+            const [w, h] = monsterSize(shownEvolved);
             const x = pad.x + (flip ? -(SLOT_DX[slot] ?? 0) : (SLOT_DX[slot] ?? 0));
             const y = pad.y + (SLOT_DY[slot] ?? 0);
             const spec = MONSTERS[m.element];
@@ -385,18 +574,57 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                 }}
                 data-testid={`mates-monster-${p.id === me ? 'me' : 'opp'}-${slot}`}
               >
+                {evolving && (
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute left-1/2 top-1/2 -z-0 h-[170%] w-[170%] -translate-x-1/2 -translate-y-1/2 rounded-full"
+                    data-testid="mates-evolve-glow"
+                    style={{
+                      background:
+                        'radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(255,214,90,.7) 35%, rgba(255,214,90,0) 70%)',
+                      animation:
+                        evolving === 'charge'
+                          ? `mates-glow-up ${EVOLVE_MS * 0.55}ms ease-in forwards`
+                          : `mates-glow-out ${EVOLVE_MS * 0.45}ms ease-out forwards`,
+                    }}
+                  />
+                )}
                 <img
-                  src={monsterUrl(m.element, m.evolved)}
-                  alt={spec.names[m.evolved ? 1 : 0]}
+                  key={`${shownEvolved}`}
+                  src={monsterUrl(m.element, shownEvolved)}
+                  alt={spec.names[shownEvolved ? 1 : 0]}
                   draggable={false}
-                  className="w-full"
+                  className="relative w-full"
                   style={{
                     ...px,
                     transform: flip ? 'scaleX(-1)' : undefined,
                     ['--lunge' as string]: flip ? '-30%' : '30%',
-                    animation: lunging ? `mates-lunge ${FIRE_MS - 100}ms ease-in-out` : undefined,
+                    ['--flip' as string]: flip ? -1 : 1,
+                    animation:
+                      evolving === 'charge'
+                        ? `mates-charge ${EVOLVE_MS * 0.55}ms ease-in forwards`
+                        : evolving === 'pop'
+                          ? `mates-evolve-pop ${EVOLVE_MS * 0.45}ms ease-out`
+                          : lunging
+                            ? `mates-lunge ${FIRE_MS - 100}ms ease-in-out`
+                            : undefined,
                   }}
                 />
+                {evolving === 'pop' &&
+                  [0, 1, 2, 3, 4, 5].map((n) => (
+                    <span
+                      key={n}
+                      aria-hidden
+                      className="pointer-events-none absolute left-1/2 top-1/3 text-lg"
+                      style={{
+                        ['--ex' as string]: `${Math.round(Math.cos((n / 6) * 6.283) * 46)}px`,
+                        ['--ey' as string]: `${Math.round(Math.sin((n / 6) * 6.283) * 46)}px`,
+                        animation: `mates-burst ${EVOLVE_MS * 0.45}ms ease-out forwards`,
+                      }}
+                    >
+                      ✨
+                    </span>
+                  ))}
                 <div
                   className="mt-0.5 flex w-[150%] -translate-x-[16%] items-center gap-1"
                   title={`${spec.names[m.evolved ? 1 : 0]}: ${m.mana}/${spec.cost} mana`}
@@ -416,7 +644,9 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         {pops.map((p) => (
           <span
             key={p.id}
-            className="pointer-events-none absolute text-2xl font-black text-white [text-shadow:0_2px_0_#101628]"
+            className={`pointer-events-none absolute text-2xl font-black [text-shadow:0_2px_0_#101628] ${
+              p.tone === 'heal' ? 'text-green-300' : 'text-white'
+            }`}
             style={{
               left: p.owner === me ? '22%' : '62%',
               top: p.owner === me ? '45%' : '25%',
@@ -501,7 +731,11 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
           >
             {board.map((cell, i) => {
               const drop = anim?.drops?.[i] ?? 0;
-              const flashing = anim?.flash.has(i);
+              const flashing = anim?.flash.has(i) && !anim.flown?.has(i);
+              const flownAway = !!anim?.flown?.has(i);
+              const swapIdx = anim?.swap ? anim.swap.indexOf(i) : -1;
+              // The tile now at i came from the other square of the swap: slide it over from there.
+              const from = swapIdx >= 0 && anim?.swap ? (anim.swap[1 - swapIdx] as number) : -1;
               return (
                 <button
                   key={i}
@@ -525,11 +759,19 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                     style={{
                       ...px,
                       ['--drop' as string]: drop,
+                      ['--sx' as string]: from >= 0 ? (from % COLS) - (i % COLS) : 0,
+                      ['--sy' as string]:
+                        from >= 0 ? Math.floor(from / COLS) - Math.floor(i / COLS) : 0,
+                      position: from >= 0 ? 'relative' : undefined,
+                      zIndex: from >= 0 ? 5 : undefined,
+                      opacity: flownAway ? 0 : undefined,
                       animation: flashing
                         ? `mates-flash ${FLASH_MS}ms ease-in forwards`
-                        : drop > 0
-                          ? `mates-fall ${STEP_MS - FLASH_MS}ms cubic-bezier(.35,0,.6,1) ${(i % COLS) * 18}ms backwards`
-                          : undefined,
+                        : from >= 0
+                          ? `mates-slide ${SWAP_MS - 20}ms cubic-bezier(.4,0,.2,1)`
+                          : drop > 0
+                            ? `mates-fall ${STEP_MS - FLASH_MS}ms cubic-bezier(.35,0,.6,1) ${(i % COLS) * 18}ms backwards`
+                            : undefined,
                     }}
                   />
                   {cell.frozen && (
@@ -560,6 +802,23 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                 {sp.emoji}
               </span>
             ))}
+            {note && (
+              <span
+                key={note.id}
+                data-testid="mates-note"
+                role="status"
+                className={`absolute left-1/2 top-1/2 w-max max-w-full -translate-x-1/2 -translate-y-1/2 text-center text-2xl font-black [text-shadow:0_3px_0_#101628,0_0_12px_#000] ${
+                  note.tone === 'bad'
+                    ? 'text-red-300'
+                    : note.tone === 'good'
+                      ? 'text-green-300'
+                      : 'text-yellow-200'
+                }`}
+                style={{ animation: `mates-note ${NOTE_MS + 200}ms ease-out forwards` }}
+              >
+                {note.text}
+              </span>
+            )}
             {combo && (
               <span
                 key={combo.id}
@@ -576,6 +835,42 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
           </div>
         </div>
       </div>
+      {(flights.length > 0 || tallies.length > 0) && (
+        <div className="pointer-events-none fixed inset-0 z-50" aria-hidden>
+          {flights.map((f) => (
+            <img
+              key={f.id}
+              src={f.src}
+              alt=""
+              className="absolute"
+              style={{
+                ...px,
+                left: f.x - f.size / 2,
+                top: f.y - f.size / 2,
+                width: f.size,
+                height: f.size,
+                ['--fx' as string]: `${f.dx}px`,
+                ['--fy' as string]: `${f.dy}px`,
+                animation: `mates-fly ${FLY_MS}ms ease-in ${f.delay}ms both`,
+              }}
+            />
+          ))}
+          {tallies.map((t) => (
+            <span
+              key={`${t.key}-${t.n}`}
+              data-testid="mates-tally"
+              className="absolute text-xl font-black text-white [text-shadow:0_2px_0_#101628,0_0_6px_#101628]"
+              style={{
+                left: t.x,
+                top: t.y - 18,
+                animation: 'mates-tally 200ms ease-out both',
+              }}
+            >
+              +{t.n}
+            </span>
+          ))}
+        </div>
+      )}
       {coin && view.coinWinner && (
         <Coin
           meAvatar={memberOf(me)?.avatar ?? '🙂'}

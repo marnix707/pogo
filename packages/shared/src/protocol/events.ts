@@ -65,6 +65,14 @@ export interface RoomMemberView {
   suggestion: string | null;
 }
 
+/** Someone watching a game that is being played (chat only; they get a seat in the next game). */
+export interface RoomSpectatorView {
+  id: string;
+  nickname: string;
+  avatar: string;
+  connected: boolean;
+}
+
 export interface RoomGameView {
   /** Game-specific, already filtered for the receiving player. */
   view: unknown;
@@ -91,7 +99,11 @@ export interface RoomView {
   options: unknown;
   turnTimeSec: number;
   status: RoomStatus;
+  /** The people with a seat (spectators are listed apart). */
   members: RoomMemberView[];
+  spectators: RoomSpectatorView[];
+  /** You are watching this game: `game.view` is empty and you cannot move. */
+  spectating?: boolean;
   /** Server time (ms) at which the game starts by itself (everybody is ready), or null. */
   startsAt: number | null;
   /** Server time (ms) when the next game starts by itself (everybody locked Ready after this one), or null. */
@@ -111,9 +123,12 @@ export interface ChatMessage {
   at: number;
 }
 
-/** A joinable public room as shown in the lobby list. */
+/** A joinable public room as shown in the lobby list (waiting for players, or playing: join to watch). */
 export interface PublicRoomSummary {
   code: string;
+  /** `playing`: a game is going on; joining makes you a spectator until the next game. */
+  status: 'lobby' | 'playing';
+  spectators: number;
   gameId: string;
   gameName: string;
   hostNickname: string;

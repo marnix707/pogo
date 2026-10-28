@@ -108,7 +108,8 @@ export class RoomManager {
   private releaseUser(userId: string): Result<null> {
     const current = this.roomFor(userId);
     if (!current) return ok(null);
-    if (current.status === 'playing') return fail('Finish or leave your current game first');
+    if (current.status === 'playing' && !current.isSpectator(userId))
+      return fail('Finish or leave your current game first');
     current.leave(userId);
     return ok(null);
   }
@@ -199,7 +200,7 @@ export class RoomManager {
     const own = this.roomFor(user.id);
     if (own && own.game.id === gameId && own.status === 'lobby') return ok(own.view(user.id));
     for (const candidate of this.listPublic()) {
-      if (candidate.gameId !== gameId) continue;
+      if (candidate.gameId !== gameId || candidate.status !== 'lobby') continue;
       const joined = this.join(user, candidate.code);
       if (joined.ok) return joined;
     }

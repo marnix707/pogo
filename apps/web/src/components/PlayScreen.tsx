@@ -13,12 +13,15 @@ function OpenGame({
   disabled,
   onJoin,
   mine = false,
+  watch = false,
 }: {
   room: PublicRoomSummary;
   disabled: boolean;
   onJoin: () => void;
   /** This is the lobby I am in: the button says Return (and goes back to it). */
   mine?: boolean;
+  /** A game in progress: the button says Watch (you join as a spectator). */
+  watch?: boolean;
 }) {
   const ui = getGameUi(room.gameId);
   return (
@@ -41,9 +44,15 @@ function OpenGame({
               />
             ))}
           </span>
-          <span>
-            {room.players}/{room.maxPlayers}
-          </span>
+          {watch ? (
+            <span data-testid={`watch-info-${room.code}`}>
+              Playing now{room.spectators > 0 ? ` · 👀 ${room.spectators}` : ''}
+            </span>
+          ) : (
+            <span>
+              {room.players}/{room.maxPlayers}
+            </span>
+          )}
         </div>
       </div>
       <Button
@@ -52,7 +61,7 @@ function OpenGame({
         className="min-h-11 !px-4"
         onClick={onJoin}
       >
-        {mine ? 'Return' : 'Join'}
+        {mine ? 'Return' : watch ? 'Watch' : 'Join'}
       </Button>
     </li>
   );
@@ -142,10 +151,12 @@ export function PlayScreen({
   // Live-update the open games while this screen is showing.
   useEffect(() => watchLobby(), [watchLobby]);
 
-  const openGames = useMemo(
+  const shown = useMemo(
     () => (lobby ?? []).filter((r) => filter === 'all' || r.gameId === filter),
     [lobby, filter],
   );
+  const openGames = useMemo(() => shown.filter((r) => r.status === 'lobby'), [shown]);
+  const playingGames = useMemo(() => shown.filter((r) => r.status === 'playing'), [shown]);
   const blocked = busy || !api.online;
 
   async function run(p: Promise<unknown> | void) {
@@ -254,6 +265,33 @@ export function PlayScreen({
           </ul>
         )}
       </section>
+      {playingGames.length > 0 && (
+        <section aria-label="Playing now">
+          <SectionLabel
+            right={
+              <span data-testid="playing-games-count" className="text-onbg">
+                {playingGames.length}
+              </span>
+            }
+          >
+            Playing now
+          </SectionLabel>
+          <ul className="flex flex-col gap-2">
+            {playingGames.map((r) => (
+              <OpenGame
+                key={r.code}
+                room={r}
+                watch
+                disabled={blocked}
+                mine={r.code === currentRoomCode}
+                onJoin={() =>
+                  r.code === currentRoomCode ? onReturn?.() : void run(api.join(r.code))
+                }
+              />
+            ))}
+          </ul>
+        </section>
+      )}
       {onMainScreen && (
         <Button
           variant="secondary"

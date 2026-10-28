@@ -14,12 +14,12 @@ import {
   dropAndRefill,
   findMatches,
   legalSwaps,
-  trySwap,
+  swapCells,
   adjacent,
   cellAt,
 } from './board';
 import { BERRIES_TO_EVOLVE, BOOST_MANA, MONSTERS, evolveCost } from './monsters';
-import { CELLS, COLS, ELEMENTS, MAX_PLAYERS, MIN_PLAYERS, ROWS, STAGES } from './types';
+import { CELLS, COLS, ELEMENTS, HP_CHOICES, MAX_PLAYERS, MIN_PLAYERS, ROWS, STAGES } from './types';
 import type {
   Element,
   MateCell,
@@ -54,17 +54,25 @@ export const matesMoveSchema: z.ZodType<MatesMove, z.ZodTypeDef, unknown> = z.di
 );
 
 const optionsSchema = z
-  .object({ matchBonus: z.boolean().default(false) })
+  .object({
+    matchBonus: z.boolean().default(false),
+    hp: z
+      .number()
+      .refine((n) => (HP_CHOICES as readonly number[]).includes(n))
+      .default(HP_CHOICES[0]),
+  })
   .passthrough()
-  .transform((o): MatesOptions => ({ matchBonus: o.matchBonus }));
+  .transform((o): MatesOptions => ({ matchBonus: o.matchBonus, hp: o.hp }));
 
 const err = (error: string): MoveValidation => ({ ok: false, error });
 const OK: MoveValidation = { ok: true };
 
-export const START_HP = 60;
+export const START_HP = HP_CHOICES[0];
 /** The player who moves second starts with a few extra hit points. */
 export const SECOND_PLAYER_HP = 5;
 export const MOVES_PER_TURN = 2;
+/** Hit points a line of 5 or more heals. */
+export const COMBO_HEAL = 5;
 export const BOMB_FUSE = 3;
 export const MAX_BOMBS = 2;
 /** Most tile kinds that freeze after a move (Frost Lake). */
@@ -73,6 +81,9 @@ export const MAX_FROZEN_KINDS = 2;
 export const STEP_MS = 650;
 export const FIRE_MS = 1300;
 export const SWAP_MS = 300;
+/** The evolve animation, and the text that says "extra move" / "turn lost" after a move. */
+export const EVOLVE_MS = 1800;
+export const NOTE_MS = 800;
 /** Milliseconds the clients spend on the coin flip that picks the arena and who starts. */
 export const COIN_MS = 3600;
 
@@ -92,8 +103,8 @@ function createInitialState(players: GamePlayer[], options: MatesOptions, rng: R
     throw new Error(`Pet Match needs ${MIN_PLAYERS}-${MAX_PLAYERS} players`);
   const make = (p: GamePlayer): MatePlayer => ({
     id: p.id,
-    hp: START_HP,
-    maxHp: START_HP,
+    hp: options.hp,
+    maxHp: options.hp,
     monsters: [],
     berries: 0,
     confirmed: false,
@@ -147,7 +158,6 @@ function validateMove(state: MatesState, playerId: PlayerId, move: MatesMove): M
     if (!adjacent(a, b)) return err('Swap two neighbouring tiles');
     if (state.board[a]?.frozen || state.board[b]?.frozen)
       return err('Frozen tiles cannot be moved');
-    if (!trySwap(state.board, a, b)) return err('That swap does not make a match');
     return OK;
   }
   const monster = me.monsters[move.slot];
@@ -218,7 +228,10 @@ function fireReady(c: Ctx): boolean {
       const damage = spec.damage[form];
       hurt(c.opp, damage);
       const power = spec.power[form];
+      const heal = spec.heal[form];
       let changed: number[] | undefined;
+      let cleared: Set<number> | undefined;
+      let drain: number | undefined;
       if (m.element === 'water') {
         const targets = c.board.flatMap((t, i) => (t.k !== 'water' && t.k !== 'bomb' ? [i] : []));
         changed = [];
@@ -227,18 +240,25 @@ function fireReady(c: Ctx): boolean {
           c.board[pick] = { ...c.board[pick]!, k: 'water' };
           changed.push(pick);
         }
-      } else if (m.element === 'earth') c.me.berries += power;
-      else if (m.element === 'electric') c.opp.moveDelta -= power;
-      else if (m.element === 'psychic') {
-        const berries = Math.min(power, c.opp.berries);
-        c.opp.berries -= berries;
-        c.me.berries += berries;
+      } else if (m.element === 'earth') c.me.hp = Math.min(c.me.maxHp, c.me.hp + heal);
+      else if (m.element === 'fire') {
+        // `power` random columns count as matched.
+        const cols = Array.from({ length: COLS }, (_, i) => i);
+        cleared = new Set();
         for (let n = 0; n < power; n++) {
-          const pool = c.opp.monsters.filter((o) => o.mana > 0);
-          if (pool.length === 0) break;
-          (pool[c.rng.int(pool.length)] as MateMonster).mana -= 1;
-          m.mana += 1;
+          const col = cols.splice(c.rng.int(cols.length), 1)[0] as number;
+          for (let r = 0; r < ROWS; r++) cleared.add(cellAt(r, col));
         }
+      } else if (m.element === 'electric') {
+        // A random block, `power` wide and 2 high, counts as matched.
+        const r0 = c.rng.int(ROWS - 1);
+        const c0 = c.rng.int(COLS - power + 1);
+        cleared = new Set();
+        for (let r = r0; r < r0 + 2; r++)
+          for (let col = c0; col < c0 + power; col++) cleared.add(cellAt(r, col));
+      } else if (m.element === 'psychic') {
+        drain = power;
+        for (const o of c.opp.monsters) o.mana = Math.max(0, o.mana - power);
       }
       c.fires.push({
         step: c.steps.length,
@@ -247,10 +267,17 @@ function fireReady(c: Ctx): boolean {
         element: m.element,
         evolved: m.evolved,
         damage,
-        heal: 0,
+        heal,
+        ...(drain ? { drain } : {}),
+        ...(cleared ? { cells: [...cleared].sort((x, y) => x - y) } : {}),
+        ...(changed && changed.length > 0 ? { cells: changed } : {}),
       });
       if (changed && changed.length > 0)
         c.steps.push({ cleared: [], board: clone(c.board), changed });
+      if (cleared) {
+        clearMatches(c, cleared);
+        (c.steps[c.steps.length - 1] as MateStep).ability = true;
+      }
     }
   });
   return any;
@@ -353,7 +380,7 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
     const first = (players.find((p) => p.id !== winner.id) as MatePlayer).id;
     const sized = players.map((p) =>
       p.id === winner.id
-        ? { ...p, hp: START_HP + SECOND_PLAYER_HP, maxHp: START_HP + SECOND_PLAYER_HP }
+        ? { ...p, hp: p.maxHp + SECOND_PLAYER_HP, maxHp: p.maxHp + SECOND_PLAYER_HP }
         : p,
     ) as MatesState['players'];
     return {
@@ -397,24 +424,34 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
     steps: c.steps,
     fires: c.fires,
     longest: 0,
+    noMatch: false,
+    heal: 0,
     extraMove: false,
     win: false,
   };
   let extra = 0;
+  let noMatch = false;
+  let healed = 0;
   let extraUsed = state.extraUsed;
 
   if (move.type === 'swap') {
-    const swapped = trySwap(c.board, move.a, move.b) as MateCell[];
+    const swapped = swapCells(c.board, move.a, move.b) as MateCell[];
     c.board = swapped;
     event.a = move.a;
     event.b = move.b;
     event.swapped = clone(swapped);
     settle(c);
     freeze(c);
+    // A swap that makes nothing: the tiles stay swapped and the turn is lost.
+    noMatch = findMatches(swapped).cells.size === 0;
     if (c.longest >= 4 && c.opp.hp > 0) {
+      // 4 in a row: an extra move; 5 or more also heals 5.
+      if (c.longest >= 5) {
+        me.hp = Math.min(me.maxHp, me.hp + COMBO_HEAL);
+        healed = COMBO_HEAL;
+      }
       if (state.options.matchBonus) {
         extra = 1;
-        if (c.longest >= 5) me.hp = Math.min(me.maxHp, me.hp + 5);
         if (c.longest >= 6) hurt(opp, 5);
       } else if (!extraUsed) {
         extra = 1;
@@ -436,6 +473,8 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
   if (c.opp.hp > 0) ensureMoves(c);
 
   event.longest = c.longest;
+  event.noMatch = noMatch;
+  event.heal = healed;
   event.extraMove = extra > 0;
   const win = opp.hp <= 0;
   event.win = win;
@@ -451,7 +490,8 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
   };
   if (win) return { ...base, phase: 'over', winner: playerId, movesLeft: 0 };
 
-  const movesLeft = state.movesLeft - 1 + extra;
+  // Evolving takes the whole turn, and so does a swap that matches nothing.
+  const movesLeft = noMatch || move.type === 'evolve' ? 0 : state.movesLeft - 1 + extra;
   if (movesLeft > 0) return { ...base, movesLeft };
 
   // Turn over: the opponent starts, with any moves the attacks gave or took.
@@ -587,7 +627,13 @@ function autoMove(state: MatesState, playerId: PlayerId, rng: Rng): AutoMove<Mat
 }
 
 const eventMs = (e: MateEvent | null): number =>
-  e ? SWAP_MS + e.steps.length * STEP_MS + e.fires.length * FIRE_MS : 0;
+  e
+    ? SWAP_MS +
+      e.steps.length * STEP_MS +
+      e.fires.length * FIRE_MS +
+      (e.kind === 'evolve' ? EVOLVE_MS : 0) +
+      (e.noMatch || e.extraMove || e.heal > 0 ? NOTE_MS : 0)
+    : 0;
 
 export const matesGame: GameDefinition<MatesState, MatesMove, MatesOptions, MatesView> = {
   id: 'matchmates',
@@ -595,7 +641,7 @@ export const matesGame: GameDefinition<MatesState, MatesMove, MatesOptions, Mate
   minPlayers: MIN_PLAYERS,
   maxPlayers: MAX_PLAYERS,
   optionsSchema,
-  defaultOptions: { matchBonus: false },
+  defaultOptions: { matchBonus: false, hp: START_HP },
   moveSchema: matesMoveSchema,
   createInitialState,
   validateMove,

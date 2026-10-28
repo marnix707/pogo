@@ -14,6 +14,7 @@ import { updateProfile } from './lib/session';
 import { useRealtime } from './lib/socket';
 import { play } from './lib/sound';
 import { GameScreen } from './pages/GameScreen';
+import { SpectatorScreen } from './pages/SpectatorScreen';
 import { ProfileSheet } from './components/ProfileSheet';
 import { Home } from './pages/Home';
 import { Lobby } from './pages/Lobby';
@@ -180,6 +181,16 @@ export function Shell({
         }}
       />
     );
+  } else if (room.spectating) {
+    screen = (
+      <SpectatorScreen
+        room={room}
+        me={session.user.id}
+        api={api}
+        messages={messages}
+        onSettings={openSettings}
+      />
+    );
   } else {
     screen = (
       <GameScreen
@@ -242,7 +253,7 @@ export function Shell({
         roomCode={room?.code}
         isDev={!!session.user.isDev}
         onLeave={
-          room?.status === 'lobby'
+          room?.status === 'lobby' || room?.spectating
             ? () => {
                 setSettingsOpen(false);
                 void api.leave();

@@ -406,11 +406,77 @@ describe('playing', () => {
     expect(manager.start(a.id).ok).toBe(false);
   });
 
-  it('blocks new players once started', () => {
-    const { manager, code } = started();
+  it('blocks new players once a private game started', () => {
+    const { manager, must } = setup();
+    const { code } = must(manager.create(a, { gameId: 'race', visibility: 'private' }));
+    must(manager.join(b, code));
+    must(manager.start(a.id));
     expect(manager.join(c, code)).toMatchObject({
       ok: false,
       error: 'This game has already started',
+    });
+  });
+
+  describe('spectators of a public game', () => {
+    function watched() {
+      const s = setup();
+      const { code } = s.must(s.manager.create(a, { gameId: 'race', visibility: 'public' }));
+      s.must(s.manager.join(b, code));
+      s.must(s.manager.start(a.id));
+      s.must(s.manager.join(c, code));
+      return { ...s, code };
+    }
+
+    it('lists the game as playing, and quick play never joins it', () => {
+      const { manager, code, must } = watched();
+      expect(manager.listPublic()).toMatchObject([
+        { code, status: 'playing', players: 2, maxPlayers: 2, spectators: 1 },
+      ]);
+      const other = must(manager.quickPlay(user(4), 'race'));
+      expect(other.code).not.toBe(code);
+    });
+
+    it('sees the room and chats, but gets no game view and cannot move', () => {
+      const { manager, lastRoom, chats, must } = watched();
+      const view = lastRoom(c.id);
+      expect(view).toMatchObject({ spectating: true, status: 'playing' });
+      expect(view?.game?.view).toBeNull();
+      expect(view?.members.map((m) => m.id)).toEqual([a.id, b.id]);
+      expect(lastRoom(a.id)?.spectators.map((m) => m.id)).toEqual([c.id]);
+      expect(manager.move(c.id, { type: 'step' })).toMatchObject({
+        ok: false,
+        error: 'You are watching this game',
+      });
+      must(manager.chat(c.id, 'go a!'));
+      expect(chats.get(a.id)?.at(-1)?.text).toBe('go a!');
+      must(manager.chat(a.id, 'thanks'));
+      expect(chats.get(c.id)?.at(-1)?.text).toBe('thanks');
+    });
+
+    it('can leave without disturbing the game, and join another room', () => {
+      const { manager, lastRoom, must } = watched();
+      must(manager.create(c, { gameId: 'race' }));
+      expect(lastRoom(a.id)?.spectators).toEqual([]);
+      expect(lastRoom(a.id)?.status).toBe('playing');
+    });
+
+    it('gets a seat in the next game once the players go back to the lobby', () => {
+      const { manager, lastRoom, must } = setup();
+      const { code } = must(manager.create(a, { gameId: 'race', visibility: 'public' }));
+      must(manager.join(b, code));
+      must(manager.start(a.id));
+      must(manager.join(c, code));
+      // Finish the game: the race ends when somebody reaches the goal.
+      for (let i = 0; i < GOAL * 2 && lastRoom(a.id)?.status === 'playing'; i++) {
+        const turn = lastRoom(a.id)?.game?.currentPlayers[0] ?? a.id;
+        manager.move(turn, { type: 'step' });
+      }
+      expect(lastRoom(a.id)?.status).toBe('finished');
+      must(manager.rematch(a.id, true));
+      const view = lastRoom(c.id);
+      expect(view?.status).toBe('lobby');
+      expect(view?.spectating).toBeUndefined();
+      expect(view?.members.map((m) => m.id)).toEqual([a.id, b.id, c.id]);
     });
   });
 
@@ -639,8 +705,8 @@ describe('public lobby', () => {
 
     must(manager.updateSettings(a.id, { visibility: 'public' }));
     must(manager.join(b, room.code));
-    must(manager.start(a.id)); // started rooms are not joinable
-    expect(manager.listPublic()).toHaveLength(0);
+    must(manager.start(a.id)); // started rooms are not joinable, only watchable
+    expect(manager.listPublic().map((r) => r.status)).toEqual(['playing']);
   });
 
   it('removes a room from the list when it is closed', () => {
@@ -880,7 +946,7 @@ describe('computer players', () => {
     expect(seatOf(lastRoom(a.id), a.id).hand).toHaveLength(3);
     expect(seatOf(lastRoom(a.id), 'bot:1').hand).toBeNull();
     expect(seatOf(lastRoom(a.id), 'bot:1').handCount).toBe(3);
-    expect(manager.listPublic()).toEqual([]);
+    expect(manager.listPublic().filter((r) => r.status === 'lobby')).toEqual([]);
   });
 
   it('picks computer names that nobody in the room already uses', () => {

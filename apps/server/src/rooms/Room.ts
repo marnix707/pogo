@@ -69,6 +69,8 @@ export interface FinishedGame {
 }
 
 const CHAT_HISTORY_LIMIT = 100;
+/** At most this many people watch one game. */
+const MAX_SPECTATORS = 20;
 /** After the last person is ready, the game starts this long later (anybody can cancel by un-readying). */
 export const START_COUNTDOWN_MS = 3000;
 /** The results stay this long when everybody locked Ready, then the next game starts by itself. */
@@ -88,6 +90,8 @@ interface Member {
   readyLock?: boolean;
   /** The game this member suggests for the next round (the host decides). */
   suggestion?: string | null;
+  /** Watching a game in progress: chat and state, no seat; gets one when the room goes back to the lobby. */
+  spectator?: boolean;
 }
 
 export interface RoomInit {
@@ -177,7 +181,24 @@ export class Room {
   }
 
   get activeMemberIds(): string[] {
-    return this.members.filter((m) => !m.left && !m.bot).map((m) => m.user.id);
+    return this.members.filter((m) => !m.left && !m.bot && !m.spectator).map((m) => m.user.id);
+  }
+
+  /** A person with a seat (not a spectator, not a computer). */
+  private seated(m: Member): boolean {
+    return !m.left && !m.bot && !m.spectator;
+  }
+
+  private findSeated(userId: string): Member | undefined {
+    return this.members.find((m) => m.user.id === userId && this.seated(m));
+  }
+
+  isSpectator(userId: string): boolean {
+    return this.members.some((m) => m.user.id === userId && m.spectator && !m.left);
+  }
+
+  get spectatorCount(): number {
+    return this.members.filter((m) => m.spectator && !m.left).length;
   }
 
   get memberCount(): number {
@@ -187,7 +208,15 @@ export class Room {
   join(user: PublicUser): Result<null> {
     if (this.banned.has(user.id)) return fail('You were removed from this room');
     if (this.hasMember(user.id)) return ok(null);
-    if (this.status !== 'lobby') return fail('This game has already started');
+    if (this.status !== 'lobby') {
+      // A public game in progress can be watched; the watcher gets a seat in the next game.
+      if (this.visibility !== 'public') return fail('This game has already started');
+      if (this.spectatorCount >= MAX_SPECTATORS)
+        return fail('Too many people are watching this game');
+      this.members.push({ user, connected: true, left: false, absentSince: null, spectator: true });
+      this.changed();
+      return ok(null);
+    }
     if (this.memberCount >= this.maxPlayers) return fail('This room is full');
     if (this.memberCount + this.bots >= this.game.maxPlayers) return fail('This room is full');
     this.members.push({ user, connected: true, left: false, absentSince: null });
@@ -199,7 +228,7 @@ export class Room {
   leave(userId: string, reason: LeaveReason = 'left'): void {
     const member = this.members.find((m) => m.user.id === userId && !m.left && !m.bot);
     if (!member) return;
-    if (this.status === 'playing') {
+    if (this.status === 'playing' && !member.spectator) {
       member.left = true;
       member.connected = false;
       member.absentSince = this.deps.now();
@@ -239,7 +268,7 @@ export class Room {
       return;
     }
     if (removedId === this.hostId) {
-      const people = this.members.filter((m) => !m.bot);
+      const people = this.members.filter((m) => !m.bot && !m.spectator);
       const next = people.find((m) => !m.left && m.connected) ?? people.find((m) => !m.left);
       if (next) this.hostId = next.user.id;
     }
@@ -276,18 +305,25 @@ export class Room {
 
   /** How this room appears in the public lobby list, or null if it should not be listed. */
   summary(): PublicRoomSummary | null {
-    if (this.visibility !== 'public' || this.status !== 'lobby') return null;
-    if (this.memberCount >= this.maxPlayers) return null;
-    if (this.memberCount + this.bots >= this.game.maxPlayers) return null;
+    if (this.visibility !== 'public') return null;
+    const playing = this.status === 'playing';
+    if (this.status !== 'lobby' && !playing) return null;
+    if (!playing) {
+      if (this.memberCount >= this.maxPlayers) return null;
+      if (this.memberCount + this.bots >= this.game.maxPlayers) return null;
+    }
+    const seats = this.members.filter((m) => !m.spectator && !m.left).length;
     const host = this.members.find((m) => m.user.id === this.hostId);
     return {
       code: this.code,
+      status: playing ? 'playing' : 'lobby',
+      spectators: this.spectatorCount,
       gameId: this.game.id,
       gameName: this.game.name,
       hostNickname: host ? displayName(host.user) : '',
       hostAvatar: host?.user.avatar ?? '',
-      players: this.memberCount,
-      maxPlayers: this.maxPlayers,
+      players: playing ? seats : this.memberCount,
+      maxPlayers: playing ? seats : this.maxPlayers,
       createdAt: this.createdAt,
     };
   }
@@ -392,7 +428,7 @@ export class Room {
    */
   suggest(userId: string, game: AnyGameDefinition | null): Result<null> {
     if (this.status !== 'lobby') return fail('The game has already started');
-    const member = this.members.find((m) => m.user.id === userId && !m.left && !m.bot);
+    const member = this.findSeated(userId);
     if (!member) return fail('You are not in this room');
     // Suggesting the game that is already chosen is pointless; suggesting the same one again withdraws it.
     member.suggestion =
@@ -414,7 +450,7 @@ export class Room {
   /** Lobby: press or release Ready. When everybody is ready a short countdown starts the game. */
   setReady(userId: string, ready: boolean): Result<null> {
     if (this.status !== 'lobby') return fail('The game has already started');
-    const member = this.members.find((m) => m.user.id === userId && !m.left && !m.bot);
+    const member = this.findSeated(userId);
     if (!member) return fail('You are not in this room');
     member.ready = ready;
     if (!ready) member.readyLock = false; // cancelling Ready also unlocks it
@@ -430,7 +466,7 @@ export class Room {
     // On the results screen a Ready lock can still be taken off ("Leave next match"), not put on.
     if (this.status !== 'lobby' && !(this.status === 'finished' && !locked))
       return fail('The game has already started');
-    const member = this.members.find((m) => m.user.id === userId && !m.left && !m.bot);
+    const member = this.findSeated(userId);
     if (!member) return fail('You are not in this room');
     member.readyLock = locked;
     if (locked) member.ready = true;
@@ -449,14 +485,14 @@ export class Room {
   /** Everybody still in the room has locked Ready: the games keep coming until somebody unlocks or leaves. */
   private autoNextEligible(): boolean {
     if (this.status !== 'finished') return false;
-    const people = this.members.filter((m) => !m.bot && !m.left);
+    const people = this.members.filter((m) => this.seated(m));
     return people.length > 0 && people.every((m) => m.readyLock);
   }
 
   /** Everybody present is ready and there are enough players (computer players count as seats). */
   private canAutoStart(): boolean {
     if (this.status !== 'lobby') return false;
-    const people = this.members.filter((m) => !m.bot && !m.left);
+    const people = this.members.filter((m) => this.seated(m));
     if (people.length === 0) return false;
     return (
       people.every((m) => m.connected && m.ready) &&
@@ -466,7 +502,7 @@ export class Room {
 
   /** One person alone (a solo game) or with computer players: Ready is a plain Start, no countdown. */
   private get startsInstantly(): boolean {
-    const alone = this.members.filter((m) => !m.bot && !m.left).length === 1;
+    const alone = this.memberCount === 1;
     return alone && (this.bots > 0 || this.game.minPlayers <= 1);
   }
 
@@ -493,11 +529,13 @@ export class Room {
     // Computer players take the last seats; drop any left over from a previous game first.
     this.members = this.members.filter((m) => !m.bot && !m.left);
     this.members.push(...this.makeBots());
-    const players = this.members.map((m) => ({
-      id: m.user.id,
-      nickname: displayName(m.user),
-      avatar: m.user.avatar,
-    }));
+    const players = this.members
+      .filter((m) => !m.spectator)
+      .map((m) => ({
+        id: m.user.id,
+        nickname: displayName(m.user),
+        avatar: m.user.avatar,
+      }));
     if (players.length < this.game.minPlayers) {
       this.members = this.members.filter((m) => !m.bot);
       return fail(`${this.game.name} needs at least ${this.game.minPlayers} player(s)`);
@@ -519,12 +557,12 @@ export class Room {
 
   rematch(userId: string, toLobby = false): Result<null> {
     // Anybody in the room can take everyone back to the lobby; only the host restarts at once.
-    if (!this.members.some((m) => m.user.id === userId && !m.left && !m.bot))
-      return fail('You are not in this room');
+    if (!this.findSeated(userId)) return fail('You are not in this room');
     if (!toLobby && userId !== this.hostId) return fail('Only the host can start a rematch');
     if (this.status !== 'finished') return fail('The game is not finished');
     // Back to the waiting room: players who left and the computer players go away (the setting stays).
     this.members = this.members.filter((m) => !m.left && !m.bot);
+    this.seatSpectators();
     this.resetReady();
     // The game may carry something over to the next one (e.g. a rule the winner picked).
     if (this.state && this.game.nextOptions)
@@ -541,11 +579,25 @@ export class Room {
     return ok(null);
   }
 
+  /** Back in the lobby the watchers become players, as far as the room has seats (the rest go home). */
+  private seatSpectators(): void {
+    const seats = Math.min(this.maxPlayers, this.game.maxPlayers) - this.bots;
+    for (const m of [...this.members]) {
+      if (!m.spectator) continue;
+      if (this.memberCount < seats) m.spectator = false;
+      else {
+        this.members = this.members.filter((x) => x !== m);
+        this.deps.onMemberGone(this, m.user.id, 'left');
+      }
+    }
+  }
+
   // ---- gameplay ---------------------------------------------------------------------------
 
   move(userId: string, rawMove: unknown): Result<null> {
     if (this.status !== 'playing') return fail('No game in progress');
     if (!this.hasMember(userId)) return fail('You are not in this game');
+    if (!this.findSeated(userId)) return fail('You are watching this game');
     const parsed = this.game.moveSchema.safeParse(rawMove);
     if (!parsed.success) return fail('Invalid move');
     const check = this.game.validateMove(this.state, userId, parsed.data);
@@ -593,15 +645,15 @@ export class Room {
 
   private reportFinished(results: GameResults): void {
     if (this.testDice) return; // a developer's test game never counts
-    const humans = this.members.filter((m) => !m.bot).map((m) => m.user.id);
+    const humans = this.members.filter((m) => !m.bot && !m.spectator).map((m) => m.user.id);
     try {
       this.deps.onGameFinished({
         gameId: this.game.id,
         matchId: `${this.code}-${this.gameNo}`,
         results,
         humans,
-        players: this.members.length,
-        bots: this.members.length - humans.length,
+        players: humans.length + this.members.filter((m) => m.bot).length,
+        bots: this.members.filter((m) => m.bot).length,
       });
     } catch {
       // Recording stats must never break a game.
@@ -658,7 +710,7 @@ export class Room {
     if (this.destroyed || this.status !== 'playing') return null;
     if (!this.members.some((m) => m.bot)) return null;
     // Pause while every person is away; the game carries on when someone comes back.
-    if (!this.members.some((m) => !m.bot && !m.left && m.connected)) return null;
+    if (!this.members.some((m) => this.seated(m) && m.connected)) return null;
     if (!this.currentMembers().some((m) => m.bot)) return null;
     const settle = this.state ? (this.game.settleMs?.(this.state) ?? 0) : 0;
     return this.lastChangeAt + Math.max(this.deps.limits.botMs, settle);
@@ -710,18 +762,17 @@ export class Room {
   }
 
   private abandonedAt(): number | null {
-    const people = this.members.filter((m) => !m.bot);
+    const people = this.members.filter((m) => !m.bot && !m.spectator);
     if (people.length === 0 || !people.every((m) => this.isAbsent(m))) return null;
     return Math.max(...people.map((m) => m.absentSince ?? 0)) + this.deps.limits.emptyTtlMs;
   }
 
   private nextWake(): number | null {
     const wakes: number[] = [];
-    if (this.status === 'lobby') {
-      for (const m of this.members) {
-        if (!m.connected && m.absentSince !== null) {
-          wakes.push(m.absentSince + this.deps.limits.graceMs);
-        }
+    for (const m of this.members) {
+      // A lobby drops anyone who stays away; a watcher who stays away is dropped in any state.
+      if ((this.status === 'lobby' || m.spectator) && !m.connected && m.absentSince !== null) {
+        wakes.push(m.absentSince + this.deps.limits.graceMs);
       }
     }
     if (this.status === 'lobby' && this.startAt !== null) wakes.push(this.startAt);
@@ -754,17 +805,18 @@ export class Room {
       return;
     }
 
-    if (this.status === 'lobby') {
-      const gone = this.members.filter(
-        (m) =>
-          !m.connected && m.absentSince !== null && now >= m.absentSince + this.deps.limits.graceMs,
-      );
-      for (const m of gone) {
-        this.members = this.members.filter((x) => x !== m);
-        this.deps.onMemberGone(this, m.user.id, 'timeout');
-        this.afterMembershipChange(m.user.id);
-        if (this.destroyed) return;
-      }
+    const gone = this.members.filter(
+      (m) =>
+        (this.status === 'lobby' || m.spectator) &&
+        !m.connected &&
+        m.absentSince !== null &&
+        now >= m.absentSince + this.deps.limits.graceMs,
+    );
+    for (const m of gone) {
+      this.members = this.members.filter((x) => x !== m);
+      this.deps.onMemberGone(this, m.user.id, 'timeout');
+      this.afterMembershipChange(m.user.id);
+      if (this.destroyed) return;
     }
 
     // Everybody kept Ready locked: the next game follows the results by itself, without a stop in the lobby.
@@ -814,17 +866,30 @@ export class Room {
       options: this.options,
       turnTimeSec: this.turnTime,
       status: this.status,
-      members: this.members.map((m) => ({
-        id: m.user.id,
-        nickname: displayName(m.user),
-        avatar: m.user.avatar,
-        connected: m.connected && !m.left,
-        left: m.left,
-        bot: !!m.bot,
-        ready: !!m.bot || !!m.ready,
-        readyLock: !m.bot && !!m.readyLock,
-        suggestion: m.bot ? null : (m.suggestion ?? null),
-      })),
+      members: this.members
+        .filter((m) => !m.spectator)
+        .map((m) => ({
+          id: m.user.id,
+          nickname: displayName(m.user),
+          avatar: m.user.avatar,
+          connected: m.connected && !m.left,
+          left: m.left,
+          bot: !!m.bot,
+          ready: !!m.bot || !!m.ready,
+          readyLock: !m.bot && !!m.readyLock,
+          suggestion: m.bot ? null : (m.suggestion ?? null),
+        })),
+      spectators: this.members
+        .filter((m) => m.spectator && !m.left)
+        .map((m) => ({
+          id: m.user.id,
+          nickname: displayName(m.user),
+          avatar: m.user.avatar,
+          connected: m.connected,
+        })),
+      ...(this.members.some((m) => m.spectator && m.user.id === forUserId)
+        ? { spectating: true }
+        : {}),
       startsAt: this.status === 'lobby' ? this.startAt : null,
       autoNextAt: this.status === 'finished' ? this.autoNextAt : null,
       serverTime: this.deps.now(),
@@ -836,7 +901,8 @@ export class Room {
     return {
       ...base,
       game: {
-        view: this.game.getPlayerView(this.state, forUserId),
+        // Watchers get no player view (nobody's private cards or ships): the screen shows the standings.
+        view: base.spectating ? null : this.game.getPlayerView(this.state, forUserId),
         currentPlayers: this.game.getCurrentPlayers(this.state),
         deadline: onlyComputers ? null : (this.nextAutoAt ?? this.turnDeadline),
         results: this.results,

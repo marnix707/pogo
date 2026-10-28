@@ -10,7 +10,7 @@ import { cellAt, createBoard, findMatches, legalSwaps, trySwap } from './board';
 
 const A: GamePlayer = { id: 'a', nickname: 'A', avatar: 'x' };
 const B: GamePlayer = { id: 'b', nickname: 'B', avatar: 'x' };
-const opts = { matchBonus: false };
+const opts = { matchBonus: false, hp: 100 };
 
 /** A board without any match: kind = (2 * row + column) mod 5. */
 function quiet(): MateCell[] {
@@ -56,7 +56,7 @@ describe('Pet Match', () => {
     expect(s.coinWinner).not.toBeNull();
     expect(s.first).not.toBe(s.coinWinner);
     expect(s.turn).toBe(s.first);
-    for (const p of s.players) expect(p.hp).toBe(p.id === s.coinWinner ? 65 : 60);
+    for (const p of s.players) expect(p.hp).toBe(p.id === s.coinWinner ? 105 : 100);
     expect(s.movesLeft).toBe(2);
     expect(matesGame.settleMs!(s)).toBeGreaterThan(0);
   });
@@ -108,7 +108,9 @@ describe('Pet Match', () => {
     expect(matesGame.validateMove(s0, 'a', { type: 'confirm', stage: 'stadium' }).ok).toBe(false);
     const s = start();
     const bad = { ...s, board: quiet() };
-    expect(matesGame.validateMove(bad, mover(s), { type: 'swap', a: 0, b: 1 }).ok).toBe(false);
+    // A swap that matches nothing is allowed, but it costs the turn (see below).
+    expect(matesGame.validateMove(bad, mover(s), { type: 'swap', a: 0, b: 1 }).ok).toBe(true);
+    expect(matesGame.validateMove(bad, mover(s), { type: 'swap', a: 0, b: 2 }).ok).toBe(false);
     expect(
       matesGame.validateMove(bad, mover(s) === 'a' ? 'b' : 'a', { type: 'swap', a: 0, b: 1 }).ok,
     ).toBe(false);
@@ -222,9 +224,120 @@ describe('Pet Match', () => {
           createSeededRng(1),
         );
         expect(after.players.find((p) => p.id === s.turn)!.monsters[0]!.evolved).toBe(true);
-        expect(after.movesLeft).toBe(1);
+        // Evolving takes the whole turn.
+        expect(after.turn).not.toBe(s.turn);
       }
     }
+  });
+
+  it('a swap that matches nothing keeps the tiles swapped and loses the turn', () => {
+    const base = start(4);
+    const board = quiet();
+    // (Some other move must exist, or the board would be reshuffled.)
+    set(board, 0, 0, 'fire');
+    set(board, 0, 1, 'fire');
+    set(board, 0, 2, 'water');
+    set(board, 1, 2, 'fire');
+    const s: MatesState = { ...base, board, turn: 'a', first: 'a', movesLeft: 2 };
+    const [x, y] = [cellAt(4, 5), cellAt(4, 6)];
+    const after = matesGame.applyMove(s, 'a', { type: 'swap', a: x, b: y }, createSeededRng(1));
+    expect(after.lastEvent?.noMatch).toBe(true);
+    expect(after.board[x]!.k).toBe(s.board[y]!.k);
+    expect(after.board[y]!.k).toBe(s.board[x]!.k);
+    expect(after.turn).toBe('b');
+  });
+
+  it('a line of five heals 5 and gives an extra move', () => {
+    const base = start(6);
+    const board = quiet();
+    for (const c of [0, 1, 3, 4]) set(board, 0, c, 'earth');
+    set(board, 0, 2, 'water');
+    set(board, 1, 2, 'earth');
+    const players = base.players.map((p) =>
+      p.id === 'a' ? { ...p, hp: 50 } : p,
+    ) as MatesState['players'];
+    const s: MatesState = { ...base, board, players, turn: 'a', first: 'a', movesLeft: 2 };
+    const after = matesGame.applyMove(
+      s,
+      'a',
+      { type: 'swap', a: cellAt(0, 2), b: cellAt(1, 2) },
+      createSeededRng(2),
+    );
+    expect(after.lastEvent).toMatchObject({ heal: 5, extraMove: true });
+    expect(after.players.find((p) => p.id === 'a')!.hp).toBe(55);
+    expect(after.turn).toBe('a');
+  });
+
+  describe('special attacks', () => {
+    function fireWith(element: Element, evolved: boolean) {
+      const base = start(3);
+      const players = base.players.map((p) =>
+        p.id === 'a'
+          ? {
+              ...p,
+              hp: 50,
+              monsters: [{ element, evolved, mana: MONSTERS[element].cost }, p.monsters[1]!],
+            }
+          : { ...p, monsters: p.monsters.map((m) => ({ ...m, mana: 5 })) },
+      ) as MatesState['players'];
+      const board = quiet();
+      set(board, 0, 0, 'berry');
+      set(board, 0, 1, 'berry');
+      set(board, 0, 2, 'water');
+      set(board, 1, 2, 'berry');
+      const s: MatesState = { ...base, board, players, turn: 'a', first: 'a', movesLeft: 2 };
+      return matesGame.applyMove(
+        s,
+        'a',
+        { type: 'swap', a: cellAt(0, 2), b: cellAt(1, 2) },
+        createSeededRng(4),
+      );
+    }
+    const fire = (after: MatesState) => after.lastEvent!.fires[0]!;
+    const hpOf = (after: MatesState, id: string) => after.players.find((p) => p.id === id)!.hp;
+
+    it('earth heals as much as it hurts', () => {
+      expect(fire(fireWith('earth', false))).toMatchObject({ damage: 10, heal: 10 });
+      const after = fireWith('earth', true);
+      expect(fire(after)).toMatchObject({ damage: 15, heal: 15 });
+      expect(hpOf(after, 'a')).toBe(65);
+    });
+
+    it('fire clears one column, two when evolved', () => {
+      expect(fire(fireWith('fire', false))).toMatchObject({ damage: 20 });
+      expect(fire(fireWith('fire', false)).cells).toHaveLength(ROWS);
+      expect(fire(fireWith('fire', true))).toMatchObject({ damage: 25 });
+      expect(fire(fireWith('fire', true)).cells).toHaveLength(ROWS * 2);
+      expect(fireWith('fire', false).lastEvent!.steps.some((st) => st.ability)).toBe(true);
+    });
+
+    it('water turns 3 tiles into water for both forms', () => {
+      expect(fire(fireWith('water', false))).toMatchObject({ damage: 10 });
+      expect(fire(fireWith('water', true))).toMatchObject({ damage: 20 });
+      expect(fire(fireWith('water', true)).cells).toHaveLength(3);
+    });
+
+    it('electric clears a 2x2, evolved 3x2', () => {
+      expect(fire(fireWith('electric', false))).toMatchObject({ damage: 5 });
+      expect(fire(fireWith('electric', false)).cells).toHaveLength(4);
+      expect(fire(fireWith('electric', true))).toMatchObject({ damage: 10 });
+      expect(fire(fireWith('electric', true)).cells).toHaveLength(6);
+    });
+
+    it('psychic drains mana from every monster of the opponent', () => {
+      const after = fireWith('psychic', false);
+      expect(fire(after)).toMatchObject({ damage: 10, drain: 2 });
+      expect(after.players.find((p) => p.id === 'b')!.monsters.map((m) => m.mana)).toEqual([3, 3]);
+      expect(fire(fireWith('psychic', true))).toMatchObject({ damage: 15, drain: 3 });
+    });
+  });
+
+  it('the starting hit points are an option', () => {
+    const rng = createSeededRng(1);
+    const s = matesGame.createInitialState([A, B], { matchBonus: false, hp: 150 }, rng);
+    expect(s.players.every((p) => p.hp === 150 && p.maxHp === 150)).toBe(true);
+    expect(matesGame.optionsSchema.parse({}).hp).toBe(100);
+    expect(matesGame.optionsSchema.safeParse({ hp: 77 }).success).toBe(false);
   });
 
   it('Frost Lake freezes the matched kinds and frozen tiles cannot move', () => {

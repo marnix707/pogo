@@ -48,6 +48,17 @@ export function findMatches(board: readonly MateCell[]): Matches {
 export const adjacent = (a: number, b: number): boolean =>
   Math.abs(rowOf(a) - rowOf(b)) + Math.abs(colOf(a) - colOf(b)) === 1;
 
+/** The board after swapping two neighbouring squares (match or not), or null when the swap is not allowed. */
+export function swapCells(board: readonly MateCell[], a: number, b: number): MateCell[] | null {
+  const ca = board[a];
+  const cb = board[b];
+  if (!ca || !cb || !adjacent(a, b) || ca.frozen || cb.frozen) return null;
+  const next = board.map((c) => ({ ...c }));
+  next[a] = { ...cb };
+  next[b] = { ...ca };
+  return next;
+}
+
 /** The board after swapping two neighbouring squares, or null when the swap is not allowed or makes no match. */
 export function trySwap(board: readonly MateCell[], a: number, b: number): MateCell[] | null {
   const ca = board[a];
