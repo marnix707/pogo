@@ -29,7 +29,7 @@ function findSwap(kinds: string[]): [number, number] | null {
   return null;
 }
 
-test('Match Mates: pick, play moves against the computer', async ({ browser }) => {
+test('Pet Match: pick, play moves against the computer', async ({ browser }) => {
   test.setTimeout(120_000);
   const me = await newPlayer(browser, 'Tamer', 'fox');
   const page = me.page;

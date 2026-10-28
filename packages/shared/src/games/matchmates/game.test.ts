@@ -36,7 +36,7 @@ function start(
 }
 const mover = (s: MatesState) => s.turn;
 
-describe('Match Mates', () => {
+describe('Pet Match', () => {
   it('starts after both players picked, second player has +5 HP, board has no match', () => {
     const s = start();
     expect(s.phase).toBe('play');

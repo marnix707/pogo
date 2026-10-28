@@ -30,7 +30,7 @@ CLAUDE.md is kept short on purpose (it is loaded in every session). Feature deta
 | `docs/karma.md` | Karma rules, modes and rules catalogue, card animation, controls, tutorial, round screen, win / blind reveals |
 | `docs/last-card.md` | Last Card rules, Last Card! race, shield / ghost / skull, card art and animations |
 | `docs/sea-battle.md` | Sea Battle logic, screen, placing, shots, sinking, radar |
-| `docs/match-mates.md`     | Match Mates rules (match-3 monster duel), stages, monsters, computer player, UI, art |
+| `docs/match-mates.md`     | Pet Match rules (match-3 monster duel), stages, monsters, computer player, UI, art |
 | `docs/lobby-chat-bots.md` | public lobby list, room chat and profanity filter, computer players |
 | `docs/accounts-admin.md` | guests / accounts / mail codes / recovery links / stats / leaderboard / avatars, admin panel, roles, bans, dev tag, titles |
 | `docs/friends.md` | friends, profiles, private messages, mute / block, game invites |
@@ -116,5 +116,5 @@ Work one milestone at a time; at the end run tests, verify in Docker, commit, su
 
 ## Versions
 
-- The release number is `apps/web/package.json` `version` (injected as `__APP_VERSION__` by `vite.config.ts`, `lib/version.ts`) and shown in Settings next to "Running in a browser tab" as "POGO v0.7.0 ALPHA" (`app-version`). Scheme: `0.MINOR.PATCH-alpha`: **MINOR** goes up for each batch of new features / a visible milestone, **PATCH** for fixes only, `-alpha` while the game is still changing a lot (then `-beta`, and no suffix at 1.0.0, the first public release). Bump it by hand in that one file when releasing (e.g. before a push that goes live) and keep a line here with what changed. Current: 0.7.0-alpha (M1-M6 done; four games (Yatzy, Karma, Last Card, Sea Battle; Match Mates in progress), accounts, admin panel, friends; deployed on Render).
+- The release number is `apps/web/package.json` `version` (injected as `__APP_VERSION__` by `vite.config.ts`, `lib/version.ts`) and shown in Settings next to "Running in a browser tab" as "POGO v0.7.0 ALPHA" (`app-version`). Scheme: `0.MINOR.PATCH-alpha`: **MINOR** goes up for each batch of new features / a visible milestone, **PATCH** for fixes only, `-alpha` while the game is still changing a lot (then `-beta`, and no suffix at 1.0.0, the first public release). Bump it by hand in that one file when releasing (e.g. before a push that goes live) and keep a line here with what changed. Current: 0.7.0-alpha (M1-M6 done; four games (Yatzy, Karma, Last Card, Sea Battle; Pet Match in progress), accounts, admin panel, friends; deployed on Render).
 

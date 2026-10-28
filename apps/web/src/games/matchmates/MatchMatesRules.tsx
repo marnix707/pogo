@@ -5,7 +5,7 @@ const { STAGE_SPECS, STAGES } = matchmates;
 
 export function MatchMatesRules({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
-    <Sheet open={open} onClose={onClose} title="How to play Match Mates">
+    <Sheet open={open} onClose={onClose} title="How to play Pet Match">
       <ul className="flex max-h-[60dvh] flex-col gap-3 overflow-y-auto pr-1 text-sm leading-relaxed">
         <li>
           <b className="text-neon">Goal:</b> bring your opponent&apos;s hit points to zero. The

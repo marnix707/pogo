@@ -79,7 +79,7 @@ export const SWAP_MS = 300;
 
 function createInitialState(players: GamePlayer[], options: MatesOptions, rng: Rng): MatesState {
   if (players.length < MIN_PLAYERS || players.length > MAX_PLAYERS)
-    throw new Error(`Match Mates needs ${MIN_PLAYERS}-${MAX_PLAYERS} players`);
+    throw new Error(`Pet Match needs ${MIN_PLAYERS}-${MAX_PLAYERS} players`);
   const make = (p: GamePlayer): MatePlayer => ({
     id: p.id,
     hp: START_HP,
@@ -561,7 +561,7 @@ const eventMs = (e: MateEvent | null): number =>
 
 export const matesGame: GameDefinition<MatesState, MatesMove, MatesOptions, MatesView> = {
   id: 'matchmates',
-  name: 'Match Mates',
+  name: 'Pet Match',
   minPlayers: MIN_PLAYERS,
   maxPlayers: MAX_PLAYERS,
   optionsSchema,

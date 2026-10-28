@@ -4,7 +4,7 @@
  * behind it, e.g. "Room not found (ROOM-101)".
  *
  * Areas: NET (requests, limits), SYS (server problems), MAIL (sending email), ACC (accounts and
- * sign-in), ADM (admin panel), ROOM (rooms, lobby, ready), GAME (any game), YAT (Yatzy), KAR (Karma), LAST (Last Card), SEA (Sea Battle), MATE (Match Mates).
+ * sign-in), ADM (admin panel), ROOM (rooms, lobby, ready), GAME (any game), YAT (Yatzy), KAR (Karma), LAST (Last Card), SEA (Sea Battle), MATE (Pet Match).
  * Codes are `AREA-NNN`; 1xx = the player did something that is not allowed, 5xx = our side broke.
  *
  * To add an error: add a line to KNOWN_ERRORS (exact message, or a regex for messages with a game
@@ -188,7 +188,7 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'MATE-109', message: 'That monster has already evolved' },
   { code: 'MATE-110', message: 'Not enough berries' },
   { code: 'MATE-111', message: 'Only an evolved monster can be boosted' },
-  { code: 'MATE-125', message: /^Match Mates needs \d+-\d+ players$/ },
+  { code: 'MATE-125', message: /^Pet Match needs \d+-\d+ players$/ },
 ];
 
 /** The code for an error message, or SYS-000 when the message is not in the catalogue. */

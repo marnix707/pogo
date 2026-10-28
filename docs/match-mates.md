@@ -1,8 +1,8 @@
-# Match Mates
+# Pet Match
 
 (Detail moved out of CLAUDE.md: read this when working on the area. Keep it updated with changes.)
 
-A two-player match-3 monster duel, modelled on Plato's "Match Monsters". Game id `matchmates`, shown as "Match Mates".
+A two-player match-3 monster duel, modelled on Plato's "Match Monsters". Game id `matchmates`, shown as "Pet Match".
 
 ## Logic (`packages/shared/src/games/matchmates`)
 

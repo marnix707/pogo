@@ -12,7 +12,7 @@ if (typeof Image !== 'undefined') for (const url of allArt()) new Image().src = 
 
 export const matchMatesUi: GameUi = {
   id: 'matchmates',
-  name: 'Match Mates',
+  name: 'Pet Match',
   emoji: '🐲',
   logo: logoUrl,
   tagline: 'Match tiles to power up your monsters and win the duel.',
