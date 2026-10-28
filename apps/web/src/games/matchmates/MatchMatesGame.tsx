@@ -207,7 +207,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
 
   if (view.phase === 'pick') {
     return (
-      <div className="flex min-h-0 flex-1 flex-col" data-testid="mates-game">
+      <div className="flex min-h-0 flex-1 flex-col" data-testid="mates-game" data-phase={view.phase}>
         <Pick
           waiting={!!view.picked[me]}
           busy={busy}
@@ -220,7 +220,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   const evolveBerries = evolveCost(stage);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 p-2" data-testid="mates-game">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 p-2" data-testid="mates-game" data-phase={view.phase}>
       <style>{`
         @keyframes mates-lunge { 0%{transform:translateX(0)} 40%{transform:translateX(var(--lunge))} 100%{transform:translateX(0)} }
         @keyframes mates-pop { 0%{opacity:0;transform:translateY(0) scale(.6)} 20%{opacity:1;transform:translateY(-6px) scale(1.2)} 100%{opacity:0;transform:translateY(-28px) scale(1)} }
