@@ -78,7 +78,8 @@ export interface GameDefinition<State, Move, Options, PlayerView = State> {
   clockBonusMs?(state: State): number;
   /**
    * Milliseconds the clients need to finish showing the latest move (e.g. a card turning over).
-   * Computer players wait at least this long before they move again.
+   * Computer players wait at least this long before they move again, and a turn is never auto-played
+   * (timeout, absent player) before it has passed: the next turn starts when all animations are done.
    */
   settleMs?(state: State): number;
   /**

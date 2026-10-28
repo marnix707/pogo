@@ -83,6 +83,8 @@ export const SWAP_MS = 300;
 /** The evolve animation, and the text that says "extra move" / "turn lost" after a move. */
 export const EVOLVE_MS = 1800;
 export const NOTE_MS = 800;
+/** Extra wait of the computer after the animations of a move have ended. */
+export const BOT_PAUSE_MS = 1000;
 /** Milliseconds the clients spend on the coin flip that picks the arena and who starts. */
 export const COIN_MS = 3600;
 
@@ -603,6 +605,13 @@ function autoMove(state: MatesState, playerId: PlayerId, rng: Rng): AutoMove<Mat
     if (validateMove(state, playerId, evolve).ok) candidates.push(evolve);
     if (validateMove(state, playerId, boost).ok) candidates.push(boost);
   });
+  if (candidates.length === 0) {
+    // Nothing matches (a frozen or odd board): any swap of two loose neighbours, it just spends the move.
+    for (let i = 0; i < CELLS && candidates.length === 0; i++)
+      for (const j of [i + 1, i + COLS])
+        if (j < CELLS && (j !== i + 1 || j % COLS !== 0) && swapCells(state.board, i, j))
+          candidates.push({ type: 'swap', a: i, b: j });
+  }
   const seed = rng.int(2 ** 30);
   let best = candidates[0] as MatesMove;
   let bestScore = -Infinity;
@@ -625,7 +634,8 @@ const eventMs = (e: MateEvent | null): number =>
       e.steps.length * STEP_MS +
       e.fires.length * FIRE_MS +
       (e.kind === 'evolve' ? EVOLVE_MS : 0) +
-      (e.extraMove || e.heal > 0 ? NOTE_MS : 0)
+      (e.heal > 0 ? NOTE_MS : 0) +
+      (e.extraMove ? NOTE_MS : 0)
     : 0;
 
 export const matesGame: GameDefinition<MatesState, MatesMove, MatesOptions, MatesView> = {
@@ -649,7 +659,11 @@ export const matesGame: GameDefinition<MatesState, MatesMove, MatesOptions, Mate
     before.phase === 'pick' && after.phase === 'pick' && draftTurn(before) === null,
   // The clock starts after the coin flip that decides the arena and who starts.
   clockBonusMs: (state) => (state.phase === 'play' && state.moveCount === 0 ? COIN_MS : 0),
+  // The computer waits for every animation of the last move, plus a breath so the "Your turn!" and the
+  // numbers have been seen.
   settleMs: (state) =>
-    state.phase === 'play' && state.moveCount === 0 ? COIN_MS : eventMs(state.lastEvent),
+    state.phase === 'play' && state.moveCount === 0
+      ? COIN_MS
+      : eventMs(state.lastEvent) + (state.lastEvent ? BOT_PAUSE_MS : 0),
   supportsBots: true,
 };

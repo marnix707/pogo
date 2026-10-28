@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { matchmates } from '@pogo/shared';
 import type { GameUiProps } from '../types';
 import { Avatar, Button, TimerDrain } from '../../components/ui';
@@ -171,6 +171,18 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
   const [hit, setHit] = useState<{ owner: string; slot: number } | null>(null);
   const [glow, setGlow] = useState<GlowState | null>(null);
   const seen = useRef(view.moveCount);
+  // Hit points as the animation has got to: they change when the attack lands, not when the move arrives.
+  const hpNow = Object.fromEntries(view.players.map((p) => [p.id, p.hp]));
+  const prevHp = useRef<Record<string, number>>(hpNow);
+  const [hpShown, setHpShown] = useState<Record<string, number> | null>(null);
+  const hpMax = Object.fromEntries(view.players.map((p) => [p.id, p.maxHp]));
+  // Before the first paint of a new move: keep showing the hit points from before it.
+  useLayoutEffect(() => {
+    if (view.moveCount > seen.current && view.lastEvent && !reducedMotion())
+      setHpShown({ ...prevHp.current });
+    prevHp.current = hpNow;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view.moveCount]);
 
   const send = async (move: matchmates.MatesMove) => {
     setBusy(true);
@@ -275,6 +287,15 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
         // The hit: the target shakes and flashes, the number floats up.
         at(t + ATTACK.lead + ATTACK.hit, () => {
           play('boom');
+          setHpShown((h) =>
+            h
+              ? {
+                  ...h,
+                  [target]: Math.max(0, (h[target] ?? 0) - f.damage),
+                  [f.owner]: Math.min(hpMax[f.owner] ?? 0, (h[f.owner] ?? 0) + f.heal),
+                }
+              : h,
+          );
           setHit({ owner: target, slot: f.slot });
           setPops((p) => [
             ...p,
@@ -408,6 +429,9 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
       say(`Match of ${ev.longest}: +${ev.heal} HP!`, 'good', t);
       at(t, () => {
         play('score');
+        setHpShown((h) =>
+          h ? { ...h, [ev.by]: Math.min(hpMax[ev.by] ?? 0, (h[ev.by] ?? 0) + ev.heal) } : h,
+        );
         const [hx, hy] = ev.by === me ? [30, 44] : [108, 44];
         setPops((p) => [
           ...p,
@@ -422,6 +446,7 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
       t += NOTE_MS;
     }
     at(t + 700, () => {
+      setHpShown(null);
       setPops([]);
       setCombo(null);
       setSparks([]);
@@ -439,6 +464,7 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
       setTallies([]);
       setNote(null);
       setEvolve(null);
+      setHpShown(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view.moveCount]);
@@ -464,7 +490,8 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
   const animating = anim !== null;
   // "Your turn!" in the middle of the screen when the turn comes to me (after the last move has played out).
   const [turnBanner, setTurnBanner] = useState(0);
-  const wasMine = useRef(myTurn);
+  // (starts false: the very first turn is announced too, after the coin flip)
+  const wasMine = useRef(false);
   const settled = !animating && !coin && flights.length === 0;
   useEffect(() => {
     if (!myTurn) wasMine.current = false;
@@ -593,9 +620,9 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
           className="absolute font-black text-white"
           style={{ ...hudText, ...at(stackX + 11, 32.5) }}
           data-testid={`mates-hp-${who}`}
-          title={`${p.hp}/${p.maxHp} HP`}
+          title={`${hpShown?.[p.id] ?? p.hp}/${p.maxHp} HP`}
         >
-          {p.hp}
+          {hpShown?.[p.id] ?? p.hp}
         </span>
         <div className="absolute" style={at(avatarX, 19, 22)}>
           <Avatar

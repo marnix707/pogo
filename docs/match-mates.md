@@ -41,7 +41,7 @@ Cleared tiles pop, the rest fall into the holes with a small bounce (`dropsFor`,
 
 ## Champion select and pet info
 
-- The draft lists every pet as a row (base and evolved picture, names, element, mana cost, special, damage): tap one to select it (`mates-pick-<element>`), then the bottom button (`mates-draft-confirm`) picks it. Choosing an arena scrolls smoothly down to Confirm.
+- The draft is a **6 x 4 roster grid** (`mates-roster`): the pets in the game are tiles (`mates-pick-<element>`), the rest are dark silhouettes with a ? (`mates-soon-<n>`, coming soon, not selectable). Selecting a pet shows it larger (base and evolved) with its names, mana cost, special and damage in `mates-pet-detail`, and the button underneath (`mates-draft-confirm`) picks it. Choosing an arena scrolls smoothly down to Confirm.
 - Tapping a pet at any time (the draft slots, the arena pets in the game) opens the Karma-style `.info-bubble` with its info (`PetInfo.tsx`, `usePetInfo`, `mates-pet-info`); tap again or elsewhere to close.
 
 ## Battle screen and attack animation

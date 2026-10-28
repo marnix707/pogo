@@ -459,6 +459,26 @@ describe('Pet Match', () => {
     }
   });
 
+  it('a player at 0 hit points always means the game is over (all stages)', () => {
+    for (const stage of ['stadium', 'forest', 'lava', 'frost', 'reactor', 'swamp'] as const) {
+      for (const seed of [1, 2, 3, 4]) {
+        const rng = createSeededRng(seed * 7);
+        let s = start(seed, stage);
+        let guard = 0;
+        while (!matesGame.isGameOver(s) && guard++ < 1500) {
+          const who = matesGame.getCurrentPlayers(s)[0]!;
+          const { move } = matesGame.autoMove!(s, who, rng);
+          s = matesGame.applyMove(s, who, move, rng);
+          if (s.players.some((p) => p.hp <= 0)) {
+            expect(s.phase).toBe('over');
+            expect(s.movesLeft).toBe(0);
+            expect(s.winner).not.toBeNull();
+          }
+        }
+      }
+    }
+  });
+
   it('createBoard never starts with a match', () => {
     for (let seed = 0; seed < 20; seed++)
       expect(findMatches(createBoard(createSeededRng(seed))).cells.size).toBe(0);

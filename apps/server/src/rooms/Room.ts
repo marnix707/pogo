@@ -758,7 +758,10 @@ export class Room {
       const since = Math.max(this.turnStartedAt, ...current.map((m) => m.absentSince ?? 0));
       candidates.push(since + this.deps.limits.graceMs);
     }
-    return candidates.length > 0 ? Math.min(...candidates) : null;
+    if (candidates.length === 0) return null;
+    // A turn is only played for somebody (timeout, absent player) once the last move has finished animating.
+    const settle = this.state ? (this.game.settleMs?.(this.state) ?? 0) : 0;
+    return Math.max(Math.min(...candidates), this.lastChangeAt + settle);
   }
 
   private abandonedAt(): number | null {

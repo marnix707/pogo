@@ -7,6 +7,9 @@ import { usePetInfo } from './PetInfo';
 
 const { ELEMENTS, MONSTERS, STAGES, STAGE_SPECS } = matchmates;
 
+/** The roster grid is 6 wide and 4 high. */
+const ROSTER_SIZE = 24;
+
 const px = { imageRendering: 'pixelated' } as const;
 
 interface Person {
@@ -114,66 +117,125 @@ export function Pick({
           <h2 className="text-center text-lg font-bold text-neon" data-testid="mates-draft-title">
             {myPick ? 'Pick a pet' : `${personOf(view.drafter!)?.name ?? 'Opponent'} is picking…`}
           </h2>
-          {/* Every pet with its special and its evolved form: tap one to look at it, then confirm below. */}
-          <ul className="flex flex-col gap-2" aria-label="Pets">
-            {ELEMENTS.map((e) => {
+          {/* The roster: 6 x 4 tiles. Pets that are not in the game yet are dark shapes with a ?. */}
+          <ul className="grid grid-cols-6 gap-1.5" aria-label="Pets" data-testid="mates-roster">
+            {Array.from({ length: ROSTER_SIZE }, (_, n) => {
+              const e = ELEMENTS[n];
+              if (!e) {
+                const shape = ELEMENTS[n % ELEMENTS.length] as matchmates.Element;
+                return (
+                  <li key={n}>
+                    <button
+                      type="button"
+                      disabled
+                      data-testid={`mates-soon-${n}`}
+                      aria-label="Coming soon"
+                      className="relative flex aspect-square w-full items-center justify-center rounded-md border-2 border-edge/20 bg-black/40"
+                    >
+                      <img
+                        src={monsterUrl(shape, false)}
+                        alt=""
+                        draggable={false}
+                        style={{ ...px, filter: 'brightness(0)', opacity: 0.55 }}
+                        className="h-[70%]"
+                      />
+                      <span className="absolute inset-0 flex items-center justify-center text-lg font-black text-white/80 [text-shadow:0_1px_0_#101628]">
+                        ?
+                      </span>
+                    </button>
+                  </li>
+                );
+              }
               const owner = taken.get(e);
-              const spec = MONSTERS[e];
               const on = chosen === e && !owner;
               return (
-                <li key={e}>
+                <li key={n}>
                   <button
+                    type="button"
                     data-testid={`mates-pick-${e}`}
                     aria-pressed={on}
-                    disabled={!myPick || busy || !!owner}
+                    aria-label={MONSTERS[e].names[0]}
+                    disabled={!!owner}
                     onClick={() => setChosen(e)}
-                    className={`flex w-full items-center gap-3 rounded-md border-2 p-2 text-left ${
+                    className={`relative flex aspect-square w-full items-center justify-center rounded-md border-2 bg-black/30 ${
                       owner
                         ? 'border-edge/20 opacity-30'
                         : on
-                          ? 'border-neon bg-neon/15'
-                          : 'border-edge/40'
-                    } ${myPick && !owner && !on ? 'border-accent' : ''}`}
+                          ? 'border-neon bg-neon/20'
+                          : myPick
+                            ? 'border-accent'
+                            : 'border-edge/40'
+                    }`}
                   >
-                    <span className="flex shrink-0 items-end gap-1">
-                      <img
-                        src={monsterUrl(e, false)}
-                        alt=""
-                        draggable={false}
-                        style={px}
-                        className="h-12"
-                      />
-                      <img
-                        src={monsterUrl(e, true)}
-                        alt=""
-                        draggable={false}
-                        style={px}
-                        className="h-14"
-                      />
-                    </span>
-                    <span className="min-w-0 flex-1 text-xs">
-                      <b className="block text-sm">
-                        {spec.names[0]} <span className="text-muted">→</span> {spec.names[1]}
-                      </b>
-                      <span className="block text-muted">
-                        {e} · special at {spec.cost} mana
-                      </span>
-                      <span className="block">{spec.ability}</span>
-                      <span className="block text-muted">
-                        Damage {spec.damage[0]}, evolved {spec.damage[1]}
-                        {spec.heal[0] > 0 ? ` · heal ${spec.heal[0]}, evolved ${spec.heal[1]}` : ''}
-                      </span>
-                    </span>
+                    <img
+                      src={monsterUrl(e, false)}
+                      alt=""
+                      draggable={false}
+                      style={px}
+                      className="h-[75%]"
+                    />
                   </button>
                 </li>
               );
             })}
           </ul>
+          {/* The chosen pet, larger, with its stats and what it does. */}
+          <div
+            className="hud flex min-h-36 items-center gap-3 p-3"
+            data-testid="mates-pet-detail"
+            data-pet={chosen ?? ''}
+          >
+            {chosen ? (
+              <>
+                <span className="flex shrink-0 items-end gap-2">
+                  <img
+                    src={monsterUrl(chosen, false)}
+                    alt={MONSTERS[chosen].names[0]}
+                    draggable={false}
+                    style={px}
+                    className="h-24"
+                  />
+                  <img
+                    src={monsterUrl(chosen, true)}
+                    alt={MONSTERS[chosen].names[1]}
+                    draggable={false}
+                    style={px}
+                    className="h-28 opacity-80"
+                  />
+                </span>
+                <span className="min-w-0 flex-1 text-xs">
+                  <b className="block text-base">
+                    {MONSTERS[chosen].names[0]} <span className="text-muted">→</span>{' '}
+                    {MONSTERS[chosen].names[1]}
+                  </b>
+                  <span className="block capitalize text-muted">
+                    {chosen} · special at {MONSTERS[chosen].cost} mana
+                  </span>
+                  <span className="mt-1 block">{MONSTERS[chosen].ability}</span>
+                  <span className="mt-1 block text-muted">
+                    Damage {MONSTERS[chosen].damage[0]}, evolved {MONSTERS[chosen].damage[1]}
+                    {MONSTERS[chosen].heal[0] > 0
+                      ? ` · heal ${MONSTERS[chosen].heal[0]}, evolved ${MONSTERS[chosen].heal[1]}`
+                      : ''}
+                  </span>
+                </span>
+              </>
+            ) : (
+              <p className="w-full text-center text-sm text-muted">
+                Tap a pet to see what it can do.{' '}
+                <span className="block text-xs">More pets are coming soon.</span>
+              </p>
+            )}
+          </div>
           {myPick && (
             <Button
               data-testid="mates-draft-confirm"
               disabled={busy || !chosen || !!taken.get(chosen)}
-              onClick={() => chosen && onDraft(chosen)}
+              onClick={() => {
+                if (!chosen) return;
+                onDraft(chosen);
+                setChosen(null);
+              }}
               className="sticky bottom-0"
             >
               {chosen && !taken.get(chosen)
