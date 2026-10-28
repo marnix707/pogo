@@ -36,6 +36,12 @@ export function App() {
     <ToastProvider>
       <TopoBackground />
       <UpdateNotice />
+      <div className="rotate-notice" role="alert">
+        <span aria-hidden className="text-5xl">
+          📱
+        </span>
+        <span>Turn your phone upright</span>
+      </div>
       {loading ? (
         <p className="label flex h-dvh items-center justify-center p-8 text-center text-onbg">
           Loading…

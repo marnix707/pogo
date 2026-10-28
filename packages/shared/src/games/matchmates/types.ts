@@ -39,8 +39,6 @@ export type MatesMove =
 export const HP_CHOICES = [100, 125, 150, 200] as const;
 
 export interface MatesOptions {
-  /** Every 4+ line gives an extra move (not once per turn) and a 6+ line also deals 5. */
-  matchBonus: boolean;
   /** Starting hit points of both pets' owners (one of HP_CHOICES). */
   hp: number;
 }
@@ -128,7 +126,6 @@ export interface MatesState {
   coinWinner: PlayerId | null;
   turn: PlayerId;
   movesLeft: number;
-  extraUsed: boolean;
   winner: PlayerId | null;
   moveCount: number;
   lastEvent: MateEvent | null;
@@ -152,7 +149,6 @@ export interface MatesView {
   first: PlayerId;
   turn: PlayerId;
   movesLeft: number;
-  extraUsed: boolean;
   winner: PlayerId | null;
   moveCount: number;
   lastEvent: MateEvent | null;

@@ -3,10 +3,9 @@ import type { LobbyOptionsProps } from '../types';
 
 const { HP_CHOICES } = matchmates;
 
-/** Starting hit points and the Match bonus switch under the game card. */
+/** Starting hit points under the game card. */
 export function MatesOptions({ room, isHost, setOptions }: LobbyOptionsProps) {
   const options = (room.options ?? {}) as Partial<matchmates.MatesOptions>;
-  const on = options.matchBonus === true;
   const hp = options.hp ?? HP_CHOICES[0];
   const dim = isHost ? '' : 'opacity-50';
   return (
@@ -30,20 +29,6 @@ export function MatesOptions({ room, isHost, setOptions }: LobbyOptionsProps) {
           ))}
         </div>
       </div>
-      <button
-        data-testid="mates-bonus"
-        aria-pressed={on}
-        disabled={!isHost}
-        onClick={() => setOptions({ ...options, matchBonus: !on })}
-        className={`min-h-14 w-full rounded-md border-2 px-3 text-left text-sm font-bold ${
-          on ? 'border-accent bg-accent text-accentink' : 'border-edge/40 text-muted'
-        } ${dim}`}
-      >
-        Match bonus: {on ? 'On' : 'Off'}
-        <span className="block text-xs font-normal">
-          Every 4+ line gives an extra move (not once per turn); a line of 6+ also hits for 5.
-        </span>
-      </button>
     </div>
   );
 }

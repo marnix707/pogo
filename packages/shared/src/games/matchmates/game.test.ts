@@ -10,7 +10,7 @@ import { cellAt, createBoard, findMatches, legalSwaps, trySwap } from './board';
 
 const A: GamePlayer = { id: 'a', nickname: 'A', avatar: 'x' };
 const B: GamePlayer = { id: 'b', nickname: 'B', avatar: 'x' };
-const opts = { matchBonus: false, hp: 100 };
+const opts = { hp: 100 };
 
 /** A board without any match: kind = (2 * row + column) mod 5. */
 function quiet(): MateCell[] {
@@ -154,7 +154,7 @@ describe('Pet Match', () => {
     if (!s.lastEvent?.extraMove && s.phase === 'play') expect(s.turn).not.toBe(first);
   });
 
-  it('a line of four gives an extra move, once per turn', () => {
+  it('a line of four gives an extra move', () => {
     const base = start(6);
     const board = quiet();
     for (const c of [0, 1, 3]) set(board, 0, c, 'earth');
@@ -170,7 +170,6 @@ describe('Pet Match', () => {
     expect(after.lastEvent?.longest).toBeGreaterThanOrEqual(4);
     expect(after.lastEvent?.extraMove).toBe(true);
     expect(after.movesLeft).toBe(2);
-    expect(after.extraUsed).toBe(true);
   });
 
   it('a full mana bar fires the attack and can win the game', () => {
@@ -338,7 +337,7 @@ describe('Pet Match', () => {
 
   it('the starting hit points are an option', () => {
     const rng = createSeededRng(1);
-    const s = matesGame.createInitialState([A, B], { matchBonus: false, hp: 150 }, rng);
+    const s = matesGame.createInitialState([A, B], { hp: 150 }, rng);
     expect(s.players.every((p) => p.hp === 150 && p.maxHp === 150)).toBe(true);
     expect(matesGame.optionsSchema.parse({}).hp).toBe(100);
     expect(matesGame.optionsSchema.safeParse({ hp: 77 }).success).toBe(false);

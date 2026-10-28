@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react';
+import grabberUrl from '../assets/sprites/ui/sheet-grabber.svg';
 import { CloseIcon } from './icons';
 
 /** The iOS-style easing of a sheet that settles (fast start, long soft landing). */
@@ -187,7 +188,14 @@ export function DetentSheet({
           onPointerUp={onUp}
           onPointerCancel={onUp}
         >
-          <div className="mx-auto mb-3 h-1.5 w-11 rounded-full bg-edge/60" aria-hidden />
+          <img
+            src={grabberUrl}
+            alt=""
+            aria-hidden
+            draggable={false}
+            className="mx-auto mb-2 block h-3 w-10"
+            style={{ imageRendering: 'pixelated' }}
+          />
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold uppercase tracking-[0.16em]">{title}</h2>
             <button

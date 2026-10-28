@@ -55,14 +55,13 @@ export const matesMoveSchema: z.ZodType<MatesMove, z.ZodTypeDef, unknown> = z.di
 
 const optionsSchema = z
   .object({
-    matchBonus: z.boolean().default(false),
     hp: z
       .number()
       .refine((n) => (HP_CHOICES as readonly number[]).includes(n))
       .default(HP_CHOICES[0]),
   })
   .passthrough()
-  .transform((o): MatesOptions => ({ matchBonus: o.matchBonus, hp: o.hp }));
+  .transform((o): MatesOptions => ({ hp: o.hp }));
 
 const err = (error: string): MoveValidation => ({ ok: false, error });
 const OK: MoveValidation = { ok: true };
@@ -123,7 +122,6 @@ function createInitialState(players: GamePlayer[], options: MatesOptions, rng: R
     coinWinner: null,
     turn: first,
     movesLeft: 0,
-    extraUsed: false,
     winner: null,
     moveCount: 0,
     lastEvent: null,
@@ -393,7 +391,6 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
       coinWinner: winner.id,
       turn: first,
       movesLeft: MOVES_PER_TURN,
-      extraUsed: false,
     };
   }
 
@@ -432,7 +429,6 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
   let extra = 0;
   let noMatch = false;
   let healed = 0;
-  let extraUsed = state.extraUsed;
 
   if (move.type === 'swap') {
     const swapped = swapCells(c.board, move.a, move.b) as MateCell[];
@@ -450,13 +446,9 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
         me.hp = Math.min(me.maxHp, me.hp + COMBO_HEAL);
         healed = COMBO_HEAL;
       }
-      if (state.options.matchBonus) {
-        extra = 1;
-        if (c.longest >= 6) hurt(opp, 5);
-      } else if (!extraUsed) {
-        extra = 1;
-        extraUsed = true;
-      }
+      // Every such line gives an extra move; 6 or more also hits for 5.
+      extra = 1;
+      if (c.longest >= 6) hurt(opp, 5);
     }
     if (c.opp.hp > 0) tickBombs(c);
   } else if (move.type === 'evolve') {
@@ -486,7 +478,6 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
     board: c.board,
     moveCount: state.moveCount + 1,
     lastEvent: event,
-    extraUsed,
   };
   if (win) return { ...base, phase: 'over', winner: playerId, movesLeft: 0 };
 
@@ -506,7 +497,6 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
     board,
     turn: opp.id,
     movesLeft: Math.max(1, MOVES_PER_TURN + opp.moveDelta),
-    extraUsed: false,
   };
 }
 
@@ -543,7 +533,6 @@ function getPlayerView(state: MatesState, playerId: PlayerId): MatesView {
     first: state.first,
     turn: state.turn,
     movesLeft: state.movesLeft,
-    extraUsed: state.extraUsed,
     winner: state.winner,
     moveCount: state.moveCount,
     lastEvent,
@@ -641,7 +630,7 @@ export const matesGame: GameDefinition<MatesState, MatesMove, MatesOptions, Mate
   minPlayers: MIN_PLAYERS,
   maxPlayers: MAX_PLAYERS,
   optionsSchema,
-  defaultOptions: { matchBonus: false, hp: START_HP },
+  defaultOptions: { hp: START_HP },
   moveSchema: matesMoveSchema,
   createInitialState,
   validateMove,

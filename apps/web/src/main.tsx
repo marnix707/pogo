@@ -9,6 +9,16 @@ import './index.css';
 
 initTheme();
 
+// The app is portrait only: lock it where the browser allows it (installed app / fullscreen); the manifest
+// says portrait too, and a phone held sideways in a browser tab gets the "turn your phone" notice (App).
+try {
+  void (screen.orientation as unknown as { lock?: (o: string) => Promise<void> })
+    .lock?.('portrait')
+    ?.catch(() => {});
+} catch {
+  // Not supported (iOS Safari, desktop): the notice covers it.
+}
+
 // Installable app + instant shell. Production only: in dev a service worker would fight Vite's HMR.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
