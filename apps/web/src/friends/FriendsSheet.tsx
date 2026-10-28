@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { FriendState, FriendsOverview, PersonView } from '@pogo/shared';
 import { getGameUi } from '../games/registry';
-import { Avatar, Button, Sheet } from '../components/ui';
+import { Avatar, Button } from '../components/ui';
+import { DetentSheet } from '../components/DetentSheet';
 import { PlayerName } from '../components/PlayerName';
 import { useToast } from '../components/Toast';
 import type { FriendsApi } from '../lib/friendsApi';
@@ -92,7 +93,7 @@ export function FriendsSheet({
   );
 
   return (
-    <Sheet open={open} onClose={onClose} title="Friends" full>
+    <DetentSheet open={open} onClose={onClose} title="Friends">
       {!enabled ? (
         <p className="py-6 text-center" data-testid="friends-guest">
           Register an account (open your profile) to add friends, message them and invite them to
@@ -310,6 +311,6 @@ export function FriendsSheet({
           )}
         </>
       )}
-    </Sheet>
+    </DetentSheet>
   );
 }
