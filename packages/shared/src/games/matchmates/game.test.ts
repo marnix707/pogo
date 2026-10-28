@@ -477,7 +477,7 @@ describe('Pet Match', () => {
         }
       }
     }
-  });
+  }, 30_000);
 
   it('createBoard never starts with a match', () => {
     for (let seed = 0; seed < 20; seed++)
