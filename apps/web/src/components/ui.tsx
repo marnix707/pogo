@@ -58,10 +58,13 @@ export function Avatar({
   avatar,
   size = 'md',
   dim = false,
+  className = '',
 }: {
   avatar: string;
-  size?: 'sm' | 'chat' | 'md' | 'lg';
+  size?: 'sm' | 'chat' | 'md' | 'lg' | 'fluid';
   dim?: boolean;
+  /** With `size="fluid"`: the sizing classes (for screens that scale with their own width). */
+  className?: string;
 }) {
   const sizes = {
     sm: 'h-7 w-7 text-base',
@@ -69,6 +72,7 @@ export function Avatar({
     chat: 'h-[3.375rem] w-[3.375rem] text-3xl',
     md: 'h-11 w-11 text-2xl',
     lg: 'h-16 w-16 text-4xl',
+    fluid: className,
   };
   return (
     <span

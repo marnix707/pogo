@@ -37,6 +37,10 @@ CLAUDE.md is kept short on purpose (it is loaded in every session). Feature deta
 | `docs/security.md` | dev stack binding, secrets, headers + CSP, proxy hops, brute-force limits, dependency policy |
 | `docs/assets.md` | the artist's pixel-art packs, the `unsorted/` inbox workflow, icons, sfx |
 
+## Art
+
+- **All game art uses the `pogo-pixel-art` skill** (`.claude/skills/pogo-pixel-art/`, with its scripts and examples). Any new sprite, tile, effect, animation or logo must be made with that skill's scripts and style rules, previewed as a PNG and checked before use. Never use hand-drawn or AI-generated images that break the pixel style. (`docs/assets.md` covers the artist's packs.)
+
 ## Rules that bite (short; the files above have the why)
 
 - **Games are plug-ins**: pure logic in `packages/shared/src/games/<id>` (+ registry), UI in `apps/web/src/games/<id>` (+ registry); the core server / room code has no game-specific code. **Every new game starts with the turn timer Off** (no environment setting; the host picks one in the lobby), uses `useTimeWarning` if it has a clock, and needs a logo in `assets/sprites/brand/logos/`.

@@ -1,0 +1,180 @@
+<title>Pet Match Attack</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Nunito+Sans:wght@400;600;700&display=swap">
+<style>
+/* Layout: phone-sized stage on the left, controls + phase timeline on the right; stacks on narrow screens. One committed dark game look. */
+:root{
+  --bg:#101628; --panel:#1b2338; --line:#334461; --ink:#f7f1e4; --muted:#b9becb; --accent:#fda200; --blue:#3aaef7;
+  --display:'Silkscreen', 'Courier New', monospace; --body:'Nunito Sans', system-ui, sans-serif;
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1040px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));display:flex;flex-direction:column;gap:24px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(26px,5vw,40px);color:var(--accent);margin:0;line-height:1.1;text-shadow:0 3px 0 #000a;text-wrap:balance}
+.lede{color:var(--muted);margin:0;max-width:62ch}
+.main{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.stage{flex:0 1 420px;max-width:100%;border:3px solid #000;border-radius:18px;overflow:hidden;box-shadow:0 6px 0 #000a;background:#0b0f1c}
+canvas{display:block;width:100%;height:auto;image-rendering:pixelated}
+.side{flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:20px}
+.group{display:flex;flex-direction:column;gap:8px}
+.label{font-family:var(--display);font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+button,select{font-family:var(--display);font-size:13px;color:var(--ink);background:var(--panel);border:2px solid var(--line);border-radius:10px;padding:8px 12px;min-height:40px;cursor:pointer}
+button[aria-pressed="true"]{background:var(--accent);color:var(--bg);border-color:#000}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.el{display:inline-flex;align-items:center;gap:8px}
+.el i{width:12px;height:12px;border:2px solid #000;display:inline-block}
+.play{background:var(--accent);color:var(--bg);border-color:#000;box-shadow:0 4px 0 #000a}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.timeline{display:flex;flex-direction:column;gap:6px;background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:14px}
+.ph{display:grid;grid-template-columns:96px 1fr 84px;gap:10px;align-items:center;font-size:13px}
+.ph .n{font-family:var(--display);font-size:11px;color:var(--muted)}
+.ph .ms{font-variant-numeric:tabular-nums;color:var(--muted);text-align:right;font-size:12px}
+.track{position:relative;height:10px;background:#0b0f1c;border-radius:3px}
+.bar{position:absolute;top:0;bottom:0;background:var(--line);border-radius:3px}
+.ph.on .bar{background:var(--accent)} .ph.on .n{color:var(--ink)}
+.cursor{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
+.notes{margin:0;padding-left:18px;color:var(--muted);display:flex;flex-direction:column;gap:6px;max-width:62ch}
+.notes b{color:var(--ink)}
+code{font-family:var(--display);font-size:12px;color:var(--ink)}
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:8px">
+    <h1>PET MATCH · attack</h1>
+    <p class="lede">The pet's element spirit flies out, circles the matched candies twice, soaks them up as they burst, then fires at the opponent. Pick an element, slow it down, or drag the timeline to step through it.</p>
+  </header>
+  <div class="main">
+    <div class="stage"><canvas id="cv" width="420" height="912" aria-label="Battle screen showing the attack animation"></canvas></div>
+    <div class="side">
+      <div class="group"><span class="label">Element</span><div class="row" id="els"></div></div>
+      <div class="group"><span class="label">Arena and speed</span>
+        <div class="row">
+          <select id="arena" aria-label="Arena"><option value="forest-valley">Forest Valley</option><option value="lava-caverns">Lava Caverns</option><option value="frost-lake">Frost Lake</option><option value="stadium">Stadium</option></select>
+          <button id="sp1" aria-pressed="true">1×</button><button id="sp2" aria-pressed="false">½×</button><button id="sp4" aria-pressed="false">¼×</button>
+          <button id="play" class="play">Pause</button>
+        </div>
+      </div>
+      <div class="group"><label class="label" for="scrub">Timeline · <span id="tms">0</span> ms</label><input type="range" id="scrub" min="0" max="4300" step="10" value="0"></div>
+      <div class="timeline" id="tl"></div>
+      <ul class="notes">
+        <li><b>Spirit</b> loops 4 frames at 70 ms. It flies a curved arc to the left edge of the match, then follows an ellipse 7 px wider and 8 px taller than the matched tiles.</li>
+        <li><b>Trail</b> is the spirit's own path a moment ago: every 25 ms back in time, draw a spark. The size depends on age (3×3 up to 110 ms, then 2×2, then 1 px).</li>
+        <li><b>Hide the candies</b> on burst frame 2. Refill drops new candies in from above the board.</li>
+        <li>Snap every sprite to whole art pixels (<code>Math.round</code>) so the pixel grid never breaks.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+const D = __DATA__;
+const S = 3, CELL = D.cell;
+const ELS = [['fire','#fd7957'],['water','#3aaef7'],['earth','#56a786'],['electric','#fdcf51'],['psychic','#935adc']];
+const PH = [['Glow',0,2250],['Fly in',250,800],['Circle ×2',800,2200],['Gather',2200,2400],['Burst',2250,2690],['Shoot',2550,2850],['Hit',2850,3250],['Damage',2850,3750],['Refill',3000,3500]];
+const LOOP = 4300, IMP = [40,50,60,60,70,80];
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false;
+const IM = {};
+function load(src){ if (IM[src]) return IM[src]; const i = new Image(); i.src = src; IM[src] = i; return i; }
+function draw(src, x, y){ const i = load(src); if (i.complete && i.naturalWidth) ctx.drawImage(i, Math.round(x)*S, Math.round(y)*S, i.naturalWidth*S, i.naturalHeight*S); }
+function drawC(src, cx, cy){ const i = load(src); if (i.complete && i.naturalWidth) draw(src, cx - Math.floor(i.naturalWidth/2), cy - Math.floor(i.naturalHeight/2)); }
+
+let el = 'water', arena = 'forest-valley', speed = 1, playing = true, t = 0, last = null;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (reduce) { playing = false; t = 1500; }
+
+// matched group geometry
+const rows = D.match.map(m => m[0]), cols = D.match.map(m => m[1]);
+const gx0 = D.bx + Math.min(...cols)*CELL, gx1 = D.bx + (Math.max(...cols)+1)*CELL;
+const gy0 = D.by + Math.min(...rows)*CELL, gy1 = D.by + (Math.max(...rows)+1)*CELL;
+const gcx = (gx0+gx1)/2, gcy = (gy0+gy1)/2, rx = (gx1-gx0)/2 + 7, ry = (gy1-gy0)/2 + 8;
+const ease = u => u<.5 ? 2*u*u : 1 - Math.pow(-2*u+2,2)/2;
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+
+function spirit(t){        // -> {x,y,big} or null
+  if (t < 250 || t >= 2850) return null;
+  if (t < 800){ const u = ease((t-250)/550), [fx,fy] = D.from, ex = gcx-rx, ey = gcy;
+    const qx = (fx+ex)/2, qy = Math.min(fy,ey) - 40;
+    return {x:(1-u)*(1-u)*fx + 2*(1-u)*u*qx + u*u*ex, y:(1-u)*(1-u)*fy + 2*(1-u)*u*qy + u*u*ey, big:false}; }
+  if (t < 2200){ const a = Math.PI + 4*Math.PI*(t-800)/1400; return {x:gcx + rx*Math.cos(a), y:gcy + ry*Math.sin(a), big:false}; }
+  if (t < 2400){ const u = 1 - Math.pow(1-(t-2200)/200, 2); return {x:gcx-rx + u*rx, y:gcy, big:t>2300}; }
+  if (t < 2550) return {x:gcx, y:gcy, big:true};
+  const u = Math.pow((t-2550)/300, 2), [tx,ty] = D.to; return {x:gcx + (tx-gcx)*u, y:gcy + (ty-gcy)*u, big:true};
+}
+function trailOk(t){ return (t >= 250 && t < 2400) || (t >= 2550 && t < 2850); }
+
+function render(t){
+  const F = D.fx[el];
+  ctx.clearRect(0,0,cv.width,cv.height);
+  draw(D.bgs[arena], 0, 0);
+  // matched candies (gone from burst frame 2), then refill
+  if (t < 2250 + 2*55) for (const [r,c] of D.match) draw(D.tiles[el], D.bx + c*CELL, D.by + r*CELL);
+  if (t >= 3000){
+    ctx.save(); ctx.beginPath(); ctx.rect((D.bx-2)*S, (D.by-2)*S, (7*CELL+4)*S, (5*CELL+4)*S); ctx.clip();
+    D.match.forEach(([r,c], i) => {
+      const u = clamp((t - 3000 - i*40)/420, 0, 1), b = u < .8 ? Math.pow(u/.8,2) : 1 - Math.sin((u-.8)/.2*Math.PI)*0.06;
+      const ty = D.by + r*CELL, sy = D.by - CELL - 2;
+      draw(D.refill[i % D.refill.length], D.bx + c*CELL, sy + (ty - sy)*b);
+    }); ctx.restore();
+  }
+  // glow pulse while matched, burst as they clear
+  if (t < 2250) for (const [r,c] of D.match) draw(F.pulse[Math.floor(t/90)%6], D.bx + c*CELL - 7, D.by + r*CELL - 7);
+  if (t >= 2250 && t < 2690) for (const [r,c] of D.match) draw(F.burst[Math.min(7, Math.floor((t-2250)/55))], D.bx + c*CELL - 7, D.by + r*CELL - 7);
+  // opponent: shake + white flash on hit
+  const hit = t >= 2850 && t < 3200, k = Math.floor((t-2850)/40);
+  const sx = hit ? [2,-2,2,-1,1,-1,1,0,0][Math.min(8,k)] : 0;
+  const flash = (t >= 2850 && t < 2930) || (t >= 3010 && t < 3070);
+  draw(flash ? D.enemy.white : D.enemy.img, D.enemy.x + sx, D.enemy.y);
+  draw(D.ebar.img, D.ebar.x, D.ebar.y);
+  // trail (the spirit's recent path), then the spirit
+  for (let n = 13; n >= 1; n--){
+    const tk = t - n*25; if (!trailOk(tk)) continue; const p = spirit(tk); if (!p) continue;
+    const age = n*25; drawC(F.trail[age < 110 ? 0 : age < 220 ? 1 : 2], p.x, p.y);
+  }
+  const p = spirit(t);
+  if (p) drawC((p.big ? F.big : F.spirit)[Math.floor(t/70)%4], p.x, p.y);
+  // impact + damage number
+  if (t >= 2850 && t < 3250){ let a = t-2850, f = 0; while (f < 5 && a >= IMP[f]) { a -= IMP[f]; f++; } drawC(F.impact[f], D.to[0], D.to[1]); }
+  if (t >= 2850 && t < 3750 && !(t > 3550 && Math.floor(t/60)%2)){
+    const u = 1 - Math.pow(1 - clamp((t-2850)/500,0,1), 3), y = D.enemy.y - 6 - 14*u;
+    draw(D.dmg['-'], D.to[0] - 9, y); draw(D.dmg['8'], D.to[0] - 1, y);
+  }
+  // timeline UI
+  document.getElementById('tms').textContent = Math.round(t);
+  document.getElementById('scrub').value = t;
+  PH.forEach((ph, i) => rowsEl[i].classList.toggle('on', t >= ph[1] && t < ph[2]));
+  cursors.forEach(c => c.style.left = (t/LOOP*100) + '%');
+}
+
+// UI
+const els = document.getElementById('els');
+ELS.forEach(([name, col]) => {
+  const b = document.createElement('button'); b.className = 'el'; b.setAttribute('aria-pressed', name === el);
+  b.innerHTML = `<i style="background:${col}"></i>${name}`;
+  b.onclick = () => { el = name; [...els.children].forEach(x => x.setAttribute('aria-pressed', x === b)); if (!playing) render(t); };
+  els.appendChild(b);
+});
+const tl = document.getElementById('tl'), rowsEl = [], cursors = [];
+PH.forEach(([n,a,b]) => {
+  const r = document.createElement('div'); r.className = 'ph';
+  r.innerHTML = `<span class="n">${n}</span><div class="track"><div class="bar" style="left:${a/LOOP*100}%;width:${(b-a)/LOOP*100}%"></div><div class="cursor"></div></div><span class="ms">${a}–${b}</span>`;
+  tl.appendChild(r); rowsEl.push(r); cursors.push(r.querySelector('.cursor'));
+});
+document.getElementById('arena').onchange = e => { arena = e.target.value; if (!playing) render(t); };
+const sp = {sp1:1, sp2:.5, sp4:.25};
+Object.keys(sp).forEach(id => document.getElementById(id).onclick = () => { speed = sp[id]; Object.keys(sp).forEach(j => document.getElementById(j).setAttribute('aria-pressed', j === id)); });
+const playBtn = document.getElementById('play');
+function setPlay(v){ playing = v; playBtn.textContent = v ? 'Pause' : 'Play'; last = null; }
+playBtn.onclick = () => setPlay(!playing);
+setPlay(playing);
+document.getElementById('scrub').oninput = e => { setPlay(false); t = +e.target.value; render(t); };
+
+function frame(now){
+  if (playing){ if (last !== null) t = (t + (now - last)*speed) % LOOP; last = now; render(t); }
+  requestAnimationFrame(frame);
+}
+// draw once everything is decoded, then run
+const all = [D.bgs[arena], D.enemy.img, D.enemy.white, D.ebar.img].concat(...Object.values(D.fx).map(f => [].concat(f.spirit, f.big, f.impact, f.trail, f.pulse, f.burst)), Object.values(D.tiles), D.refill, Object.values(D.dmg), Object.values(D.bgs));
+Promise.all(all.map(s => new Promise(r => { const i = load(s); if (i.complete) r(); else { i.onload = r; i.onerror = r; } }))).then(() => { render(t); requestAnimationFrame(frame); });
+</script>

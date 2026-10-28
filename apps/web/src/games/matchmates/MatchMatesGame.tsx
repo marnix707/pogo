@@ -7,7 +7,19 @@ import { haptic } from '../../lib/haptics';
 import { chainSound, play, tick } from '../../lib/sound';
 import { useCountdown } from '../../lib/useCountdown';
 import { useTimeWarning } from '../../lib/useTimeWarning';
-import { ARENA, arenaUrl, iceUrl, monsterSize, monsterUrl, tileUrl } from './art';
+import {
+  SCREEN,
+  boardPanelUrl,
+  glowUrl,
+  hudUrl,
+  iceUrl,
+  monsterSize,
+  monsterUrl,
+  portraitUrl,
+  tileUrl,
+} from './art';
+import { ATTACK, Attack, Digits } from './Attack';
+import type { AttackFx } from './Attack';
 import { Coin } from './Coin';
 import { Pick } from './Pick';
 import { usePetInfo } from './PetInfo';
@@ -94,10 +106,24 @@ function dropsFor(cleared: readonly number[]): number[] {
 }
 interface Pop {
   id: number;
-  owner: string;
+  /** Screen art pixels. */
+  x: number;
+  y: number;
   text: string;
   tone?: 'heal';
 }
+/** The artist's match glow bursting round the cleared tiles (frames 0-7). */
+interface GlowState {
+  items: { cell: number; kind: string }[];
+  frame: number;
+}
+const ELEMENT_COLOR: Record<matchmates.Element, string> = {
+  fire: '#eb6b43',
+  water: '#3aaef7',
+  earth: '#56a786',
+  electric: '#fdcf51',
+  psychic: '#935adc',
+};
 /** Flight time of a tile and the most the flights of one cascade step may spread over. */
 const FLY_MS = 260;
 const FLY_SPREAD_MS = 360;
@@ -109,39 +135,7 @@ const centerOf = (testId: string): { x: number; y: number } | null => {
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
 };
 
-/** Horizontal spot of a player's monsters on their battle pad (art pixels from the pad centre). */
-const SLOT_DX = [-9, 10];
-const SLOT_DY = [3, -2];
-
-function Bar({
-  value,
-  max,
-  color,
-  label,
-}: {
-  value: number;
-  max: number;
-  color: string;
-  label?: string;
-}) {
-  const pct = Math.max(0, Math.min(100, (value / max) * 100));
-  return (
-    <div
-      className="relative h-3 w-full overflow-hidden rounded-sm border border-edge/60 bg-black/50"
-      role="progressbar"
-      aria-valuenow={value}
-      aria-valuemax={max}
-      aria-label={label}
-    >
-      <div
-        className="h-full transition-[width] duration-500"
-        style={{ width: `${pct}%`, background: color }}
-      />
-    </div>
-  );
-}
-
-export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
+export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
   const game = room.game!;
   const view = game.view as matchmates.MatesView;
   const finished = room.status === 'finished' || view.phase === 'over';
@@ -171,7 +165,9 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   // The coin flip after the draft (also when the game is opened right at its start).
   const [coin, setCoin] = useState(view.phase === 'play' && view.moveCount === 0);
   const lastPhase = useRef(view.phase);
-  const [lunge, setLunge] = useState<{ owner: string; slot: number } | null>(null);
+  const [atk, setAtk] = useState<AttackFx | null>(null);
+  const [hit, setHit] = useState<{ owner: string; slot: number } | null>(null);
+  const [glow, setGlow] = useState<GlowState | null>(null);
   const seen = useRef(view.moveCount);
 
   const send = async (move: matchmates.MatesMove) => {
@@ -239,36 +235,70 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       t += EVOLVE_MS;
     }
     let popId = 0;
+    let atkId = 0;
+    const petAt = (id: string, slot: number): [number, number] => {
+      const spot =
+        SCREEN.slots[id === me ? 'me' : 'opp'][slot] ?? SCREEN.slots[id === me ? 'me' : 'opp'][0];
+      return [spot[0], spot[1]];
+    };
     const fireAt = (k: number) => {
       for (const f of ev.fires.filter((x) => x.step === k)) {
         const target = f.owner === me ? theirs.id : me;
+        // The spirit circles the tiles that were just matched (or the middle of the board).
+        const cells = ev.steps[k - 1]?.cleared ?? [];
+        const cols = cells.map((c) => c % COLS);
+        const rows = cells.map((c) => Math.floor(c / COLS));
+        const x0 = SCREEN.boardX + (cols.length ? Math.min(...cols) : 2) * SCREEN.cell;
+        const x1 = SCREEN.boardX + ((cols.length ? Math.max(...cols) : 4) + 1) * SCREEN.cell;
+        const y0 = SCREEN.boardY + (rows.length ? Math.min(...rows) : 2) * SCREEN.cell;
+        const y1 = SCREEN.boardY + ((rows.length ? Math.max(...rows) : 2) + 1) * SCREEN.cell;
+        const [fx, fy] = petAt(f.owner, f.slot);
+        const [tx, ty] = petAt(target, f.slot);
+        const fx$: AttackFx = {
+          id: ++atkId + ev.seq * 100,
+          element: f.element,
+          from: [fx, fy - 12],
+          group: {
+            cx: (x0 + x1) / 2,
+            cy: (y0 + y1) / 2,
+            rx: (x1 - x0) / 2 + 7,
+            ry: (y1 - y0) / 2 + 8,
+          },
+          to: [tx, ty - 14],
+        };
         at(t, () => {
-          setLunge({ owner: f.owner, slot: f.slot });
-          play('boom');
+          setAtk(fx$);
           setNote({
             id: ++noteId + ev.seq * 100,
             text: MONSTERS[f.element].effect[f.evolved ? 1 : 0],
             tone: 'info',
           });
+        });
+        // The hit: the target shakes and flashes, the number floats up.
+        at(t + ATTACK.hit, () => {
+          play('boom');
+          setHit({ owner: target, slot: f.slot });
           setPops((p) => [
             ...p,
-            { id: ++popId + ev.seq * 100, owner: target, text: `-${f.damage}` },
+            { id: ++popId + ev.seq * 100, x: tx, y: ty - 26, text: `-${f.damage}` },
             ...(f.heal > 0
               ? [
                   {
                     id: ++popId + ev.seq * 100,
-                    owner: f.owner,
+                    x: fx,
+                    y: fy - 30,
                     text: `+${f.heal}`,
                     tone: 'heal' as const,
                   },
                 ]
               : []),
             ...(f.drain
-              ? [{ id: ++popId + ev.seq * 100, owner: target, text: `-${f.drain} mana` }]
+              ? [{ id: ++popId + ev.seq * 100, x: tx, y: ty - 36, text: `-${f.drain} mana` }]
               : []),
           ]);
         });
-        at(t + FIRE_MS - 100, () => setLunge(null));
+        at(t + ATTACK.hit + 450, () => setHit(null));
+        at(t + FIRE_MS, () => setAtk(null));
         t += FIRE_MS;
       }
     };
@@ -293,6 +323,12 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
           g.cells.push(cell);
           groups.set(target, g);
         }
+      }
+      // The artist's glow bursts round the cleared tiles, in the colour of their kind.
+      if (cleared.length > 0 && !step.bomb) {
+        const items = cleared.map((cell) => ({ cell, kind: before[cell]?.k ?? 'gold' }));
+        for (let f = 0; f < 8; f++) at(t + f * 55, () => setGlow({ items, frame: f }));
+        at(t + 8 * 55, () => setGlow(null));
       }
       at(t, () => {
         const flown = new Set<number>();
@@ -354,7 +390,9 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     fireAt(ev.steps.length);
     at(t, () => {
       setAnim(null);
-      setLunge(null);
+      setAtk(null);
+      setHit(null);
+      setGlow(null);
       setFlights([]);
       setTallies([]);
     });
@@ -363,9 +401,10 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       say(`Line of ${ev.longest}: +${ev.heal} HP!`, 'good', t);
       at(t, () => {
         play('score');
+        const [hx, hy] = ev.by === me ? [30, 44] : [108, 44];
         setPops((p) => [
           ...p,
-          { id: ++popId + ev.seq * 100, owner: ev.by, text: `+${ev.heal}`, tone: 'heal' },
+          { id: ++popId + ev.seq * 100, x: hx, y: hy, text: `+${ev.heal}`, tone: 'heal' },
         ]);
       });
       t += NOTE_MS;
@@ -384,7 +423,9 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     return () => {
       timers.forEach(clearTimeout);
       setAnim(null);
-      setLunge(null);
+      setAtk(null);
+      setHit(null);
+      setGlow(null);
       setCombo(null);
       setSparks([]);
       setFlights([]);
@@ -472,10 +513,6 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   };
 
   const stage = view.stage ?? 'stadium';
-  const sides = [
-    { p: mine, pad: ARENA.player, flip: false },
-    { p: theirs, pad: ARENA.opponent, flip: true },
-  ];
   const winnerName = useMemo(
     () => (view.winner ? (memberOf(view.winner)?.nickname ?? 'Opponent') : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -501,10 +538,83 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   }
 
   const evolveBerries = evolveCost(stage);
+  const W = SCREEN.w;
+  const H = SCREEN.h;
+  /** A box in screen art pixels as % of the stage (the whole screen is laid out in art pixels, like the reference). */
+  const at = (x: number, y: number, w?: number, h?: number) => ({
+    left: `${(x / W) * 100}%`,
+    top: `${((y - SCREEN.top) / H) * 100}%`,
+    ...(w !== undefined ? { width: `${(w / W) * 100}%` } : {}),
+    ...(h !== undefined ? { height: `${(h / H) * 100}%` } : {}),
+  });
+  const cq = (artPx: number) => `${(artPx / W) * 100}cqw`;
+  const hudText = {
+    fontSize: cq(7.5),
+    lineHeight: 1,
+    textShadow: '0 1px 0 #101628, 0 0 2px #101628',
+  } as const;
+
+  const hudSide = (p: matchmates.MatePlayer, who: 'me' | 'opp') => {
+    const member = memberOf(p.id);
+    const stackX = who === 'me' ? 19 : 98;
+    const avatarX = who === 'me' ? 46 : 72;
+    const turn = view.turn === p.id && view.phase === 'play' && !finished;
+    return (
+      <div data-testid={who === 'me' ? 'mates-me' : 'mates-opp'}>
+        <img
+          src={hudUrl('berry')}
+          alt="Berries"
+          draggable={false}
+          className="absolute"
+          style={{ ...px, ...at(stackX, 20, 9) }}
+        />
+        <span
+          className="absolute font-black text-white"
+          style={{ ...hudText, ...at(stackX + 11, 21.5) }}
+          data-testid={`mates-berries-${who}`}
+        >
+          {p.berries}/{BERRIES_TO_EVOLVE}
+        </span>
+        <img
+          src={hudUrl('heart')}
+          alt="Hit points"
+          draggable={false}
+          className="absolute"
+          style={{ ...px, ...at(stackX, 32, 9) }}
+        />
+        <span
+          className="absolute font-black text-white"
+          style={{ ...hudText, ...at(stackX + 11, 32.5) }}
+          data-testid={`mates-hp-${who}`}
+          title={`${p.hp}/${p.maxHp} HP`}
+        >
+          {p.hp}
+        </span>
+        <div className="absolute" style={at(avatarX, 19, 22)}>
+          <Avatar
+            avatar={member?.avatar ?? '🙂'}
+            size="fluid"
+            className={`h-[15.7cqw] w-[15.7cqw] text-[9cqw] ${turn ? '!border-white' : ''}`}
+          />
+        </div>
+        <div
+          className="absolute text-center font-black uppercase text-white"
+          style={{
+            ...at(avatarX - 4, 43, 30),
+            fontSize: cq(5),
+            lineHeight: 1,
+            textShadow: hudText.textShadow,
+          }}
+        >
+          <PlayerName name={p.id === me ? 'You' : (member?.nickname ?? 'Opponent')} />
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div
-      className="flex min-h-0 flex-1 flex-col gap-2 p-2"
+      className="flex min-h-0 flex-1 flex-col items-center gap-1.5 pb-1"
       data-testid="mates-game"
       data-phase={view.phase}
     >
@@ -526,133 +636,171 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         @keyframes mates-glow-out { 0%{opacity:1;transform:translate(-50%,-50%) scale(1)} 100%{opacity:0;transform:translate(-50%,-50%) scale(1.8)} }
         @keyframes mates-burst { 0%{opacity:1;transform:translate(-50%,0) scale(.5)} 100%{opacity:0;transform:translate(calc(-50% + var(--ex)),var(--ey)) scale(1.3)} }
         @keyframes mates-shake { 0%,100%{transform:translate(0)} 20%{transform:translate(-3px,2px)} 40%{transform:translate(3px,-2px)} 60%{transform:translate(-2px,-2px)} 80%{transform:translate(2px,2px)} }
+        @keyframes mates-hit { 0%{transform:translateX(0);filter:none} 10%{transform:translateX(-2px);filter:brightness(5) saturate(0)} 25%{transform:translateX(2px);filter:brightness(5) saturate(0)} 40%{transform:translateX(-2px);filter:none} 55%{transform:translateX(1px);filter:brightness(3)} 70%{transform:translateX(-1px);filter:none} 100%{transform:translateX(0);filter:none} }
       `}</style>
 
-      <div className="grid grid-cols-2 gap-2">
-        {sides.map(({ p }, n) => {
-          const member = memberOf(p.id);
-          return (
-            <div
-              key={p.id}
-              className={`flex flex-col gap-1 rounded-md border-2 p-1.5 ${
-                view.turn === p.id && view.phase === 'play' ? 'border-accent' : 'border-edge/40'
-              } ${n === 1 ? 'text-right' : ''}`}
-              data-testid={n === 0 ? 'mates-me' : 'mates-opp'}
-            >
-              <div className={`flex items-center gap-1.5 ${n === 1 ? 'flex-row-reverse' : ''}`}>
-                <Avatar avatar={member?.avatar ?? '🙂'} size="sm" />
-                <span className="truncate text-xs font-bold">
-                  <PlayerName name={p.id === me ? 'You' : (member?.nickname ?? 'Opponent')} />
-                </span>
-              </div>
-              <Bar value={p.hp} max={p.maxHp} color="#e5484d" label="Hit points" />
-              <div className="flex justify-between text-[11px] font-bold">
-                <span data-testid={`mates-hp-${n === 0 ? 'me' : 'opp'}`}>
-                  {p.hp}/{p.maxHp} HP
-                </span>
-                <span className="flex items-center gap-0.5" title="Berries">
-                  <img src={tileUrl({ k: 'berry' })} alt="Berries" className="h-4 w-4" style={px} />
-                  <span data-testid={`mates-berries-${n === 0 ? 'me' : 'opp'}`}>{p.berries}</span>
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
+      {/* The battle screen: 140 x 258 art pixels like the reference, everything placed in art pixels. */}
       <div
-        className="relative w-full shrink-0 overflow-hidden rounded-md border-2 border-edge/60"
-        style={{ aspectRatio: `${ARENA.w} / ${ARENA.h}`, maxHeight: '34dvh' }}
+        className="relative shrink-0 overflow-hidden"
+        style={{
+          containerType: 'inline-size',
+          width: 'min(100%, calc((100dvh - 8.5rem) * 140 / 258))',
+          aspectRatio: `${W} / ${H}`,
+        }}
         data-testid="mates-arena"
       >
         <img
-          src={arenaUrl(stage, STAGE_SPECS)}
+          src={portraitUrl(stage, STAGE_SPECS)}
           alt={STAGE_SPECS[stage].name}
           draggable={false}
           style={px}
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full"
         />
-        {sides.map(({ p, pad, flip }) =>
+
+        {/* HUD: back, berries + hit points and the picture of each player, the menu. */}
+        <button
+          type="button"
+          aria-label="Leave game"
+          data-testid="leave-game"
+          onClick={() => chrome?.onLeave()}
+          className="absolute"
+          style={at(3, 19, 13)}
+        >
+          <img src={hudUrl('button-back')} alt="" draggable={false} style={px} className="w-full" />
+        </button>
+        <button
+          type="button"
+          aria-label="Menu"
+          data-testid="mates-menu"
+          onClick={() => chrome?.onSettings()}
+          className="absolute"
+          style={at(124, 19, 13)}
+        >
+          <img src={hudUrl('button-menu')} alt="" draggable={false} style={px} className="w-full" />
+        </button>
+        {hudSide(mine, 'me')}
+        {hudSide(theirs, 'opp')}
+        <div
+          className="absolute flex flex-col gap-[0.6cqw] font-black uppercase"
+          style={{ ...at(3, 51), fontSize: cq(5), lineHeight: 1 }}
+        >
+          {['4 = Extra move', '5 = Heal'].map((t) => (
+            <span
+              key={t}
+              className="w-fit border border-[#101628] bg-[#1b2338]/80 px-[1.2cqw] py-[0.6cqw] text-[#a8e063]"
+            >
+              {t}
+            </span>
+          ))}
+        </div>
+
+        {/* The pets: mine on the left, the opponent's on the right, back row and front row. */}
+        {[
+          { p: mine, who: 'me' as const },
+          { p: theirs, who: 'opp' as const },
+        ].map(({ p, who }) =>
           p.monsters.map((m, slot) => {
+            const [fx, fy] = SCREEN.slots[who][slot] as readonly [number, number];
             const evolving = evolve?.owner === p.id && evolve.slot === slot ? evolve.phase : null;
             // While it charges up the old form still shows; the new one pops out of the flash.
             const shownEvolved = m.evolved && evolving !== 'charge';
             const [w, h] = monsterSize(shownEvolved);
-            const x = pad.x + (flip ? -(SLOT_DX[slot] ?? 0) : (SLOT_DX[slot] ?? 0));
-            const y = pad.y + (SLOT_DY[slot] ?? 0);
             const spec = MONSTERS[m.element];
-            const lunging = lunge?.owner === p.id && lunge.slot === slot;
+            const hitting = hit?.owner === p.id && hit.slot === slot;
+            const color = ELEMENT_COLOR[m.element];
             return (
-              <div
-                key={`${p.id}-${slot}`}
-                className="absolute cursor-pointer"
-                onClick={(e) => petInfo.open(e, m.element, shownEvolved)}
-                style={{
-                  left: `${((x - w / 2) / ARENA.w) * 100}%`,
-                  top: `${((y - h) / ARENA.h) * 100}%`,
-                  width: `${(w / ARENA.w) * 100}%`,
-                }}
-                data-testid={`mates-monster-${p.id === me ? 'me' : 'opp'}-${slot}`}
-              >
-                {evolving && (
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute left-1/2 top-1/2 -z-0 h-[170%] w-[170%] -translate-x-1/2 -translate-y-1/2 rounded-full"
-                    data-testid="mates-evolve-glow"
+              <div key={`${p.id}-${slot}`}>
+                <div
+                  className="absolute cursor-pointer"
+                  style={at(fx - w / 2, fy - h, w)}
+                  onClick={(e) => petInfo.open(e, m.element, shownEvolved)}
+                  data-testid={`mates-monster-${who}-${slot}`}
+                >
+                  {evolving && (
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute left-1/2 top-1/2 h-[170%] w-[170%] -translate-x-1/2 -translate-y-1/2 rounded-full"
+                      data-testid="mates-evolve-glow"
+                      style={{
+                        background:
+                          'radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(255,214,90,.7) 35%, rgba(255,214,90,0) 70%)',
+                        animation:
+                          evolving === 'charge'
+                            ? `mates-glow-up ${EVOLVE_MS * 0.55}ms ease-in forwards`
+                            : `mates-glow-out ${EVOLVE_MS * 0.45}ms ease-out forwards`,
+                      }}
+                    />
+                  )}
+                  <img
+                    key={`${shownEvolved}`}
+                    src={monsterUrl(m.element, shownEvolved)}
+                    alt={spec.names[shownEvolved ? 1 : 0]}
+                    draggable={false}
+                    className="relative w-full"
                     style={{
-                      background:
-                        'radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(255,214,90,.7) 35%, rgba(255,214,90,0) 70%)',
+                      ...px,
+                      ['--flip' as string]: 1,
                       animation:
                         evolving === 'charge'
-                          ? `mates-glow-up ${EVOLVE_MS * 0.55}ms ease-in forwards`
-                          : `mates-glow-out ${EVOLVE_MS * 0.45}ms ease-out forwards`,
+                          ? `mates-charge ${EVOLVE_MS * 0.55}ms ease-in forwards`
+                          : evolving === 'pop'
+                            ? `mates-evolve-pop ${EVOLVE_MS * 0.45}ms ease-out`
+                            : hitting
+                              ? 'mates-hit 450ms linear'
+                              : undefined,
                     }}
                   />
-                )}
-                <img
-                  key={`${shownEvolved}`}
-                  src={monsterUrl(m.element, shownEvolved)}
-                  alt={spec.names[shownEvolved ? 1 : 0]}
-                  draggable={false}
-                  className="relative w-full"
-                  style={{
-                    ...px,
-                    transform: flip ? 'scaleX(-1)' : undefined,
-                    ['--lunge' as string]: flip ? '-30%' : '30%',
-                    ['--flip' as string]: flip ? -1 : 1,
-                    animation:
-                      evolving === 'charge'
-                        ? `mates-charge ${EVOLVE_MS * 0.55}ms ease-in forwards`
-                        : evolving === 'pop'
-                          ? `mates-evolve-pop ${EVOLVE_MS * 0.45}ms ease-out`
-                          : lunging
-                            ? `mates-lunge ${FIRE_MS - 100}ms ease-in-out`
-                            : undefined,
-                  }}
-                />
-                {evolving === 'pop' &&
-                  [0, 1, 2, 3, 4, 5].map((n) => (
-                    <span
-                      key={n}
-                      aria-hidden
-                      className="pointer-events-none absolute left-1/2 top-1/3 text-lg"
-                      style={{
-                        ['--ex' as string]: `${Math.round(Math.cos((n / 6) * 6.283) * 46)}px`,
-                        ['--ey' as string]: `${Math.round(Math.sin((n / 6) * 6.283) * 46)}px`,
-                        animation: `mates-burst ${EVOLVE_MS * 0.45}ms ease-out forwards`,
-                      }}
-                    >
-                      ✨
-                    </span>
-                  ))}
+                  {evolving === 'pop' &&
+                    [0, 1, 2, 3, 4, 5].map((n) => (
+                      <span
+                        key={n}
+                        aria-hidden
+                        className="pointer-events-none absolute left-1/2 top-1/3 text-lg"
+                        style={{
+                          ['--ex' as string]: `${Math.round(Math.cos((n / 6) * 6.283) * 46)}px`,
+                          ['--ey' as string]: `${Math.round(Math.sin((n / 6) * 6.283) * 46)}px`,
+                          animation: `mates-burst ${EVOLVE_MS * 0.45}ms ease-out forwards`,
+                        }}
+                      >
+                        ✨
+                      </span>
+                    ))}
+                </div>
+                {/* The mana bar: the artist's badge + bar with the fill and the count drawn over it. */}
                 <div
-                  className="mt-0.5 flex w-[150%] -translate-x-[16%] items-center gap-1"
-                  title={`${spec.names[m.evolved ? 1 : 0]}: ${m.mana}/${spec.cost} mana`}
+                  className="absolute"
+                  style={at(fx - 18, fy + 1, 36)}
+                  title={`${spec.names[shownEvolved ? 1 : 0]}: ${m.mana}/${spec.cost} mana`}
                 >
-                  <Bar value={m.mana} max={spec.cost} color="#3aa6ff" label="Mana" />
+                  <img
+                    src={hudUrl(`charge-bar-${m.element}`)}
+                    alt=""
+                    draggable={false}
+                    style={px}
+                    className="w-full"
+                  />
                   <span
-                    className="shrink-0 text-[10px] font-black leading-none text-white [text-shadow:0_1px_0_#101628]"
-                    data-testid={`mates-mana-${p.id === me ? 'me' : 'opp'}-${slot}`}
+                    aria-hidden
+                    className="absolute transition-[width] duration-500"
+                    style={{
+                      left: `${(11 / 36) * 100}%`,
+                      top: `${(3 / 12) * 100}%`,
+                      height: `${(5 / 12) * 100}%`,
+                      width: `${(24 / 36) * 100 * Math.min(1, m.mana / spec.cost)}%`,
+                      background: color,
+                    }}
+                  />
+                  <span
+                    className="absolute text-center font-black text-white"
+                    style={{
+                      left: `${(11 / 36) * 100}%`,
+                      width: `${(24 / 36) * 100}%`,
+                      top: `${(2.6 / 12) * 100}%`,
+                      fontSize: cq(5),
+                      lineHeight: 1,
+                      textShadow: '0 1px 0 #101628, 0 0 2px #101628',
+                    }}
+                    data-testid={`mates-mana-${who}-${slot}`}
                   >
                     {Math.min(m.mana, spec.cost)}/{spec.cost}
                   </span>
@@ -661,24 +809,190 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
             );
           }),
         )}
+
+        {/* The board: the see-through panel and the 7 x 5 tiles, exactly on the art grid. */}
+        <img
+          src={boardPanelUrl}
+          alt=""
+          draggable={false}
+          style={{ ...px, ...at(SCREEN.panel.x, SCREEN.panel.y, SCREEN.panel.w) }}
+          className="absolute"
+        />
+        <div
+          className="absolute"
+          style={{
+            ...at(SCREEN.boardX, SCREEN.boardY, COLS * SCREEN.cell, ROWS * SCREEN.cell),
+            animation:
+              combo && combo.level >= 3 && anim ? 'mates-shake 300ms ease-in-out' : undefined,
+          }}
+          key={combo && combo.level >= 3 ? combo.id : 'calm'}
+        >
+          <div
+            className="grid h-full w-full touch-none select-none"
+            style={{
+              gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+              gridTemplateRows: `repeat(${ROWS}, 1fr)`,
+            }}
+            data-testid="mates-board"
+          >
+            {board.map((cell, i) => {
+              const drop = anim?.drops?.[i] ?? 0;
+              const flashing = anim?.flash.has(i) && !anim.flown?.has(i);
+              const flownAway = !!anim?.flown?.has(i);
+              const swapIdx = anim?.swap ? anim.swap.indexOf(i) : -1;
+              // The tile now at i came from the other square of the swap: slide it over from there.
+              const from = swapIdx >= 0 && anim?.swap ? (anim.swap[1 - swapIdx] as number) : -1;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  data-testid={`mates-cell-${i}`}
+                  data-kind={cell.k}
+                  aria-label={`${cell.k}${cell.frozen ? ' (frozen)' : ''}`}
+                  onPointerDown={(e) => onDown(i, e)}
+                  onPointerUp={(e) => onUp(i, e)}
+                  onPointerCancel={() => (drag.current = null)}
+                  className={`relative min-h-0 min-w-0 overflow-visible p-0 ${
+                    selected === i ? 'outline outline-2 -outline-offset-2 outline-white' : ''
+                  }`}
+                >
+                  <img
+                    key={`${i}-${anim?.key ?? 0}`}
+                    src={tileUrl(cell)}
+                    alt=""
+                    draggable={false}
+                    className="h-full w-full"
+                    style={{
+                      ...px,
+                      ['--drop' as string]: drop,
+                      ['--sx' as string]: from >= 0 ? (from % COLS) - (i % COLS) : 0,
+                      ['--sy' as string]:
+                        from >= 0 ? Math.floor(from / COLS) - Math.floor(i / COLS) : 0,
+                      position: from >= 0 ? 'relative' : undefined,
+                      zIndex: from >= 0 ? 5 : undefined,
+                      opacity: flownAway ? 0 : undefined,
+                      animation: flashing
+                        ? `mates-flash ${FLASH_MS}ms ease-in forwards`
+                        : from >= 0
+                          ? `mates-slide ${SWAP_MS - 20}ms cubic-bezier(.4,0,.2,1)`
+                          : drop > 0
+                            ? `mates-fall ${STEP_MS - FLASH_MS}ms cubic-bezier(.35,0,.6,1) ${(i % COLS) * 18}ms backwards`
+                            : undefined,
+                    }}
+                  />
+                  {cell.frozen && (
+                    <img
+                      src={iceUrl()}
+                      alt=""
+                      draggable={false}
+                      className="absolute inset-0 h-full w-full"
+                      style={px}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div className="pointer-events-none absolute inset-0 overflow-visible" aria-hidden>
+            {/* The artist's match glow bursts round the cleared tiles. */}
+            {glow?.items.map(({ cell, kind }) => (
+              <img
+                key={cell}
+                src={glowUrl(kind, 'burst', glow.frame)}
+                alt=""
+                draggable={false}
+                className="absolute max-w-none"
+                style={{
+                  ...px,
+                  left: `${(((cell % COLS) * SCREEN.cell - 7) / (COLS * SCREEN.cell)) * 100}%`,
+                  top: `${((Math.floor(cell / COLS) * SCREEN.cell - 7) / (ROWS * SCREEN.cell)) * 100}%`,
+                  width: `${(32 / (COLS * SCREEN.cell)) * 100}%`,
+                }}
+              />
+            ))}
+            {sparks.map((sp) => (
+              <span
+                key={sp.id}
+                className="absolute text-lg"
+                style={{
+                  left: `${(((sp.cell % COLS) + 0.5) / COLS) * 100}%`,
+                  top: `${((Math.floor(sp.cell / COLS) + 0.5) / ROWS) * 100}%`,
+                  ['--dx' as string]: `${sp.dx}px`,
+                  animation: 'mates-spark 750ms ease-out forwards',
+                }}
+              >
+                {sp.emoji}
+              </span>
+            ))}
+            {note && (
+              <span
+                key={note.id}
+                data-testid="mates-note"
+                role="status"
+                className={`absolute left-1/2 top-1/2 w-max max-w-full -translate-x-1/2 -translate-y-1/2 text-center font-black [text-shadow:0_3px_0_#101628,0_0_12px_#000] ${
+                  note.tone === 'bad'
+                    ? 'text-red-300'
+                    : note.tone === 'good'
+                      ? 'text-green-300'
+                      : 'text-yellow-200'
+                }`}
+                style={{
+                  fontSize: '6.5cqw',
+                  animation: `mates-note ${NOTE_MS + 200}ms ease-out forwards`,
+                }}
+              >
+                {note.text}
+              </span>
+            )}
+            {combo && (
+              <span
+                key={combo.id}
+                data-testid="mates-combo"
+                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-black text-yellow-300 [text-shadow:0_3px_0_#101628,0_0_14px_#ff9d00]"
+                style={{
+                  fontSize: `${Math.min(9, 4.5 + combo.level * 0.8)}cqw`,
+                  animation: 'mates-combo 900ms ease-out forwards',
+                }}
+              >
+                CHAIN x{combo.level}!
+              </span>
+            )}
+          </div>
+        </div>
+        {/* Not my turn: the field is dimmed to half brightness. */}
+        <div
+          aria-hidden
+          data-testid="mates-dim"
+          data-on={!myTurn && !finished}
+          className="pointer-events-none absolute bg-black/50 transition-opacity duration-300"
+          style={{
+            ...at(SCREEN.panel.x, SCREEN.panel.y, SCREEN.panel.w, SCREEN.panel.h),
+            opacity: !myTurn && !finished ? 1 : 0,
+          }}
+        />
+
+        {atk && <Attack fx={atk} onDone={() => setAtk(null)} />}
         {pops.map((p) => (
           <span
             key={p.id}
-            className={`pointer-events-none absolute text-2xl font-black [text-shadow:0_2px_0_#101628] ${
-              p.tone === 'heal' ? 'text-green-300' : 'text-white'
-            }`}
+            className="pointer-events-none absolute z-30 -translate-x-1/2 font-black text-white"
             style={{
-              left: p.owner === me ? '22%' : '62%',
-              top: p.owner === me ? '45%' : '25%',
+              ...at(p.x, p.y),
+              fontSize: cq(6),
+              textShadow: '0 2px 0 #101628',
               animation: 'mates-pop 900ms ease-out forwards',
             }}
           >
-            {p.text}
+            {/^[-+]\d+$/.test(p.text) ? (
+              <Digits text={p.text} tone={p.tone === 'heal' ? 'heal' : 'dmg'} />
+            ) : (
+              p.text
+            )}
           </span>
         ))}
       </div>
 
-      <div className="flex items-center justify-between gap-2 text-xs font-bold">
+      <div className="flex w-full max-w-lg items-center justify-between gap-2 px-2 text-xs font-bold">
         <span data-testid="mates-turn" className={myTurn ? 'text-neon' : 'text-muted'}>
           {finished
             ? `${winnerName === 'You' || view.winner === me ? 'You win' : `${winnerName ?? 'Opponent'} wins`}!`
@@ -732,6 +1046,15 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
               </Button>
             );
           })}
+          <Button
+            variant="secondary"
+            data-testid="mates-chat"
+            className="relative !min-h-0 !px-2 !py-1 text-[11px]"
+            aria-label={chrome && chrome.unread > 0 ? `Chat, ${chrome.unread} unread` : 'Chat'}
+            onClick={() => chrome?.onChat()}
+          >
+            💬{chrome && chrome.unread > 0 ? ` ${chrome.unread}` : ''}
+          </Button>
         </span>
       </div>
       <TimerDrain
@@ -742,139 +1065,6 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         active={myTurn}
       />
 
-      <div className="flex min-h-0 flex-1 items-center justify-center">
-        <div
-          className="relative"
-          style={{
-            width: `min(100%, max(14rem, calc((66dvh - 15rem) * ${COLS / ROWS})))`,
-            aspectRatio: `${COLS} / ${ROWS}`,
-            animation:
-              combo && combo.level >= 3 && anim ? 'mates-shake 300ms ease-in-out' : undefined,
-          }}
-          key={combo && combo.level >= 3 ? combo.id : 'calm'}
-        >
-          <div
-            className="grid h-full w-full touch-none select-none gap-[2px] rounded-lg border-4 border-edge bg-[#141d36] p-1 shadow-[0_4px_0_#0a0f1e,inset_0_0_12px_rgba(0,0,0,.6)]"
-            style={{
-              gridTemplateColumns: `repeat(${COLS}, 1fr)`,
-              gridTemplateRows: `repeat(${ROWS}, 1fr)`,
-            }}
-            data-testid="mates-board"
-          >
-            {board.map((cell, i) => {
-              const drop = anim?.drops?.[i] ?? 0;
-              const flashing = anim?.flash.has(i) && !anim.flown?.has(i);
-              const flownAway = !!anim?.flown?.has(i);
-              const swapIdx = anim?.swap ? anim.swap.indexOf(i) : -1;
-              // The tile now at i came from the other square of the swap: slide it over from there.
-              const from = swapIdx >= 0 && anim?.swap ? (anim.swap[1 - swapIdx] as number) : -1;
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  data-testid={`mates-cell-${i}`}
-                  data-kind={cell.k}
-                  aria-label={`${cell.k}${cell.frozen ? ' (frozen)' : ''}`}
-                  onPointerDown={(e) => onDown(i, e)}
-                  onPointerUp={(e) => onUp(i, e)}
-                  onPointerCancel={() => (drag.current = null)}
-                  className={`relative min-h-0 min-w-0 overflow-visible rounded-[4px] p-0 ${
-                    (Math.floor(i / COLS) + (i % COLS)) % 2 ? 'bg-[#2b3a58]' : 'bg-[#233049]'
-                  } ${selected === i ? 'outline outline-2 -outline-offset-2 outline-white' : ''}`}
-                >
-                  <img
-                    key={`${i}-${anim?.key ?? 0}`}
-                    src={tileUrl(cell)}
-                    alt=""
-                    draggable={false}
-                    className="h-full w-full p-[6%]"
-                    style={{
-                      ...px,
-                      ['--drop' as string]: drop,
-                      ['--sx' as string]: from >= 0 ? (from % COLS) - (i % COLS) : 0,
-                      ['--sy' as string]:
-                        from >= 0 ? Math.floor(from / COLS) - Math.floor(i / COLS) : 0,
-                      position: from >= 0 ? 'relative' : undefined,
-                      zIndex: from >= 0 ? 5 : undefined,
-                      opacity: flownAway ? 0 : undefined,
-                      animation: flashing
-                        ? `mates-flash ${FLASH_MS}ms ease-in forwards`
-                        : from >= 0
-                          ? `mates-slide ${SWAP_MS - 20}ms cubic-bezier(.4,0,.2,1)`
-                          : drop > 0
-                            ? `mates-fall ${STEP_MS - FLASH_MS}ms cubic-bezier(.35,0,.6,1) ${(i % COLS) * 18}ms backwards`
-                            : undefined,
-                    }}
-                  />
-                  {cell.frozen && (
-                    <img
-                      src={iceUrl()}
-                      alt=""
-                      draggable={false}
-                      className="absolute inset-0 h-full w-full p-[6%]"
-                      style={px}
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          {/* Not my turn: the field is dimmed to half brightness. */}
-          <div
-            aria-hidden
-            data-testid="mates-dim"
-            data-on={!myTurn && !finished}
-            className="pointer-events-none absolute inset-0 rounded-lg bg-black/50 transition-opacity duration-300"
-            style={{ opacity: !myTurn && !finished ? 1 : 0 }}
-          />
-          <div className="pointer-events-none absolute inset-0 overflow-visible" aria-hidden>
-            {sparks.map((sp) => (
-              <span
-                key={sp.id}
-                className="absolute text-lg"
-                style={{
-                  left: `${(((sp.cell % COLS) + 0.5) / COLS) * 100}%`,
-                  top: `${((Math.floor(sp.cell / COLS) + 0.5) / ROWS) * 100}%`,
-                  ['--dx' as string]: `${sp.dx}px`,
-                  animation: 'mates-spark 750ms ease-out forwards',
-                }}
-              >
-                {sp.emoji}
-              </span>
-            ))}
-            {note && (
-              <span
-                key={note.id}
-                data-testid="mates-note"
-                role="status"
-                className={`absolute left-1/2 top-1/2 w-max max-w-full -translate-x-1/2 -translate-y-1/2 text-center text-2xl font-black [text-shadow:0_3px_0_#101628,0_0_12px_#000] ${
-                  note.tone === 'bad'
-                    ? 'text-red-300'
-                    : note.tone === 'good'
-                      ? 'text-green-300'
-                      : 'text-yellow-200'
-                }`}
-                style={{ animation: `mates-note ${NOTE_MS + 200}ms ease-out forwards` }}
-              >
-                {note.text}
-              </span>
-            )}
-            {combo && (
-              <span
-                key={combo.id}
-                data-testid="mates-combo"
-                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-black text-yellow-300 [text-shadow:0_3px_0_#101628,0_0_14px_#ff9d00]"
-                style={{
-                  fontSize: `${Math.min(2.6, 1.4 + combo.level * 0.25)}rem`,
-                  animation: 'mates-combo 900ms ease-out forwards',
-                }}
-              >
-                CHAIN x{combo.level}!
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
       {petInfo.bubble}
       {turnBanner > 0 && (
         <div
