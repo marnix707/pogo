@@ -481,8 +481,8 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
   };
   if (win) return { ...base, phase: 'over', winner: playerId, movesLeft: 0 };
 
-  // Evolving takes the whole turn; a swap that matches nothing just costs its one move.
-  const movesLeft = move.type === 'evolve' ? 0 : state.movesLeft - 1 + extra;
+  // Evolving and a swap that matches nothing each cost one move.
+  const movesLeft = state.movesLeft - 1 + extra;
   if (movesLeft > 0) return { ...base, movesLeft };
 
   // Turn over: the opponent starts, with any moves the attacks gave or took.

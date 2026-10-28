@@ -223,8 +223,9 @@ describe('Pet Match', () => {
           createSeededRng(1),
         );
         expect(after.players.find((p) => p.id === s.turn)!.monsters[0]!.evolved).toBe(true);
-        // Evolving takes the whole turn.
-        expect(after.turn).not.toBe(s.turn);
+        // Evolving costs one move.
+        expect(after.turn).toBe(s.turn);
+        expect(after.movesLeft).toBe(1);
       }
     }
   });

@@ -41,8 +41,8 @@ export function MatchMatesRules({ open, onClose }: { open: boolean; onClose: () 
         </li>
         <li>
           <b className="text-neon">Berries:</b> match berries to collect them. Spend 4 on{' '}
-          <b>Evolve</b> for a stronger monster (it takes your <b>whole turn</b>), or 4 on{' '}
-          <b>Boost</b> to give an evolved monster 4 mana (one move).
+          <b>Evolve</b> for a stronger monster (it costs one move), or 4 on <b>Boost</b> to give an
+          evolved monster 4 mana (one move).
         </li>
         <li>
           <b className="text-neon">Stages:</b>
