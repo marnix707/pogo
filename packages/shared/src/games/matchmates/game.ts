@@ -18,7 +18,7 @@ import {
   adjacent,
   cellAt,
 } from './board';
-import { BERRIES_TO_EVOLVE, BOOST_MANA, MONSTERS, evolveCost } from './monsters';
+import { BERRIES_TO_EVOLVE, BOOST_MANA, MAX_BERRIES, MONSTERS, evolveCost } from './monsters';
 import { CELLS, COLS, ELEMENTS, HP_CHOICES, MAX_PLAYERS, MIN_PLAYERS, ROWS, STAGES } from './types';
 import type {
   Element,
@@ -201,7 +201,7 @@ function clearMatches(c: Ctx, cells: Set<number>) {
   for (const i of cells) {
     const k = c.board[i]!.k;
     if (!c.kinds.includes(k)) c.kinds.push(k);
-    if (k === 'berry') c.me.berries += 1;
+    if (k === 'berry') c.me.berries = Math.min(MAX_BERRIES, c.me.berries + 1);
     else if (k !== 'bomb' && k !== 'mystery') {
       for (const m of c.me.monsters) if (m.element === k) m.mana += 1;
       if (k === 'fire' && c.stage === 'lava') lava += 1;
@@ -442,7 +442,7 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
     event.swapped = clone(swapped);
     settle(c);
     freeze(c);
-    // A swap that makes nothing: the tiles stay swapped and the turn is lost.
+    // A swap that makes nothing: the tiles stay swapped and the move is spent.
     noMatch = findMatches(swapped).cells.size === 0;
     if (c.longest >= 4 && c.opp.hp > 0) {
       // 4 in a row: an extra move; 5 or more also heals 5.
@@ -490,8 +490,8 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
   };
   if (win) return { ...base, phase: 'over', winner: playerId, movesLeft: 0 };
 
-  // Evolving takes the whole turn, and so does a swap that matches nothing.
-  const movesLeft = noMatch || move.type === 'evolve' ? 0 : state.movesLeft - 1 + extra;
+  // Evolving takes the whole turn; a swap that matches nothing just costs its one move.
+  const movesLeft = move.type === 'evolve' ? 0 : state.movesLeft - 1 + extra;
   if (movesLeft > 0) return { ...base, movesLeft };
 
   // Turn over: the opponent starts, with any moves the attacks gave or took.

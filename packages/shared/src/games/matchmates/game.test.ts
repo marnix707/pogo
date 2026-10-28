@@ -230,7 +230,7 @@ describe('Pet Match', () => {
     }
   });
 
-  it('a swap that matches nothing keeps the tiles swapped and loses the turn', () => {
+  it('a swap that matches nothing keeps the tiles swapped and only costs the move', () => {
     const base = start(4);
     const board = quiet();
     // (Some other move must exist, or the board would be reshuffled.)
@@ -244,7 +244,11 @@ describe('Pet Match', () => {
     expect(after.lastEvent?.noMatch).toBe(true);
     expect(after.board[x]!.k).toBe(s.board[y]!.k);
     expect(after.board[y]!.k).toBe(s.board[x]!.k);
-    expect(after.turn).toBe('b');
+    expect(after.turn).toBe('a');
+    expect(after.movesLeft).toBe(1);
+    // The second wasted move ends the turn like any other.
+    const again = matesGame.applyMove(after, 'a', { type: 'swap', a: y, b: x }, createSeededRng(1));
+    expect(again.turn).toBe('b');
   });
 
   it('a line of five heals 5 and gives an extra move', () => {

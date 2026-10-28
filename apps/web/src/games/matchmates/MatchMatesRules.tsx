@@ -20,7 +20,7 @@ export function MatchMatesRules({ open, onClose }: { open: boolean; onClose: () 
           <b className="text-neon">Your turn:</b> you have <b>2 moves</b>. Swap two neighbouring
           tiles (tap one, then the other, or slide it). Tiles that line up 3 or more fall away and
           new ones drop in; chains keep counting. You may swap anything, but a swap that matches
-          nothing <b>costs your whole turn</b>.
+          nothing just <b>wastes that move</b>.
         </li>
         <li>
           <b className="text-neon">Mana:</b> matched tiles fly to the mana bar of <i>your own</i>{' '}

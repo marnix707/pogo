@@ -19,12 +19,14 @@ export interface MonsterSpec {
 
 export const BERRIES_TO_EVOLVE = 4;
 export const BOOST_MANA = 4;
+/** Most berries a player can hold. */
+export const MAX_BERRIES = BERRIES_TO_EVOLVE;
 
 export const MONSTERS: Readonly<Record<Element, MonsterSpec>> = {
   fire: {
     element: 'fire',
     names: ['Embit', 'Blazemaw'],
-    cost: 6,
+    cost: 8,
     damage: [20, 25],
     ability: 'Column Blast: damage, and a random column counts as matched (evolved: two columns).',
     power: [1, 2],
@@ -34,7 +36,7 @@ export const MONSTERS: Readonly<Record<Element, MonsterSpec>> = {
   water: {
     element: 'water',
     names: ['Puddlo', 'Tidalurk'],
-    cost: 7,
+    cost: 6,
     damage: [10, 20],
     ability: 'Tidal Splash: damage, and turns 3 random tiles into water.',
     power: [3, 3],
@@ -44,7 +46,7 @@ export const MONSTERS: Readonly<Record<Element, MonsterSpec>> = {
   earth: {
     element: 'earth',
     names: ['Sprigg', 'Thornback'],
-    cost: 7,
+    cost: 6,
     damage: [10, 15],
     ability: 'Harvest: damage, and heals you by the same amount.',
     power: [0, 0],
@@ -54,7 +56,7 @@ export const MONSTERS: Readonly<Record<Element, MonsterSpec>> = {
   electric: {
     element: 'electric',
     names: ['Zappip', 'Voltusk'],
-    cost: 6,
+    cost: 4,
     damage: [5, 10],
     ability: 'Overload: damage, and a random 2x2 block counts as matched (evolved: 3x2).',
     power: [2, 3],

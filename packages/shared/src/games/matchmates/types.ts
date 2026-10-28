@@ -107,7 +107,7 @@ export interface MateEvent {
   fires: MateFire[];
   /** Longest line of the move. */
   longest: number;
-  /** A swap that made no match: the tiles stay swapped and the turn is lost. */
+  /** A swap that made no match: the tiles stay swapped and the move is spent. */
   noMatch: boolean;
   /** Hit points the mover got back from a line of 5 or more. */
   heal: number;

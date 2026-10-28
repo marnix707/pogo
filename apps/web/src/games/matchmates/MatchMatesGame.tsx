@@ -211,7 +211,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       });
     t += SWAP_MS;
     if (ev.noMatch) {
-      say('No match: turn lost!', 'bad', t);
+      say('No match: move lost!', 'bad', t);
       play('error');
       t += NOTE_MS;
     }
@@ -412,6 +412,22 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   }, []);
 
   const animating = anim !== null;
+  // "Your turn!" in the middle of the screen when the turn comes to me (after the last move has played out).
+  const [turnBanner, setTurnBanner] = useState(0);
+  const wasMine = useRef(myTurn);
+  const settled = !animating && !coin && flights.length === 0;
+  useEffect(() => {
+    if (!myTurn) wasMine.current = false;
+    else if (!wasMine.current && settled) {
+      wasMine.current = true;
+      if (reducedMotion()) return;
+      play('turn');
+      haptic('tap');
+      setTurnBanner((n) => n + 1);
+      const t = setTimeout(() => setTurnBanner(0), 1300);
+      return () => clearTimeout(t);
+    }
+  }, [myTurn, settled, view.moveCount]);
   const board = anim?.board ?? view.board;
   const canAct = myTurn && !busy && !animating;
 
@@ -497,6 +513,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         @keyframes mates-fall { 0%{transform:translateY(calc(var(--drop) * -100%))} 68%{transform:translateY(0)} 82%{transform:translateY(-7%)} 100%{transform:translateY(0)} }
         @keyframes mates-spark { 0%{opacity:1;transform:translate(0,0) scale(.6)} 100%{opacity:0;transform:translate(var(--dx),70px) scale(1.1)} }
         @keyframes mates-combo { 0%{opacity:0;transform:scale(.4) rotate(-6deg)} 25%{opacity:1;transform:scale(1.25) rotate(3deg)} 100%{opacity:0;transform:scale(1) translateY(-30px)} }
+        @keyframes mates-turn { 0%{opacity:0;transform:scale(.3) rotate(-8deg)} 20%{opacity:1;transform:scale(1.25) rotate(3deg)} 35%{transform:scale(1) rotate(0)} 80%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.4)} }
         @keyframes mates-slide { 0%{transform:translate(calc(var(--sx) * (100% + 2px)), calc(var(--sy) * (100% + 2px))) scale(1.12)} 100%{transform:translate(0,0) scale(1)} }
         @keyframes mates-fly { 0%{opacity:1;transform:translate(0,0) scale(1.1)} 100%{opacity:.9;transform:translate(var(--fx),var(--fy)) scale(.45)} }
         @keyframes mates-tally { 0%{transform:translate(-50%,-50%) scale(.6)} 50%{transform:translate(-50%,-50%) scale(1.35)} 100%{transform:translate(-50%,-50%) scale(1)} }
@@ -683,20 +700,32 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         <span className="flex gap-1">
           {mine.monsters.map((m, slot) => {
             const spec = MONSTERS[m.element];
-            const can =
-              canAct &&
-              (m.evolved ? mine.berries >= BERRIES_TO_EVOLVE : mine.berries >= evolveBerries);
+            const need = m.evolved ? BERRIES_TO_EVOLVE : evolveBerries;
+            const full = mine.berries >= need;
+            const can = canAct && full;
             return (
               <Button
                 key={slot}
                 variant="secondary"
                 data-testid={`mates-${m.evolved ? 'boost' : 'evolve'}-${slot}`}
                 disabled={!can}
-                className="!min-h-0 !px-2 !py-1 text-[11px]"
+                className="relative !min-h-0 overflow-hidden !px-2 !py-1 text-[11px]"
                 onClick={() => void send({ type: m.evolved ? 'boost' : 'evolve', slot })}
               >
-                {m.evolved ? 'Boost' : 'Evolve'} {spec.names[m.evolved ? 1 : 0]} (
-                {m.evolved ? BERRIES_TO_EVOLVE : evolveBerries})
+                {/* A loading bar of the berries; it pulses when it is full (n/n). */}
+                <span
+                  aria-hidden
+                  data-testid={`mates-bar-${slot}`}
+                  data-full={full}
+                  className={`absolute inset-y-0 left-0 bg-neon/60 transition-[width] duration-500 ${
+                    full ? 'animate-pulse' : ''
+                  }`}
+                  style={{ width: `${Math.min(100, (mine.berries / need) * 100)}%` }}
+                />
+                <span className="relative">
+                  {m.evolved ? 'Boost' : 'Evolve'} {spec.names[m.evolved ? 1 : 0]} (
+                  {Math.min(mine.berries, need)}/{need})
+                </span>
               </Button>
             );
           })}
@@ -787,6 +816,14 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
               );
             })}
           </div>
+          {/* Not my turn: the field is dimmed to half brightness. */}
+          <div
+            aria-hidden
+            data-testid="mates-dim"
+            data-on={!myTurn && !finished}
+            className="pointer-events-none absolute inset-0 rounded-lg bg-black/50 transition-opacity duration-300"
+            style={{ opacity: !myTurn && !finished ? 1 : 0 }}
+          />
           <div className="pointer-events-none absolute inset-0 overflow-visible" aria-hidden>
             {sparks.map((sp) => (
               <span
@@ -835,6 +872,21 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
           </div>
         </div>
       </div>
+      {turnBanner > 0 && (
+        <div
+          className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
+          aria-hidden
+        >
+          <span
+            key={turnBanner}
+            data-testid="mates-your-turn"
+            className="text-5xl font-black uppercase tracking-wider text-yellow-300 [text-shadow:0_4px_0_#101628,0_0_22px_#ff9d00]"
+            style={{ animation: 'mates-turn 1300ms ease-out forwards' }}
+          >
+            Your turn!
+          </span>
+        </div>
+      )}
       {(flights.length > 0 || tallies.length > 0) && (
         <div className="pointer-events-none fixed inset-0 z-50" aria-hidden>
           {flights.map((f) => (
