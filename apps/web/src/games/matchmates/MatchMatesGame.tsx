@@ -310,10 +310,16 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                   }}
                 />
                 <div
-                  className="mx-auto mt-0.5 w-[120%] -translate-x-[8%]"
+                  className="mt-0.5 flex w-[150%] -translate-x-[16%] items-center gap-1"
                   title={`${spec.names[m.evolved ? 1 : 0]}: ${m.mana}/${spec.cost} mana`}
                 >
                   <Bar value={m.mana} max={spec.cost} color="#3aa6ff" label="Mana" />
+                  <span
+                    className="shrink-0 text-[10px] font-black leading-none text-white [text-shadow:0_1px_0_#101628]"
+                    data-testid={`mates-mana-${p.id === me ? 'me' : 'opp'}-${slot}`}
+                  >
+                    {Math.min(m.mana, spec.cost)}/{spec.cost}
+                  </span>
                 </div>
               </div>
             );
