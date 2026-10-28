@@ -15,7 +15,7 @@ export const matchMatesUi: GameUi = {
   name: 'Pet Match',
   emoji: '🐲',
   logo: logoUrl,
-  tagline: 'Match tiles to power up your monsters and win the duel.',
+  tagline: 'Match tiles, evolve your pet and win the duel.',
   Component: MatchMatesGame,
   LobbyOptions: MatesOptions,
   Rules: ({ open, onClose }) => createElement(MatchMatesRules, { open, onClose }),
