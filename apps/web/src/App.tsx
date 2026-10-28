@@ -37,7 +37,9 @@ export function App() {
       <TopoBackground />
       <UpdateNotice />
       {loading ? (
-        <p className="label p-8 text-center text-onbg">Loading…</p>
+        <p className="label flex h-dvh items-center justify-center p-8 text-center text-onbg">
+          Loading…
+        </p>
       ) : error ? (
         <div className="p-8 text-center">
           <p className="mb-4 font-semibold text-dangertext">{error}</p>

@@ -134,7 +134,11 @@ export function Shell({
       </div>
     );
   } else if (!synced) {
-    screen = <p className="label p-8 text-center text-onbg">Connecting…</p>;
+    screen = (
+      <p className="label flex h-dvh items-center justify-center p-8 text-center text-onbg">
+        Connecting…
+      </p>
+    );
   } else if (!room) {
     screen = (
       <Home
