@@ -3,8 +3,8 @@ import type { PlayerId } from '../../game/types';
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 2;
 
-export const COLS = 8;
-export const ROWS = 8;
+export const COLS = 7;
+export const ROWS = 5;
 export const CELLS = COLS * ROWS;
 
 export const ELEMENTS = ['fire', 'water', 'earth', 'electric', 'psychic'] as const;
@@ -27,7 +27,10 @@ export interface MateCell {
 }
 
 export type MatesMove =
-  | { type: 'pick'; elements: [Element, Element]; stage: StageId }
+  /** Draft: one pet, in turn (first player, then the second twice, then the first again). */
+  | { type: 'draft'; element: Element }
+  /** Once all four pets are picked: the arena you would like ('random' = leave it to the dice) and ready. */
+  | { type: 'confirm'; stage: StageId | 'random' }
   | { type: 'swap'; a: number; b: number }
   | { type: 'evolve'; slot: number }
   | { type: 'boost'; slot: number };
@@ -49,8 +52,9 @@ export interface MatePlayer {
   maxHp: number;
   monsters: MateMonster[];
   berries: number;
-  picked: boolean;
-  pickStage: StageId | null;
+  confirmed: boolean;
+  /** The arena this player asked for (hidden from the opponent until the coin is flipped). */
+  stagePick: StageId | 'random' | null;
   /** Moves added to (+) or taken from (-) this player's next turn. */
   moveDelta: number;
 }
@@ -101,7 +105,11 @@ export interface MatesState {
   options: MatesOptions;
   stage: StageId;
   board: MateCell[];
+  /** Who plays first (the loser of the coin flip). */
   first: PlayerId;
+  /** Who drafts first. */
+  draftFirst: PlayerId;
+  coinWinner: PlayerId | null;
   turn: PlayerId;
   movesLeft: number;
   extraUsed: boolean;
@@ -114,10 +122,14 @@ export interface MatesView {
   phase: MatesState['phase'];
   me: PlayerId;
   opponent: PlayerId;
-  /** My side first, then the opponent. The opponent's picks stay hidden until both have picked. */
+  /** My side first, then the opponent. The opponent's arena choice stays hidden until the coin is flipped. */
   players: MatePlayer[];
-  /** Who has picked while picking. */
-  picked: Record<PlayerId, boolean>;
+  /** Who has confirmed (after the draft). */
+  confirmed: Record<PlayerId, boolean>;
+  /** Whose draft pick it is, or null when the draft is over. */
+  drafter: PlayerId | null;
+  /** Who won the coin flip: their arena is used, they play second and start with extra hit points. */
+  coinWinner: PlayerId | null;
   stage: StageId | null;
   options: MatesOptions;
   board: MateCell[];

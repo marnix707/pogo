@@ -4,14 +4,16 @@ import type { GameUiProps } from '../types';
 import { Avatar, Button, TimerDrain } from '../../components/ui';
 import { PlayerName } from '../../components/PlayerName';
 import { haptic } from '../../lib/haptics';
-import { play } from '../../lib/sound';
+import { chainSound, play } from '../../lib/sound';
 import { useCountdown } from '../../lib/useCountdown';
 import { useTimeWarning } from '../../lib/useTimeWarning';
 import { ARENA, arenaUrl, iceUrl, monsterSize, monsterUrl, tileUrl } from './art';
+import { Coin } from './Coin';
 import { Pick } from './Pick';
 
 const {
   COLS,
+  ROWS,
   CELLS,
   MONSTERS,
   STAGE_SPECS,
@@ -29,6 +31,36 @@ const reducedMotion = () =>
 interface Anim {
   board: matchmates.MateCell[];
   flash: Set<number>;
+  /** Rows each square fell to get where it is (0 = stayed), for the drop animation. */
+  drops?: number[];
+  /** Changes with every drop so the animation restarts. */
+  key: number;
+}
+interface Spark {
+  id: number;
+  cell: number;
+  emoji: string;
+  dx: number;
+}
+
+/** Milliseconds the cleared tiles pop before the rest falls; the fall takes the remaining time of a step. */
+const FLASH_MS = 230;
+
+/** How far every square of the new board fell: survivors drop into the holes, new tiles come from above. */
+function dropsFor(cleared: readonly number[]): number[] {
+  const gone = new Set(cleared);
+  const out = new Array<number>(CELLS).fill(0);
+  for (let c = 0; c < COLS; c++) {
+    const survivors: number[] = [];
+    let fresh = 0;
+    for (let r = ROWS - 1; r >= 0; r--) {
+      if (gone.has(r * COLS + c)) fresh += 1;
+      else survivors.push(r);
+    }
+    for (let n = 0, r = ROWS - 1; r >= 0; r--, n++)
+      out[r * COLS + c] = n < survivors.length ? r - (survivors[n] as number) : fresh;
+  }
+  return out;
 }
 interface Pop {
   id: number;
@@ -84,6 +116,11 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   const [selected, setSelected] = useState<number | null>(null);
   const [anim, setAnim] = useState<Anim | null>(null);
   const [pops, setPops] = useState<Pop[]>([]);
+  const [combo, setCombo] = useState<{ id: number; level: number } | null>(null);
+  const [sparks, setSparks] = useState<Spark[]>([]);
+  // The coin flip after the draft (also when the game is opened right at its start).
+  const [coin, setCoin] = useState(view.phase === 'play' && view.moveCount === 0);
+  const lastPhase = useRef(view.phase);
   const [lunge, setLunge] = useState<{ owner: string; slot: number } | null>(null);
   const seen = useRef(view.moveCount);
 
@@ -109,7 +146,9 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     const at = (ms: number, fn: () => void) => timers.push(setTimeout(fn, ms));
     let t = 0;
     let board = ev.swapped ?? view.board;
-    if (ev.swapped) setAnim({ board, flash: new Set() });
+    let key = 0;
+    let sparkId = 0;
+    if (ev.swapped) setAnim({ board, flash: new Set(), key });
     t += SWAP_MS;
     let popId = 0;
     const fireAt = (k: number) => {
@@ -130,11 +169,30 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     ev.steps.forEach((step, i) => {
       fireAt(i);
       const before = board;
+      const cleared = step.cleared;
       at(t, () => {
-        setAnim({ board: before, flash: new Set(step.cleared) });
-        play('crunch');
+        setAnim({ board: before, flash: new Set(cleared), key });
+        chainSound(i);
+        if (i >= 1) setCombo({ id: ev.seq * 100 + i, level: i + 1 });
+        if (i >= 1)
+          setSparks((sp) => [
+            ...sp,
+            ...cleared.slice(0, 14).map((cell) => ({
+              id: ++sparkId + ev.seq * 1000 + i * 100,
+              cell,
+              emoji: i >= 2 ? '🪙' : '✨',
+              dx: Math.round((Math.random() - 0.5) * 120),
+            })),
+          ]);
       });
-      at(t + STEP_MS * 0.45, () => setAnim({ board: step.board, flash: new Set() }));
+      at(t + (cleared.length > 0 ? FLASH_MS : 0), () =>
+        setAnim({
+          board: step.board,
+          flash: new Set(),
+          drops: cleared.length > 0 ? dropsFor(cleared) : undefined,
+          key: ++key,
+        }),
+      );
       board = step.board;
       t += STEP_MS;
     });
@@ -143,14 +201,38 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       setAnim(null);
       setLunge(null);
     });
-    at(t + 900, () => setPops([]));
+    at(t + 900, () => {
+      setPops([]);
+      setCombo(null);
+      setSparks([]);
+    });
     return () => {
       timers.forEach(clearTimeout);
       setAnim(null);
       setLunge(null);
+      setCombo(null);
+      setSparks([]);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view.moveCount]);
+
+  useEffect(() => {
+    if (lastPhase.current === 'pick' && view.phase === 'play') {
+      setCoin(true);
+      play('turn');
+      const t = setTimeout(() => setCoin(false), matchmates.COIN_MS);
+      lastPhase.current = view.phase;
+      return () => clearTimeout(t);
+    }
+    lastPhase.current = view.phase;
+  }, [view.phase]);
+  useEffect(() => {
+    if (!coin || view.phase !== 'play' || view.moveCount > 0) return;
+    // (Opened the game mid-flip, e.g. after a reload.)
+    const t = setTimeout(() => setCoin(false), matchmates.COIN_MS);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const animating = anim !== null;
   const board = anim?.board ?? view.board;
@@ -213,9 +295,11 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         data-phase={view.phase}
       >
         <Pick
-          waiting={!!view.picked[me]}
+          view={view}
           busy={busy}
-          onPick={(elements, stage) => void send({ type: 'pick', elements, stage })}
+          people={room.members.map((m) => ({ id: m.id, name: m.nickname, avatar: m.avatar }))}
+          onDraft={(element) => void send({ type: 'draft', element })}
+          onConfirm={(stage) => void send({ type: 'confirm', stage })}
         />
       </div>
     );
@@ -232,7 +316,11 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       <style>{`
         @keyframes mates-lunge { 0%{transform:translateX(0)} 40%{transform:translateX(var(--lunge))} 100%{transform:translateX(0)} }
         @keyframes mates-pop { 0%{opacity:0;transform:translateY(0) scale(.6)} 20%{opacity:1;transform:translateY(-6px) scale(1.2)} 100%{opacity:0;transform:translateY(-28px) scale(1)} }
-        @keyframes mates-flash { 0%,100%{filter:none} 50%{filter:brightness(2.4)} }
+        @keyframes mates-flash { 0%{transform:scale(1);filter:none} 45%{transform:scale(1.25);filter:brightness(2.4)} 100%{transform:scale(0);opacity:0} }
+        @keyframes mates-fall { 0%{transform:translateY(calc(var(--drop) * -100%))} 68%{transform:translateY(0)} 82%{transform:translateY(-7%)} 100%{transform:translateY(0)} }
+        @keyframes mates-spark { 0%{opacity:1;transform:translate(0,0) scale(.6)} 100%{opacity:0;transform:translate(var(--dx),70px) scale(1.1)} }
+        @keyframes mates-combo { 0%{opacity:0;transform:scale(.4) rotate(-6deg)} 25%{opacity:1;transform:scale(1.25) rotate(3deg)} 100%{opacity:0;transform:scale(1) translateY(-30px)} }
+        @keyframes mates-shake { 0%,100%{transform:translate(0)} 20%{transform:translate(-3px,2px)} 40%{transform:translate(3px,-2px)} 60%{transform:translate(-2px,-2px)} 80%{transform:translate(2px,2px)} }
       `}</style>
 
       <div className="grid grid-cols-2 gap-2">
@@ -269,7 +357,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
 
       <div
         className="relative w-full shrink-0 overflow-hidden rounded-md border-2 border-edge/60"
-        style={{ aspectRatio: `${ARENA.w} / ${ARENA.h}`, maxHeight: '28dvh' }}
+        style={{ aspectRatio: `${ARENA.w} / ${ARENA.h}`, maxHeight: '34dvh' }}
         data-testid="mates-arena"
       >
         <img
@@ -394,47 +482,109 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
 
       <div className="flex min-h-0 flex-1 items-center justify-center">
         <div
-          className="grid aspect-square h-full max-w-full touch-none select-none gap-px rounded-md border-2 border-edge/60 p-0.5"
-          style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)`, background: '#233049' }}
-          data-testid="mates-board"
+          className="relative"
+          style={{
+            width: `min(100%, max(14rem, calc((66dvh - 15rem) * ${COLS / ROWS})))`,
+            aspectRatio: `${COLS} / ${ROWS}`,
+            animation:
+              combo && combo.level >= 3 && anim ? 'mates-shake 300ms ease-in-out' : undefined,
+          }}
+          key={combo && combo.level >= 3 ? combo.id : 'calm'}
         >
-          {board.map((cell, i) => (
-            <button
-              key={i}
-              type="button"
-              data-testid={`mates-cell-${i}`}
-              data-kind={cell.k}
-              aria-label={`${cell.k}${cell.frozen ? ' (frozen)' : ''}`}
-              onPointerDown={(e) => onDown(i, e)}
-              onPointerUp={(e) => onUp(i, e)}
-              onPointerCancel={() => (drag.current = null)}
-              className={`relative aspect-square min-h-0 min-w-0 p-0 ${
-                (Math.floor(i / COLS) + (i % COLS)) % 2 ? 'bg-[#2b3a58]' : 'bg-[#233049]'
-              } ${selected === i ? 'outline outline-2 -outline-offset-2 outline-white' : ''}`}
-              style={{
-                animation: anim?.flash.has(i) ? 'mates-flash 300ms ease-in-out' : undefined,
-              }}
-            >
-              <img
-                src={tileUrl(cell)}
-                alt=""
-                draggable={false}
-                className={`h-full w-full ${anim?.flash.has(i) ? 'opacity-60' : ''}`}
-                style={px}
-              />
-              {cell.frozen && (
-                <img
-                  src={iceUrl()}
-                  alt=""
-                  draggable={false}
-                  className="absolute inset-0 h-full w-full"
-                  style={px}
-                />
-              )}
-            </button>
-          ))}
+          <div
+            className="grid h-full w-full touch-none select-none gap-[2px] rounded-lg border-4 border-edge bg-[#141d36] p-1 shadow-[0_4px_0_#0a0f1e,inset_0_0_12px_rgba(0,0,0,.6)]"
+            style={{
+              gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+              gridTemplateRows: `repeat(${ROWS}, 1fr)`,
+            }}
+            data-testid="mates-board"
+          >
+            {board.map((cell, i) => {
+              const drop = anim?.drops?.[i] ?? 0;
+              const flashing = anim?.flash.has(i);
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  data-testid={`mates-cell-${i}`}
+                  data-kind={cell.k}
+                  aria-label={`${cell.k}${cell.frozen ? ' (frozen)' : ''}`}
+                  onPointerDown={(e) => onDown(i, e)}
+                  onPointerUp={(e) => onUp(i, e)}
+                  onPointerCancel={() => (drag.current = null)}
+                  className={`relative min-h-0 min-w-0 overflow-visible rounded-[4px] p-0 ${
+                    (Math.floor(i / COLS) + (i % COLS)) % 2 ? 'bg-[#2b3a58]' : 'bg-[#233049]'
+                  } ${selected === i ? 'outline outline-2 -outline-offset-2 outline-white' : ''}`}
+                >
+                  <img
+                    key={`${i}-${anim?.key ?? 0}`}
+                    src={tileUrl(cell)}
+                    alt=""
+                    draggable={false}
+                    className="h-full w-full p-[6%]"
+                    style={{
+                      ...px,
+                      ['--drop' as string]: drop,
+                      animation: flashing
+                        ? `mates-flash ${FLASH_MS}ms ease-in forwards`
+                        : drop > 0
+                          ? `mates-fall ${STEP_MS - FLASH_MS}ms cubic-bezier(.35,0,.6,1) ${(i % COLS) * 18}ms backwards`
+                          : undefined,
+                    }}
+                  />
+                  {cell.frozen && (
+                    <img
+                      src={iceUrl()}
+                      alt=""
+                      draggable={false}
+                      className="absolute inset-0 h-full w-full p-[6%]"
+                      style={px}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div className="pointer-events-none absolute inset-0 overflow-visible" aria-hidden>
+            {sparks.map((sp) => (
+              <span
+                key={sp.id}
+                className="absolute text-lg"
+                style={{
+                  left: `${(((sp.cell % COLS) + 0.5) / COLS) * 100}%`,
+                  top: `${((Math.floor(sp.cell / COLS) + 0.5) / ROWS) * 100}%`,
+                  ['--dx' as string]: `${sp.dx}px`,
+                  animation: 'mates-spark 750ms ease-out forwards',
+                }}
+              >
+                {sp.emoji}
+              </span>
+            ))}
+            {combo && (
+              <span
+                key={combo.id}
+                data-testid="mates-combo"
+                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-black text-yellow-300 [text-shadow:0_3px_0_#101628,0_0_14px_#ff9d00]"
+                style={{
+                  fontSize: `${Math.min(2.6, 1.4 + combo.level * 0.25)}rem`,
+                  animation: 'mates-combo 900ms ease-out forwards',
+                }}
+              >
+                CHAIN x{combo.level}!
+              </span>
+            )}
+          </div>
         </div>
       </div>
+      {coin && view.coinWinner && (
+        <Coin
+          meAvatar={memberOf(me)?.avatar ?? '🙂'}
+          oppAvatar={memberOf(theirs.id)?.avatar ?? '🙂'}
+          oppName={memberOf(theirs.id)?.nickname ?? 'Opponent'}
+          iWon={view.coinWinner === me}
+          stage={stage}
+        />
+      )}
     </div>
   );
 }

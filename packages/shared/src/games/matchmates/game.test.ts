@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createSeededRng } from '../../game/rng';
 import type { GamePlayer } from '../../game/types';
-import { matesGame } from './game';
-import { COLS, ELEMENTS } from './types';
+import { draftTurn, matesGame } from './game';
+import { CELLS, COLS, ELEMENTS, ROWS } from './types';
+import type { Element } from './types';
 import type { MateCell, MatesMove, MatesState, TileKind } from './types';
 import { MONSTERS } from './monsters';
 import { cellAt, createBoard, findMatches, legalSwaps, trySwap } from './board';
@@ -14,7 +15,7 @@ const opts = { matchBonus: false };
 /** A board without any match: kind = (2 * row + column) mod 5. */
 function quiet(): MateCell[] {
   const b: MateCell[] = [];
-  for (let r = 0; r < 8; r++)
+  for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++) b.push({ k: ELEMENTS[(2 * r + c) % 5]! });
   return b;
 }
@@ -30,50 +31,81 @@ function start(
 ): MatesState {
   const rng = createSeededRng(seed);
   let s = matesGame.createInitialState([A, B], opts, rng);
-  s = matesGame.applyMove(s, 'a', { type: 'pick', elements: ['fire', 'water'], stage }, rng);
-  s = matesGame.applyMove(s, 'b', { type: 'pick', elements: ['earth', 'psychic'], stage }, rng);
+  s = draft(s, rng);
+  s = matesGame.applyMove(s, 'a', { type: 'confirm', stage }, rng);
+  s = matesGame.applyMove(s, 'b', { type: 'confirm', stage }, rng);
+  return s;
+}
+
+/** Plays the draft so that 'a' gets fire + water and 'b' gets earth + psychic, whoever drafts first. */
+function draft(state: MatesState, rng: ReturnType<typeof createSeededRng>): MatesState {
+  const wanted: Record<string, Element[]> = { a: ['fire', 'water'], b: ['earth', 'psychic'] };
+  let s = state;
+  for (let who = draftTurn(s); who !== null; who = draftTurn(s))
+    s = matesGame.applyMove(s, who, { type: 'draft', element: wanted[who]!.shift()! }, rng);
   return s;
 }
 const mover = (s: MatesState) => s.turn;
 
 describe('Pet Match', () => {
-  it('starts after both players picked, second player has +5 HP, board has no match', () => {
+  it('starts after the draft and the coin: the coin winner plays second with +5 HP and their arena', () => {
     const s = start();
     expect(s.phase).toBe('play');
     expect(findMatches(s.board).cells.size).toBe(0);
     expect(legalSwaps(s.board).length).toBeGreaterThan(0);
-    const hps = s.players.map((p) => [p.id, p.hp] as const);
-    expect(Object.fromEntries(hps)[s.first]).toBe(60);
-    expect(hps.find(([id]) => id !== s.first)![1]).toBe(65);
+    expect(s.coinWinner).not.toBeNull();
+    expect(s.first).not.toBe(s.coinWinner);
+    expect(s.turn).toBe(s.first);
+    for (const p of s.players) expect(p.hp).toBe(p.id === s.coinWinner ? 65 : 60);
     expect(s.movesLeft).toBe(2);
+    expect(matesGame.settleMs!(s)).toBeGreaterThan(0);
   });
 
-  it('hides the opponent picks while picking', () => {
+  it('drafts in the order first, second, second, first, with every pet different', () => {
     const rng = createSeededRng(2);
     let s = matesGame.createInitialState([A, B], opts, rng);
-    s = matesGame.applyMove(
-      s,
-      'a',
-      { type: 'pick', elements: ['fire', 'water'], stage: 'lava' },
-      rng,
-    );
-    const v = matesGame.getPlayerView(s, 'b');
-    expect(v.players[1]!.monsters).toEqual([]);
-    expect(v.picked.a).toBe(true);
-    expect(v.stage).toBeNull();
-    expect(matesGame.getCurrentPlayers(s)).toEqual(['b']);
+    const first = s.draftFirst;
+    const second = first === 'a' ? 'b' : 'a';
+    const order = [first, second, second, first];
+    const taken: Element[] = [];
+    for (const who of order) {
+      expect(matesGame.getCurrentPlayers(s)).toEqual([who]);
+      const other = who === 'a' ? 'b' : 'a';
+      const el = ELEMENTS.find((e) => !taken.includes(e))!;
+      // Out of turn and already-taken pets are refused.
+      expect(matesGame.validateMove(s, other, { type: 'draft', element: el }).ok).toBe(false);
+      if (taken[0])
+        expect(matesGame.validateMove(s, who, { type: 'draft', element: taken[0] }).ok).toBe(false);
+      s = matesGame.applyMove(s, who, { type: 'draft', element: el }, rng);
+      taken.push(el);
+    }
+    expect(draftTurn(s)).toBeNull();
+    expect(s.players.every((p) => p.monsters.length === 2)).toBe(true);
+    // Now both confirm at the same time.
+    expect(matesGame.getCurrentPlayers(s).sort()).toEqual(['a', 'b']);
+    expect(matesGame.validateMove(s, 'a', { type: 'draft', element: 'fire' }).ok).toBe(false);
   });
 
-  it('rejects same-element picks and swaps that make no match', () => {
+  it('keeps the arena choice secret until the coin, and "random" gets a real arena', () => {
+    const rng = createSeededRng(3);
+    let s = draft(matesGame.createInitialState([A, B], opts, rng), rng);
+    expect(matesGame.validateMove(s, 'a', { type: 'confirm', stage: 'lava' }).ok).toBe(true);
+    s = matesGame.applyMove(s, 'a', { type: 'confirm', stage: 'lava' }, rng);
+    const v = matesGame.getPlayerView(s, 'b');
+    expect(v.players.find((p) => p.id === 'a')!.stagePick).toBeNull();
+    expect(v.confirmed.a).toBe(true);
+    expect(v.stage).toBeNull();
+    expect(matesGame.validateMove(s, 'a', { type: 'confirm', stage: 'frost' }).ok).toBe(false);
+    s = matesGame.applyMove(s, 'b', { type: 'confirm', stage: 'random' }, rng);
+    expect(s.phase).toBe('play');
+    const winnerPick = s.players.find((p) => p.id === s.coinWinner)!.stagePick;
+    if (winnerPick !== 'random') expect(s.stage).toBe(winnerPick);
+  });
+
+  it('cannot confirm before the draft is over; rejects swaps that make no match', () => {
     const rng = createSeededRng(3);
     const s0 = matesGame.createInitialState([A, B], opts, rng);
-    expect(
-      matesGame.validateMove(s0, 'a', {
-        type: 'pick',
-        elements: ['fire', 'fire'],
-        stage: 'stadium',
-      }).ok,
-    ).toBe(false);
+    expect(matesGame.validateMove(s0, 'a', { type: 'confirm', stage: 'stadium' }).ok).toBe(false);
     const s = start();
     const bad = { ...s, board: quiet() };
     expect(matesGame.validateMove(bad, mover(s), { type: 'swap', a: 0, b: 1 }).ok).toBe(false);
@@ -203,8 +235,7 @@ describe('Pet Match', () => {
     set(board, 0, 2, 'water');
     set(board, 1, 2, 'fire');
     // A water match elsewhere keeps a move available while the fire is frozen.
-    set(board, 5, 5, 'water');
-    set(board, 4, 7, 'water');
+    set(board, 4, 4, 'water');
     const s: MatesState = { ...base, board, turn: 'a', first: 'a' };
     const after = matesGame.applyMove(
       s,
@@ -235,7 +266,7 @@ describe('Pet Match', () => {
       const [a, b] = legalSwaps(s.board)[0]!;
       s = matesGame.applyMove(s, mover(s), { type: 'swap', a, b }, rng);
     }
-    expect(s.board.length).toBe(64);
+    expect(s.board.length).toBe(CELLS);
   });
 
   it('computers play whole games against each other', () => {

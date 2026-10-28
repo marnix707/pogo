@@ -45,11 +45,8 @@ const cellIndexSchema = z
 export const matesMoveSchema: z.ZodType<MatesMove, z.ZodTypeDef, unknown> = z.discriminatedUnion(
   'type',
   [
-    z.object({
-      type: z.literal('pick'),
-      elements: z.tuple([elementSchema, elementSchema]),
-      stage: z.enum(STAGES),
-    }),
+    z.object({ type: z.literal('draft'), element: elementSchema }),
+    z.object({ type: z.literal('confirm'), stage: z.enum([...STAGES, 'random']) }),
     z.object({ type: z.literal('swap'), a: cellIndexSchema, b: cellIndexSchema }),
     z.object({ type: z.literal('evolve'), slot: z.number().int().min(0).max(1) }),
     z.object({ type: z.literal('boost'), slot: z.number().int().min(0).max(1) }),
@@ -76,6 +73,19 @@ export const MAX_FROZEN_KINDS = 2;
 export const STEP_MS = 650;
 export const FIRE_MS = 1300;
 export const SWAP_MS = 300;
+/** Milliseconds the clients spend on the coin flip that picks the arena and who starts. */
+export const COIN_MS = 3600;
+
+/** Draft order: the first drafter, then the second twice, then the first again. */
+export const DRAFT_ORDER = [0, 1, 1, 0] as const;
+
+/** Whose pick it is in the draft, or null once all four pets are chosen. */
+export function draftTurn(state: MatesState): PlayerId | null {
+  const picked = state.players.reduce((n, p) => n + p.monsters.length, 0);
+  if (picked >= DRAFT_ORDER.length) return null;
+  const second = (state.players.find((p) => p.id !== state.draftFirst) as MatePlayer).id;
+  return DRAFT_ORDER[picked] === 0 ? state.draftFirst : second;
+}
 
 function createInitialState(players: GamePlayer[], options: MatesOptions, rng: Rng): MatesState {
   if (players.length < MIN_PLAYERS || players.length > MAX_PLAYERS)
@@ -86,8 +96,8 @@ function createInitialState(players: GamePlayer[], options: MatesOptions, rng: R
     maxHp: START_HP,
     monsters: [],
     berries: 0,
-    picked: false,
-    pickStage: null,
+    confirmed: false,
+    stagePick: null,
     moveDelta: 0,
   });
   const first = (players[rng.int(2)] as GamePlayer).id;
@@ -98,6 +108,8 @@ function createInitialState(players: GamePlayer[], options: MatesOptions, rng: R
     stage: 'stadium',
     board: [],
     first,
+    draftFirst: first,
+    coinWinner: null,
     turn: first,
     movesLeft: 0,
     extraUsed: false,
@@ -114,10 +126,18 @@ function validateMove(state: MatesState, playerId: PlayerId, move: MatesMove): M
   const me = playerOf(state, playerId);
   if (!me) return err('Not your turn');
   if (state.phase === 'over') return err('The game is over');
-  if (move.type === 'pick') {
+  if (move.type === 'draft' || move.type === 'confirm') {
     if (state.phase !== 'pick') return err('The duel has already started');
-    if (me.picked) return err('You have already picked your monsters');
-    if (move.elements[0] === move.elements[1]) return err('Pick two different monsters');
+    const drafter = draftTurn(state);
+    if (move.type === 'draft') {
+      if (drafter === null) return err('The draft is over: confirm your arena');
+      if (drafter !== playerId) return err('It is not your turn to pick');
+      if (state.players.some((p) => p.monsters.some((m) => m.element === move.element)))
+        return err('That pet has already been picked');
+      return OK;
+    }
+    if (drafter !== null) return err('The draft is not finished yet');
+    if (me.confirmed) return err('You have already confirmed');
     return OK;
   }
   if (state.phase !== 'play') return err('The duel has not started yet');
@@ -311,32 +331,30 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
   const check = validateMove(state, playerId, move);
   if (!check.ok) throw new Error(check.error);
 
-  if (move.type === 'pick') {
+  if (move.type === 'draft') {
     const players = state.players.map((p) =>
       p.id === playerId
-        ? {
-            ...p,
-            picked: true,
-            pickStage: move.stage,
-            monsters: move.elements.map((element): MateMonster => ({
-              element,
-              evolved: false,
-              mana: 0,
-            })),
-          }
+        ? { ...p, monsters: [...p.monsters, { element: move.element, evolved: false, mana: 0 }] }
         : p,
     ) as MatesState['players'];
-    if (!players.every((p) => p.picked)) return { ...state, players };
-    // Both players name a stage: when they differ, the dice decide.
-    const wanted = players.map((p) => p.pickStage as StageId);
-    const stage =
-      wanted[0] === wanted[1] ? (wanted[0] as StageId) : (wanted[rng.int(2)] as StageId);
+    return { ...state, players };
+  }
+  if (move.type === 'confirm') {
+    const players = state.players.map((p) =>
+      p.id === playerId ? { ...p, confirmed: true, stagePick: move.stage } : p,
+    ) as MatesState['players'];
+    if (!players.every((p) => p.confirmed)) return { ...state, players };
+    // Both are ready: a coin is flipped. Whoever wins it gets their arena, plays second and has extra hit points.
+    const winner = players[rng.int(2)] as MatePlayer;
+    const wanted = winner.stagePick as StageId | 'random';
+    const stage = wanted === 'random' ? (STAGES[rng.int(STAGES.length)] as StageId) : wanted;
     const board = createBoard(rng);
     stageTurnStart(board, stage, rng);
+    const first = (players.find((p) => p.id !== winner.id) as MatePlayer).id;
     const sized = players.map((p) =>
-      p.id === state.first
-        ? p
-        : { ...p, hp: START_HP + SECOND_PLAYER_HP, maxHp: START_HP + SECOND_PLAYER_HP },
+      p.id === winner.id
+        ? { ...p, hp: START_HP + SECOND_PLAYER_HP, maxHp: START_HP + SECOND_PLAYER_HP }
+        : p,
     ) as MatesState['players'];
     return {
       ...state,
@@ -344,7 +362,9 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
       phase: 'play',
       stage,
       board,
-      turn: state.first,
+      first,
+      coinWinner: winner.id,
+      turn: first,
       movesLeft: MOVES_PER_TURN,
       extraUsed: false,
     };
@@ -467,15 +487,16 @@ function getPlayerView(state: MatesState, playerId: PlayerId): MatesView {
         steps: state.lastEvent.steps.map((s) => ({ ...s, board: mask(s.board) })),
       }
     : null;
-  // While picking, nothing about the opponent's choice is shown.
-  const hide = (p: MatePlayer): MatePlayer =>
-    picking ? { ...p, monsters: [], pickStage: null } : p;
+  // The opponent's arena choice stays secret until the coin has been flipped.
+  const hide = (p: MatePlayer): MatePlayer => (picking ? { ...p, stagePick: null } : p);
   return {
     phase: state.phase,
     me: me.id,
     opponent: opp.id,
     players: [me, hide(opp)],
-    picked: { [me.id]: me.picked, [opp.id]: opp.picked },
+    confirmed: { [me.id]: me.confirmed, [opp.id]: opp.confirmed },
+    drafter: picking ? draftTurn(state) : null,
+    coinWinner: state.coinWinner,
     stage: picking ? null : state.stage,
     options: state.options,
     board: mask(state.board),
@@ -490,7 +511,12 @@ function getPlayerView(state: MatesState, playerId: PlayerId): MatesView {
 }
 
 function getCurrentPlayers(state: MatesState): PlayerId[] {
-  if (state.phase === 'pick') return state.players.filter((p) => !p.picked).map((p) => p.id);
+  if (state.phase === 'pick') {
+    const drafter = draftTurn(state);
+    return drafter !== null
+      ? [drafter]
+      : state.players.filter((p) => !p.confirmed).map((p) => p.id);
+  }
   if (state.phase === 'play') return [state.turn];
   return [];
 }
@@ -523,12 +549,16 @@ function evaluate(state: MatesState, id: PlayerId): number {
 /** The computer: tries every legal move on a copy of the game and keeps the best one (evolving when it can). */
 function autoMove(state: MatesState, playerId: PlayerId, rng: Rng): AutoMove<MatesMove> {
   if (state.phase === 'pick') {
-    const pool = [...ELEMENTS] as Element[];
-    const elements: Element[] = [];
-    for (let n = 0; n < 2; n++) elements.push(pool.splice(rng.int(pool.length), 1)[0] as Element);
-    const stage = STAGES[rng.int(STAGES.length)] as StageId;
+    if (draftTurn(state) !== null) {
+      const taken = state.players.flatMap((p) => p.monsters.map((m) => m.element));
+      const free = ELEMENTS.filter((e) => !taken.includes(e));
+      return {
+        move: { type: 'draft', element: free[rng.int(free.length)] as Element },
+        endsTurn: true,
+      };
+    }
     return {
-      move: { type: 'pick', elements: elements as [Element, Element], stage },
+      move: { type: 'confirm', stage: STAGES[rng.int(STAGES.length)] as StageId },
       endsTurn: true,
     };
   }
@@ -575,8 +605,12 @@ export const matesGame: GameDefinition<MatesState, MatesMove, MatesOptions, Mate
   isGameOver: (state) => state.phase === 'over',
   getResults,
   autoMove,
-  // Both players pick at the same time: one deadline for the whole phase.
-  keepsClock: (before, after) => before.phase === 'pick' && after.phase === 'pick',
-  settleMs: (state) => eventMs(state.lastEvent),
+  // After the draft both confirm at the same time: one deadline for that part.
+  keepsClock: (before, after) =>
+    before.phase === 'pick' && after.phase === 'pick' && draftTurn(before) === null,
+  // The clock starts after the coin flip that decides the arena and who starts.
+  clockBonusMs: (state) => (state.phase === 'play' && state.moveCount === 0 ? COIN_MS : 0),
+  settleMs: (state) =>
+    state.phase === 'play' && state.moveCount === 0 ? COIN_MS : eventMs(state.lastEvent),
   supportsBots: true,
 };

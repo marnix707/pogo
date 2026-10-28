@@ -10,4 +10,7 @@ export {
   STEP_MS,
   FIRE_MS,
   SWAP_MS,
+  COIN_MS,
+  DRAFT_ORDER,
+  draftTurn,
 } from './game';

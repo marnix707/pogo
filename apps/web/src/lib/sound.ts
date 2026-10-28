@@ -121,6 +121,33 @@ export function tick(step: number) {
   tone(c, 620 + Math.min(step, 24) * 38, 0, 0.035, 'square', 0.035);
 }
 
+const PENTATONIC = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.51, 1568, 1760];
+
+/**
+ * A match clearing: a soft pop for the first one, then every link of a chain reaction climbs higher
+ * with a longer run of coin-like notes, a clink, and a bell "ka-ching" from the third link on.
+ */
+export function chainSound(level: number) {
+  if (!getSettings().sound) return;
+  const c = audio();
+  if (!c) return;
+  const top = PENTATONIC.length - 1;
+  tone(c, PENTATONIC[Math.min(level, top)] as number, 0, 0.14, 'triangle', 0.12);
+  noise(c, 0, 0.06, 0.18, 1800);
+  if (level < 1) return;
+  const notes = Math.min(3 + level, 8);
+  for (let i = 0; i < notes; i++) {
+    const f = PENTATONIC[Math.min(i + level - 1, top)] as number;
+    tone(c, f, 0.04 + i * 0.05, 0.12, 'square', 0.04);
+    tone(c, f * 2, 0.04 + i * 0.05, 0.1, 'sine', 0.05);
+  }
+  noise(c, 0.05, 0.1, 0.16, 6000);
+  if (level >= 2) {
+    tone(c, 1568, 0.05 + notes * 0.05, 0.4, 'sine', 0.1);
+    tone(c, 2093, 0.1 + notes * 0.05, 0.6, 'sine', 0.09);
+  }
+}
+
 /** Tiny synthesized sound effects: no audio files to download.*/
 export function play(name: SoundName) {
   if (!getSettings().sound) return;
