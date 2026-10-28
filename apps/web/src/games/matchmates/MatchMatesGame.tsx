@@ -10,6 +10,7 @@ import { useTimeWarning } from '../../lib/useTimeWarning';
 import { ARENA, arenaUrl, iceUrl, monsterSize, monsterUrl, tileUrl } from './art';
 import { Coin } from './Coin';
 import { Pick } from './Pick';
+import { usePetInfo } from './PetInfo';
 
 const {
   COLS,
@@ -152,6 +153,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   const mine = view.players.find((p) => p.id === me) ?? view.players[0]!;
   const theirs = view.players.find((p) => p.id !== mine.id)!;
 
+  const petInfo = usePetInfo();
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
   const [anim, setAnim] = useState<Anim | null>(null);
@@ -583,7 +585,8 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
             return (
               <div
                 key={`${p.id}-${slot}`}
-                className="absolute"
+                className="absolute cursor-pointer"
+                onClick={(e) => petInfo.open(e, m.element, shownEvolved)}
                 style={{
                   left: `${((x - w / 2) / ARENA.w) * 100}%`,
                   top: `${((y - h) / ARENA.h) * 100}%`,
@@ -872,6 +875,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
           </div>
         </div>
       </div>
+      {petInfo.bubble}
       {turnBanner > 0 && (
         <div
           className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"

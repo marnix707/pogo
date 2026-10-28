@@ -3,6 +3,7 @@ import { matchmates } from '@pogo/shared';
 import { Avatar, Button } from '../../components/ui';
 import { PlayerName } from '../../components/PlayerName';
 import { arenaUrl, monsterUrl } from './art';
+import { usePetInfo } from './PetInfo';
 
 const { ELEMENTS, MONSTERS, STAGES, STAGE_SPECS } = matchmates;
 
@@ -32,6 +33,7 @@ export function Pick({
   onConfirm: (stage: matchmates.StageId | 'random') => void;
 }) {
   const [chosen, setChosen] = useState<matchmates.Element | null>(null);
+  const petInfo = usePetInfo();
   const confirmRef = useRef<HTMLDivElement>(null);
   const [stage, setStage] = useState<matchmates.StageId | 'random'>('random');
   const mine = view.players.find((p) => p.id === view.me)!;
@@ -55,6 +57,7 @@ export function Pick({
       className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3"
       data-testid="mates-pick"
     >
+      {petInfo.bubble}
       <div className="grid grid-cols-2 gap-2">
         {[mine, theirs].map((p, n) => {
           const who = personOf(p.id);
@@ -80,7 +83,10 @@ export function Pick({
                   return (
                     <div
                       key={slot}
-                      className="flex h-14 items-center justify-center rounded border border-edge/40 bg-black/30"
+                      onClick={(e) => m && petInfo.open(e, m.element, false)}
+                      className={`flex h-14 items-center justify-center rounded border border-edge/40 bg-black/30 ${
+                        m ? 'cursor-pointer' : ''
+                      }`}
                       data-testid={`mates-draft-slot-${n === 0 ? 'me' : 'opp'}-${slot}`}
                     >
                       {m ? (

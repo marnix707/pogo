@@ -38,3 +38,8 @@ Cleared tiles pop, the rest fall into the holes with a small bounce (`dropsFor`,
 - Like Yatzy's dice: cleared tiles of a mover's element fly to that monster's mana bar (berries to the berry counter), staggered, and a white running total `+n` pops where they land (`flights`, `tallies`, tick sounds); the flown squares do not pop on the board.
 - Texts (`mates-note` on the board): attack effects (`MONSTERS[e].effect`), "Line of N: +5 HP!", "Extra move!", "No match: move lost!", "<pet> is evolving..." / "<evolved name>!". Floating numbers: -damage, green +heal, -N mana.
 - Evolve (`EVOLVE_MS`): the old form charges (glow, shake, rising notes), flashes white, the new form pops out with sparks. `settleMs` includes `EVOLVE_MS` and `NOTE_MS` so computers wait.
+
+## Champion select and pet info
+
+- The draft lists every pet as a row (base and evolved picture, names, element, mana cost, special, damage): tap one to select it (`mates-pick-<element>`), then the bottom button (`mates-draft-confirm`) picks it. Choosing an arena scrolls smoothly down to Confirm.
+- Tapping a pet at any time (the draft slots, the arena pets in the game) opens the Karma-style `.info-bubble` with its info (`PetInfo.tsx`, `usePetInfo`, `mates-pet-info`); tap again or elsewhere to close.
