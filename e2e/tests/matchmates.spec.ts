@@ -55,6 +55,7 @@ test('Pet Match: pick, play moves against the computer', async ({ browser }) => 
     if ((await open.count()) > 0) {
       await page.screenshot({ path: 'test-results/mates-1-draft.png' });
       await open.first().click();
+      await page.getByTestId('mates-draft-confirm').click();
     }
     await page.waitForTimeout(1500);
   }

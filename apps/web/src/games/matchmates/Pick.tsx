@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { matchmates } from '@pogo/shared';
 import { Avatar, Button } from '../../components/ui';
 import { PlayerName } from '../../components/PlayerName';
@@ -31,6 +31,8 @@ export function Pick({
   onDraft: (element: matchmates.Element) => void;
   onConfirm: (stage: matchmates.StageId | 'random') => void;
 }) {
+  const [chosen, setChosen] = useState<matchmates.Element | null>(null);
+  const confirmRef = useRef<HTMLDivElement>(null);
   const [stage, setStage] = useState<matchmates.StageId | 'random'>('random');
   const mine = view.players.find((p) => p.id === view.me)!;
   const theirs = view.players.find((p) => p.id !== view.me)!;
@@ -40,6 +42,13 @@ export function Pick({
   const myPick = view.drafter === view.me;
   const draftOver = view.drafter === null;
   const confirmed = !!view.confirmed[view.me];
+  // Picking an arena scrolls smoothly down to the Confirm button.
+  const chooseStage = (s: matchmates.StageId | 'random') => {
+    setStage(s);
+    const reduce =
+      typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    confirmRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'end' });
+  };
 
   return (
     <div
@@ -99,36 +108,73 @@ export function Pick({
           <h2 className="text-center text-lg font-bold text-neon" data-testid="mates-draft-title">
             {myPick ? 'Pick a pet' : `${personOf(view.drafter!)?.name ?? 'Opponent'} is picking…`}
           </h2>
-          <div className="grid grid-cols-5 gap-1.5">
+          {/* Every pet with its special and its evolved form: tap one to look at it, then confirm below. */}
+          <ul className="flex flex-col gap-2" aria-label="Pets">
             {ELEMENTS.map((e) => {
               const owner = taken.get(e);
+              const spec = MONSTERS[e];
+              const on = chosen === e && !owner;
               return (
-                <button
-                  key={e}
-                  data-testid={`mates-pick-${e}`}
-                  disabled={!myPick || busy || !!owner}
-                  onClick={() => onDraft(e)}
-                  className={`flex flex-col items-center rounded-md border-2 p-1 text-[10px] font-bold ${
-                    owner
-                      ? 'border-edge/20 opacity-30'
-                      : myPick
-                        ? 'border-accent'
-                        : 'border-edge/40'
-                  }`}
-                >
-                  <img
-                    src={monsterUrl(e, false)}
-                    alt=""
-                    draggable={false}
-                    style={px}
-                    className="h-14"
-                  />
-                  {MONSTERS[e].names[0]}
-                  <span className="font-normal text-muted">{e}</span>
-                </button>
+                <li key={e}>
+                  <button
+                    data-testid={`mates-pick-${e}`}
+                    aria-pressed={on}
+                    disabled={!myPick || busy || !!owner}
+                    onClick={() => setChosen(e)}
+                    className={`flex w-full items-center gap-3 rounded-md border-2 p-2 text-left ${
+                      owner
+                        ? 'border-edge/20 opacity-30'
+                        : on
+                          ? 'border-neon bg-neon/15'
+                          : 'border-edge/40'
+                    } ${myPick && !owner && !on ? 'border-accent' : ''}`}
+                  >
+                    <span className="flex shrink-0 items-end gap-1">
+                      <img
+                        src={monsterUrl(e, false)}
+                        alt=""
+                        draggable={false}
+                        style={px}
+                        className="h-12"
+                      />
+                      <img
+                        src={monsterUrl(e, true)}
+                        alt=""
+                        draggable={false}
+                        style={px}
+                        className="h-14"
+                      />
+                    </span>
+                    <span className="min-w-0 flex-1 text-xs">
+                      <b className="block text-sm">
+                        {spec.names[0]} <span className="text-muted">→</span> {spec.names[1]}
+                      </b>
+                      <span className="block text-muted">
+                        {e} · special at {spec.cost} mana
+                      </span>
+                      <span className="block">{spec.ability}</span>
+                      <span className="block text-muted">
+                        Damage {spec.damage[0]}, evolved {spec.damage[1]}
+                        {spec.heal[0] > 0 ? ` · heal ${spec.heal[0]}, evolved ${spec.heal[1]}` : ''}
+                      </span>
+                    </span>
+                  </button>
+                </li>
               );
             })}
-          </div>
+          </ul>
+          {myPick && (
+            <Button
+              data-testid="mates-draft-confirm"
+              disabled={busy || !chosen || !!taken.get(chosen)}
+              onClick={() => chosen && onDraft(chosen)}
+              className="sticky bottom-0"
+            >
+              {chosen && !taken.get(chosen)
+                ? `Pick ${MONSTERS[chosen].names[0]}`
+                : 'Tap a pet to pick it'}
+            </Button>
+          )}
         </>
       ) : (
         <>
@@ -141,7 +187,7 @@ export function Pick({
               data-testid="mates-stage-random"
               aria-pressed={stage === 'random'}
               disabled={confirmed}
-              onClick={() => setStage('random')}
+              onClick={() => chooseStage('random')}
               className={`flex min-h-20 flex-col items-center justify-center rounded-md border-2 text-sm font-bold ${
                 stage === 'random' ? 'border-accent' : 'border-edge/40'
               }`}
@@ -155,7 +201,7 @@ export function Pick({
                 data-testid={`mates-stage-${s}`}
                 aria-pressed={stage === s}
                 disabled={confirmed}
-                onClick={() => setStage(s)}
+                onClick={() => chooseStage(s)}
                 className={`overflow-hidden rounded-md border-2 text-left text-xs ${
                   stage === s ? 'border-accent' : 'border-edge/40'
                 }`}
@@ -174,15 +220,17 @@ export function Pick({
               </button>
             ))}
           </div>
-          {confirmed ? (
-            <p className="text-center text-muted" data-testid="mates-waiting">
-              Waiting for your opponent…
-            </p>
-          ) : (
-            <Button data-testid="mates-ready" disabled={busy} onClick={() => onConfirm(stage)}>
-              Confirm
-            </Button>
-          )}
+          <div ref={confirmRef}>
+            {confirmed ? (
+              <p className="text-center text-muted" data-testid="mates-waiting">
+                Waiting for your opponent…
+              </p>
+            ) : (
+              <Button data-testid="mates-ready" disabled={busy} onClick={() => onConfirm(stage)}>
+                Confirm
+              </Button>
+            )}
+          </div>
         </>
       )}
     </div>
