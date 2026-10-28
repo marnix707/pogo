@@ -621,7 +621,7 @@ const eventMs = (e: MateEvent | null): number =>
       e.steps.length * STEP_MS +
       e.fires.length * FIRE_MS +
       (e.kind === 'evolve' ? EVOLVE_MS : 0) +
-      (e.noMatch || e.extraMove || e.heal > 0 ? NOTE_MS : 0)
+      (e.extraMove || e.heal > 0 ? NOTE_MS : 0)
     : 0;
 
 export const matesGame: GameDefinition<MatesState, MatesMove, MatesOptions, MatesView> = {

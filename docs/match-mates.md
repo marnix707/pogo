@@ -36,7 +36,7 @@ Cleared tiles pop, the rest fall into the holes with a small bounce (`dropsFor`,
 
 - Swapping: the two tiles slide to each other's place (`mates-slide`, CSS vars `--sx/--sy`).
 - Like Yatzy's dice: cleared tiles of a mover's element fly to that monster's mana bar (berries to the berry counter), staggered, and a white running total `+n` pops where they land (`flights`, `tallies`, tick sounds); the flown squares do not pop on the board.
-- Texts (`mates-note` on the board): attack effects (`MONSTERS[e].effect`), "Line of N: +5 HP!", "Extra move!", "No match: move lost!", "<pet> is evolving..." / "<evolved name>!". Floating numbers: -damage, green +heal, -N mana.
+- Texts (`mates-note` on the board): attack effects (`MONSTERS[e].effect`), "Line of N: +5 HP!", "Extra move!", "<pet> is evolving..." / "<evolved name>!". Floating numbers: -damage, green +heal, -N mana.
 - Evolve (`EVOLVE_MS`): the old form charges (glow, shake, rising notes), flashes white, the new form pops out with sparks. `settleMs` includes `EVOLVE_MS` and `NOTE_MS` so computers wait.
 
 ## Champion select and pet info

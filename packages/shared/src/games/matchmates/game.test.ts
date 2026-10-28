@@ -251,6 +251,32 @@ describe('Pet Match', () => {
     expect(again.turn).toBe('b');
   });
 
+  it('setting up with a swap that matches nothing keeps the turn: the second move can use it', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const s0 = start(seed);
+      const who = s0.turn;
+      const rng = createSeededRng(seed);
+      // Any adjacent swap that matches nothing.
+      let first: [number, number] | null = null;
+      for (let i = 0; i < CELLS - 1 && !first; i++)
+        for (const j of [i + 1, i + COLS]) {
+          if (j >= CELLS || (j === i + 1 && j % COLS === 0)) continue;
+          if (!trySwap(s0.board, i, j)) {
+            first = [i, j];
+            break;
+          }
+        }
+      expect(first).not.toBeNull();
+      const s1 = matesGame.applyMove(s0, who, { type: 'swap', a: first![0], b: first![1] }, rng);
+      expect(s1.lastEvent?.noMatch).toBe(true);
+      expect(s1.turn).toBe(who);
+      expect(s1.movesLeft).toBe(1);
+      // The second move is still his, and a normal match then passes the turn.
+      const [a, b] = legalSwaps(s1.board)[0]!;
+      expect(matesGame.validateMove(s1, who, { type: 'swap', a, b }).ok).toBe(true);
+    }
+  });
+
   it('a line of five heals 5 and gives an extra move', () => {
     const base = start(6);
     const board = quiet();

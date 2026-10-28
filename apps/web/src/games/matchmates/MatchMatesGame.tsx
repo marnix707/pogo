@@ -208,11 +208,6 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
         swap: ev.a !== undefined && ev.b !== undefined ? [ev.a, ev.b] : undefined,
       });
     t += SWAP_MS;
-    if (ev.noMatch) {
-      say('No match: move lost!', 'bad', t);
-      play('error');
-      t += NOTE_MS;
-    }
     if (ev.kind === 'evolve' && ev.slot !== undefined) {
       const slot = ev.slot;
       const evolvedNow = mover?.monsters[slot]?.element;
@@ -614,7 +609,7 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
 
   return (
     <div
-      className="flex min-h-0 flex-1 flex-col items-center gap-1.5 pb-1"
+      className="flex min-h-0 flex-1 flex-col items-center gap-1.5 pb-1 pt-[calc(env(safe-area-inset-top)+0.75rem)]"
       data-testid="mates-game"
       data-phase={view.phase}
     >
@@ -644,7 +639,7 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
         className="relative shrink-0 overflow-hidden"
         style={{
           containerType: 'inline-size',
-          width: 'min(100%, calc((100dvh - 8.5rem) * 140 / 258))',
+          width: 'min(100%, calc((100dvh - 9.5rem - env(safe-area-inset-top)) * 140 / 258))',
           aspectRatio: `${W} / ${H}`,
         }}
         data-testid="mates-arena"
@@ -1027,6 +1022,7 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
                 data-testid={`mates-${m.evolved ? 'boost' : 'evolve'}-${slot}`}
                 disabled={!can}
                 className="relative !min-h-0 overflow-hidden !px-2 !py-1 text-[11px]"
+                style={{ borderColor: ELEMENT_COLOR[m.element] }}
                 onClick={() => void send({ type: m.evolved ? 'boost' : 'evolve', slot })}
               >
                 {/* A loading bar of the berries; it pulses when it is full (n/n). */}
@@ -1034,12 +1030,15 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
                   aria-hidden
                   data-testid={`mates-bar-${slot}`}
                   data-full={full}
-                  className={`absolute inset-y-0 left-0 bg-neon/60 transition-[width] duration-500 ${
+                  className={`absolute inset-y-0 left-0 transition-[width] duration-500 ${
                     full ? 'animate-pulse' : ''
                   }`}
-                  style={{ width: `${Math.min(100, (mine.berries / need) * 100)}%` }}
+                  style={{
+                    width: `${Math.min(100, (mine.berries / need) * 100)}%`,
+                    background: ELEMENT_COLOR[m.element],
+                  }}
                 />
-                <span className="relative">
+                <span className="relative text-white [text-shadow:0_1px_0_#101628,0_0_2px_#101628]">
                   {m.evolved ? 'Boost' : 'Evolve'} {spec.names[m.evolved ? 1 : 0]} (
                   {Math.min(mine.berries, need)}/{need})
                 </span>
