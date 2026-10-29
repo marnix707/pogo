@@ -132,7 +132,7 @@ const ELEMENT_COLOR: Record<matchmates.Element, string> = {
 const FLY_MS = 200;
 const FLY_SPREAD_MS = 200;
 /** How long a +n total stays over a bar before it moves away. */
-const TALLY_MS = 3000;
+const TALLY_MS = 1000;
 
 const centerOf = (testId: string): { x: number; y: number } | null => {
   const el = document.querySelector(`[data-testid="${testId}"]`);
@@ -183,6 +183,8 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   const [atk, setAtk] = useState<AttackFx | null>(null);
   // The opponent's hit points flash red and shake when an attack lands on them.
   const [hpHit, setHpHit] = useState<{ owner: string } | null>(null);
+  // Whose hit points are being counted down right now: shown red, bold and bigger while it happens.
+  const [hpCounting, setHpCounting] = useState<{ owner: string } | null>(null);
   const [glow, setGlow] = useState<GlowState | null>(null);
   // True from the moment a move arrives until its whole animation (cascades, attacks) has played: the turn only
   // changes on screen when the field is stable.
@@ -257,7 +259,14 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     t += SWAP_MS;
     if (ev.kind === 'boost' && ev.slot !== undefined) {
       const key = `${ev.by}-${ev.slot}`;
-      at(t, () => setManaShown((m) => (m ? { ...m, [key]: (m[key] ?? 0) + BOOST_MANA } : m)));
+      const boosted = mover?.monsters[ev.slot]?.element;
+      at(t, () =>
+        setManaShown((m) =>
+          m && boosted
+            ? { ...m, [key]: Math.min(MONSTERS[boosted].cost, (m[key] ?? 0) + BOOST_MANA) }
+            : m,
+        ),
+      );
     }
     if (ev.kind === 'evolve' && ev.slot !== undefined) {
       const slot = ev.slot;
@@ -294,12 +303,16 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       const to = Math.max(0, Math.min(hpMax[id] ?? from + by, from + by));
       const start = performance.now();
       let n = 0;
+      setHpCounting({ owner: id });
       const iv = setInterval(() => {
         const u = Math.min(1, (performance.now() - start) / ms);
         const value = Math.round(from + (to - from) * (1 - (1 - u) * (1 - u)));
         setHpShown((h) => (h ? { ...h, [id]: value } : h));
         tick(n++);
-        if (u >= 1) clearInterval(iv);
+        if (u >= 1) {
+          clearInterval(iv);
+          timers.push(setTimeout(() => setHpCounting(null), 350));
+        }
       }, 45);
       timers.push(iv as unknown as ReturnType<typeof setTimeout>);
     };
@@ -333,9 +346,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         at(t + ATTACK.lead, () => {
           setAtk(fx$);
           const key = `${f.owner}-${f.slot}`;
-          setManaShown((m) =>
-            m ? { ...m, [key]: Math.max(0, (m[key] ?? 0) - MONSTERS[f.element].cost) } : m,
-          );
+          setManaShown((m) => (m ? { ...m, [key]: 0 } : m));
         });
         // 2. It lands on the hit points: they flash, a red number pops up over them (Yatzy style), tips over and
         //    falls into the total, which counts down.
@@ -344,7 +355,13 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
           setHpHit({ owner: target });
           setPops((p) => [
             ...p,
-            { id: ++popId + ev.seq * 100, x: tx, y: ty + 4, text: `-${f.damage}`, tone: 'dmg' },
+            {
+              id: ++popId + ev.seq * 100,
+              x: Math.min(tx, 112),
+              y: ty + 7,
+              text: `-${f.damage}`,
+              tone: 'dmg',
+            },
           ]);
         });
         // (the number lands in the total after ~800 ms; only then do the hit points count down)
@@ -410,7 +427,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       // Tiles that fill one of the mover's bars (or the berries) fly there and count up, like Yatzy dice.
       const groups = new Map<
         string,
-        { target: string; cells: number[]; src: string; manaKey?: string }
+        { target: string; cells: number[]; src: string; manaKey?: string; manaCost?: number }
       >();
       if (!step.bomb && !reducedMotion()) {
         for (const [idx, cell] of cleared.entries()) {
@@ -420,14 +437,22 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
           const tile = { ...found, k: (step.kinds?.[idx] ?? found.k) as typeof found.k };
           let target: string | null = null;
           let manaKey: string | undefined;
+          let manaCost: number | undefined;
           if (tile.k === 'berry') target = `mates-berries-${who}`;
           else {
             const slot = mover?.monsters.findIndex((m) => m.element === tile.k) ?? -1;
             if (slot >= 0) target = `mates-mana-${who}-${slot}`;
             if (slot >= 0) manaKey = `${ev.by}-${slot}`;
+            if (slot >= 0) manaCost = MONSTERS[tile.k as matchmates.Element].cost;
           }
           if (!target) continue;
-          const g = groups.get(target) ?? { target, cells: [], src: tileUrl(tile), manaKey };
+          const g = groups.get(target) ?? {
+            target,
+            cells: [],
+            src: tileUrl(tile),
+            manaKey,
+            manaCost,
+          };
           g.cells.push(cell);
           groups.set(target, g);
         }
@@ -439,7 +464,9 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         const stagger = Math.max(25, Math.min(110, FLY_SPREAD_MS / g.cells.length));
         g.cells.forEach((_, n) =>
           at(t + n * stagger + FLY_MS, () =>
-            setManaShown((m) => (m ? { ...m, [key]: (m[key] ?? 0) + 1 } : m)),
+            setManaShown((m) =>
+              m ? { ...m, [key]: Math.min(g.manaCost ?? 99, (m[key] ?? 0) + 1) } : m,
+            ),
           ),
         );
       }
@@ -473,19 +500,13 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
               size: 28,
               delay: n * stagger,
             });
-            // Each arrival raises the running total over the bar.
-            at(t + n * stagger + FLY_MS, () => {
-              tick(n);
-              setTallies((all) => [
-                ...all.filter((x) => x.key !== g.target + i),
-                { key: g.target + i, x: to.x, y: to.y, n: n + 1 },
-              ]);
-            });
-            // ...and it moves away 3 seconds after its last change.
-            at(t + n * stagger + FLY_MS + TALLY_MS, () =>
-              setTallies((all) => all.filter((x) => x.key !== g.target + i || x.n !== n + 1)),
-            );
+            // A rising tick as each tile lands.
+            at(t + n * stagger + FLY_MS, () => tick(n));
           });
+          // The total (+3) shows at once, the moment the tiles start to fly, and goes away quickly.
+          const tally = { key: g.target + i, x: to.x, y: to.y, n: g.cells.length };
+          setTallies((all) => [...all.filter((x) => x.key !== tally.key), tally]);
+          at(t + TALLY_MS, () => setTallies((all) => all.filter((x) => x !== tally)));
         }
         setFlights((all) => [...all, ...flying]);
         setAnim({ board: before, flash: new Set(cleared), key, flown });
@@ -544,6 +565,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     }
     at(t + 700, () => {
       setReplaying(false);
+      setHpCounting(null);
       setHpShown(null);
       setManaShown(null);
       setPops([]);
@@ -750,7 +772,15 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
           style={{
             ...hudText,
             ...at(stackX + 11, 32.5),
-            color: hpHit?.owner === p.id ? '#ff6b6b' : '#ffffff',
+            color: hpHit?.owner === p.id || hpCounting?.owner === p.id ? '#ff4d4d' : '#ffffff',
+            fontWeight: 900,
+            textShadow:
+              hpCounting?.owner === p.id
+                ? '0 1px 0 #101628, 1px 0 0 #101628, 0 0 2px #101628, 0.4px 0 0 currentColor'
+                : hudText.textShadow,
+            transform: hpCounting?.owner === p.id ? 'scale(1.35)' : undefined,
+            transformOrigin: 'left center',
+            transition: 'transform 120ms ease-out',
             animation: hpHit?.owner === p.id ? 'mates-hit 450ms linear' : undefined,
           }}
           data-testid={`mates-hp-${who}`}
@@ -836,7 +866,8 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       />
       <style>{`
         @keyframes mates-lunge { 0%{transform:translateX(0)} 40%{transform:translateX(var(--lunge))} 100%{transform:translateX(0)} }
-        @keyframes mates-dmg { 0%{opacity:0;transform:translateX(-50%) translateY(-14px) scale(.5)} 18%{opacity:1;transform:translateX(-50%) translateY(-18px) scale(1.7)} 50%{opacity:1;transform:translateX(-50%) translateY(-18px) scale(1.7) rotate(-45deg)} 85%{opacity:1;transform:translateX(-50%) translateY(4px) scale(.8) rotate(0)} 100%{opacity:0;transform:translateX(-50%) translateY(8px) scale(.4)} }
+        @keyframes mates-dmg { 0%{opacity:0;transform:translateX(-50%) translateY(10px) scale(.5)} 18%{opacity:1;transform:translateX(-50%) translateY(8px) scale(1.6)} 50%{opacity:1;transform:translateX(-50%) translateY(8px) scale(1.6) rotate(-45deg)} 85%{opacity:1;transform:translateX(-50%) translateY(-6px) scale(.8) rotate(0)} 100%{opacity:0;transform:translateX(-50%) translateY(-10px) scale(.4)} }
+        @keyframes mates-ready { 0%,100%{opacity:.15} 50%{opacity:.9} }
         @keyframes mates-pop { 0%{opacity:0;transform:translateY(0) scale(.6)} 20%{opacity:1;transform:translateY(-6px) scale(1.2)} 100%{opacity:0;transform:translateY(-28px) scale(1)} }
         @keyframes mates-flash { 0%{transform:scale(1);filter:none} 45%{transform:scale(1.25);filter:brightness(2.4)} 100%{transform:scale(0);opacity:0} }
         @keyframes mates-fall { 0%{transform:translateY(calc(var(--drop) * -100%))} 68%{transform:translateY(0)} 82%{transform:translateY(-7%)} 100%{transform:translateY(0)} }
@@ -904,6 +935,18 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                     onClick={(e) => petInfo.open(e, m.element, shownEvolved)}
                     data-testid={`mates-monster-${who}-${slot}`}
                   >
+                    {/* Berries are full: my pets glow, fading in and out, so I know I can evolve / boost. */}
+                    {who === 'me' && mine.berries >= evolveCost(stage) && !evolving && (
+                      <span
+                        aria-hidden
+                        data-testid="mates-ready-glow"
+                        className="pointer-events-none absolute left-1/2 top-1/2 h-[190%] w-[190%] -translate-x-1/2 -translate-y-1/2 rounded-full"
+                        style={{
+                          background: `radial-gradient(circle, ${color}ee 0%, ${color}77 35%, ${color}00 70%)`,
+                          animation: 'mates-ready 1.8s ease-in-out infinite',
+                        }}
+                      />
+                    )}
                     {evolving && (
                       <span
                         aria-hidden
@@ -1246,7 +1289,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
               style={{
                 left: t.x,
                 top: t.y - 18,
-                animation: `mates-tally-away 500ms ease-in ${TALLY_MS - 500}ms both`,
+                animation: `mates-tally-away 350ms ease-in ${TALLY_MS - 350}ms both`,
               }}
             >
               <span

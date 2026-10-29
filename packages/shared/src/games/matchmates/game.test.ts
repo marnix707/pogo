@@ -336,6 +336,39 @@ describe('Pet Match', () => {
     expect(evolved.lastEvent!.before).toHaveLength(CELLS);
   });
 
+  it('mana never exceeds the bar: extra tiles do not carry over, the attack empties the bar and only its own tiles count after', () => {
+    const base = start(4);
+    const players = base.players.map((p) =>
+      p.id === 'a'
+        ? {
+            ...p,
+            monsters: [
+              { element: 'fire' as const, evolved: false, mana: 5 },
+              { element: 'water' as const, evolved: false, mana: 0 },
+            ],
+          }
+        : p,
+    ) as MatesState['players'];
+    const board = quiet();
+    // Four fire tiles in a row: 5 + 4 would be 9 of 8 (fire costs 8): capped at 8, then the attack empties it.
+    for (const c of [0, 1, 3]) set(board, 0, c, 'fire');
+    set(board, 0, 2, 'water');
+    set(board, 1, 2, 'fire');
+    const s: MatesState = { ...base, board, players, turn: 'a', first: 'a', movesLeft: 2 };
+    const after = matesGame.applyMove(
+      s,
+      'a',
+      { type: 'swap', a: cellAt(0, 2), b: cellAt(1, 2) },
+      createSeededRng(3),
+    );
+    expect(after.lastEvent!.fires.some((f) => f.element === 'fire')).toBe(true);
+    const fire = after.players.find((p) => p.id === 'a')!.monsters[0]!;
+    // Not 9 - 8 = 1 carried over: it starts again from nothing (plus fire the attack's own cascade matched).
+    expect(fire.mana).toBeLessThan(5);
+    for (const p of after.players)
+      for (const m of p.monsters) expect(m.mana).toBeLessThanOrEqual(MONSTERS[m.element].cost);
+  });
+
   it('the board is never reshuffled: with no matching swap left the tiles just stay', () => {
     const base = start(4);
     const board = quiet(); // no swap here makes a match
@@ -443,11 +476,11 @@ describe('Pet Match', () => {
           const waterCleared = steps[j]!.cleared.filter((i) => before[i]!.k === 'water').length;
           if (waterCleared > 0) sawWater = true;
           const water = after.players.find((p) => p.id === 'a')!.monsters[1]!;
-          // (A full bar fires and starts over, so count the mana the water pet spent.)
-          const spent =
-            after.lastEvent!.fires.filter((f) => f.element === 'water').length *
-            MONSTERS.water.cost;
-          expect(water.mana + spent).toBeGreaterThanOrEqual(waterCleared);
+          // (A bar holds at most its cost, and a full bar fires and starts over.)
+          const fired = after.lastEvent!.fires.some((f) => f.element === 'water');
+          expect(water.mana + (fired ? MONSTERS.water.cost : 0)).toBeGreaterThanOrEqual(
+            Math.min(waterCleared, MONSTERS.water.cost),
+          );
         }
       }
       expect(sawWater).toBe(true);

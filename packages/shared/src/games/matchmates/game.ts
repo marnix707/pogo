@@ -203,7 +203,9 @@ function clearMatches(c: Ctx, cells: Set<number>) {
     if (!c.kinds.includes(k)) c.kinds.push(k);
     if (k === 'berry') c.me.berries = Math.min(maxBerries(c.stage), c.me.berries + 1);
     else if (k !== 'bomb' && k !== 'mystery') {
-      for (const m of c.me.monsters) if (m.element === k) m.mana += 1;
+      // A bar never holds more than it needs: tiles beyond a full bar do not count for the next attack.
+      for (const m of c.me.monsters)
+        if (m.element === k) m.mana = Math.min(MONSTERS[k].cost, m.mana + 1);
       if (k === 'fire' && c.stage === 'lava') lava += 1;
     }
   }
@@ -227,7 +229,8 @@ function fireReady(c: Ctx): boolean {
     const spec = specOf(m);
     const form = m.evolved ? 1 : 0;
     while (m.mana >= spec.cost && c.opp.hp > 0) {
-      m.mana -= spec.cost;
+      // The attack empties the bar; only tiles that fall or match after it (from the attack itself) fill it again.
+      m.mana = 0;
       any = true;
       c.attacked = true;
       const damage = spec.damage[form];
@@ -454,7 +457,8 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
   } else {
     event.before = clone(state.board);
     me.berries -= evolveCost(state.stage);
-    (me.monsters[move.slot] as MateMonster).mana += BOOST_MANA;
+    const boosted = me.monsters[move.slot] as MateMonster;
+    boosted.mana = Math.min(MONSTERS[boosted.element].cost, boosted.mana + BOOST_MANA);
     event.slot = move.slot;
     settle(c);
   }
@@ -594,11 +598,19 @@ function autoMove(state: MatesState, playerId: PlayerId, rng: Rng): AutoMove<Mat
     if (validateMove(state, playerId, boost).ok) candidates.push(boost);
   });
   if (candidates.length === 0) {
-    // Nothing matches (a frozen or odd board): any swap of two loose neighbours, it just spends the move.
-    for (let i = 0; i < CELLS && candidates.length === 0; i++)
+    // Nothing can match: set something up. Any swap of two loose neighbours that leaves a matching swap
+    // behind (else any swap at all, picked at random so the same two tiles are not swapped back and forth).
+    const loose: [number, number][] = [];
+    for (let i = 0; i < CELLS; i++)
       for (const j of [i + 1, i + COLS])
         if (j < CELLS && (j !== i + 1 || j % COLS !== 0) && swapCells(state.board, i, j))
-          candidates.push({ type: 'swap', a: i, b: j });
+          loose.push([i, j]);
+    const setups = loose.filter(
+      ([i, j]) => legalSwaps(swapCells(state.board, i, j) as MateCell[]).length > 0,
+    );
+    const pool = setups.length > 0 ? setups : loose;
+    const [a, b] = pool[rng.int(pool.length)] as [number, number];
+    return { move: { type: 'swap', a, b }, endsTurn: state.movesLeft <= 1 };
   }
   const seed = rng.int(2 ** 30);
   let best = candidates[0] as MatesMove;

@@ -66,3 +66,7 @@ Cleared tiles pop, the rest fall into the holes with a small bounce (`dropsFor`,
 
 - A move that has just arrived counts as `replaying` from that very render (`seen` is compared in render, the layout effect then sets the state), so "Your turn", the move diamonds and the "Your turn!" banner never show for a turn before the chain reactions of the move before it have all played.
 - Events carry what the replay needs without guessing: `MateStep.kinds` (what each cleared square was, also for Swamp tiles the board shows as "?"), `MateEvent.before` (the board before an evolve / boost, which have no swap).
+
+- **Mana** is capped at the pet's cost: tiles beyond a full bar do not carry over. The attack empties the bar to 0 (no carry-over either); tiles that match or fall after it, from the attack itself and its cascade, fill it again (`clearMatches`, `fireReady`). A boost is capped too. The screen mirrors it (`manaShown`).
+- When your berries are full (`maxBerries`) your pets glow in their colour, fading in and out (`mates-ready-glow`): you can evolve / boost. The `+n` total over a bar shows at once when the tiles start to fly and goes after 1 s. On a hit the red damage number sits under the hit points (kept inside the screen) and rises into the total; while the total counts down it is red, bold and bigger.
+- The computer, with no matching swap on the board (the board is never reshuffled), sets something up with a random swap instead of repeating the same two tiles (that was an endless game).
