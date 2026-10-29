@@ -989,7 +989,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         data-turn={turn}
         style={{
           width: cq(62),
-          height: cq(48),
+          height: cq(42),
           borderColor: turn ? '#fda200' : 'rgba(137,154,209,.35)',
           // On the player's turn the whole box is yellow, not only its border.
           background: turn ? '#fda200' : 'rgba(16,22,40,.35)',
@@ -1018,7 +1018,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
             className="absolute inset-x-0 flex items-center justify-center"
             data-testid="mates-moves"
             aria-label={`${movesNow} moves left`}
-            style={{ bottom: cq(1.6), gap: cq(movesNow > 3 ? 1.6 : 3) }}
+            style={{ bottom: cq(1.4), gap: cq(movesNow > 3 ? 1.6 : 3) }}
           >
             {Array.from({ length: Math.max(2, movesNow) }, (_, n) => (
               <img
