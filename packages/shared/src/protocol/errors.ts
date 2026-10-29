@@ -113,6 +113,7 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'ROOM-130', message: 'Only public games can be watched' },
   { code: 'ROOM-131', message: 'You can only ring the bell in the lobby' },
   { code: 'ROOM-132', message: 'Wait a moment before ringing the bell again' },
+  { code: 'ROOM-133', message: /^Your lobby does not fit: / },
 
   // ---- GAME: any game ----
   { code: 'GAME-101', message: 'Not your turn' },

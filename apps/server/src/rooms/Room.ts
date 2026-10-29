@@ -216,6 +216,27 @@ export class Room {
     return this.activeMemberIds.length;
   }
 
+  /** Seats a group could still take in the lobby (0 when the game has started or the room is closed to them). */
+  freeSeats(): number {
+    if (this.status !== 'lobby') return 0;
+    return Math.max(
+      0,
+      Math.min(this.maxPlayers, this.game.maxPlayers - this.bots) - this.memberCount,
+    );
+  }
+
+  isBanned(userId: string): boolean {
+    return this.banned.has(userId);
+  }
+
+  /** The people who would travel with the host: seated humans (not spectators, not computers). */
+  followersOf(hostId: string): PublicUser[] {
+    if (hostId !== this.hostId || this.status !== 'lobby') return [];
+    return this.members
+      .filter((m) => !m.left && !m.bot && !m.spectator && m.user.id !== hostId)
+      .map((m) => m.user);
+  }
+
   join(user: PublicUser): Result<null> {
     if (this.banned.has(user.id)) return fail('You were removed from this room');
     if (this.hasMember(user.id)) return ok(null);

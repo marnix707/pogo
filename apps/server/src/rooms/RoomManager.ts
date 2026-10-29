@@ -180,15 +180,38 @@ export class RoomManager {
   join(user: PublicUser, code: string): Result<RoomView> {
     const room = this.rooms.get(code);
     if (!room) return fail('Room not found');
+    // A host who moves to another lobby takes the people in their own lobby along.
+    let followers: PublicUser[] = [];
     if (this.roomOfUser.get(user.id) !== code) {
+      const own = this.roomFor(user.id);
+      followers = own ? own.followersOf(user.id) : [];
+      if (followers.length > 0) {
+        const why = this.groupMisfit(room, followers);
+        if (why) return fail(`Your lobby does not fit: ${why}. Leave them first to go alone.`);
+      }
       const released = this.releaseUser(user.id);
       if (!released.ok) return released;
     }
     const joined = room.join(user);
     if (!joined.ok) return joined;
     this.roomOfUser.set(user.id, code);
+    for (const f of followers) {
+      this.roomFor(f.id)?.leave(f.id);
+      if (room.join(f).ok) this.roomOfUser.set(f.id, code);
+      room.sendHistory(f.id);
+    }
     room.sendHistory(user.id);
     return ok(room.view(user.id));
+  }
+
+  /** Why the host's group cannot all enter `room` (null when everybody fits). */
+  private groupMisfit(room: Room, followers: PublicUser[]): string | null {
+    if (room.status !== 'lobby') return 'that game has already started';
+    if (followers.some((f) => room.isBanned(f.id))) return 'one of you was removed from that room';
+    const free = room.freeSeats();
+    if (free < 1 + followers.length)
+      return `that room has ${free} free ${free === 1 ? 'seat' : 'seats'} and you are ${1 + followers.length}`;
+    return null;
   }
 
   /** Open public rooms that someone can join right now, longest-waiting first. */

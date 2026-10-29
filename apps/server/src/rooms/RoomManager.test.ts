@@ -97,6 +97,25 @@ describe('creating and joining', () => {
     expect(manager.create(a, { gameId: 'race', options: { x: 1 } }).ok).toBe(false);
   });
 
+  it('takes the host\'s lobby along when they join another room, or says why not', () => {
+    const { manager, must } = setup();
+    const d = user(4);
+    const mine = must(manager.create(a, { gameId: 'race' }));
+    must(manager.join(b, mine.code));
+    const other = must(manager.create(c, { gameId: 'race' }));
+    must(manager.join(d, other.code));
+    // 2 + 2 players do not fit in a room for 3: nothing moves.
+    const refused = manager.join(a, other.code);
+    expect(refused).toMatchObject({ ok: false });
+    expect(!refused.ok && refused.error).toMatch(/^Your lobby does not fit: /);
+    expect(manager.roomCodeOf(b.id)).toBe(mine.code);
+    // Alone, the other host's room has the seats: both travel together.
+    manager.leave(d.id);
+    const moved = must(manager.join(a, other.code));
+    expect(moved.members.map((m) => m.id).sort()).toEqual([a.id, b.id, c.id]);
+    expect(manager.roomCodeOf(b.id)).toBe(other.code);
+  });
+
   it('lets others join by code and tells everyone', () => {
     const { manager, lastRoom, must } = setup();
     const { code } = must(manager.create(a, { gameId: 'race' }));
