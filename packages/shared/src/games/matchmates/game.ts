@@ -110,7 +110,6 @@ function createInitialState(players: GamePlayer[], options: MatesOptions, rng: R
     berries: 0,
     confirmed: false,
     stagePick: null,
-    moveDelta: 0,
   });
   const first = (players[rng.int(2)] as GamePlayer).id;
   return {
@@ -178,15 +177,12 @@ interface Ctx {
   me: MatePlayer;
   opp: MatePlayer;
   stage: StageId;
-  options: MatesOptions;
   rng: Rng;
   steps: MateStep[];
   fires: MateFire[];
   longest: number;
   /** Tile kinds cleared this move, in order of first appearance. */
   kinds: string[];
-  heal: number;
-  bonusDamage: number;
   /** A special attack fired during this move: what it clears and what falls after it never counts for combos. */
   attacked: boolean;
 }
@@ -200,6 +196,8 @@ function hurt(p: MatePlayer, amount: number) {
 /** One cascade: clear the matched squares, pay out mana / berries, drop, refill. */
 function clearMatches(c: Ctx, cells: Set<number>) {
   let lava = 0;
+  const sorted = [...cells].sort((x, y) => x - y);
+  const kindsBefore = new Map(sorted.map((i) => [i, c.board[i]!.k]));
   for (const i of cells) {
     const k = c.board[i]!.k;
     if (!c.kinds.includes(k)) c.kinds.push(k);
@@ -211,7 +209,11 @@ function clearMatches(c: Ctx, cells: Set<number>) {
   }
   if (lava) hurt(c.opp, lava);
   c.board = dropAndRefill(c.board, cells, c.rng);
-  c.steps.push({ cleared: [...cells].sort((x, y) => x - y), board: clone(c.board) });
+  c.steps.push({
+    cleared: sorted,
+    kinds: sorted.map((i) => kindsBefore.get(i) as string),
+    board: clone(c.board),
+  });
 }
 
 function specOf(m: MateMonster) {
@@ -399,14 +401,11 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
     me,
     opp,
     stage: state.stage,
-    options: state.options,
     rng,
     steps: [],
     fires: [],
     longest: 0,
     kinds: [],
-    heal: 0,
-    bonusDamage: 0,
     attacked: false,
   };
   const event: MateEvent = {
@@ -434,7 +433,7 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
     settle(c);
     freeze(c);
     // A swap that makes nothing: the tiles stay swapped and the move is spent.
-    noMatch = findMatches(swapped).cells.size === 0;
+    noMatch = c.steps.length === 0;
     if (c.longest >= 4 && c.opp.hp > 0) {
       // 4 in a row: an extra move; 5 or more also heals 5.
       if (c.longest >= 5) {
@@ -447,11 +446,13 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
     }
     if (c.opp.hp > 0) tickBombs(c);
   } else if (move.type === 'evolve') {
+    event.before = clone(state.board);
     me.berries -= evolveCost(state.stage);
     (me.monsters[move.slot] as MateMonster).evolved = true;
     event.slot = move.slot;
     settle(c);
   } else {
+    event.before = clone(state.board);
     me.berries -= evolveCost(state.stage);
     (me.monsters[move.slot] as MateMonster).mana += BOOST_MANA;
     event.slot = move.slot;
@@ -480,9 +481,7 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
   if (movesLeft > 0) return { ...base, movesLeft };
 
   // Turn over: the opponent starts, with any moves the attacks gave or took.
-  const next = base.players.map((p) =>
-    p.id === opp.id ? { ...p, moveDelta: 0 } : p,
-  ) as MatesState['players'];
+  const next = base.players.map((p) => p) as MatesState['players'];
   const board = clone(base.board);
   stageTurnStart(board, state.stage, rng);
   return {
@@ -490,7 +489,7 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
     players: next,
     board,
     turn: opp.id,
-    movesLeft: Math.max(1, MOVES_PER_TURN + opp.moveDelta),
+    movesLeft: MOVES_PER_TURN,
   };
 }
 
@@ -508,6 +507,7 @@ function getPlayerView(state: MatesState, playerId: PlayerId): MatesView {
     ? {
         ...state.lastEvent,
         ...(state.lastEvent.swapped ? { swapped: mask(state.lastEvent.swapped) } : {}),
+        ...(state.lastEvent.before ? { before: mask(state.lastEvent.before) } : {}),
         steps: state.lastEvent.steps.map((s) => ({ ...s, board: mask(s.board) })),
       }
     : null;

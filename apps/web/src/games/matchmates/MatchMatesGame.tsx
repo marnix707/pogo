@@ -186,8 +186,12 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   const [glow, setGlow] = useState<GlowState | null>(null);
   // True from the moment a move arrives until its whole animation (cascades, attacks) has played: the turn only
   // changes on screen when the field is stable.
-  const [replaying, setReplaying] = useState(false);
   const seen = useRef(view.moveCount);
+  const [replayingState, setReplaying] = useState(false);
+  // A move that has just arrived but whose replay has not started yet (the effects run after this render):
+  // it counts as replaying right away, so nothing ("Your turn", the banner) shows for it before it has played.
+  const replaying =
+    replayingState || (view.moveCount > seen.current && !!view.lastEvent && !reducedMotion());
   // Hit points as the animation has got to: they change when the attack lands, not when the move arrives.
   const hpNow = Object.fromEntries(view.players.map((p) => [p.id, p.hp]));
   const prevHp = useRef<Record<string, number>>(hpNow);
@@ -234,7 +238,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     const timers: ReturnType<typeof setTimeout>[] = [];
     const at = (ms: number, fn: () => void) => timers.push(setTimeout(fn, ms));
     let t = 0;
-    let board = ev.swapped ?? view.board;
+    let board = ev.swapped ?? ev.before ?? view.board;
     let key = 0;
     let sparkId = 0;
     let flightId = 0;
@@ -409,9 +413,11 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         { target: string; cells: number[]; src: string; manaKey?: string }
       >();
       if (!step.bomb && !reducedMotion()) {
-        for (const cell of cleared) {
-          const tile = before[cell];
-          if (!tile) continue;
+        for (const [idx, cell] of cleared.entries()) {
+          const found = before[cell];
+          if (!found) continue;
+          // (A tile hidden by the Swamp is a "?" on the board, but the step says what it really was.)
+          const tile = { ...found, k: (step.kinds?.[idx] ?? found.k) as typeof found.k };
           let target: string | null = null;
           let manaKey: string | undefined;
           if (tile.k === 'berry') target = `mates-berries-${who}`;
@@ -439,7 +445,10 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       }
       // The artist's glow bursts round the cleared tiles, in the colour of their kind.
       if (cleared.length > 0 && !step.bomb) {
-        const items = cleared.map((cell) => ({ cell, kind: before[cell]?.k ?? 'gold' }));
+        const items = cleared.map((cell, idx) => ({
+          cell,
+          kind: step.kinds?.[idx] ?? before[cell]?.k ?? 'gold',
+        }));
         for (let f = 0; f < 8; f++) at(t + f * 55, () => setGlow({ items, frame: f }));
         at(t + 8 * 55, () => setGlow(null));
       }
@@ -593,12 +602,20 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       play('turn');
       haptic('tap');
       setTurnBanner((n) => n + 1);
-      const t = setTimeout(() => setTurnBanner(0), 1300);
-      return () => clearTimeout(t);
     }
   }, [myTurn, settled, view.moveCount]);
+  // The banner goes away by itself (its own timer, so a re-run of the effect above cannot leave it on screen).
+  useEffect(() => {
+    if (turnBanner === 0) return;
+    const t = setTimeout(() => setTurnBanner(0), 1300);
+    return () => clearTimeout(t);
+  }, [turnBanner]);
   const board = anim?.board ?? view.board;
   const canAct = myTurn && !busy && !animating && !replaying;
+  // A tile picked for a swap is let go when the turn is gone (timeout) or the next move is replaying.
+  useEffect(() => {
+    if (!myTurn || replaying) setSelected(null);
+  }, [myTurn, replaying]);
   // Whose turn the screen shows: the mover's until the animation of the last move is over.
   const visualTurn = replaying && view.lastEvent ? view.lastEvent.by : view.turn;
   const showTurn = (id: string) => view.phase === 'play' && !finished && visualTurn === id;
@@ -657,6 +674,12 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       run: () => void send({ type: pet.evolved ? 'boost' : 'evolve', slot }),
     };
   });
+
+  // A pet pop-up does not stay open into the next turn.
+  useEffect(() => {
+    petInfo.close();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view.turn, view.phase]);
 
   if (view.phase === 'pick') {
     return (

@@ -88,13 +88,8 @@ export function swapCells(board: readonly MateCell[], a: number, b: number): Mat
 
 /** The board after swapping two neighbouring squares, or null when the swap is not allowed or makes no match. */
 export function trySwap(board: readonly MateCell[], a: number, b: number): MateCell[] | null {
-  const ca = board[a];
-  const cb = board[b];
-  if (!ca || !cb || !adjacent(a, b) || ca.frozen || cb.frozen) return null;
-  const next = board.map((c) => ({ ...c }));
-  next[a] = { ...cb };
-  next[b] = { ...ca };
-  return findMatches(next).cells.size > 0 ? next : null;
+  const next = swapCells(board, a, b);
+  return next && findMatches(next).cells.size > 0 ? next : null;
 }
 
 /** All legal swaps (right and down neighbours cover every pair once). */

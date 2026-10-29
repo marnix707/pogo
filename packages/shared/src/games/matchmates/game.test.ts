@@ -298,6 +298,44 @@ describe('Pet Match', () => {
     expect(after.lastEvent).toMatchObject({ heal: 5, extraMove: true });
   });
 
+  it('steps say what each cleared tile was (also in the Swamp) and an evolve carries the board before it', () => {
+    const base = start(5, 'swamp');
+    const board = quiet();
+    set(board, 0, 0, 'earth');
+    set(board, 0, 1, 'earth');
+    set(board, 0, 2, 'water');
+    set(board, 1, 2, 'earth');
+    board[cellAt(0, 0)] = { ...board[cellAt(0, 0)]!, hidden: true };
+    const s: MatesState = { ...base, board, turn: 'a', first: 'a', movesLeft: 2 };
+    const after = matesGame.applyMove(
+      s,
+      'a',
+      { type: 'swap', a: cellAt(0, 2), b: cellAt(1, 2) },
+      createSeededRng(2),
+    );
+    const step = after.lastEvent!.steps[0]!;
+    expect(step.kinds).toEqual(
+      step.cleared.map((i) => (i <= 2 ? 'earth' : step.kinds![step.cleared.indexOf(i)])),
+    );
+    expect(step.kinds![step.cleared.indexOf(0)]).toBe('earth');
+    // The view hides the tile on the board but not in the step.
+    expect(
+      matesGame.getPlayerView(after, 'a').lastEvent!.steps[0]!.kinds![step.cleared.indexOf(0)],
+    ).toBe('earth');
+
+    const forest = start(8, 'forest');
+    const players = forest.players.map((p) =>
+      p.id === forest.turn ? { ...p, berries: 3 } : p,
+    ) as MatesState['players'];
+    const evolved = matesGame.applyMove(
+      { ...forest, players },
+      forest.turn,
+      { type: 'evolve', slot: 0 },
+      createSeededRng(1),
+    );
+    expect(evolved.lastEvent!.before).toHaveLength(CELLS);
+  });
+
   it('the board is never reshuffled: with no matching swap left the tiles just stay', () => {
     const base = start(4);
     const board = quiet(); // no swap here makes a match

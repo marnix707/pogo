@@ -58,13 +58,13 @@ export interface MatePlayer {
   confirmed: boolean;
   /** The arena this player asked for (hidden from the opponent until the coin is flipped). */
   stagePick: StageId | 'random' | null;
-  /** Moves added to (+) or taken from (-) this player's next turn. */
-  moveDelta: number;
 }
 
 /** One cascade step the client plays: the squares that went, then the board after gravity and refill. */
 export interface MateStep {
   cleared: number[];
+  /** The kind of each cleared square (same order), also for tiles hidden by the Swamp. */
+  kinds?: string[];
   board: MateCell[];
   /** A bomb went off. */
   bomb?: true;
@@ -99,6 +99,8 @@ export interface MateEvent {
   slot?: number;
   /** The board right after the swap, before anything cleared. */
   swapped?: MateCell[];
+  /** The board before an evolve / boost (these have no swap): the replay starts from it. */
+  before?: MateCell[];
   steps: MateStep[];
   fires: MateFire[];
   /** Longest line of the move. */
