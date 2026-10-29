@@ -6,7 +6,7 @@ import { useFriends } from '../friends/FriendsProvider';
  * as a small animated rainbow "dev" instead of plain text. With `id` the name opens that player's profile when
  * tapped (like their picture does); not for yourself, computers or guests' friends-less sessions.
  */
-export function PlayerName({ name, id, me }: { name: string; id?: string; me?: string }) {
+export function PlayerName({ name, id }: { name: string; id?: string; me?: string }) {
   const { enabled, openProfile } = useFriends();
   const { name: base, dev } = splitDevTag(name);
   const text = (
@@ -19,7 +19,7 @@ export function PlayerName({ name, id, me }: { name: string; id?: string; me?: s
       )}
     </>
   );
-  if (!id || !enabled || id.startsWith('bot:') || id === me) return text;
+  if (!id || !enabled || id.startsWith('bot:')) return text;
   return (
     <button
       type="button"

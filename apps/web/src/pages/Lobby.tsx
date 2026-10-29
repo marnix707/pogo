@@ -336,6 +336,7 @@ export function Lobby({
               tooBigFor={(id) => room.members.length > (getGame(id)?.maxPlayers ?? Infinity)}
               onPick={(g) => {
                 setChoosing(false);
+                window.scrollTo({ top: 0 });
                 if (g.id === room.gameId) return;
                 if (isHost) return api.setGame(g.id);
                 // Not the host: a suggestion, shown next to my name in the crew list.

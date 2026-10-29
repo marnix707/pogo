@@ -80,20 +80,41 @@ export function ProfileCard({
           </div>
 
           {view === 'card' && (
-            <Button
-              variant="secondary"
-              data-testid="profile-stats-open"
-              onClick={() => {
-                setView('stats');
-                if (!self && !together)
-                  api
-                    .together(p.id)
-                    .then(setTogether)
-                    .catch((e: Error) => toast.show(e.message, 'error'));
-              }}
-            >
-              Stats
-            </Button>
+            <div className="flex gap-2">
+              {p.state === 'friends' && (
+                <Button
+                  variant="secondary"
+                  className="flex flex-1 items-center justify-center"
+                  aria-label="Chat"
+                  data-testid="profile-message"
+                  onClick={() => openThread(p)}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                    <path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10l-5 4v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
+                  </svg>
+                </Button>
+              )}
+              <Button
+                variant="secondary"
+                className="flex flex-1 items-center justify-center"
+                aria-label="Stats"
+                data-testid="profile-stats-open"
+                onClick={() => {
+                  setView('stats');
+                  if (!self && !together)
+                    api
+                      .together(p.id)
+                      .then(setTogether)
+                      .catch((e: Error) => toast.show(e.message, 'error'));
+                }}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <rect x="3" y="12" width="5" height="9" />
+                  <rect x="10" y="4" width="5" height="17" />
+                  <rect x="17" y="8" width="4" height="13" />
+                </svg>
+              </Button>
+            </div>
           )}
 
           {view === 'stats' && (
@@ -230,9 +251,6 @@ export function ProfileCard({
               )}
               {p.state === 'friends' && (
                 <>
-                  <Button data-testid="profile-message" onClick={() => openThread(p)}>
-                    Message
-                  </Button>
                   {inLobbyCode && (
                     <Button
                       variant="gold"
@@ -245,7 +263,14 @@ export function ProfileCard({
                   <div className="flex gap-2">
                     <Button
                       variant="secondary"
-                      className="flex-1"
+                      className="flex-1 !px-2"
+                      onClick={() => void act(api.remove(p.id), 'Friend removed')}
+                    >
+                      Remove
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      className="flex-1 !px-2"
                       data-testid="profile-mute"
                       onClick={() =>
                         void act(
@@ -257,11 +282,12 @@ export function ProfileCard({
                       {p.muted ? 'Unmute' : 'Mute'}
                     </Button>
                     <Button
-                      variant="secondary"
-                      className="flex-1"
-                      onClick={() => void act(api.remove(p.id), 'Friend removed')}
+                      variant="danger"
+                      className="flex-1 !px-2"
+                      data-testid="profile-block"
+                      onClick={() => setConfirmBlock(true)}
                     >
-                      Remove
+                      Block
                     </Button>
                   </div>
                 </>
@@ -281,7 +307,7 @@ export function ProfileCard({
                 >
                   Really block {p.name}?
                 </Button>
-              ) : (
+              ) : p.state === 'friends' ? null : (
                 <Button
                   variant="danger"
                   data-testid="profile-block"

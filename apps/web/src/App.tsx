@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import type { AuthResponse } from '@pogo/shared';
 import { ToastProvider } from './components/Toast';
 import { TopoBackground } from './components/TopoBackground';
-import { unlockAudio } from './lib/sound';
+import { play, unlockAudio } from './lib/sound';
 import { consumeRecoveryLink, forgetSession, restoreSession } from './lib/session';
 import { Shell } from './Shell';
 import { SignIn } from './pages/SignIn';
@@ -29,7 +29,18 @@ export function App() {
       window.removeEventListener('pointerdown', unlock);
     };
     window.addEventListener('pointerdown', unlock);
-    return () => window.removeEventListener('pointerdown', unlock);
+    // A small tick on every tap on something pressable (buttons, links, tabs), one place for the whole app.
+    const tick = (e: MouseEvent) => {
+      const el = (e.target as Element | null)?.closest?.(
+        'button, a, [role="button"], [role="tab"]',
+      );
+      if (el && !(el as HTMLButtonElement).disabled && !el.closest('[data-no-tick]')) play('tap');
+    };
+    document.addEventListener('click', tick, true);
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      document.removeEventListener('click', tick, true);
+    };
   }, []);
 
   return (

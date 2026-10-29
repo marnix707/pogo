@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { ButtonHTMLAttributes, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
+import grabberUrl from '../assets/sprites/ui/sheet-grabber.svg';
 import { AvatarFace } from './AvatarFace';
 import { haptic } from '../lib/haptics';
-import { play } from '../lib/sound';
 import { CloseIcon } from './icons';
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'gold' | 'ghost';
@@ -30,7 +30,6 @@ export function Button({
       {...props}
       onClick={(e) => {
         haptic('tap');
-        play('tap');
         onClick?.(e);
       }}
       className={`min-h-12 select-none rounded-[8px] px-5 text-sm font-bold uppercase tracking-[0.1em] transition disabled:pointer-events-none disabled:opacity-40 ${VARIANTS[variant]} ${className}`}
@@ -127,7 +126,51 @@ export function Sheet({
     }, SHEET_MS);
     return () => clearTimeout(t);
   }, [open]);
+  const panel = useRef<HTMLDivElement>(null);
+  const grab = useRef<{ y: number; dy: number } | null>(null);
+  /** The drag handle: pull the sheet towards the edge it came from; far enough (or a flick) closes it. */
+  const handle = {
+    onPointerDown: (e: ReactPointerEvent) => {
+      grab.current = { y: e.clientY, dy: 0 };
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    onPointerMove: (e: ReactPointerEvent) => {
+      if (!grab.current || !panel.current) return;
+      const dy = top
+        ? Math.min(0, e.clientY - grab.current.y)
+        : Math.max(0, e.clientY - grab.current.y);
+      grab.current.dy = dy;
+      panel.current.style.translate = `0 ${dy}px`;
+    },
+    onPointerUp: () => {
+      const g = grab.current;
+      grab.current = null;
+      if (!g || !panel.current) return;
+      if (Math.abs(g.dy) > 70) onClose();
+      else {
+        panel.current.style.transition = 'translate 200ms ease-out';
+        panel.current.style.translate = '0 0';
+        setTimeout(() => panel.current && (panel.current.style.transition = ''), 220);
+      }
+    },
+  };
   if (!mounted) return null;
+  const grabber = (
+    <div
+      className={`-mx-5 flex touch-none select-none justify-center py-2 ${top ? 'mt-2' : 'mb-2'}`}
+      data-testid="sheet-handle"
+      {...handle}
+    >
+      <img
+        src={grabberUrl}
+        alt=""
+        aria-hidden
+        draggable={false}
+        className="block h-3 w-10"
+        style={{ imageRendering: 'pixelated' }}
+      />
+    </div>
+  );
   return (
     <div
       className={`sheet-backdrop fixed inset-0 z-40 flex justify-center ${top ? 'items-start' : 'items-end'} ${
@@ -138,6 +181,7 @@ export function Sheet({
       onClick={onClose}
     >
       <div
+        ref={panel}
         role="dialog"
         aria-label={title}
         data-closing={closing}
@@ -148,6 +192,7 @@ export function Sheet({
             : 'sheet-panel rounded-b-none !border-b-0 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5'
         } ${full ? 'flex h-[94dvh] flex-col overflow-hidden' : 'max-h-[92dvh] overflow-y-auto'}`}
       >
+        {!top && grabber}
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold uppercase tracking-[0.16em]">{title}</h2>
           <button
@@ -159,6 +204,7 @@ export function Sheet({
           </button>
         </div>
         {full ? <div className="flex min-h-0 flex-1 flex-col">{children}</div> : children}
+        {top && grabber}
       </div>
     </div>
   );
