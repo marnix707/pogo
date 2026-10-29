@@ -121,7 +121,7 @@ interface GlowState {
   frame: number;
 }
 /** Where each player's hit points are on the screen (art pixels): attacks fly there. */
-const HP_SPOT = { me: [24, 37], opp: [128, 37] } as const;
+const HP_SPOT = { me: [24, 45], opp: [128, 45] } as const;
 /** The sparkles round a ready pet: sideways spot (% of the pet's width from its middle) and start delay. */
 const READY_SPARKLES: readonly (readonly [number, number])[] = [
   [-48, 0],
@@ -763,11 +763,11 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
           alt="Berries"
           draggable={false}
           className="absolute"
-          style={{ ...px, ...at(stackX, 20, 9) }}
+          style={{ ...px, ...at(stackX, 28, 9) }}
         />
         <span
           className="absolute font-black text-white"
-          style={{ ...hudText, ...at(stackX + 11, 21.5) }}
+          style={{ ...hudText, ...at(stackX + 11, 29.5) }}
           data-testid={`mates-berries-${who}`}
         >
           {p.berries}/{evolveCost(stage)}
@@ -777,13 +777,13 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
           alt="Hit points"
           draggable={false}
           className="absolute"
-          style={{ ...px, ...at(stackX, 32, 9) }}
+          style={{ ...px, ...at(stackX, 40, 9) }}
         />
         <span
           className="absolute font-black"
           style={{
             ...hudText,
-            ...at(stackX + 11, 32.5),
+            ...at(stackX + 11, 40.5),
             color:
               hpCounting?.owner === p.id && hpCounting.tone === 'heal'
                 ? '#5dde7a'
@@ -805,17 +805,11 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         >
           {hpShown?.[p.id] ?? p.hp}
         </span>
-        <div className="absolute" style={at(avatarX, 19, 22)}>
-          <Avatar
-            avatar={member?.avatar ?? '🙂'}
-            size="fluid"
-            className={`h-[15.7cqw] w-[15.7cqw] text-[9cqw] ${turn ? '' : '!border-transparent'}`}
-          />
-        </div>
+        {/* The name above the picture; the box round the picture is bigger and holds the moves left. */}
         <div
           className="absolute text-center font-black uppercase text-white"
           style={{
-            ...at(avatarX - 4, 43, 30),
+            ...at(avatarX - 4, 18, 34),
             fontSize: cq(5),
             lineHeight: 1,
             textShadow: hudText.textShadow,
@@ -823,43 +817,31 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         >
           <PlayerName name={p.id === me ? 'You' : (member?.nickname ?? 'Opponent')} />
         </div>
-        {(turn || (finished && view.winner === p.id)) && (
-          <div
-            className="absolute flex flex-col items-center"
-            style={{ ...at(avatarX - 4, 51, 30), gap: cq(1.2) }}
-          >
+        <div className="absolute" style={at(avatarX, 26, 26)}>
+          <Avatar
+            avatar={member?.avatar ?? '🙂'}
+            size="fluid"
+            className={`h-[18.6cqw] w-[18.6cqw] text-[11cqw] ${turn ? '' : '!border-transparent'}`}
+          />
+          {turn && !replaying && (
             <span
-              data-testid="mates-turn"
-              className="font-black uppercase"
-              style={{
-                fontSize: cq(4.2),
-                lineHeight: 1,
-                textShadow: hudText.textShadow,
-                color: finished || who === 'me' ? '#fda200' : '#ffffff',
-              }}
+              className="absolute inset-x-0 flex items-center justify-center"
+              data-testid="mates-moves"
+              aria-label={`${view.movesLeft} moves left`}
+              style={{ bottom: cq(1.8), gap: cq(2) }}
             >
-              {finished ? 'Winner!' : who === 'me' ? 'Your turn' : 'Turn'}
+              {Array.from({ length: Math.max(2, view.movesLeft) }, (_, n) => (
+                <span
+                  key={n}
+                  className={`inline-block rotate-45 border border-[#101628] ${
+                    n < view.movesLeft ? 'bg-accent' : 'bg-black/60'
+                  }`}
+                  style={{ width: cq(3.4), height: cq(3.4) }}
+                />
+              ))}
             </span>
-            {turn && !replaying && (
-              <span
-                className="flex items-center"
-                data-testid="mates-moves"
-                aria-label={`${view.movesLeft} moves left`}
-                style={{ gap: cq(2) }}
-              >
-                {Array.from({ length: Math.max(2, view.movesLeft) }, (_, n) => (
-                  <span
-                    key={n}
-                    className={`inline-block rotate-45 border border-[#101628] ${
-                      n < view.movesLeft ? 'bg-accent' : 'bg-black/50'
-                    }`}
-                    style={{ width: cq(3.4), height: cq(3.4) }}
-                  />
-                ))}
-              </span>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
     );
   };

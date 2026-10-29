@@ -75,7 +75,9 @@ test('Pet Match: pick, play moves against the computer', async ({ browser }) => 
 
   // Play a few of my moves; the computer answers in between.
   for (let n = 0; n < 4; n++) {
-    await expect(page.getByTestId('mates-turn')).toHaveText('Your turn', { timeout: 60_000 });
+    await expect(page.getByTestId('mates-me').getByTestId('mates-moves')).toBeVisible({
+      timeout: 60_000,
+    });
     const kinds = await page
       .locator('[data-testid^=mates-cell-]')
       .evaluateAll((els) => els.map((e) => e.getAttribute('data-kind') ?? ''));
