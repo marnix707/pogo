@@ -201,6 +201,9 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   // True from the moment a move arrives until its whole animation (cascades, attacks) has played: the turn only
   // changes on screen when the field is stable.
   const seen = useRef(view.moveCount);
+  // Unique ids for everything the replay puts on screen (React keys).
+  const idCounter = useRef(0);
+  const nextId = () => ++idCounter.current;
   const [replayingState, setReplaying] = useState(false);
   // A move that has just arrived but whose replay has not started yet (the effects run after this render):
   // it counts as replaying right away, so nothing ("Your turn", the banner) shows for it before it has played.
@@ -254,13 +257,10 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     let t = 0;
     let board = ev.swapped ?? ev.before ?? view.board;
     let key = 0;
-    let sparkId = 0;
-    let flightId = 0;
-    let noteId = 0;
     const who = ev.by === me ? 'me' : 'opp';
     const mover = view.players.find((p) => p.id === ev.by);
     const say = (text: string, tone: Note['tone'], ms: number) =>
-      at(ms, () => setNote({ id: ++noteId + ev.seq * 100, text, tone }));
+      at(ms, () => setNote({ id: nextId(), text, tone }));
     if (ev.swapped)
       setAnim({
         board,
@@ -293,7 +293,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         haptic('success');
         if (evolvedNow)
           setNote({
-            id: ++noteId + ev.seq * 100,
+            id: nextId(),
             text: `${MONSTERS[evolvedNow].names[1]}!`,
             tone: 'good',
           });
@@ -301,8 +301,6 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       at(t + EVOLVE_MS, () => setEvolve(null));
       t += EVOLVE_MS;
     }
-    let popId = 0;
-    let atkId = 0;
     const petAt = (id: string, slot: number): [number, number] => {
       const spot =
         SCREEN.slots[id === me ? 'me' : 'opp'][slot] ?? SCREEN.slots[id === me ? 'me' : 'opp'][0];
@@ -343,7 +341,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         // The attack flies at the opponent's hit points (top of the screen), not at a pet.
         const [tx, ty] = HP_SPOT[target === me ? 'me' : 'opp'];
         const fx$: AttackFx = {
-          id: ++atkId + ev.seq * 100,
+          id: nextId(),
           element: f.element,
           from: [fx, fy - 12],
           group: {
@@ -368,7 +366,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
           setPops((p) => [
             ...p,
             {
-              id: ++popId + ev.seq * 100,
+              id: nextId(),
               x: Math.min(tx, 112),
               y: ty + 7,
               text: `-${f.damage}`,
@@ -381,7 +379,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         // 3. Then the pet's special ability: said out loud, healing / draining shown, tiles change next.
         at(t + ATTACK.lead + ATTACK.hit + 1450, () => {
           setNote({
-            id: ++noteId + ev.seq * 100,
+            id: nextId(),
             text: MONSTERS[f.element].effect[f.evolved ? 1 : 0],
             tone: 'info',
           });
@@ -404,7 +402,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
             ...(f.heal > 0
               ? [
                   {
-                    id: ++popId + ev.seq * 100,
+                    id: nextId(),
                     x: Math.min(HP_SPOT[f.owner === me ? 'me' : 'opp'][0], 112),
                     y: HP_SPOT[f.owner === me ? 'me' : 'opp'][1] + 7,
                     text: `+${f.heal}`,
@@ -414,8 +412,8 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
               : []),
             // The drain takes mana from both of the opponent's pets: a number over each.
             ...(f.drain
-              ? SCREEN.slots[target === me ? 'me' : 'opp'].map(([sx, sy], n) => ({
-                  id: ++popId + ev.seq * 100 + n * 10,
+              ? SCREEN.slots[target === me ? 'me' : 'opp'].map(([sx, sy]) => ({
+                  id: nextId(),
                   x: sx,
                   y: sy + 8,
                   text: `-${f.drain} mana`,
@@ -499,7 +497,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
             if (!from) return;
             flown.add(cell);
             flying.push({
-              id: ++flightId + ev.seq * 1000 + i * 100,
+              id: nextId(),
               src: g.src,
               x: from.x,
               y: from.y,
@@ -524,7 +522,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
           setSparks((sp) => [
             ...sp,
             ...cleared.slice(0, 14).map((cell) => ({
-              id: ++sparkId + ev.seq * 1000 + i * 100,
+              id: nextId(),
               cell,
               emoji: i >= 2 ? '🪙' : '✨',
               dx: Math.round((Math.random() - 0.5) * 120),
@@ -560,7 +558,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         setPops((p) => [
           ...p,
           {
-            id: ++popId + ev.seq * 100,
+            id: nextId(),
             x: Math.min(hx, 112),
             y: hy + 7,
             text: `+${ev.heal}`,
