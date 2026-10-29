@@ -81,6 +81,8 @@ export const MAX_FROZEN_KINDS = 2;
 /** Milliseconds a client needs for each step / attack, so computers wait for the animation. */
 export const STEP_MS = 650;
 export const FIRE_MS = 3700;
+/** A step that only changes tiles (Water turns tiles blue): current -> blue -> current -> blue takes this long. */
+export const CHANGE_MS = 1100;
 export const SWAP_MS = 300;
 /** The evolve animation, and the text that says "extra move" / "turn lost" after a move. */
 export const EVOLVE_MS = 1800;
@@ -656,7 +658,10 @@ function autoMove(state: MatesState, playerId: PlayerId, rng: Rng): AutoMove<Mat
 const eventMs = (e: MateEvent | null): number =>
   e
     ? SWAP_MS +
-      e.steps.length * STEP_MS +
+      e.steps.reduce(
+        (n, s) => n + (s.changed?.length && s.cleared.length === 0 ? CHANGE_MS : STEP_MS),
+        0,
+      ) +
       e.fires.length * FIRE_MS +
       (e.kind === 'evolve' ? EVOLVE_MS : 0) +
       (e.heal > 0 ? NOTE_MS : 0) +

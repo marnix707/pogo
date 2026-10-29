@@ -15,6 +15,7 @@ export {
   NOTE_MS,
   COMBO_HEAL,
   COIN_MS,
+  CHANGE_MS,
   INTRO_MS,
   DRAFT_ORDER,
   draftTurn,

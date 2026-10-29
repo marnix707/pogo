@@ -40,6 +40,7 @@ const {
   STAGE_SPECS,
   evolveCost,
   STEP_MS,
+  CHANGE_MS,
   FIRE_MS,
   SWAP_MS,
   EVOLVE_MS,
@@ -614,16 +615,33 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
             })),
           ]);
       });
-      at(t + (cleared.length > 0 ? FLASH_MS : 0), () =>
-        setAnim({
-          board: step.board,
-          flash: new Set(),
-          drops: cleared.length > 0 ? dropsFor(cleared) : undefined,
-          key: ++key,
-        }),
-      );
+      // Tiles that only change (Water's special turns some blue): they flicker current -> blue -> current -> blue,
+      // each switch with a flash of water glow, and the last blue stays.
+      const morphing = (step.changed?.length ?? 0) > 0 && cleared.length === 0;
+      if (morphing) {
+        const cells = step.changed ?? [];
+        [250, 500, 750].forEach((ms, n) => {
+          at(t + ms, () => {
+            setAnim({ board: n % 2 === 0 ? step.board : before, flash: new Set(), key: ++key });
+            tick(n + 2);
+          });
+          for (let f = 0; f < 6; f++)
+            at(t + ms + f * 40, () =>
+              setGlow({ items: cells.map((cell) => ({ cell, kind: 'water' })), frame: f }),
+            );
+        });
+        at(t + 750 + 6 * 40, () => setGlow(null));
+      } else
+        at(t + (cleared.length > 0 ? FLASH_MS : 0), () =>
+          setAnim({
+            board: step.board,
+            flash: new Set(),
+            drops: cleared.length > 0 ? dropsFor(cleared) : undefined,
+            key: ++key,
+          }),
+        );
       board = step.board;
-      t += STEP_MS;
+      t += morphing ? CHANGE_MS : STEP_MS;
     });
     fireAt(ev.steps.length);
     at(t, () => {
