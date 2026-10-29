@@ -26,6 +26,7 @@ import {
 } from './art';
 import { ATTACK, Attack, Digits } from './Attack';
 import { Blast } from './Blast';
+import { FitText } from './FitText';
 import type { AttackFx } from './Attack';
 import { Coin } from './Coin';
 import { Pick } from './Pick';
@@ -841,6 +842,8 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   const stage = view.stage ?? 'stadium';
 
   // Tapping one of my pets: its pop-up with both forms and the Evolve / Boost button (berries as a loading bar).
+  // The screen of the game: every text that says something is kept inside it (FitText).
+  const stageRef = useRef<HTMLDivElement>(null);
   const petInfo = usePetInfo((element) => {
     const slot = mine.monsters.findIndex((m) => m.element === element);
     const pet = mine.monsters[slot];
@@ -1123,6 +1126,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
           opacity: coin ? 0 : 1,
           animation: intro ? 'mates-intro-fade 500ms ease-out both' : undefined,
         }}
+        ref={stageRef}
         data-testid="mates-arena"
       >
         {/* The art is 140 px wide; a few pixels are cropped off each side so the borders are slim. */}
@@ -1460,11 +1464,13 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                 </span>
               ))}
               {note && (
-                <span
+                <FitText
                   key={note.id}
-                  data-testid="mates-note"
-                  role="status"
-                  className={`absolute w-max max-w-[150%] -translate-x-1/2 -translate-y-1/2 text-center font-black [text-shadow:0_3px_0_#101628,0_0_12px_#000] ${
+                  x={note.x}
+                  y={note.y}
+                  bounds={stageRef}
+                  testId="mates-note"
+                  className={`font-black [text-shadow:0_3px_0_#101628,0_0_12px_#000] ${
                     note.tone === 'bad'
                       ? 'text-red-300'
                       : note.tone === 'good'
@@ -1472,29 +1478,28 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                         : 'text-yellow-200'
                   }`}
                   style={{
-                    left: `${note.x}%`,
-                    top: `${note.y}%`,
                     fontSize: '5.2cqw',
                     animation: `mates-note ${NOTE_MS + 200}ms ease-out forwards`,
                   }}
                 >
                   {note.text}
-                </span>
+                </FitText>
               )}
               {combo && (
-                <span
+                <FitText
                   key={combo.id}
-                  data-testid="mates-combo"
-                  className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-black text-yellow-300 [text-shadow:0_3px_0_#101628,0_0_14px_#ff9d00]"
+                  x={combo.x}
+                  y={combo.y}
+                  bounds={stageRef}
+                  testId="mates-combo"
+                  className="whitespace-nowrap font-black text-yellow-300 [text-shadow:0_3px_0_#101628,0_0_14px_#ff9d00]"
                   style={{
-                    left: `${combo.x}%`,
-                    top: `${combo.y}%`,
                     fontSize: `${Math.min(9, 4.5 + combo.level * 0.8)}cqw`,
                     animation: 'mates-combo 900ms ease-out forwards',
                   }}
                 >
                   CHAIN x{combo.level}!
-                </span>
+                </FitText>
               )}
             </div>
           </div>

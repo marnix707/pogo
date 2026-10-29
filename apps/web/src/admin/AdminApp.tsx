@@ -4,6 +4,7 @@ import { displayName, MODERATOR_MAX_BAN_MINUTES, TITLE_MAX } from '@pogo/shared'
 import type {
   AdminAuditRow,
   AdminBanRow,
+  AdminChatRow,
   AdminRoomRow,
   AdminUserRow,
   PublicUser,
@@ -13,6 +14,7 @@ import { AvatarFace } from '../components/AvatarFace';
 import { TopoBackground } from '../components/TopoBackground';
 import { PlayerName } from '../components/PlayerName';
 import { Button, Sheet } from '../components/ui';
+import { ChatList, Chats, Matches, Overview, PlayerActivity } from './AdminViews';
 import {
   adminLogin,
   adminLogout,
@@ -22,6 +24,7 @@ import {
   kickUser,
   listAudit,
   listBans,
+  listChats,
   listRooms,
   listUsers,
   recoveryLink,
@@ -35,7 +38,7 @@ import {
 export const isAdminSite = () =>
   window.location.hostname.startsWith('admin.') || window.location.pathname.startsWith('/admin');
 
-type Tab = 'players' | 'rooms' | 'bans' | 'log';
+type Tab = 'overview' | 'players' | 'rooms' | 'matches' | 'chats' | 'bans' | 'log';
 
 const field =
   'hud min-h-11 w-full bg-panel px-3 text-ink outline-none placeholder:text-muted/50 focus:!border-neon';
@@ -149,6 +152,8 @@ function PlayerSheet({
   useEffect(() => setView('menu'), [row?.id]);
   const moderatable = !!row && row.id !== me.id && !sameOrHigher;
   const entries: { id: PlayerView; label: string; hint: string }[] = [
+    { id: 'matches' as const, label: 'Matches', hint: 'Their last games' },
+    { id: 'chat' as const, label: 'Chat', hint: 'Their latest room messages' },
     ...(me.isDev && row && !row.isGuest
       ? [{ id: 'titles' as const, label: 'Prefix & suffix', hint: 'Text around the name' }]
       : []),
@@ -281,6 +286,9 @@ function PlayerSheet({
                 </div>
               )}
               {view === 'recovery' && <RecoveryPanel row={row} onError={onError} />}
+              {(view === 'matches' || view === 'chat') && (
+                <PlayerActivity userId={row.id} kind={view} onError={onError} />
+              )}
               {view === 'role' && (
                 <div className="hud flex flex-col gap-2 p-3">
                   <div className="label">Role & dev tag</div>
@@ -361,7 +369,7 @@ function RecoveryPanel({ row, onError }: { row: AdminUserRow; onError: (m: strin
   );
 }
 
-type PlayerView = 'menu' | 'titles' | 'kick' | 'ban' | 'role' | 'recovery';
+type PlayerView = 'menu' | 'titles' | 'kick' | 'ban' | 'role' | 'recovery' | 'matches' | 'chat';
 
 type Show = 'registered' | 'everyone' | 'guests';
 type Sort = 'seen' | 'joined' | 'name';
@@ -495,6 +503,9 @@ function Players({ me, onError }: { me: PublicUser; onError: (m: string) => void
 
 function Rooms({ onError }: { onError: (m: string) => void }) {
   const [rooms, setRooms] = useState<AdminRoomRow[]>([]);
+  // Tap a room to read its chat (the feed filtered to that room).
+  const [open, setOpen] = useState<string | null>(null);
+  const [chats, setChats] = useState<AdminChatRow[] | null>(null);
   useEffect(() => {
     const load = () =>
       listRooms()
@@ -504,19 +515,49 @@ function Rooms({ onError }: { onError: (m: string) => void }) {
     const t = setInterval(load, 4000);
     return () => clearInterval(t);
   }, [onError]);
+  useEffect(() => {
+    setChats(null);
+    if (!open) return;
+    const load = () =>
+      listChats({ room: open })
+        .then(setChats)
+        .catch((e: Error) => onError(e.message));
+    void load();
+    const t = setInterval(load, 3000);
+    return () => clearInterval(t);
+  }, [open, onError]);
   return (
     <ul className="flex flex-col gap-2" data-testid="admin-rooms">
       {rooms.map((r) => (
         <li key={r.code} className="hud p-3">
-          <div className="flex items-center gap-2">
-            <b>{r.code}</b>
-            <Badge>{r.gameId}</Badge>
-            <Badge>{r.status}</Badge>
-            <Badge>{r.visibility}</Badge>
-          </div>
-          <div className="mt-1 text-sm opacity-80">
-            {r.members.map((m) => `${m.nickname}${m.bot ? ' (cpu)' : ''}`).join(', ')}
-          </div>
+          <button
+            className="block w-full text-left"
+            onClick={() => setOpen(open === r.code ? null : r.code)}
+            data-testid={`admin-room-${r.code}`}
+          >
+            <div className="flex items-center gap-2">
+              <b>{r.code}</b>
+              <Badge>{r.gameId}</Badge>
+              <Badge>{r.status}</Badge>
+              <Badge>{r.visibility}</Badge>
+              <span className="flex-1" />
+              <span className="text-xs opacity-70">
+                {when(r.createdAt)} · {r.chatCount} messages
+              </span>
+            </div>
+            <div className="mt-1 text-sm opacity-80">
+              host {r.host}:{' '}
+              {r.members
+                .map((m) => `${m.nickname}${m.bot ? ' (cpu)' : ''}${m.connected ? '' : ' (away)'}`)
+                .join(', ')}
+              {r.spectators > 0 && ` · ${r.spectators} watching`}
+            </div>
+          </button>
+          {open === r.code && (
+            <div className="mt-2" data-testid="admin-room-chat">
+              {chats === null ? <p className="label">Loading…</p> : <ChatList chats={chats} />}
+            </div>
+          )}
         </li>
       ))}
       {rooms.length === 0 && <li className="p-4 text-center opacity-70">No rooms right now</li>}
@@ -683,7 +724,7 @@ function TitlesEditor({
 export function AdminApp() {
   const [me, setMe] = useState<PublicUser | null>(null);
   const [checking, setChecking] = useState(!!adminToken());
-  const [tab, setTab] = useState<Tab>('players');
+  const [tab, setTab] = useState<Tab>('overview');
   const [error, setError] = useState('');
   const showError = useCallback((m: string) => setError(m), []);
 
@@ -697,8 +738,11 @@ export function AdminApp() {
   }, []);
 
   const tabs: [Tab, string][] = [
+    ['overview', 'Overview'],
     ['players', 'Players'],
     ['rooms', 'Rooms'],
+    ['matches', 'Matches'],
+    ['chats', 'Chats'],
     ['bans', 'Bans'],
     ['log', 'Log'],
   ];
@@ -728,13 +772,13 @@ export function AdminApp() {
               Log out
             </button>
           </header>
-          <nav className="mb-4 flex gap-2">
+          <nav className="mb-4 flex flex-wrap gap-2">
             {tabs.map(([id, label]) => (
               <button
                 key={id}
                 data-testid={`admin-tab-${id}`}
                 onClick={() => setTab(id)}
-                className={`label flex-1 rounded-[8px] border-2 px-3 py-2 ${tab === id ? 'border-neon bg-neon text-accentink' : 'border-edge/50 bg-panel2 text-onbg'}`}
+                className={`label min-w-[5.5rem] flex-1 rounded-[8px] border-2 px-3 py-2 ${tab === id ? 'border-neon bg-neon text-accentink' : 'border-edge/50 bg-panel2 text-onbg'}`}
               >
                 {label}
               </button>
@@ -749,8 +793,11 @@ export function AdminApp() {
               {error}
             </p>
           )}
+          {tab === 'overview' && <Overview onError={showError} />}
           {tab === 'players' && <Players me={me} onError={showError} />}
           {tab === 'rooms' && <Rooms onError={showError} />}
+          {tab === 'matches' && <Matches onError={showError} />}
+          {tab === 'chats' && <Chats onError={showError} />}
           {tab === 'bans' && <Bans onError={showError} />}
           {tab === 'log' && <Log onError={showError} />}
         </div>

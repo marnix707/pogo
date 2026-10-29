@@ -2,6 +2,9 @@ import { formatError } from '@pogo/shared';
 import type {
   AdminAuditRow,
   AdminBanRow,
+  AdminChatRow,
+  AdminMatchRow,
+  AdminOverview,
   AdminRoomRow,
   AdminUserRow,
   AuthResponse,
@@ -88,3 +91,25 @@ export const recoveryLink = (id: string) =>
 
 export const setTitles = (id: string, prefix: string, suffix: string) =>
   call('POST', `/api/admin/users/${id}/titles`, { prefix, suffix });
+
+export const getOverview = () => call<AdminOverview>('GET', '/api/admin/overview');
+/** The latest finished games of everybody, optionally one game. */
+export const listMatches = (game?: string) =>
+  call<{ matches: AdminMatchRow[] }>(
+    'GET',
+    `/api/admin/matches${game ? `?game=${encodeURIComponent(game)}` : ''}`,
+  ).then((r) => r.matches);
+/** One player's last games. */
+export const listUserMatches = (userId: string) =>
+  call<{ matches: AdminMatchRow[] }>(
+    'GET',
+    `/api/admin/matches?user=${encodeURIComponent(userId)}`,
+  ).then((r) => r.matches);
+/** The room chat feed (the latest 500 messages of all rooms), optionally one room / player / word. */
+export const listChats = (filter: { room?: string; user?: string; q?: string } = {}) => {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(filter)) if (v) params.set(k, v);
+  return call<{ chats: AdminChatRow[] }>('GET', `/api/admin/chats?${params.toString()}`).then(
+    (r) => r.chats,
+  );
+};
