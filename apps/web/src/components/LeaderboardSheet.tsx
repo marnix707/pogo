@@ -48,6 +48,7 @@ export function LeaderboardSheet({
       onClose={onClose}
       title={tab === 'board' ? 'Leaderboard' : 'Match history'}
       full
+      titleClass="pl-1.5"
     >
       {/* The two tabs: a blue pill glides from one to the other. */}
       <div

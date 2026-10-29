@@ -97,6 +97,7 @@ export function Sheet({
   children,
   full = false,
   from = 'bottom',
+  titleClass = '',
   dim = true,
 }: {
   open: boolean;
@@ -107,6 +108,8 @@ export function Sheet({
   full?: boolean;
   /** Slide in from the top instead of the bottom (the settings). */
   from?: 'bottom' | 'top';
+  /** Extra classes for the title (e.g. to nudge it into line with the content below). */
+  titleClass?: string;
   /** Dim the page behind it (an undimmed sheet still closes on a tap outside it). */
   dim?: boolean;
 }) {
@@ -194,7 +197,7 @@ export function Sheet({
       >
         {!top && grabber}
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold uppercase tracking-[0.16em]">{title}</h2>
+          <h2 className={`text-lg font-bold uppercase tracking-[0.16em] ${titleClass}`}>{title}</h2>
           <button
             onClick={onClose}
             aria-label="Close"
