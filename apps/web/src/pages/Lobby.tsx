@@ -1,6 +1,7 @@
 import { PlayerName } from '../components/PlayerName';
 import { ProfileTap } from '../friends/ProfileTap';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import frogUrl from '../assets/sprites/brand/frog.svg';
 import { BOT_AVATAR, BOT_NAMES, getGame } from '@pogo/shared';
 import type {
   AVATARS,
@@ -213,27 +214,9 @@ export function Lobby({
   const taken = new Set(room.members.map((m) => m.nickname.toLowerCase()));
   const freeNames = BOT_NAMES.filter((n) => !taken.has(n.toLowerCase()));
   const botSeats = Array.from({ length: room.bots }, (_, i) => freeNames[i] ?? `Bot ${i + 1}`);
-  const link = `${window.location.origin}/?join=${room.code}`;
 
   // The chat is on screen here, so everything counts as read.
   useEffect(markRead, [markRead, messages.length]);
-
-  async function share() {
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: 'Join my POGO game',
-          text: `Join me on POGO! Code: ${room.code}`,
-          url: link,
-        });
-        return;
-      }
-      await navigator.clipboard.writeText(link);
-      toast.show('Invite link copied');
-    } catch {
-      // Share sheet dismissed or clipboard blocked: nothing to do.
-    }
-  }
 
   return (
     <div className="menu mx-auto flex min-h-dvh max-w-md flex-col">
@@ -263,14 +246,23 @@ export function Lobby({
                   />
                 </button>
                 <FriendsButton className="calm !h-12 !w-12" />
-                <Button
-                  variant="secondary"
-                  aria-label="Invite friends"
-                  className="min-h-12 shrink-0 !px-3"
-                  onClick={() => void share()}
+                <span className="flex-1" />
+                {/* Pogo the frog in the middle of the bar: tap to leave the lobby for the main screen. */}
+                <button
+                  type="button"
+                  onClick={() => void api.leave()}
+                  aria-label="Main screen"
+                  data-testid="lobby-frog"
+                  className="shrink-0 active:translate-y-px"
                 >
-                  Invite
-                </Button>
+                  <img
+                    src={frogUrl}
+                    alt=""
+                    draggable={false}
+                    className="block h-10 w-12"
+                    style={{ imageRendering: 'pixelated' }}
+                  />
+                </button>
                 <span className="flex-1" />
                 <TileButton
                   onClick={() => setBoardOpen(true)}

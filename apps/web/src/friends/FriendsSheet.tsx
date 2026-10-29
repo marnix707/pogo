@@ -6,6 +6,7 @@ import { DetentSheet } from '../components/DetentSheet';
 import { PlayerName } from '../components/PlayerName';
 import { useToast } from '../components/Toast';
 import type { FriendsApi } from '../lib/friendsApi';
+import { shareRoomLink } from '../lib/shareRoom';
 
 type Tab = 'friends' | 'requests' | 'find';
 
@@ -93,7 +94,28 @@ export function FriendsSheet({
   );
 
   return (
-    <DetentSheet open={open} onClose={onClose} title="Friends">
+    <DetentSheet
+      open={open}
+      onClose={onClose}
+      title="Friends"
+      headerAction={
+        inLobbyCode && (
+          <Button
+            variant="secondary"
+            aria-label="Invite friends"
+            data-testid="friends-share"
+            className="min-h-10 !px-3"
+            onClick={() =>
+              void shareRoomLink(inLobbyCode).then((copied) => {
+                if (copied) toast.show('Invite link copied');
+              })
+            }
+          >
+            Invite
+          </Button>
+        )
+      }
+    >
       {!enabled ? (
         <p className="py-6 text-center" data-testid="friends-guest">
           Register an account (open your profile) to add friends, message them and invite them to

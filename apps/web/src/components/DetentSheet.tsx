@@ -27,11 +27,14 @@ export function DetentSheet({
   open,
   onClose,
   title,
+  headerAction,
   children,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
+  /** Sits in the header, just left of the close button. */
+  headerAction?: ReactNode;
   children: ReactNode;
 }) {
   const [mounted, setMounted] = useState(open);
@@ -198,13 +201,16 @@ export function DetentSheet({
           />
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold uppercase tracking-[0.16em]">{title}</h2>
-            <button
-              onClick={close}
-              aria-label="Close"
-              className="flex h-10 w-10 items-center justify-center rounded-md border-2 border-edge/50 text-neon"
-            >
-              <CloseIcon className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              {headerAction}
+              <button
+                onClick={close}
+                aria-label="Close"
+                className="flex h-10 w-10 items-center justify-center rounded-md border-2 border-edge/50 text-neon"
+              >
+                <CloseIcon className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         </div>
         {/* At half height the content cannot scroll: a drag anywhere moves the sheet up (like iOS). */}
