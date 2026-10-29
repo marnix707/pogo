@@ -47,7 +47,11 @@ export function LeaderboardSheet({
       title={tab === 'board' ? 'Leaderboard' : 'Match history'}
       full
     >
-      <div className="mb-3 grid grid-cols-2 gap-2" role="tablist">
+      <div
+        className="mb-4 grid grid-cols-2 gap-1.5 rounded-lg border-2 border-accent bg-[#1b2c4d] p-1.5"
+        role="tablist"
+        data-testid="board-tabs"
+      >
         {(
           [
             ['board', 'Leaderboard'],
@@ -61,8 +65,10 @@ export function LeaderboardSheet({
             aria-selected={tab === id}
             data-testid={`board-tab-${id}`}
             onClick={() => setTab(id)}
-            className={`label min-h-10 rounded-md border-2 px-3 ${
-              tab === id ? 'border-neon bg-neon text-accentink' : 'border-edge/50 text-ink'
+            className={`min-h-12 rounded-md border-2 px-3 text-sm font-bold uppercase tracking-[0.1em] ${
+              tab === id
+                ? 'border-accent bg-accent text-accentink shadow-[0_3px_0_#0081d3]'
+                : 'border-transparent text-[#f7f1e4]'
             }`}
           >
             {label}
