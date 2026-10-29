@@ -22,6 +22,9 @@ import { AvatarFace } from '../components/AvatarFace';
 /** The logo sits this many px below the exact midpoint, so its tilted corner stays clear of the top bar. */
 const LOGO_NUDGE = 16;
 
+/** How long the name takes to scroll along `px` pixels (slow: about 40 px a second). */
+const scrollMs = (px: number) => (px > 0 ? Math.max(600, px * 25) : 0);
+
 export function Home({
   user,
   api,
@@ -66,17 +69,30 @@ export function Home({
   const swipe = useRef<{ x: number; y: number } | null>(null);
   // Opening animation: the menu only slides in when Pogo lands on his stick (once per page load).
   const [landed, setLanded] = useState(introDone);
-  // "Playing as <name>" slides out when the screen is there and back after 5 seconds.
-  const [nameOut, setNameOut] = useState(false);
+  // "Playing as <name>": slides in, stays 1 s, slowly scrolls along until the end of the name shows (a long name
+  // with prefix / suffix is wider than the box), stays 1 s, then swipes away fast.
+  const [namePhase, setNamePhase] = useState<'hidden' | 'in' | 'scroll' | 'away'>('hidden');
+  const nameBox = useRef<HTMLDivElement>(null);
+  const nameText = useRef<HTMLParagraphElement>(null);
+  const [nameShift, setNameShift] = useState(0);
   useEffect(() => {
     if (!landed) return;
-    const out = setTimeout(() => setNameOut(true), 300);
-    const back = setTimeout(() => setNameOut(false), 5300);
-    return () => {
-      clearTimeout(out);
-      clearTimeout(back);
-    };
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const at = (ms: number, fn: () => void) => timers.push(setTimeout(fn, ms));
+    const IN_MS = 500;
+    at(300, () => setNamePhase('in'));
+    at(300 + IN_MS + 1000, () => {
+      const over = Math.max(
+        0,
+        (nameText.current?.scrollWidth ?? 0) - (nameBox.current?.clientWidth ?? 0),
+      );
+      setNameShift(over);
+      setNamePhase('scroll');
+      at(scrollMs(over) + 1000, () => setNamePhase('away'));
+    });
+    return () => timers.forEach(clearTimeout);
   }, [landed]);
+  const nameOut = namePhase === 'in' || namePhase === 'scroll';
   const [developer, setDeveloper] = useState<string | null>(null);
   useEffect(() => {
     void fetchDeveloper().then(setDeveloper);
@@ -173,10 +189,25 @@ export function Home({
             className="min-w-0 flex-1 overflow-hidden"
             data-testid="home-playing-as"
             data-open={nameOut}
+            ref={nameBox}
           >
             <p
-              className="label w-max whitespace-nowrap text-onbg/70 transition-transform duration-500 ease-out motion-reduce:transition-none"
-              style={{ transform: nameOut ? 'none' : 'translateX(-120%)' }}
+              ref={nameText}
+              className="label w-max whitespace-nowrap text-onbg/70 motion-reduce:transition-none"
+              style={{
+                transform:
+                  namePhase === 'hidden' || namePhase === 'away'
+                    ? 'translateX(calc(-100% - 12px))'
+                    : namePhase === 'scroll'
+                      ? `translateX(${-nameShift}px)`
+                      : 'none',
+                transition:
+                  namePhase === 'scroll'
+                    ? `transform ${scrollMs(nameShift)}ms linear`
+                    : namePhase === 'away'
+                      ? 'transform 220ms ease-in'
+                      : 'transform 500ms ease-out',
+              }}
             >
               Playing as{' '}
               <span data-testid="home-nickname" className="text-onbg">
@@ -224,7 +255,8 @@ export function Home({
             <div data-in={landed} className="slide-bottom flex flex-col gap-4">
               {online !== null && online > 1 && (
                 <p className="label text-center text-onbg/70" data-testid="home-online">
-                  There {online === 2 ? 'is 1 more player' : `are ${online - 1} more players`} online
+                  There {online === 2 ? 'is 1 more player' : `are ${online - 1} more players`}{' '}
+                  online
                 </p>
               )}
               <Button
