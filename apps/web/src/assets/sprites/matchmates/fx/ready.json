@@ -1,0 +1,19 @@
+{
+ "canvas": [
+  7,
+  7
+ ],
+ "centre": [
+  3,
+  3
+ ],
+ "ms_per_frame": [
+  110,
+  110,
+  140,
+  110
+ ],
+ "loop": true,
+ "files": "ready-<element>-animated.svg (+ -00..03)",
+ "use": "particles rising round a pet whose berries are full; motion in code"
+}

@@ -18,6 +18,7 @@ import {
   arenaEdgeColors,
   berryShineUrl,
   portraitUrl,
+  readySparkleUrl,
   tileUrl,
 } from './art';
 import { ATTACK, Attack, Digits } from './Attack';
@@ -121,6 +122,15 @@ interface GlowState {
 }
 /** Where each player's hit points are on the screen (art pixels): attacks fly there. */
 const HP_SPOT = { me: [24, 37], opp: [128, 37] } as const;
+/** The sparkles round a ready pet: sideways spot (% of the pet's width from its middle) and start delay. */
+const READY_SPARKLES: readonly (readonly [number, number])[] = [
+  [-48, 0],
+  [38, 300],
+  [-20, 700],
+  [8, 1000],
+  [50, 1300],
+  [-36, 1500],
+];
 const ELEMENT_COLOR: Record<matchmates.Element, string> = {
   fire: '#eb6b43',
   water: '#3aaef7',
@@ -874,7 +884,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       <style>{`
         @keyframes mates-lunge { 0%{transform:translateX(0)} 40%{transform:translateX(var(--lunge))} 100%{transform:translateX(0)} }
         @keyframes mates-dmg { 0%{opacity:0;transform:translateX(-50%) translateY(10px) scale(.5)} 18%{opacity:1;transform:translateX(-50%) translateY(8px) scale(1.6)} 50%{opacity:1;transform:translateX(-50%) translateY(8px) scale(1.6) rotate(-45deg)} 85%{opacity:1;transform:translateX(-50%) translateY(-6px) scale(.8) rotate(0)} 100%{opacity:0;transform:translateX(-50%) translateY(-10px) scale(.4)} }
-        @keyframes mates-ready { 0%,100%{opacity:.15} 50%{opacity:.9} }
+        @keyframes mates-sparkle { 0%{transform:translateY(0);opacity:0} 10%{opacity:1} 80%{opacity:1} 100%{transform:translateY(-310%);opacity:0} }
         @keyframes mates-heal { 0%{opacity:0;transform:translateX(-50%) translateY(-8px) scale(.4)} 25%{opacity:1;transform:translateX(-50%) translateY(2px) scale(1.4)} 60%{opacity:1;transform:translateX(-50%) translateY(10px) scale(1.6)} 100%{opacity:0;transform:translateX(-50%) translateY(16px) scale(1.2)} }
         @keyframes mates-pop { 0%{opacity:0;transform:translateY(0) scale(.6)} 20%{opacity:1;transform:translateY(-6px) scale(1.2)} 100%{opacity:0;transform:translateY(-28px) scale(1)} }
         @keyframes mates-flash { 0%{transform:scale(1);filter:none} 45%{transform:scale(1.25);filter:brightness(2.4)} 100%{transform:scale(0);opacity:0} }
@@ -943,17 +953,30 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                     onClick={(e) => petInfo.open(e, m.element, shownEvolved)}
                     data-testid={`mates-monster-${who}-${slot}`}
                   >
-                    {/* Berries are full: my pets glow, fading in and out, so I know I can evolve / boost. */}
+                    {/* Berries are full: pixel sparkles rise round my pets, so I know I can evolve / boost. */}
                     {who === 'me' && mine.berries >= evolveCost(stage) && !evolving && (
                       <span
                         aria-hidden
                         data-testid="mates-ready-glow"
-                        className="pointer-events-none absolute left-1/2 top-1/2 h-[190%] w-[190%] -translate-x-1/2 -translate-y-1/2 rounded-full"
-                        style={{
-                          background: `radial-gradient(circle, ${color}ee 0%, ${color}77 35%, ${color}00 70%)`,
-                          animation: 'mates-ready 1.8s ease-in-out infinite',
-                        }}
-                      />
+                        className="pointer-events-none"
+                      >
+                        {READY_SPARKLES.map(([dx, delay], n) => (
+                          <img
+                            key={n}
+                            src={readySparkleUrl(m.element)}
+                            alt=""
+                            draggable={false}
+                            className="absolute"
+                            style={{
+                              ...px,
+                              left: `${50 + dx}%`,
+                              bottom: '0%',
+                              width: `${(7 / w) * 100}%`,
+                              animation: `mates-sparkle 1800ms steps(9) ${delay}ms infinite backwards`,
+                            }}
+                          />
+                        ))}
+                      </span>
                     )}
                     {evolving && (
                       <span

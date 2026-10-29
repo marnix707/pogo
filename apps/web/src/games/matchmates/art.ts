@@ -72,6 +72,15 @@ const attack = loadNested(
     { eager: true, query: '?url', import: 'default' },
   ) as Urls,
 );
+const fx = load(
+  import.meta.glob('../../assets/sprites/matchmates/fx/*-animated.svg', {
+    eager: true,
+    query: '?url',
+    import: 'default',
+  }) as Urls,
+);
+/** The twinkling pixel sparkle of an element (7x7 art px): it rises round a pet that can evolve / boost. */
+export const readySparkleUrl = (element: string): string => fx[`ready-${element}-animated`] ?? '';
 const digits = load(
   import.meta.glob('../../assets/sprites/matchmates/attack/damage-digits/*.svg', {
     eager: true,
@@ -155,6 +164,7 @@ export const allArt = (): string[] => [
   ...Object.values(glow),
   ...Object.values(attack),
   ...Object.values(digits),
+  ...Object.values(fx),
   boardPanelUrl,
 ];
 
