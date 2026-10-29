@@ -332,17 +332,6 @@ function freeze(c: Ctx) {
   for (const cell of c.board) if (kinds.includes(cell.k)) cell.frozen = true;
 }
 
-function ensureMoves(c: Ctx) {
-  if (legalSwaps(c.board).length > 0) return;
-  // Frozen tiles may be all that stands in the way: thaw them before shuffling.
-  if (c.board.some((cell) => cell.frozen)) {
-    for (const cell of c.board) delete cell.frozen;
-    if (legalSwaps(c.board).length > 0) return;
-  }
-  c.board = createBoard(c.rng);
-  c.steps.push({ cleared: [], board: clone(c.board), shuffled: true });
-}
-
 /** Turn-start effects of the stage on the board. */
 function stageTurnStart(board: MateCell[], stage: StageId, rng: Rng) {
   if (stage === 'reactor' && board.filter((x) => x.k === 'bomb').length < MAX_BOMBS) {
@@ -468,7 +457,6 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
     event.slot = move.slot;
     settle(c);
   }
-  if (c.opp.hp > 0) ensureMoves(c);
 
   event.longest = c.longest;
   event.noMatch = noMatch;

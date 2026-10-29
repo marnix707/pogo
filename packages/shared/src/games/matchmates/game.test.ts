@@ -233,7 +233,6 @@ describe('Pet Match', () => {
   it('a swap that matches nothing keeps the tiles swapped and only costs the move', () => {
     const base = start(4);
     const board = quiet();
-    // (Some other move must exist, or the board would be reshuffled.)
     set(board, 0, 0, 'fire');
     set(board, 0, 1, 'fire');
     set(board, 0, 2, 'water');
@@ -297,6 +296,17 @@ describe('Pet Match', () => {
     );
     expect(after.lastEvent?.longest).toBeGreaterThanOrEqual(6);
     expect(after.lastEvent).toMatchObject({ heal: 5, extraMove: true });
+  });
+
+  it('the board is never reshuffled: with no matching swap left the tiles just stay', () => {
+    const base = start(4);
+    const board = quiet(); // no swap here makes a match
+    expect(legalSwaps(board)).toHaveLength(0);
+    const s: MatesState = { ...base, board, turn: 'a', first: 'a', movesLeft: 2 };
+    const after = matesGame.applyMove(s, 'a', { type: 'swap', a: 0, b: 1 }, createSeededRng(1));
+    expect(after.lastEvent?.steps).toHaveLength(0);
+    expect(after.board[0]!.k).toBe(board[1]!.k);
+    expect(after.board.slice(2).map((c) => c.k)).toEqual(board.slice(2).map((c) => c.k));
   });
 
   it('a line of five heals 5 and gives an extra move', () => {

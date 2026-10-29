@@ -72,8 +72,6 @@ export interface MateStep {
   changed?: number[];
   /** An ability cleared these squares (a column, a block). */
   ability?: true;
-  /** No move was left: a fresh board. */
-  shuffled?: true;
 }
 
 export interface MateFire {
