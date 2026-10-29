@@ -433,15 +433,17 @@ export function createPrismaUserStore(prisma: PrismaClient): UserStore {
       return rows.map((r) => toHistory(r.matchId, r.gameId, r.playedAt.getTime(), r.summary));
     },
     async leaderboard(gameId, limit) {
+      // 'all' = every game together (played and won over all of them).
+      const game = gameId === ALL_GAMES ? {} : { gameId };
       const grouped = await prisma.gameResult.groupBy({
         by: ['userId'],
-        where: { gameId, user: { isGuest: false } },
+        where: { ...game, user: { isGuest: false } },
         _count: { _all: true },
         _max: { score: true },
       });
       const wins = await prisma.gameResult.groupBy({
         by: ['userId'],
-        where: { gameId, rank: 1, user: { isGuest: false } },
+        where: { ...game, rank: 1, user: { isGuest: false } },
         _count: { _all: true },
       });
       const winMap = new Map(wins.map((w) => [w.userId, w._count._all]));
@@ -586,6 +588,9 @@ function toHistory(
   }>;
   return { matchId, gameId, playedAt, players: s.players ?? [], detail: s.detail ?? null };
 }
+
+/** The leaderboard pseudo game that adds up every game. */
+export const ALL_GAMES = 'all';
 
 function ordering(gameId: string, a: LeaderboardEntry, b: LeaderboardEntry): number {
   if (gameId === 'yatzy') return b.bestScore - a.bestScore || b.wins - a.wins;
@@ -791,11 +796,12 @@ export function createMemoryUserStore(): UserStore {
         .map((r) => toHistory(r.matchId, r.gameId, r.playedAt, r.summary ?? null));
     },
     async leaderboard(gameId, limit) {
-      const ids = [...new Set(results.filter((r) => r.gameId === gameId).map((r) => r.userId))];
+      const inGame = (r: { gameId: string }) => gameId === ALL_GAMES || r.gameId === gameId;
+      const ids = [...new Set(results.filter(inGame).map((r) => r.userId))];
       return ids
         .filter((id) => users.get(id)?.isGuest === false)
         .map((id) => {
-          const mine = results.filter((r) => r.userId === id && r.gameId === gameId);
+          const mine = results.filter((r) => r.userId === id && inGame(r));
           const u = users.get(id)!;
           return {
             userId: id,

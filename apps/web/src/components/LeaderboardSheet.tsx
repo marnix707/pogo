@@ -26,7 +26,7 @@ export function LeaderboardSheet({
   const [tab, setTab] = useState<'board' | 'history'>('board');
   // The history is only fetched once its tab has been opened (then it stays loaded).
   const [historySeen, setHistorySeen] = useState(false);
-  const [game, setGame] = useState(gameUis[0]?.id ?? 'yatzy');
+  const [game, setGame] = useState('all');
   const [rows, setRows] = useState<LeaderboardRow[] | null>(null);
   const [error, setError] = useState(false);
 
@@ -99,6 +99,18 @@ export function LeaderboardSheet({
             data-testid="board-pane"
           >
             <div className="mb-3 flex flex-wrap gap-2">
+              <button
+                aria-pressed={game === 'all'}
+                data-testid="board-game-all"
+                onClick={() => setGame('all')}
+                className={`label min-h-9 rounded-md border-2 px-3 ${
+                  game === 'all'
+                    ? 'border-accent bg-accent text-accentink'
+                    : 'border-edge/50 text-ink'
+                }`}
+              >
+                All
+              </button>
               {gameUis.map((g) => (
                 <button
                   key={g.id}

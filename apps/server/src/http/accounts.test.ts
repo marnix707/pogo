@@ -286,6 +286,12 @@ describe('stats, leaderboard and merge', () => {
     const board = (await call('GET', '/api/leaderboard?game=yatzy')).json().entries;
     expect(board.map((e: { nickname: string }) => e.nickname)).toContain('Champ');
     expect(board.map((e: { nickname: string }) => e.nickname)).not.toContain('JustGuest');
+    // 'all' adds up every game.
+    const all = (await call('GET', '/api/leaderboard?game=all')).json().entries;
+    expect(all.find((e: { nickname: string }) => e.nickname === 'Champ')).toMatchObject({
+      games: 2,
+      wins: 2,
+    });
   });
 
   it('records each match once and ignores computer players', async () => {
