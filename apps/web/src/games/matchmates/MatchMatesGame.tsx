@@ -1567,12 +1567,12 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
               )}
             </div>
           </div>
-          {/* Not my turn: the field is dimmed to half brightness. */}
+          {/* Not my turn: the field is dimmed to 70 % brightness. */}
           <div
             aria-hidden
             data-testid="mates-dim"
             data-on={!showTurn(me) && !finished}
-            className="pointer-events-none absolute bg-black/50 transition-opacity duration-300"
+            className="pointer-events-none absolute bg-black/30 transition-opacity duration-300"
             style={{
               ...at(SCREEN.panel.x, SCREEN.panel.y, SCREEN.panel.w),
               aspectRatio: `${SCREEN.panel.w} / ${SCREEN.panel.h}`,
