@@ -99,6 +99,7 @@ export function Sheet({
   from = 'bottom',
   titleClass = '',
   dim = true,
+  bare = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -112,6 +113,8 @@ export function Sheet({
   titleClass?: string;
   /** Dim the page behind it (an undimmed sheet still closes on a tap outside it). */
   dim?: boolean;
+  /** No title row: the content brings its own header (and close button); the title stays as the aria label. */
+  bare?: boolean;
 }) {
   const top = from === 'top';
   const [mounted, setMounted] = useState(open);
@@ -160,7 +163,7 @@ export function Sheet({
   if (!mounted) return null;
   const grabber = (
     <div
-      className={`-mx-5 flex touch-none select-none justify-center py-2 ${top ? 'mt-2' : 'mb-2'}`}
+      className={`-mx-5 flex touch-none select-none justify-center py-2 ${top ? 'mt-2' : bare ? '-mb-1' : 'mb-2'}`}
       data-testid="sheet-handle"
       {...handle}
     >
@@ -196,16 +199,20 @@ export function Sheet({
         } ${full ? 'flex h-[94dvh] flex-col overflow-hidden' : 'max-h-[92dvh] overflow-y-auto'}`}
       >
         {!top && grabber}
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className={`text-lg font-bold uppercase tracking-[0.16em] ${titleClass}`}>{title}</h2>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="flex h-10 w-10 items-center justify-center rounded-md border-2 border-edge/50 text-neon"
-          >
-            <CloseIcon className="h-5 w-5" />
-          </button>
-        </div>
+        {!bare && (
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className={`text-lg font-bold uppercase tracking-[0.16em] ${titleClass}`}>
+              {title}
+            </h2>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="flex h-10 w-10 items-center justify-center rounded-md border-2 border-edge/50 text-neon"
+            >
+              <CloseIcon className="h-5 w-5" />
+            </button>
+          </div>
+        )}
         {full ? <div className="flex min-h-0 flex-1 flex-col">{children}</div> : children}
         {top && grabber}
       </div>

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import type { PersonView, ProfileView, TogetherView } from '@pogo/shared';
 import { getGameUi } from '../games/registry';
 import { Avatar, Button, Sheet } from '../components/ui';
+import { Marquee } from '../components/Marquee';
+import { CloseIcon } from '../components/icons';
 import { PlayerName } from '../components/PlayerName';
 import { timeAgo } from '../components/MatchHistory';
 import { useToast } from '../components/Toast';
@@ -61,22 +63,29 @@ export function ProfileCard({
   const p = profile;
   const self = id === me;
   return (
-    <Sheet open={!!id} onClose={onClose} title="Player">
+    <Sheet open={!!id} onClose={onClose} title="Player" bare>
       {!p ? (
         <p className="py-6 text-center text-muted">Loading…</p>
       ) : (
-        <div className="flex flex-col gap-4" data-testid="profile-card">
+        <div className="flex flex-col gap-4 pb-2" data-testid="profile-card">
           <div className="flex items-center gap-4">
             <Avatar avatar={p.avatar} size="lg" />
-            <div className="min-w-0">
-              <div className="truncate text-xl font-bold">
+            <div className="min-w-0 flex-1">
+              <Marquee className="text-xl font-bold">
                 <PlayerName name={p.name} />
-              </div>
+              </Marquee>
               <div className="label text-muted">
                 {p.isGuest ? 'Guest' : p.online ? '● online' : '○ offline'}
                 {p.state === 'friends' && ' · friends'}
               </div>
             </div>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border-2 border-edge/50 text-neon"
+            >
+              <CloseIcon className="h-5 w-5" />
+            </button>
           </div>
 
           {view === 'card' && (
@@ -202,7 +211,7 @@ export function ProfileCard({
           )}
 
           {view === 'card' && !self && !p.isGuest && (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-4">
               {p.state === 'none' && (
                 <Button
                   data-testid="profile-add"
@@ -253,7 +262,6 @@ export function ProfileCard({
                 <>
                   {inLobbyCode && (
                     <Button
-                      variant="gold"
                       data-testid="profile-invite"
                       onClick={() => void act(api.invite(p.id, inLobbyCode), 'Invite sent')}
                     >
