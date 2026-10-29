@@ -25,7 +25,7 @@ export function Coin({
   const spec = matchmates.STAGE_SPECS[stage];
   return (
     <div
-      className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-6 bg-black/70"
+      className="screen-bg fixed inset-0 z-40 flex flex-col items-center justify-center gap-6"
       data-testid="mates-coin"
       data-winner={iWon ? 'me' : 'opponent'}
       role="status"

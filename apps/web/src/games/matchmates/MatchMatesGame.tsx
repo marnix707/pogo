@@ -150,6 +150,11 @@ const READY_SPARKLES: readonly (readonly [number, number])[] = [
   [50, 1300],
   [-36, 1500],
 ];
+/** The intro after the coin flip (ms from its start): the pets spawn, then the tiles drop in. */
+const INTRO_PET_AT = 450;
+const INTRO_PET_STEP = 230;
+const INTRO_TILES_AT = 1250;
+const INTRO_ROW_MS = 110;
 const ELEMENT_COLOR: Record<matchmates.Element, string> = {
   fire: '#eb6b43',
   water: '#3aaef7',
@@ -719,12 +724,56 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The intro after the coin flip: the arena fades in, the pets spawn one by one, the hit points count up from 0 and
+  // the tiles drop in row by row. The board cannot be touched until it is over.
+  const [intro, setIntro] = useState(false);
+  const wasCoin = useRef(coin);
+  useEffect(() => {
+    const ended = wasCoin.current && !coin;
+    wasCoin.current = coin;
+    if (!ended || reducedMotion() || view.phase !== 'play' || view.moveCount > 0) return;
+    setIntro(true);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    // Hit points: 0 first, then they race up to the full amount with ticks.
+    setHpShown(Object.fromEntries(view.players.map((p) => [p.id, 0])));
+    timers.push(
+      setTimeout(() => {
+        const start = performance.now();
+        let n = 0;
+        const iv = setInterval(() => {
+          const u = Math.min(1, (performance.now() - start) / 1100);
+          setHpShown(
+            Object.fromEntries(
+              view.players.map((p) => [p.id, Math.round(p.maxHp * (1 - (1 - u) * (1 - u)))]),
+            ),
+          );
+          tick(n++);
+          if (u >= 1) clearInterval(iv);
+        }, 45);
+        timers.push(iv as unknown as ReturnType<typeof setTimeout>);
+      }, 700),
+    );
+    // A chime for each pet that spawns, a whoosh for each row of tiles.
+    for (let i = 0; i < 4; i++)
+      timers.push(setTimeout(() => chainSound(i), INTRO_PET_AT + i * INTRO_PET_STEP));
+    for (let r = 0; r < ROWS; r++)
+      timers.push(setTimeout(() => play('deal'), INTRO_TILES_AT + (ROWS - 1 - r) * INTRO_ROW_MS));
+    timers.push(
+      setTimeout(() => {
+        setIntro(false);
+        setHpShown(null);
+      }, matchmates.INTRO_MS),
+    );
+    return () => timers.forEach(clearTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coin]);
+
   const animating = anim !== null;
   // "Your turn!" in the middle of the screen when the turn comes to me (after the last move has played out).
   const [turnBanner, setTurnBanner] = useState(0);
   // (starts false: the very first turn is announced too, after the coin flip)
   const wasMine = useRef(false);
-  const settled = !animating && !coin && flights.length === 0 && !replaying;
+  const settled = !animating && !coin && !intro && flights.length === 0 && !replaying;
   useEffect(() => {
     if (!myTurn) wasMine.current = false;
     else if (!wasMine.current && settled) {
@@ -742,7 +791,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     return () => clearTimeout(t);
   }, [turnBanner]);
   const board = anim?.board ?? view.board;
-  const canAct = myTurn && !busy && !animating && !replaying;
+  const canAct = myTurn && !busy && !animating && !replaying && !intro && !coin;
   // A tile picked for a swap is let go when the turn is gone (timeout) or the next move is replaying.
   useEffect(() => {
     if (!myTurn || replaying) setSelected(null);
@@ -857,7 +906,11 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         ? '#5dde7a'
         : hpHit?.owner === p.id || hpCounting?.owner === p.id
           ? '#ff4d4d'
-          : '#ffffff';
+          : turn
+            ? '#101628'
+            : '#ffffff';
+    // On the yellow box (this player's turn) the numbers are dark; otherwise white with a dark outline.
+    const shadow = turn ? '0 1px 0 rgba(255,255,255,.5)' : hudText.textShadow;
     // Berries and hit points, one under the other.
     const stack = (
       <div className="flex flex-col" style={{ gap: cq(1.6), paddingTop: cq(1.5) }}>
@@ -869,8 +922,8 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
             style={{ ...px, width: cq(9) }}
           />
           <span
-            className="font-black text-white"
-            style={hudText}
+            className="font-black"
+            style={{ ...hudText, color: turn ? '#101628' : '#ffffff', textShadow: shadow }}
             data-testid={`mates-berries-${who}`}
           >
             {p.berries}/{evolveCost(stage)}
@@ -892,7 +945,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
               textShadow:
                 hpCounting?.owner === p.id
                   ? '0 1px 0 #101628, 1px 0 0 #101628, 0 0 2px #101628, 0.4px 0 0 currentColor'
-                  : hudText.textShadow,
+                  : shadow,
               transform: hpCounting?.owner === p.id ? 'scale(1.35)' : undefined,
               transformOrigin: 'left center',
               transition: 'transform 120ms ease-out',
@@ -906,24 +959,37 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         </div>
       </div>
     );
-    // A box round the picture and the moves left; it turns yellow when it is this player's turn.
+    // One box round the berries, hit points, picture and the moves left (boots); it turns fully yellow on this
+    // player's turn.
     const box = (
       <div
         className="relative shrink-0 rounded-md border-2 transition-colors"
         data-testid={`mates-box-${who}`}
         data-turn={turn}
         style={{
-          width: cq(36),
-          height: cq(46),
+          width: cq(62),
+          height: cq(48),
           borderColor: turn ? '#fda200' : 'rgba(137,154,209,.35)',
-          background: 'rgba(16,22,40,.35)',
+          // On the player's turn the whole box is yellow, not only its border.
+          background: turn ? '#fda200' : 'rgba(16,22,40,.35)',
         }}
       >
-        <div className="absolute" style={{ left: cq(4), top: cq(1.2) }}>
+        <div
+          className="absolute flex items-start"
+          style={{
+            left: cq(3),
+            right: cq(3),
+            top: cq(1.2),
+            gap: cq(3),
+            flexDirection: who === 'me' ? 'row' : 'row-reverse',
+            justifyContent: 'center',
+          }}
+        >
+          {stack}
           <Avatar
             avatar={member?.avatar ?? '🙂'}
             size="fluid"
-            className="h-[18.6cqw] w-[18.6cqw] text-[11cqw] !border-transparent"
+            className="h-[18.6cqw] w-[18.6cqw] shrink-0 text-[11cqw] !border-transparent"
           />
         </div>
         {turn && (
@@ -931,20 +997,20 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
             className="absolute inset-x-0 flex items-center justify-center"
             data-testid="mates-moves"
             aria-label={`${movesNow} moves left`}
-            style={{ bottom: cq(2), gap: cq(movesNow > 2 ? 2.2 : 3.2) }}
+            style={{ bottom: cq(1.6), gap: cq(movesNow > 3 ? 1.6 : 3) }}
           >
             {Array.from({ length: Math.max(2, movesNow) }, (_, n) => (
-              <span
+              <img
                 key={n}
-                className={`inline-block rotate-45 border-2 border-[#101628] ${
-                  n < movesNow ? 'bg-accent' : 'bg-black/60'
-                }`}
+                src={hudUrl(n < movesNow ? 'boot-full' : 'boot-empty')}
+                alt=""
+                draggable={false}
                 style={{
-                  width: cq(movesNow > 2 ? 5.2 : 6.8),
-                  height: cq(movesNow > 2 ? 5.2 : 6.8),
+                  ...px,
+                  width: cq(movesNow > 3 ? 7.4 : 9.6),
                   animation:
                     bonus !== null && n === movesNow - 1
-                      ? 'mates-diamond-up 600ms cubic-bezier(.2,.9,.3,1.2) both'
+                      ? 'mates-boot-up 600ms cubic-bezier(.2,.9,.3,1.2) both'
                       : undefined,
                 }}
               />
@@ -953,11 +1019,11 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
               <span
                 key={bonus}
                 aria-hidden
-                className="absolute left-1/2 font-black text-green-300"
+                className="absolute left-1/2 font-black text-green-700"
                 style={{
-                  bottom: '55%',
+                  bottom: '60%',
                   fontSize: cq(6),
-                  textShadow: hudText.textShadow,
+                  textShadow: '0 1px 0 rgba(255,255,255,.6)',
                   animation: 'mates-plus1 1100ms ease-out forwards',
                 }}
               >
@@ -993,18 +1059,8 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         >
           <PlayerName name={p.id === me ? 'You' : (member?.nickname ?? 'Opponent')} />
         </div>
-        <div className="flex items-start justify-center" style={{ gap: cq(2.5), width: '100%' }}>
-          {who === 'me' ? (
-            <>
-              {stack}
-              {box}
-            </>
-          ) : (
-            <>
-              {box}
-              {stack}
-            </>
-          )}
+        <div className="flex items-start justify-center" style={{ width: '100%' }}>
+          {box}
         </div>
       </div>
     );
@@ -1032,9 +1088,12 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         @keyframes mates-dmg { 0%{opacity:0;transform:translateX(-50%) translateY(10px) scale(.5)} 18%{opacity:1;transform:translateX(-50%) translateY(8px) scale(1.6)} 50%{opacity:1;transform:translateX(-50%) translateY(8px) scale(1.6) rotate(-45deg)} 85%{opacity:1;transform:translateX(-50%) translateY(-6px) scale(.8) rotate(0)} 100%{opacity:0;transform:translateX(-50%) translateY(-10px) scale(.4)} }
         @keyframes mates-sparkle { 0%{transform:translateY(0);opacity:0} 10%{opacity:1} 80%{opacity:1} 100%{transform:translateY(-310%);opacity:0} }
         @keyframes mates-heal { 0%{opacity:0;transform:translateX(-50%) translateY(-8px) scale(.4)} 25%{opacity:1;transform:translateX(-50%) translateY(2px) scale(1.4)} 60%{opacity:1;transform:translateX(-50%) translateY(10px) scale(1.6)} 100%{opacity:0;transform:translateX(-50%) translateY(16px) scale(1.2)} }
-        @keyframes mates-diamond-up { 0%{opacity:0;transform:translateY(320%) rotate(45deg)} 100%{opacity:1;transform:translateY(0) rotate(45deg)} }
+        @keyframes mates-boot-up { 0%{opacity:0;transform:translateY(300%)} 100%{opacity:1;transform:translateY(0)} }
         @keyframes mates-plus1 { 0%{opacity:0;transform:translateX(-50%) translateY(8px) scale(.6)} 30%{opacity:1;transform:translateX(-50%) translateY(-4px) scale(1.5)} 100%{opacity:0;transform:translateX(-50%) translateY(-16px) scale(1)} }
         @keyframes mates-drop-away { 0%{transform:translateY(0) rotate(0deg);opacity:1} 16%{transform:translateY(-9%) rotate(calc(var(--tilt) * -.35))} 100%{transform:translateY(560%) rotate(calc(var(--tilt) * 3));opacity:0} }
+        @keyframes mates-intro-fade { 0%{opacity:0} 100%{opacity:1} }
+        @keyframes mates-spawn { 0%{opacity:0;transform:scale(0);filter:brightness(6)} 55%{opacity:1;transform:scale(1.28);filter:brightness(2.2)} 80%{transform:scale(.94);filter:brightness(1.2)} 100%{transform:scale(1);filter:none} }
+        @keyframes mates-tile-in { 0%{opacity:0;transform:translateY(-650%)} 25%{opacity:1} 100%{opacity:1;transform:translateY(0)} }
         @keyframes mates-pop { 0%{opacity:0;transform:translateY(0) scale(.6)} 20%{opacity:1;transform:translateY(-6px) scale(1.2)} 100%{opacity:0;transform:translateY(-28px) scale(1)} }
         @keyframes mates-flash { 0%{transform:scale(1);filter:none} 45%{transform:scale(1.25);filter:brightness(2.4)} 100%{transform:scale(0);opacity:0} }
         @keyframes mates-fall { 0%{transform:translateY(calc(var(--drop) * -100%))} 68%{transform:translateY(0)} 82%{transform:translateY(-7%)} 100%{transform:translateY(0)} }
@@ -1058,7 +1117,12 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       {/* The battle screen: 140 x 258 art pixels like the reference, everything placed in art pixels. */}
       <div
         className="relative min-h-0 w-full flex-1 overflow-hidden"
-        style={{ containerType: 'inline-size' }}
+        style={{
+          containerType: 'inline-size',
+          // Behind the coin nothing of the arena shows; after it the arena fades in.
+          opacity: coin ? 0 : 1,
+          animation: intro ? 'mates-intro-fade 500ms ease-out both' : undefined,
+        }}
         data-testid="mates-arena"
       >
         {/* The art is 140 px wide; a few pixels are cropped off each side so the borders are slim. */}
@@ -1098,7 +1162,13 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                 <div key={`${p.id}-${slot}`}>
                   <div
                     className="absolute cursor-pointer"
-                    style={at(fx - w / 2, fy - h, w)}
+                    style={{
+                      ...at(fx - w / 2, fy - h, w),
+                      transformOrigin: '50% 100%',
+                      animation: intro
+                        ? `mates-spawn 620ms cubic-bezier(.2,1.5,.4,1) ${INTRO_PET_AT + ((who === 'opp' ? 0 : 2) + slot) * INTRO_PET_STEP}ms backwards`
+                        : undefined,
+                    }}
                     onClick={(e) => petInfo.open(e, m.element, shownEvolved)}
                     data-testid={`mates-monster-${who}-${slot}`}
                   >
@@ -1178,7 +1248,12 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                   {/* The mana bar: the artist's badge + bar with the fill and the count drawn over it. */}
                   <div
                     className="absolute"
-                    style={at(fx - 18, fy + 1, 36)}
+                    style={{
+                      ...at(fx - 18, fy + 1, 36),
+                      animation: intro
+                        ? `mates-intro-fade 400ms ease-out ${INTRO_PET_AT + 300 + ((who === 'opp' ? 0 : 2) + slot) * INTRO_PET_STEP}ms backwards`
+                        : undefined,
+                    }}
                     title={`${spec.names[shownEvolved ? 1 : 0]}: ${mana}/${spec.cost} mana`}
                   >
                     <img
@@ -1266,14 +1341,22 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                       selected === i ? 'outline outline-2 -outline-offset-2 outline-white' : ''
                     }`}
                     style={
-                      dropping
+                      intro
                         ? ({
-                            ['--tilt' as string]: `${((i * 37) % 25) - 12}deg`,
-                            animation: `mates-drop-away ${END_FALL_MS}ms cubic-bezier(.5,0,.85,.45) ${
-                              (ROWS - 1 - Math.floor(i / COLS)) * END_ROW_MS + (i % 3) * 35
-                            }ms both`,
+                            animation: `mates-tile-in 650ms cubic-bezier(.3,.1,.4,1.25) ${
+                              INTRO_TILES_AT +
+                              (ROWS - 1 - Math.floor(i / COLS)) * INTRO_ROW_MS +
+                              (i % COLS) * 30
+                            }ms backwards`,
                           } as React.CSSProperties)
-                        : undefined
+                        : dropping
+                          ? ({
+                              ['--tilt' as string]: `${((i * 37) % 25) - 12}deg`,
+                              animation: `mates-drop-away ${END_FALL_MS}ms cubic-bezier(.5,0,.85,.45) ${
+                                (ROWS - 1 - Math.floor(i / COLS)) * END_ROW_MS + (i % 3) * 35
+                              }ms both`,
+                            } as React.CSSProperties)
+                          : undefined
                     }
                   >
                     <img

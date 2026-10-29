@@ -89,6 +89,8 @@ export const NOTE_MS = 800;
 export const BOT_PAUSE_MS = 1000;
 /** Milliseconds the clients spend on the coin flip that picks the arena and who starts. */
 export const COIN_MS = 3600;
+/** After the coin flip the arena comes in: pets spawn, hit points count up, the tiles drop in. */
+export const INTRO_MS = 2700;
 
 /** Draft order: the first drafter, then the second twice, then the first again. */
 export const DRAFT_ORDER = [0, 1, 1, 0] as const;
@@ -681,12 +683,13 @@ export const matesGame: GameDefinition<MatesState, MatesMove, MatesOptions, Mate
   keepsClock: (before, after) =>
     before.phase === 'pick' && after.phase === 'pick' && draftTurn(before) === null,
   // The clock starts after the coin flip that decides the arena and who starts.
-  clockBonusMs: (state) => (state.phase === 'play' && state.moveCount === 0 ? COIN_MS : 0),
+  clockBonusMs: (state) =>
+    state.phase === 'play' && state.moveCount === 0 ? COIN_MS + INTRO_MS : 0,
   // The computer waits for every animation of the last move, plus a breath so the "Your turn!" and the
   // numbers have been seen.
   settleMs: (state) =>
     state.phase === 'play' && state.moveCount === 0
-      ? COIN_MS
+      ? COIN_MS + INTRO_MS
       : eventMs(state.lastEvent) + (state.lastEvent ? BOT_PAUSE_MS : 0),
   supportsBots: true,
   // The match history: the arena, the pets each player ended with and the hit points left.
