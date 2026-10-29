@@ -175,8 +175,8 @@ export function Home({
             data-open={nameOut}
           >
             <p
-              className="label whitespace-nowrap text-onbg/70 transition-transform duration-500 ease-out motion-reduce:transition-none"
-              style={{ transform: nameOut ? 'none' : 'translateX(-110%)' }}
+              className="label w-max whitespace-nowrap text-onbg/70 transition-transform duration-500 ease-out motion-reduce:transition-none"
+              style={{ transform: nameOut ? 'none' : 'translateX(-120%)' }}
             >
               Playing as{' '}
               <span data-testid="home-nickname" className="text-onbg">
