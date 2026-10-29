@@ -2,7 +2,7 @@ import { PlayerName } from '../components/PlayerName';
 import { ProfileTap } from '../friends/ProfileTap';
 import { useEffect, useRef, useState } from 'react';
 import type { ChatMessage, RoomView } from '@pogo/shared';
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import type { GameUiProps } from '../games/types';
 import { Confetti } from '../components/Confetti';
 import { TopoBackground } from '../components/TopoBackground';
@@ -37,6 +37,9 @@ function ResultsPanel({
   api,
   title,
   showScores = true,
+  scoreText,
+  header,
+  rowExtra,
   sendMove,
   account,
   confetti = false,
@@ -46,6 +49,9 @@ function ResultsPanel({
   api: RoomApi;
   title?: string;
   showScores?: boolean;
+  scoreText?: (score: number) => string;
+  header?: ReactNode;
+  rowExtra?: (playerId: string) => ReactNode;
   /** Confetti for the winner of a game with more than one player (games with their own fanfare skip it). */
   confetti?: boolean;
   sendMove: GameUiProps['sendMove'];
@@ -99,6 +105,8 @@ function ResultsPanel({
             {headline}
           </h2>
 
+          {header}
+
           {/* The standings sit in the middle of the free space between the headline and the lower group. */}
           <ol className="my-auto flex flex-col gap-2" data-testid="standings">
             {rankings.map((r, i) => {
@@ -108,23 +116,29 @@ function ResultsPanel({
                 <li
                   key={r.playerId}
                   data-testid={`rank-${r.rank}`}
-                  className={`res-row flex items-end gap-2 rounded-md px-3 py-1.5 ${
+                  className={`res-row rounded-md px-3 py-1.5 ${
                     i === 0 ? 'bg-neon text-accentink' : isMe ? 'bg-accent/25' : ''
                   }`}
                   style={delay(HEAD_S + i * ROW_S)}
                 >
-                  <ProfileTap id={r.playerId} me={me}>
-                    <Avatar avatar={m?.avatar ?? ''} size="sm" />
-                  </ProfileTap>
-                  <span className="min-w-0 truncate text-xl font-bold">
-                    <PlayerName name={m?.nickname ?? 'Player'} />
-                    {isMe && ' (you)'}
-                  </span>
-                  <span className="mb-1.5 min-w-4 flex-1 border-b-4 border-dotted border-current opacity-50" />
-                  {/* Games with points show the total; the others the place. */}
-                  <span className="text-xl font-bold tabular-nums">
-                    {showScores ? r.score : r.rank}
-                  </span>
+                  <div className="flex items-end gap-2">
+                    <ProfileTap id={r.playerId} me={me}>
+                      <Avatar avatar={m?.avatar ?? ''} size="sm" />
+                    </ProfileTap>
+                    <span className="min-w-0 truncate text-xl font-bold">
+                      <PlayerName name={m?.nickname ?? 'Player'} />
+                      {isMe && ' (you)'}
+                    </span>
+                    <span className="mb-1.5 min-w-4 flex-1 border-b-4 border-dotted border-current opacity-50" />
+                    {/* Games with points show the total; the others the place. */}
+                    <span
+                      className="text-xl font-bold tabular-nums"
+                      data-testid={`score-${r.rank}`}
+                    >
+                      {showScores ? (scoreText ? scoreText(r.score) : r.score) : r.rank}
+                    </span>
+                  </div>
+                  {rowExtra?.(r.playerId)}
                 </li>
               );
             })}
@@ -365,6 +379,9 @@ export function GameScreen({
           sendMove={api.move}
           title={ui.resultsTitle?.(room, me)}
           showScores={!ui.hideScores}
+          scoreText={ui.scoreText}
+          header={ui.resultsHeader?.(room)}
+          rowExtra={(id) => ui.resultsRowExtra?.(room, id)}
           account={account}
           confetti
         />

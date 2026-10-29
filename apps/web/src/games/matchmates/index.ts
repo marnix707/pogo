@@ -6,6 +6,7 @@ import { allArt } from './art';
 import { MatesOptions } from './LobbyOptions';
 import { MatchMatesGame } from './MatchMatesGame';
 import { MatchMatesRules } from './MatchMatesRules';
+import { ResultsArena, ResultsPets } from './Results';
 
 // Load the pictures once the app starts, so the arena is there the moment the game opens.
 if (typeof Image !== 'undefined') for (const url of allArt()) new Image().src = url;
@@ -19,7 +20,10 @@ export const matchMatesUi: GameUi = {
   Component: MatchMatesGame,
   LobbyOptions: MatesOptions,
   Rules: ({ open, onClose }) => createElement(MatchMatesRules, { open, onClose }),
-  hideScores: true,
+  // The standings show the hit points left ("45 HP", "0 HP"), the arena and the pets that were chosen.
+  scoreText: (score) => `${score} HP`,
+  resultsHeader: (room) => createElement(ResultsArena, { room }),
+  resultsRowExtra: (room, playerId) => createElement(ResultsPets, { room, playerId }),
   // Let the last move (swap, cascades, the final attack) play out before the standings.
   resultsDelayMs: (room) => {
     const e = (room.game?.view as matchmates.MatesView | undefined)?.lastEvent;

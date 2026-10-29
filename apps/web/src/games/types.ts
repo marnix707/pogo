@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import type { GameResults, Result, RoomView } from '@pogo/shared';
 
 export interface GameUiProps {
@@ -44,6 +44,12 @@ export interface GameUi {
   ownHeader?: boolean;
   /** Hide the score column in the standings (for games where the score is just the rank). */
   hideScores?: boolean;
+  /** How a score reads in the standings (default: the number), e.g. "45 HP". Needs `hideScores` off. */
+  scoreText?: (score: number) => string;
+  /** Something shown above the standings on the results screen (e.g. the arena that was played). */
+  resultsHeader?: (room: RoomView) => ReactNode;
+  /** Something shown under a player's row in the standings (e.g. the pets they played). */
+  resultsRowExtra?: (room: RoomView, playerId: string) => ReactNode;
   /** The game plays the end-of-game fanfare itself (GameScreen then stays silent). */
   ownFanfare?: boolean;
   /** Wait this long after the game ends before showing the results (lets a final animation play). */

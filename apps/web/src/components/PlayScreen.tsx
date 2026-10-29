@@ -82,7 +82,7 @@ export function JoinBar({ api }: { api: RoomApi }) {
   return (
     <form
       onSubmit={join}
-      className="calm hud hud-ticks flex h-16 items-center gap-2 !px-2"
+      className="calm hud hud-ticks info-bar gap-2"
       aria-label="Join with a code"
       data-testid="join-bar"
     >

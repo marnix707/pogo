@@ -48,6 +48,7 @@ CLAUDE.md is kept short on purpose (it is loaded in every session). Feature deta
 - **Tests with cards or sheets**: e2e runs with reduced motion (Karma tutorial / animations are off there); tap overlapped hand cards on their left strip; wait for `getByRole('dialog')` count 0 between sheets. Accounts / admin / friends e2e need the server on `MAIL_MODE=log` (the dev mailbox).
 - **After changing `schema.prisma`**: regenerate the Prisma client in the same container before typecheck, and in the **running** dev server (see `docs/friends.md`), or you get stale-client errors.
 - **Render**: never put a `value:` on a dashboard-tunable env key in `render.yaml` (see Deployment).
+- **The info / invite / top bar** is the bar with the picture, Invite and the icon buttons (leaderboard, friends, settings): every such bar (lobby, Play screen) wears `.info-bar` (`index.css`: a bit taller, more room below so the icons' lip stays inside its border); the game screens use `TopBar`. New bars with those icons use the same class.
 - **Pictures** are always the `Avatar` tile; names in JSX go through `PlayerName` (dev tag).
 - **Docker / ports**: the dev stack is localhost-only (`make up`), `make up-lan` for phones; host ports can move with `HOST_SERVER_PORT` / `HOST_WEB_PORT` (`docs/security.md`).
 - Standing user rules live in the memory directory (push only when told; UI-only changes need no e2e).

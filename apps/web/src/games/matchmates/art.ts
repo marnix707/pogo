@@ -81,6 +81,18 @@ const fx = load(
 );
 /** The twinkling pixel sparkle of an element (7x7 art px): it rises round a pet that can evolve / boost. */
 export const readySparkleUrl = (element: string): string => fx[`ready-${element}-animated`] ?? '';
+const blastFrames = loadNested(
+  import.meta.glob('../../assets/sprites/battle/fx/explosion-*.svg', {
+    eager: true,
+    query: '?url',
+    import: 'default',
+  }) as Urls,
+);
+/** The big explosion of Sea Battle (10 frames, 32 x 32 art px), reused for the Reactor's bombs. */
+export const BLAST_FRAMES = 10;
+export const BLAST_FRAME_MS = 40;
+export const blastUrl = (frame: number): string =>
+  blastFrames[`fx/explosion-${String(Math.min(frame, BLAST_FRAMES - 1)).padStart(2, '0')}`] ?? '';
 const digits = load(
   import.meta.glob('../../assets/sprites/matchmates/attack/damage-digits/*.svg', {
     eager: true,
@@ -165,6 +177,7 @@ export const allArt = (): string[] => [
   ...Object.values(attack),
   ...Object.values(digits),
   ...Object.values(fx),
+  ...Object.values(blastFrames),
   boardPanelUrl,
 ];
 

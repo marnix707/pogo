@@ -22,6 +22,7 @@ import {
   tileUrl,
 } from './art';
 import { ATTACK, Attack, Digits } from './Attack';
+import { Blast } from './Blast';
 import type { AttackFx } from './Attack';
 import { Coin } from './Coin';
 import { Pick } from './Pick';
@@ -198,6 +199,8 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     null,
   );
   const [glow, setGlow] = useState<GlowState | null>(null);
+  // The Reactor's bombs: a big explosion on every tile that blows up, rippling out from the bomb.
+  const [blasts, setBlasts] = useState<{ id: number; cell: number; delay: number }[]>([]);
   // True from the moment a move arrives until its whole animation (cascades, attacks) has played: the turn only
   // changes on screen when the field is stable.
   const seen = useRef(view.moveCount);
@@ -476,6 +479,25 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
           ),
         );
       }
+      if (step.bomb) {
+        const bombs = cleared.filter((cell) => before[cell]?.k === 'bomb');
+        const items = cleared.map((cell) => {
+          const dist = Math.min(
+            ...(bombs.length ? bombs : [cell]).map(
+              (b) =>
+                Math.abs(Math.floor(b / COLS) - Math.floor(cell / COLS)) +
+                Math.abs((b % COLS) - (cell % COLS)),
+            ),
+          );
+          return { id: nextId(), cell, delay: dist * 45 };
+        });
+        at(t, () => {
+          setBlasts(items);
+          play('boom');
+          haptic('success');
+        });
+        at(t + STEP_MS, () => setBlasts([]));
+      }
       // The artist's glow bursts round the cleared tiles, in the colour of their kind.
       if (cleared.length > 0 && !step.bomb) {
         const items = cleared.map((cell, idx) => ({
@@ -546,6 +568,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       setAtk(null);
       setHpHit(null);
       setGlow(null);
+      setBlasts([]);
       setFlights([]);
     });
     // What the move earned besides damage: said out loud, with a pop on the hit points.
@@ -589,6 +612,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       setAtk(null);
       setHpHit(null);
       setGlow(null);
+      setBlasts([]);
       setCombo(null);
       setSparks([]);
       setFlights([]);
@@ -1158,6 +1182,18 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                     left: `${(((cell % COLS) * SCREEN.cell - 7) / (COLS * SCREEN.cell)) * 100}%`,
                     top: `${((Math.floor(cell / COLS) * SCREEN.cell - 7) / (ROWS * SCREEN.cell)) * 100}%`,
                     width: `${(32 / (COLS * SCREEN.cell)) * 100}%`,
+                  }}
+                />
+              ))}
+              {blasts.map((b) => (
+                <Blast
+                  key={b.id}
+                  delay={b.delay}
+                  style={{
+                    left: `${(((b.cell % COLS) + 0.5) / COLS) * 100}%`,
+                    top: `${((Math.floor(b.cell / COLS) + 0.5) / ROWS) * 100}%`,
+                    width: `${(32 / (COLS * SCREEN.cell)) * 100}%`,
+                    transform: 'translate(-50%, -50%)',
                   }}
                 />
               ))}

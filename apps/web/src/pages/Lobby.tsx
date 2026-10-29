@@ -240,7 +240,7 @@ export function Lobby({
         ) : (
           <>
             {/* The bar above the game card: Invite on the left, then the Public / Private rectangle (with the code) and the settings button. */}
-            <Card className="calm hud-ticks flex h-16 items-center !px-2 !py-0">
+            <Card className="calm hud-ticks info-bar">
               <div className="flex w-full items-center gap-2" data-testid="lobby-toolbar">
                 <button
                   type="button"
