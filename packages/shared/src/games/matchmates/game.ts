@@ -269,7 +269,8 @@ function fireReady(c: Ctx): boolean {
           c.board[pick] = { ...c.board[pick]!, k: 'water' };
           changed.push(pick);
         }
-      } else if (m.element === 'earth') c.me.hp = Math.min(c.me.maxHp, c.me.hp + heal);
+      } else if (m.element === 'earth')
+        c.me.hp += heal; // (healing has no cap: hit points can go above the start value)
       else if (m.element === 'fire') {
         // `power` random columns count as matched.
         const cols = Array.from({ length: COLS }, (_, i) => i);
@@ -467,7 +468,7 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
     if (c.longest >= 4 && c.opp.hp > 0) {
       // 4 in a row: an extra move; 5 or more also heals 5.
       if (c.longest >= 5) {
-        me.hp = Math.min(me.maxHp, me.hp + COMBO_HEAL);
+        me.hp += COMBO_HEAL;
         healed = COMBO_HEAL;
       }
       // Every such line gives an extra move; 6 or more also hits for 5.

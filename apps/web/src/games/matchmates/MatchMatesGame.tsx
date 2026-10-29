@@ -256,7 +256,6 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   const [hpShown, setHpShown] = useState<Record<string, number> | null>(null);
   const hpShownRef = useRef(hpShown);
   hpShownRef.current = hpShown;
-  const hpMax = Object.fromEntries(view.players.map((p) => [p.id, p.maxHp]));
   // The mana bars too: they fill when the tiles land and empty when the pet attacks, not when the move arrives.
   const manaNow = Object.fromEntries(
     view.players.flatMap((p) => p.monsters.map((m, slot) => [`${p.id}-${slot}`, m.mana])),
@@ -368,7 +367,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     const countHp = (id: string, by: number, ms: number, tone: 'dmg' | 'heal' = 'dmg') => {
       const from = hpShownRef.current?.[id];
       if (from === undefined) return;
-      const to = Math.max(0, Math.min(hpMax[id] ?? from + by, from + by));
+      const to = Math.max(0, from + by); // healing has no cap
       const start = performance.now();
       let n = 0;
       setHpCounting({ owner: id, tone });

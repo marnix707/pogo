@@ -555,6 +555,26 @@ describe('Pet Match', () => {
     });
   });
 
+  it('healing has no cap: hit points can go above the starting value', () => {
+    const base = start(6);
+    const board = quiet();
+    for (const c of [0, 1, 3, 4]) set(board, 0, c, 'earth');
+    set(board, 0, 2, 'water');
+    set(board, 1, 2, 'earth');
+    const players = base.players.map((p) =>
+      p.id === 'a' ? { ...p, hp: p.maxHp } : p,
+    ) as MatesState['players'];
+    const s: MatesState = { ...base, board, players, turn: 'a', first: 'a', movesLeft: 2 };
+    const after = matesGame.applyMove(
+      s,
+      'a',
+      { type: 'swap', a: cellAt(0, 2), b: cellAt(1, 2) },
+      createSeededRng(2),
+    );
+    const me = after.players.find((p) => p.id === 'a')!;
+    expect(me.hp).toBeGreaterThan(me.maxHp); // a line of five heals 5 on top of a full bar
+  });
+
   it('the starting hit points are an option', () => {
     const rng = createSeededRng(1);
     const s = matesGame.createInitialState([A, B], { hp: 150 }, rng);
