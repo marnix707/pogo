@@ -184,7 +184,9 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   // The opponent's hit points flash red and shake when an attack lands on them.
   const [hpHit, setHpHit] = useState<{ owner: string } | null>(null);
   // Whose hit points are being counted down right now: shown red, bold and bigger while it happens.
-  const [hpCounting, setHpCounting] = useState<{ owner: string } | null>(null);
+  const [hpCounting, setHpCounting] = useState<{ owner: string; tone: 'dmg' | 'heal' } | null>(
+    null,
+  );
   const [glow, setGlow] = useState<GlowState | null>(null);
   // True from the moment a move arrives until its whole animation (cascades, attacks) has played: the turn only
   // changes on screen when the field is stable.
@@ -297,13 +299,13 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       return [spot[0], spot[1]];
     };
     // The hit points race up or down to their new value, casino style, with a rising tick.
-    const countHp = (id: string, by: number, ms: number) => {
+    const countHp = (id: string, by: number, ms: number, tone: 'dmg' | 'heal' = 'dmg') => {
       const from = hpShownRef.current?.[id];
       if (from === undefined) return;
       const to = Math.max(0, Math.min(hpMax[id] ?? from + by, from + by));
       const start = performance.now();
       let n = 0;
-      setHpCounting({ owner: id });
+      setHpCounting({ owner: id, tone });
       const iv = setInterval(() => {
         const u = Math.min(1, (performance.now() - start) / ms);
         const value = Math.round(from + (to - from) * (1 - (1 - u) * (1 - u)));
@@ -385,20 +387,16 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
               return next;
             });
           }
-          if (f.heal > 0)
-            setHpShown((h) =>
-              h
-                ? { ...h, [f.owner]: Math.min(hpMax[f.owner] ?? 0, (h[f.owner] ?? 0) + f.heal) }
-                : h,
-            );
+          // Healing is the reverse of damage: the total counts up, in green.
+          if (f.heal > 0) countHp(f.owner, f.heal, 560, 'heal');
           setPops((p) => [
             ...p,
             ...(f.heal > 0
               ? [
                   {
                     id: ++popId + ev.seq * 100,
-                    x: fx,
-                    y: fy - 30,
+                    x: Math.min(HP_SPOT[f.owner === me ? 'me' : 'opp'][0], 112),
+                    y: HP_SPOT[f.owner === me ? 'me' : 'opp'][1] + 7,
                     text: `+${f.heal}`,
                     tone: 'heal' as const,
                   },
@@ -547,13 +545,17 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       say(`Match of ${ev.longest}: +${ev.heal} HP!`, 'good', t);
       at(t, () => {
         play('score');
-        setHpShown((h) =>
-          h ? { ...h, [ev.by]: Math.min(hpMax[ev.by] ?? 0, (h[ev.by] ?? 0) + ev.heal) } : h,
-        );
-        const [hx, hy] = ev.by === me ? [30, 44] : [108, 44];
+        countHp(ev.by, ev.heal, 560, 'heal');
+        const [hx, hy] = HP_SPOT[ev.by === me ? 'me' : 'opp'];
         setPops((p) => [
           ...p,
-          { id: ++popId + ev.seq * 100, x: hx, y: hy, text: `+${ev.heal}`, tone: 'heal' },
+          {
+            id: ++popId + ev.seq * 100,
+            x: Math.min(hx, 112),
+            y: hy + 7,
+            text: `+${ev.heal}`,
+            tone: 'heal',
+          },
         ]);
       });
       t += NOTE_MS;
@@ -772,7 +774,12 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
           style={{
             ...hudText,
             ...at(stackX + 11, 32.5),
-            color: hpHit?.owner === p.id || hpCounting?.owner === p.id ? '#ff4d4d' : '#ffffff',
+            color:
+              hpCounting?.owner === p.id && hpCounting.tone === 'heal'
+                ? '#5dde7a'
+                : hpHit?.owner === p.id || hpCounting?.owner === p.id
+                  ? '#ff4d4d'
+                  : '#ffffff',
             fontWeight: 900,
             textShadow:
               hpCounting?.owner === p.id
@@ -868,6 +875,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         @keyframes mates-lunge { 0%{transform:translateX(0)} 40%{transform:translateX(var(--lunge))} 100%{transform:translateX(0)} }
         @keyframes mates-dmg { 0%{opacity:0;transform:translateX(-50%) translateY(10px) scale(.5)} 18%{opacity:1;transform:translateX(-50%) translateY(8px) scale(1.6)} 50%{opacity:1;transform:translateX(-50%) translateY(8px) scale(1.6) rotate(-45deg)} 85%{opacity:1;transform:translateX(-50%) translateY(-6px) scale(.8) rotate(0)} 100%{opacity:0;transform:translateX(-50%) translateY(-10px) scale(.4)} }
         @keyframes mates-ready { 0%,100%{opacity:.15} 50%{opacity:.9} }
+        @keyframes mates-heal { 0%{opacity:0;transform:translateX(-50%) translateY(-8px) scale(.4)} 25%{opacity:1;transform:translateX(-50%) translateY(2px) scale(1.4)} 60%{opacity:1;transform:translateX(-50%) translateY(10px) scale(1.6)} 100%{opacity:0;transform:translateX(-50%) translateY(16px) scale(1.2)} }
         @keyframes mates-pop { 0%{opacity:0;transform:translateY(0) scale(.6)} 20%{opacity:1;transform:translateY(-6px) scale(1.2)} 100%{opacity:0;transform:translateY(-28px) scale(1)} }
         @keyframes mates-flash { 0%{transform:scale(1);filter:none} 45%{transform:scale(1.25);filter:brightness(2.4)} 100%{transform:scale(0);opacity:0} }
         @keyframes mates-fall { 0%{transform:translateY(calc(var(--drop) * -100%))} 68%{transform:translateY(0)} 82%{transform:translateY(-7%)} 100%{transform:translateY(0)} }
@@ -1224,7 +1232,9 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                 animation:
                   p.tone === 'dmg'
                     ? 'mates-dmg 1000ms ease-in-out forwards'
-                    : 'mates-pop 900ms ease-out forwards',
+                    : p.tone === 'heal'
+                      ? 'mates-heal 1000ms ease-in-out forwards'
+                      : 'mates-pop 900ms ease-out forwards',
               }}
             >
               {/^[-+]\d+$/.test(p.text) ? (
