@@ -193,6 +193,19 @@ export interface GameStatsView {
   lastIsBest: boolean;
 }
 
+/** The games two players played against / with each other (found through the shared match ids). */
+export interface TogetherView {
+  games: number;
+  /** Games where I finished ahead of them / they finished ahead of me / the same place. */
+  myWins: number;
+  theirWins: number;
+  ties: number;
+  /** Per game, the most played first. */
+  byGame: { gameId: string; games: number; myWins: number; theirWins: number }[];
+  /** Epoch ms of the last game together, or null. */
+  lastAt: number | null;
+}
+
 /** Somebody rings the bell in your lobby. */
 export interface BellMessage {
   fromId: string;

@@ -227,7 +227,7 @@ export function Shell({
       joinRoom={(code) => api.join(code)}
     >
       <ConnectionBanner connection={connection} />
-      <BellFx />
+      <BellFx me={session.user.id} />
       {room && <ChatBanner key={room.code} messages={messages} me={session.user.id} />}
       {screen}
       <ProfileSheet

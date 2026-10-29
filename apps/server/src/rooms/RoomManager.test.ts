@@ -768,7 +768,7 @@ describe('public lobby', () => {
 });
 
 describe('the bell', () => {
-  it('nudges everybody else in the lobby, with a cooldown, and only in the lobby', () => {
+  it('rings for everybody in the lobby, with a cooldown, and only in the lobby', () => {
     const { manager, bells, must } = setup();
     const { code } = must(manager.create(a, { gameId: 'race' }));
     must(manager.join(b, code));
@@ -776,16 +776,16 @@ describe('the bell', () => {
     must(manager.bell(a.id));
     expect(bells.get(b.id)).toEqual(['User1']);
     expect(bells.get(c.id)).toEqual(['User1']);
-    expect(bells.get(a.id)).toBeUndefined();
+    expect(bells.get(a.id)).toEqual(['User1']); // the ringer gets it too
     expect(manager.bell(a.id)).toMatchObject({
       ok: false,
       error: 'Wait a moment before ringing the bell again',
     });
-    vi.advanceTimersByTime(9000);
+    vi.advanceTimersByTime(3500);
     must(manager.bell(a.id));
     expect(bells.get(b.id)).toHaveLength(2);
     must(manager.start(a.id));
-    vi.advanceTimersByTime(9000);
+    vi.advanceTimersByTime(3500);
     expect(manager.bell(a.id)).toMatchObject({
       ok: false,
       error: 'You can only ring the bell in the lobby',

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { PersonView, ProfileView } from '@pogo/shared';
+import type { PersonView, ProfileView, TogetherView } from '@pogo/shared';
 import { getGameUi } from '../games/registry';
 import { Avatar, Button, Sheet } from '../components/ui';
 import { PlayerName } from '../components/PlayerName';
+import { timeAgo } from '../components/MatchHistory';
 import { useToast } from '../components/Toast';
 import type { FriendsApi } from '../lib/friendsApi';
 
@@ -27,6 +28,9 @@ export function ProfileCard({
   const toast = useToast();
   const [profile, setProfile] = useState<ProfileView | null>(null);
   const [confirmBlock, setConfirmBlock] = useState(false);
+  // The card has a Stats button: their stats and the games you played together.
+  const [view, setView] = useState<'card' | 'stats'>('card');
+  const [together, setTogether] = useState<TogetherView | null>(null);
   const load = useCallback(() => {
     if (!id) return;
     api
@@ -40,6 +44,8 @@ export function ProfileCard({
   useEffect(() => {
     setProfile(null);
     setConfirmBlock(false);
+    setView('card');
+    setTogether(null);
     load();
   }, [load]);
 
@@ -73,20 +79,108 @@ export function ProfileCard({
             </div>
           </div>
 
-          {p.stats.length > 0 && (
-            <ul className="grid gap-1 text-sm" data-testid="profile-stats">
-              {p.stats.map((s) => (
-                <li key={s.gameId} className="flex justify-between border-b border-edge/20 py-1">
-                  <span>{getGameUi(s.gameId)?.name ?? s.gameId}</span>
-                  <span className="text-muted">
-                    {s.games} played · {s.wins} won · best {s.bestScore}
-                  </span>
-                </li>
-              ))}
-            </ul>
+          {view === 'card' && (
+            <Button
+              variant="secondary"
+              data-testid="profile-stats-open"
+              onClick={() => {
+                setView('stats');
+                if (!self && !together)
+                  api
+                    .together(p.id)
+                    .then(setTogether)
+                    .catch((e: Error) => toast.show(e.message, 'error'));
+              }}
+            >
+              Stats
+            </Button>
           )}
 
-          {!self && !p.isGuest && (
+          {view === 'stats' && (
+            <div className="flex flex-col gap-4" data-testid="profile-stats-view">
+              <Button
+                variant="secondary"
+                data-testid="profile-stats-back"
+                onClick={() => setView('card')}
+              >
+                ‹ Back
+              </Button>
+              <section aria-label="Stats">
+                <h3 className="label mb-1 text-muted">{self ? 'Your stats' : 'Their stats'}</h3>
+                {p.stats.length === 0 ? (
+                  <p className="text-sm text-muted">
+                    {p.isGuest ? 'Guests have no stats.' : 'No games played yet.'}
+                  </p>
+                ) : (
+                  <ul className="grid gap-1 text-sm" data-testid="profile-stats">
+                    {p.stats.map((s) => (
+                      <li
+                        key={s.gameId}
+                        className="flex justify-between border-b border-edge/20 py-1"
+                      >
+                        <span>{getGameUi(s.gameId)?.name ?? s.gameId}</span>
+                        <span className="text-muted">
+                          {s.games} played · {s.wins} won · best {s.bestScore}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+              {!self && (
+                <section aria-label="Together" data-testid="profile-together">
+                  <h3 className="label mb-1 text-muted">Played together</h3>
+                  {together === null ? (
+                    <p className="label text-muted">Loading…</p>
+                  ) : together.games === 0 ? (
+                    <p className="text-sm text-muted">You have not played a game together yet.</p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        {[
+                          ['You won', together.myWins],
+                          ['They won', together.theirWins],
+                          ['Draws', together.ties],
+                        ].map(([label, n]) => (
+                          <div key={label} className="hud calm px-1 py-2">
+                            <div className="text-xl font-bold tabular-nums">{n}</div>
+                            <div className="label text-[10px] text-muted">{label}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="mt-2 text-sm" data-testid="together-summary">
+                        {together.games} {together.games === 1 ? 'game' : 'games'} together
+                        {together.lastAt ? ` · last ${timeAgo(together.lastAt)}` : ''}
+                      </p>
+                      <p className="text-sm text-muted" data-testid="together-most">
+                        Most played together:{' '}
+                        <b className="text-ink">
+                          {getGameUi(together.byGame[0]!.gameId)?.name ??
+                            together.byGame[0]!.gameId}
+                        </b>{' '}
+                        ({together.byGame[0]!.games})
+                      </p>
+                      <ul className="mt-1 grid gap-1 text-sm">
+                        {together.byGame.map((g) => (
+                          <li
+                            key={g.gameId}
+                            className="flex justify-between border-b border-edge/20 py-1"
+                          >
+                            <span>{getGameUi(g.gameId)?.name ?? g.gameId}</span>
+                            <span className="text-muted">
+                              {g.games} played · you {g.myWins} – {g.theirWins} them
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </section>
+              )}
+            </div>
+          )}
+
+          {view === 'card' && !self && !p.isGuest && (
             <div className="flex flex-col gap-2">
               {p.state === 'none' && (
                 <Button

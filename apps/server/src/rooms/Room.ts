@@ -77,7 +77,7 @@ export interface FinishedGame {
 
 const CHAT_HISTORY_LIMIT = 100;
 /** Ringing the bell again is possible after this long (per person). */
-export const BELL_COOLDOWN_MS = 8000;
+export const BELL_COOLDOWN_MS = 3000;
 /** At most this many people watch one game. */
 const MAX_SPECTATORS = 20;
 /** After the last person is ready, the game starts this long later (anybody can cancel by un-readying). */
@@ -250,8 +250,8 @@ export class Room {
       avatar: member.user.avatar,
       at: now,
     };
-    for (const m of this.members)
-      if (!m.left && !m.bot && m.user.id !== userId) this.deps.emitBell(m.user.id, bell);
+    // Everybody in the room, the ringer too (the client shakes only the others' screens).
+    for (const m of this.members) if (!m.left && !m.bot) this.deps.emitBell(m.user.id, bell);
     return ok(null);
   }
 

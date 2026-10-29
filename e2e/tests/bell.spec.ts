@@ -22,9 +22,9 @@ test('ring the bell: after Ready the button nudges everybody else in the lobby',
   await expect(bell).toHaveText('Ring the bell!');
   await bell.click();
 
-  // The guest gets the banner (the shake and the sound are on top of that); the ringer does not.
+  // Everybody gets the pop-up and the sound, the ringer too (only the others' screens shake).
   await expect(guest.page.getByTestId('bell-banner')).toContainText('Ringer');
-  await expect(host.page.getByTestId('bell-banner')).toHaveCount(0);
+  await expect(host.page.getByTestId('bell-banner')).toBeVisible(); // the ringer sees (and hears) it too
   // A short cooldown on the button.
   await expect(bell).toBeDisabled();
   await expect(bell).toContainText('Ring the bell (');

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { BOT_AVATAR, displayName } from '@pogo/shared';
-import type { MatchHistoryEntry, PublicUser, Role } from '@pogo/shared';
+import type { MatchHistoryEntry, PublicUser, Role, TogetherView } from '@pogo/shared';
 
 export interface EmailCodeRecord {
   codeHash: string;
@@ -104,6 +104,8 @@ export interface UserStore {
   recordResults(rows: ResultRow[]): Promise<void>;
   statsFor(userId: string): Promise<GameStats[]>;
   leaderboard(gameId: string, limit: number): Promise<LeaderboardEntry[]>;
+  /** The games `meId` and `otherId` played in the same match (the head to head). */
+  together(meId: string, otherId: string): Promise<TogetherView>;
   /** The player's last games, newest first (the match history). */
   history(userId: string, limit: number): Promise<MatchHistoryEntry[]>;
   /** Move every result of `fromId` to `toId` (skipping matches `toId` already has) and delete `fromId`. */
@@ -352,6 +354,25 @@ export function createPrismaUserStore(prisma: PrismaClient): UserStore {
         ),
       );
     },
+    async together(meId, otherId) {
+      const mine = await prisma.gameResult.findMany({
+        where: { userId: meId },
+        orderBy: { playedAt: 'desc' },
+        take: 2000,
+      });
+      const theirs = await prisma.gameResult.findMany({
+        where: { userId: otherId, matchId: { in: mine.map((r) => r.matchId) } },
+      });
+      return togetherOf(
+        mine.map((r) => ({
+          matchId: r.matchId,
+          gameId: r.gameId,
+          rank: r.rank,
+          playedAt: r.playedAt.getTime(),
+        })),
+        theirs.map((r) => ({ matchId: r.matchId, rank: r.rank })),
+      );
+    },
     async history(userId, limit) {
       const rows = await prisma.gameResult.findMany({
         where: { userId },
@@ -407,6 +428,37 @@ export function createPrismaUserStore(prisma: PrismaClient): UserStore {
 }
 
 /** Yatzy ranks by best score; every other game by wins (then games played). */
+/** The head to head of two players from their result rows (a game is "together" when they share a match id). */
+function togetherOf(
+  mine: { matchId: string; gameId: string; rank: number; playedAt: number }[],
+  theirs: { matchId: string; rank: number }[],
+): TogetherView {
+  const other = new Map(theirs.map((r) => [r.matchId, r.rank]));
+  const view: TogetherView = {
+    games: 0,
+    myWins: 0,
+    theirWins: 0,
+    ties: 0,
+    byGame: [],
+    lastAt: null,
+  };
+  const per = new Map<string, TogetherView['byGame'][number]>();
+  for (const r of mine) {
+    const theirRank = other.get(r.matchId);
+    if (theirRank === undefined) continue;
+    view.games++;
+    const g = per.get(r.gameId) ?? { gameId: r.gameId, games: 0, myWins: 0, theirWins: 0 };
+    g.games++;
+    if (r.rank < theirRank) (view.myWins++, g.myWins++);
+    else if (r.rank > theirRank) (view.theirWins++, g.theirWins++);
+    else view.ties++;
+    per.set(r.gameId, g);
+    view.lastAt = Math.max(view.lastAt ?? 0, r.playedAt);
+  }
+  view.byGame = [...per.values()].sort((a, b) => b.games - a.games);
+  return view;
+}
+
 /** A stored result row as a match history entry (older rows have no summary: just the game and the date). */
 function toHistory(
   matchId: string,
@@ -585,6 +637,19 @@ export function createMemoryUserStore(): UserStore {
           g,
           mine.filter((r) => r.gameId === g),
         ),
+      );
+    },
+    async together(meId, otherId) {
+      const mine = results.filter((r) => r.userId === meId);
+      const theirs = results.filter((r) => r.userId === otherId);
+      return togetherOf(
+        mine.map((r) => ({
+          matchId: r.matchId,
+          gameId: r.gameId,
+          rank: r.rank,
+          playedAt: r.playedAt,
+        })),
+        theirs.map((r) => ({ matchId: r.matchId, rank: r.rank })),
       );
     },
     async history(userId, limit) {

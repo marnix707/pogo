@@ -4,6 +4,7 @@ import type {
   FriendsOverview,
   PersonView,
   ProfileView,
+  TogetherView,
 } from '@pogo/shared';
 import { request } from './session';
 
@@ -25,6 +26,7 @@ export const friendsApi = (token: string) => ({
       token,
     ),
   profile: (id: string) => request<ProfileView>('GET', `/api/users/${id}/profile`, token),
+  together: (id: string) => request<TogetherView>('GET', `/api/users/${id}/together`, token),
   block: (id: string) => request<unknown>('POST', `/api/users/${id}/block`, token),
   unblock: (id: string) => request<unknown>('POST', `/api/users/${id}/unblock`, token),
   mute: (id: string) => request<unknown>('POST', `/api/users/${id}/mute`, token),

@@ -237,6 +237,44 @@ describe('stats, leaderboard and merge', () => {
     expect((await call('GET', '/api/me/history')).statusCode).toBe(401);
   });
 
+  it('shows the games two players played together: how many, who won, which game most', async () => {
+    const ann = await register('Anna', 'anna@example.com');
+    const ben = await register('Ben', 'ben@example.com');
+    const both = (matchId: string, gameId: string, annRank: number) =>
+      recordFinishedGame(users, {
+        gameId,
+        matchId,
+        results: {
+          rankings: [
+            { playerId: ann.user.id, score: 10, rank: annRank },
+            { playerId: ben.user.id, score: 5, rank: annRank === 1 ? 2 : annRank === 2 ? 1 : 1 },
+          ].sort((x, y) => x.score - y.score),
+        },
+        humans: [ann.user.id, ben.user.id],
+        players: 2,
+        bots: 0,
+        roster: [],
+        detail: null,
+      });
+    await both('T-1', 'karma', 1);
+    await both('T-2', 'karma', 1);
+    await both('T-3', 'karma', 2);
+    await both('T-4', 'yatzy', 1);
+    // A game Anna played with somebody else does not count.
+    await finish(ann.user.id, 'T-5', 99);
+    const view = (await call('GET', `/api/users/${ben.user.id}/together`, ann.token)).json();
+    expect(view).toMatchObject({ games: 4, myWins: 3, theirWins: 1, ties: 0 });
+    expect(view.byGame).toEqual([
+      { gameId: 'karma', games: 3, myWins: 2, theirWins: 1 },
+      { gameId: 'yatzy', games: 1, myWins: 1, theirWins: 0 },
+    ]);
+    expect(view.lastAt).toEqual(expect.any(Number));
+    // From Ben's side it is the mirror image.
+    const mirror = (await call('GET', `/api/users/${ann.user.id}/together`, ben.token)).json();
+    expect(mirror).toMatchObject({ games: 4, myWins: 1, theirWins: 3 });
+    expect((await call('GET', `/api/users/${ann.user.id}/together`)).statusCode).toBe(401);
+  });
+
   it('flags a new personal best and only lists registered players on the leaderboard', async () => {
     const acc = await register('Champ', 'champ@example.com');
     const g = await guest('JustGuest');

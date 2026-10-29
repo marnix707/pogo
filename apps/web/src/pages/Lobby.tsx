@@ -596,7 +596,7 @@ export function Lobby({
               disabled={!api.online || bellWait > 0}
               onClick={() => {
                 void api.ringBell().then((res) => {
-                  if (res.ok) setBellUntil(Date.now() + 8000);
+                  if (res.ok) setBellUntil(Date.now() + 3000);
                 });
               }}
               className="mb-1 flex min-h-12 w-full items-center justify-center gap-3 rounded-[8px] border-2 border-neon bg-panel2 text-base font-black uppercase tracking-[0.14em] text-neon ring-2 ring-line active:translate-y-px disabled:opacity-50"

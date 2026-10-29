@@ -281,6 +281,17 @@ export function registerFriendRoutes(app: FastifyInstance, deps: FriendDeps) {
     return profile;
   });
 
+  // The games you played with this person: how many, who won, which games most.
+  app.get('/api/users/:id/together', tight(60), async (req, reply) => {
+    const me = await registered(req, reply);
+    if (!me) return;
+    const id = idParam(req);
+    const user = id ? await users.get(id) : null;
+    if (!user || (await friends.blockersOf(me.id)).includes(user.id))
+      return reply.code(404).send({ error: 'Player not found' });
+    return await users.together(me.id, user.id);
+  });
+
   // ---- block and mute ------------------------------------------------------------------------------
   app.post('/api/users/:id/block', tight(30), async (req, reply) => {
     const me = await registered(req, reply);

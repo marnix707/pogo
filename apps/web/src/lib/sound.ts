@@ -168,15 +168,16 @@ export function play(name: SoundName) {
       break;
     case 'bell':
       // "Ring the bell!": a loud, silly ding-a-ling (brass partials, a quick two-tone warble), then a wah-wah.
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 14; i++) {
         const f = i % 2 ? 1568 : 1397;
         const t0 = i * 0.085;
-        tone(c, f, t0, 0.2, 'triangle', 0.22);
-        tone(c, f * 2.76, t0, 0.14, 'sine', 0.1);
-        tone(c, f * 5.4, t0, 0.07, 'sine', 0.05);
+        tone(c, f, t0, 0.22, 'square', 0.16); // a bright, loud edge
+        tone(c, f, t0, 0.22, 'triangle', 0.4);
+        tone(c, f * 2.76, t0, 0.16, 'sine', 0.22);
+        tone(c, f * 5.4, t0, 0.08, 'sine', 0.1);
       }
-      [659, 622, 587, 554].forEach((f, i) => tone(c, f, 0.95 + i * 0.12, 0.16, 'sawtooth', 0.07));
-      sweep(c, 'sine', 300, 120, 1.45, 0.25, 0.1);
+      [659, 622, 587, 554].forEach((f, i) => tone(c, f, 1.3 + i * 0.14, 0.2, 'sawtooth', 0.16));
+      sweep(c, 'sine', 300, 120, 1.9, 0.3, 0.25);
       break;
     case 'whistle':
       // A bomb falling: a pitch that drops.
