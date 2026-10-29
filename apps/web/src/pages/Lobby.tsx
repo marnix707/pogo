@@ -256,31 +256,31 @@ export function Lobby({
                   data-testid="lobby-avatar"
                   className="shrink-0 active:translate-y-px"
                 >
-                  <Avatar avatar={user.avatar} size="md" />
+                  <Avatar avatar={user.avatar} size="fluid" className="h-12 w-12 text-2xl" />
                 </button>
-                <Button
-                  variant="secondary"
-                  aria-label="Invite friends"
-                  className="min-h-10 shrink-0 !px-3"
-                  onClick={() => void share()}
-                >
-                  Invite
-                </Button>
-                <span className="flex-1" />
+                <FriendsButton className="calm !h-12 !w-12" />
                 <TileButton
                   onClick={() => setBoardOpen(true)}
                   aria-label="Leaderboard"
                   data-testid="lobby-leaderboard"
-                  className="calm"
+                  className="calm !h-12 !w-12"
                 >
                   <TrophyIcon className="h-5 w-5" />
                 </TileButton>
-                <FriendsButton className="calm" />
+                <span className="flex-1" />
+                <Button
+                  variant="secondary"
+                  aria-label="Invite friends"
+                  className="min-h-12 shrink-0 !px-3"
+                  onClick={() => void share()}
+                >
+                  Invite
+                </Button>
                 <TileButton
                   onClick={onSettings}
                   aria-label="Settings"
                   data-testid="settings-button"
-                  className="calm"
+                  className="calm !h-12 !w-12"
                 >
                   <SlidersIcon className="h-5 w-5" />
                 </TileButton>
