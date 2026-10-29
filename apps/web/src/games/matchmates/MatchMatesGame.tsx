@@ -1005,7 +1005,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
             {Array.from({ length: Math.max(2, movesNow) }, (_, n) => (
               <img
                 key={n}
-                src={hudUrl(n < movesNow ? 'boot-full' : 'boot-empty')}
+                src={hudUrl(n < movesNow ? 'bone-full' : 'bone-empty')}
                 alt=""
                 draggable={false}
                 style={{
@@ -1176,8 +1176,8 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                     onClick={(e) => petInfo.open(e, m.element, shownEvolved)}
                     data-testid={`mates-monster-${who}-${slot}`}
                   >
-                    {/* Berries are full: pixel sparkles rise round my pets, so I know I can evolve / boost. */}
-                    {who === 'me' && mine.berries >= evolveCost(stage) && !evolving && (
+                    {/* Berries are full (mine or the opponent's): pixel sparkles rise round the pets that can evolve / boost. */}
+                    {p.berries >= evolveCost(stage) && !evolving && (
                       <span
                         aria-hidden
                         data-testid="mates-ready-glow"

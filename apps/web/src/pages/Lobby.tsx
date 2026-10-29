@@ -263,15 +263,6 @@ export function Lobby({
                   />
                 </button>
                 <FriendsButton className="calm !h-12 !w-12" />
-                <TileButton
-                  onClick={() => setBoardOpen(true)}
-                  aria-label="Leaderboard"
-                  data-testid="lobby-leaderboard"
-                  className="calm !h-12 !w-12"
-                >
-                  <TrophyIcon className="h-5 w-5" />
-                </TileButton>
-                <span className="flex-1" />
                 <Button
                   variant="secondary"
                   aria-label="Invite friends"
@@ -280,6 +271,15 @@ export function Lobby({
                 >
                   Invite
                 </Button>
+                <span className="flex-1" />
+                <TileButton
+                  onClick={() => setBoardOpen(true)}
+                  aria-label="Leaderboard"
+                  data-testid="lobby-leaderboard"
+                  className="calm !h-12 !w-12"
+                >
+                  <TrophyIcon className="h-5 w-5" />
+                </TileButton>
                 <TileButton
                   onClick={onSettings}
                   aria-label="Settings"
