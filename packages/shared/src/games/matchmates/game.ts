@@ -18,7 +18,7 @@ import {
   adjacent,
   cellAt,
 } from './board';
-import { BERRIES_TO_EVOLVE, BOOST_MANA, MAX_BERRIES, MONSTERS, evolveCost } from './monsters';
+import { BOOST_MANA, MONSTERS, evolveCost, maxBerries } from './monsters';
 import { CELLS, COLS, ELEMENTS, HP_CHOICES, MAX_PLAYERS, MIN_PLAYERS, ROWS, STAGES } from './types';
 import type {
   Element,
@@ -168,7 +168,7 @@ function validateMove(state: MatesState, playerId: PlayerId, move: MatesMove): M
     return OK;
   }
   if (!monster.evolved) return err('Only an evolved monster can be boosted');
-  if (me.berries < BERRIES_TO_EVOLVE) return err('Not enough berries');
+  if (me.berries < evolveCost(state.stage)) return err('Not enough berries');
   return OK;
 }
 
@@ -203,7 +203,7 @@ function clearMatches(c: Ctx, cells: Set<number>) {
   for (const i of cells) {
     const k = c.board[i]!.k;
     if (!c.kinds.includes(k)) c.kinds.push(k);
-    if (k === 'berry') c.me.berries = Math.min(MAX_BERRIES, c.me.berries + 1);
+    if (k === 'berry') c.me.berries = Math.min(maxBerries(c.stage), c.me.berries + 1);
     else if (k !== 'bomb' && k !== 'mystery') {
       for (const m of c.me.monsters) if (m.element === k) m.mana += 1;
       if (k === 'fire' && c.stage === 'lava') lava += 1;
@@ -463,7 +463,7 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
     event.slot = move.slot;
     settle(c);
   } else {
-    me.berries -= BERRIES_TO_EVOLVE;
+    me.berries -= evolveCost(state.stage);
     (me.monsters[move.slot] as MateMonster).mana += BOOST_MANA;
     event.slot = move.slot;
     settle(c);

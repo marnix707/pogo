@@ -19,8 +19,6 @@ export interface MonsterSpec {
 
 export const BERRIES_TO_EVOLVE = 4;
 export const BOOST_MANA = 4;
-/** Most berries a player can hold. */
-export const MAX_BERRIES = BERRIES_TO_EVOLVE;
 
 export const MONSTERS: Readonly<Record<Element, MonsterSpec>> = {
   fire: {
@@ -119,3 +117,5 @@ export const STAGE_SPECS: Readonly<Record<StageId, StageSpec>> = {
 
 export const evolveCost = (stage: StageId): number =>
   stage === 'forest' ? BERRIES_TO_EVOLVE - 1 : BERRIES_TO_EVOLVE;
+/** Most berries a player can hold: what an evolve (and a boost) costs on this stage (Forest Valley: 3). */
+export const maxBerries = (stage: StageId): number => evolveCost(stage);

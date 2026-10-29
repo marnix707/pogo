@@ -15,6 +15,8 @@ import {
   iceUrl,
   monsterSize,
   monsterUrl,
+  arenaEdgeColors,
+  berryShineUrl,
   portraitUrl,
   tileUrl,
 } from './art';
@@ -31,7 +33,6 @@ const {
   MONSTERS,
   STAGE_SPECS,
   evolveCost,
-  BERRIES_TO_EVOLVE,
   STEP_MS,
   FIRE_MS,
   SWAP_MS,
@@ -149,7 +150,16 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
   const mine = view.players.find((p) => p.id === me) ?? view.players[0]!;
   const theirs = view.players.find((p) => p.id !== mine.id)!;
 
-  const petInfo = usePetInfo();
+  // The colours of the arena's top and bottom edge: painted over the whole screen behind the arena.
+  const [edges, setEdges] = useState<{ top: string; bottom: string } | null>(null);
+  const arenaPicture = portraitUrl(view.stage ?? 'stadium', STAGE_SPECS);
+  useEffect(() => {
+    let live = true;
+    void arenaEdgeColors(arenaPicture).then((c) => live && setEdges(c));
+    return () => {
+      live = false;
+    };
+  }, [arenaPicture]);
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
   const [anim, setAnim] = useState<Anim | null>(null);
@@ -555,6 +565,21 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
     [view.winner, room.members],
   );
 
+  // Tapping one of my pets: its pop-up with both forms and the Evolve / Boost button (berries as a loading bar).
+  const petInfo = usePetInfo((element) => {
+    const slot = mine.monsters.findIndex((m) => m.element === element);
+    const pet = mine.monsters[slot];
+    if (!pet) return null;
+    return {
+      berries: mine.berries,
+      need: evolveCost(stage),
+      canAct,
+      evolved: pet.evolved,
+      color: ELEMENT_COLOR[element],
+      run: () => void send({ type: pet.evolved ? 'boost' : 'evolve', slot }),
+    };
+  });
+
   if (view.phase === 'pick') {
     return (
       <div
@@ -573,7 +598,6 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
     );
   }
 
-  const evolveBerries = evolveCost(stage);
   const W = SCREEN.w;
   const H = SCREEN.h;
   /** A box in screen art pixels as % of the stage (the whole screen is laid out in art pixels, like the reference). */
@@ -609,7 +633,7 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
           style={{ ...hudText, ...at(stackX + 11, 21.5) }}
           data-testid={`mates-berries-${who}`}
         >
-          {p.berries}/{BERRIES_TO_EVOLVE}
+          {p.berries}/{evolveCost(stage)}
         </span>
         <img
           src={hudUrl('heart')}
@@ -650,10 +674,21 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
 
   return (
     <div
-      className="flex min-h-0 flex-1 flex-col items-center gap-1.5 pb-1 pt-[calc(env(safe-area-inset-top)+0.75rem)]"
+      className="relative z-10 flex min-h-0 flex-1 flex-col items-center gap-1.5 pb-1 pt-[calc(env(safe-area-inset-top)+0.75rem)]"
       data-testid="mates-game"
       data-phase={view.phase}
     >
+      {/* The arena fills the whole screen: sky colour above it, ground colour below. */}
+      <div
+        aria-hidden
+        data-testid="mates-backdrop"
+        className="fixed inset-0 -z-10"
+        style={{
+          background: edges
+            ? `linear-gradient(to bottom, ${edges.top} 0%, ${edges.top} 30%, ${edges.bottom} 70%, ${edges.bottom} 100%)`
+            : '#101628',
+        }}
+      />
       <style>{`
         @keyframes mates-lunge { 0%{transform:translateX(0)} 40%{transform:translateX(var(--lunge))} 100%{transform:translateX(0)} }
         @keyframes mates-pop { 0%{opacity:0;transform:translateY(0) scale(.6)} 20%{opacity:1;transform:translateY(-6px) scale(1.2)} 100%{opacity:0;transform:translateY(-28px) scale(1)} }
@@ -917,6 +952,16 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
                             : undefined,
                     }}
                   />
+                  {cell.k === 'berry' && !flownAway && (
+                    <img
+                      src={berryShineUrl()}
+                      alt=""
+                      draggable={false}
+                      data-testid="berry-shine"
+                      className="pointer-events-none absolute inset-0 h-full w-full"
+                      style={px}
+                    />
+                  )}
                   {cell.frozen && (
                     <img
                       src={iceUrl()}
@@ -1052,41 +1097,6 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
           ))}
         </span>
         <span className="flex gap-1">
-          {mine.monsters.map((m, slot) => {
-            const spec = MONSTERS[m.element];
-            const need = m.evolved ? BERRIES_TO_EVOLVE : evolveBerries;
-            const full = mine.berries >= need;
-            const can = canAct && full;
-            return (
-              <Button
-                key={slot}
-                variant="secondary"
-                data-testid={`mates-${m.evolved ? 'boost' : 'evolve'}-${slot}`}
-                disabled={!can}
-                className="relative !min-h-0 overflow-hidden !px-2 !py-1 text-[11px]"
-                style={{ borderColor: ELEMENT_COLOR[m.element] }}
-                onClick={() => void send({ type: m.evolved ? 'boost' : 'evolve', slot })}
-              >
-                {/* A loading bar of the berries; it pulses when it is full (n/n). */}
-                <span
-                  aria-hidden
-                  data-testid={`mates-bar-${slot}`}
-                  data-full={full}
-                  className={`absolute inset-y-0 left-0 transition-[width] duration-500 ${
-                    full ? 'animate-pulse' : ''
-                  }`}
-                  style={{
-                    width: `${Math.min(100, (mine.berries / need) * 100)}%`,
-                    background: ELEMENT_COLOR[m.element],
-                  }}
-                />
-                <span className="relative text-white [text-shadow:0_1px_0_#101628,0_0_2px_#101628]">
-                  {m.evolved ? 'Boost' : 'Evolve'} {spec.names[m.evolved ? 1 : 0]} (
-                  {Math.min(mine.berries, need)}/{need})
-                </span>
-              </Button>
-            );
-          })}
           <Button
             variant="secondary"
             data-testid="mates-chat"

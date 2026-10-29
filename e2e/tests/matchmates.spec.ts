@@ -64,6 +64,14 @@ test('Pet Match: pick, play moves against the computer', async ({ browser }) => 
   await page.screenshot({ path: 'test-results/mates-2-coin.png' });
   await expect(page.getByTestId('mates-coin')).toHaveCount(0, { timeout: 10_000 });
   await page.screenshot({ path: 'test-results/mates-2-board.png' });
+  // Tapping one of my pets opens its pop-up: both forms, and an Evolve button that is greyed out without berries.
+  await page.getByTestId('mates-monster-me-0').click();
+  await expect(page.getByTestId('mates-pet-info')).toBeVisible();
+  await expect(page.getByTestId('mates-pet-action')).toBeDisabled();
+  await page.getByTestId('mates-pet-form-1').click();
+  await page.screenshot({ path: 'test-results/mates-2-petinfo.png' });
+  await page.mouse.click(4, 4); // anywhere outside closes it
+  await expect(page.getByTestId('mates-pet-info')).toHaveCount(0);
 
   // Play a few of my moves; the computer answers in between.
   for (let n = 0; n < 4; n++) {

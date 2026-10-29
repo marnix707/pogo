@@ -121,6 +121,8 @@ export const tileUrl = (cell: matchmates.MateCell): string =>
   (cell.k === 'bomb' ? tiles[`bomb-${Math.min(3, Math.max(1, cell.fuse ?? 3))}`] : tiles[cell.k]) ??
   '';
 export const iceUrl = (): string => tiles['ice-overlay'] ?? '';
+/** The berry's glint + sparkle loop (an overlay the size of the tile): berries are meant to stand out. */
+export const berryShineUrl = (): string => tiles['berry-shine-animated'] ?? '';
 
 export const monsterUrl = (element: matchmates.Element, evolved: boolean): string =>
   monsters[matchmatesName(element, evolved)] ?? '';
@@ -153,3 +155,50 @@ export const allArt = (): string[] => [
   ...Object.values(digits),
   boardPanelUrl,
 ];
+
+const edgeCache = new Map<string, Promise<{ top: string; bottom: string }>>();
+/**
+ * The average colour of the top and of the bottom row of an arena picture: the screen is painted with them
+ * above and below the arena so the background covers the whole phone (the arena art itself stays at its
+ * whole-number scale, so the pixels never blur).
+ */
+export function arenaEdgeColors(url: string): Promise<{ top: string; bottom: string }> {
+  const hit = edgeCache.get(url);
+  if (hit) return hit;
+  const p = new Promise<{ top: string; bottom: string }>((resolve) => {
+    const fallback = { top: '#101628', bottom: '#101628' };
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const w = 140;
+        const h = 258;
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(fallback);
+        ctx.drawImage(img, 0, 0, w, h);
+        const avg = (y: number): string => {
+          const d = ctx.getImageData(0, y, w, 1).data;
+          let r = 0;
+          let g = 0;
+          let b = 0;
+          for (let i = 0; i < d.length; i += 4) {
+            r += d[i] as number;
+            g += d[i + 1] as number;
+            b += d[i + 2] as number;
+          }
+          const n = d.length / 4;
+          return `rgb(${Math.round(r / n)} ${Math.round(g / n)} ${Math.round(b / n)})`;
+        };
+        resolve({ top: avg(0), bottom: avg(h - 1) });
+      } catch {
+        resolve(fallback);
+      }
+    };
+    img.onerror = () => resolve(fallback);
+    img.src = url;
+  });
+  edgeCache.set(url, p);
+  return p;
+}

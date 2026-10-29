@@ -3,44 +3,57 @@ import type { MouseEvent } from 'react';
 import { matchmates } from '@pogo/shared';
 import { monsterUrl } from './art';
 
-const { MONSTERS } = matchmates;
+const { MONSTERS, BOOST_MANA } = matchmates;
 
 const px = { imageRendering: 'pixelated' } as const;
-const WIDTH = 224;
+const WIDTH = 256;
+
+/** What the pop-up of one of my own pets can do (the game gives it live, so it follows the berries). */
+export interface PetActions {
+  /** Berries I hold and what an evolve / boost costs. */
+  berries: number;
+  need: number;
+  /** It is my turn and nothing is animating. */
+  canAct: boolean;
+  /** Is this pet evolved already (then the button boosts instead). */
+  evolved: boolean;
+  color: string;
+  run: () => void;
+}
 
 interface Anchor {
   element: matchmates.Element;
-  evolved: boolean;
-  /** Viewport spot under (or over) the pet the bubble points at. */
+  /** Viewport box of the pet the pop-up points at. */
   x: number;
   top: number;
   bottom: number;
 }
 
 /**
- * Tap a pet, any time (arena choice or in the game), to get the same little bubble that explains a rule in
- * the Karma lobby (`.info-bubble`): its names, mana cost, special and what it does evolved. Tap again or
- * anywhere else to close. Use `open(event, element, evolved)` on the pet's onClick and render `bubble`.
+ * Tap a pet, any time (arena choice or in the game), for its pop-up (the same `.info-bubble` look as the
+ * Karma lobby): both forms side by side as tabs, every number, the special, and for my own pets the Evolve
+ * (or Boost) button, greyed out until there are enough berries. Tap again or anywhere else to close.
+ * `actions(element)` gives the button's live state for my own pets (null = just information).
  */
-export function usePetInfo() {
+export function usePetInfo(actions?: (element: matchmates.Element) => PetActions | null) {
   const [anchor, setAnchor] = useState<Anchor | null>(null);
+  const [form, setForm] = useState<0 | 1>(0);
   const open = (e: MouseEvent<HTMLElement>, element: matchmates.Element, evolved = false) => {
     const r = e.currentTarget.getBoundingClientRect();
-    setAnchor((a) =>
-      a && a.element === element && a.evolved === evolved
-        ? null
-        : { element, evolved, x: r.left + r.width / 2, top: r.top, bottom: r.bottom },
-    );
+    if (anchor?.element === element) return setAnchor(null);
+    setForm(evolved ? 1 : 0);
+    setAnchor({ element, x: r.left + r.width / 2, top: r.top, bottom: r.bottom });
   };
 
   let bubble = null;
   if (anchor) {
     const spec = MONSTERS[anchor.element];
-    const form = anchor.evolved ? 1 : 0;
+    const act = actions?.(anchor.element) ?? null;
     const left = Math.max(8, Math.min(window.innerWidth - WIDTH - 8, anchor.x - WIDTH / 2));
     // Below the pet, unless there is no room there.
-    const below = anchor.bottom + 190 < window.innerHeight;
+    const below = anchor.bottom + 300 < window.innerHeight;
     const arrowLeft = Math.max(14, Math.min(WIDTH - 26, anchor.x - left - 6));
+    const full = !!act && act.berries >= act.need;
     bubble = (
       <>
         <button
@@ -50,7 +63,8 @@ export function usePetInfo() {
           onClick={() => setAnchor(null)}
         />
         <div
-          role="status"
+          role="dialog"
+          aria-label={spec.names[form]}
           data-testid="mates-pet-info"
           className="info-bubble fixed z-50"
           style={{
@@ -69,31 +83,84 @@ export function usePetInfo() {
             style={{ left: arrowLeft }}
           />
           <div className="relative rounded-lg border-2 border-edge/40 bg-panel2 px-3 py-2 text-left text-sm font-normal text-ink shadow-lg">
-            <div className="mb-1 flex items-end gap-2">
-              <img
-                src={monsterUrl(anchor.element, anchor.evolved)}
-                alt=""
-                draggable={false}
-                style={px}
-                className="h-10"
-              />
-              <b className="leading-tight">
-                {spec.names[form]}
-                <span className="block text-xs font-normal text-muted">
-                  {anchor.element} · special at {spec.cost} mana
-                </span>
-              </b>
+            {/* Unevolved / evolved */}
+            <div className="mb-2 grid grid-cols-2 gap-1" role="tablist">
+              {([0, 1] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  role="tab"
+                  aria-selected={form === f}
+                  data-testid={`mates-pet-form-${f}`}
+                  onClick={() => setForm(f)}
+                  className={`flex items-end justify-center gap-1 rounded-md border-2 px-1 pt-1 text-[10px] font-bold uppercase ${
+                    form === f ? 'border-neon bg-neon/15' : 'border-edge/30 opacity-70'
+                  }`}
+                >
+                  <img
+                    src={monsterUrl(anchor.element, f === 1)}
+                    alt=""
+                    draggable={false}
+                    style={px}
+                    className={f === 1 ? 'h-12' : 'h-10'}
+                  />
+                  <span className="pb-1">{f === 1 ? 'Evolved' : 'Base'}</span>
+                </button>
+              ))}
             </div>
-            <p className="text-xs">{spec.ability}</p>
-            <p className="mt-1 text-xs text-muted">
-              Damage {spec.damage[0]}, evolved {spec.damage[1]}
-              {spec.heal[0] > 0 ? ` · heal ${spec.heal[0]}, evolved ${spec.heal[1]}` : ''}
-            </p>
-            <p className="mt-1 text-xs text-muted">
-              {anchor.evolved
-                ? 'Evolved: 4 berries boost it with 4 mana.'
-                : `Evolves into ${spec.names[1]} (berries, takes your turn).`}
-            </p>
+            <b className="block leading-tight">{spec.names[form]}</b>
+            <span className="block text-xs capitalize text-muted">
+              {anchor.element} · special at {spec.cost} mana
+            </span>
+            <p className="mt-1 text-xs">{spec.ability}</p>
+            <dl className="mt-1 grid grid-cols-2 gap-x-3 text-xs">
+              <dt className="text-muted">Damage</dt>
+              <dd className="font-bold">{spec.damage[form]}</dd>
+              {spec.heal[form] > 0 && (
+                <>
+                  <dt className="text-muted">Heals</dt>
+                  <dd className="font-bold">{spec.heal[form]}</dd>
+                </>
+              )}
+              {spec.power[form] > 0 && (
+                <>
+                  <dt className="text-muted">Power</dt>
+                  <dd className="font-bold">{spec.power[form]}</dd>
+                </>
+              )}
+              <dt className="text-muted">Mana</dt>
+              <dd className="font-bold">{spec.cost}</dd>
+            </dl>
+            {act && (
+              <button
+                type="button"
+                data-testid="mates-pet-action"
+                data-full={full}
+                disabled={!act.canAct || !full}
+                onClick={() => {
+                  act.run();
+                  setAnchor(null);
+                }}
+                className="relative mt-2 min-h-11 w-full overflow-hidden rounded-md border-2 text-sm font-bold uppercase tracking-wider text-white disabled:opacity-50"
+                style={{ borderColor: act.color }}
+              >
+                {/* The berries as a loading bar in the pet's colour; it pulses when it is full. */}
+                <span
+                  aria-hidden
+                  className={`absolute inset-y-0 left-0 transition-[width] duration-500 ${
+                    full ? 'animate-pulse' : ''
+                  }`}
+                  style={{
+                    width: `${Math.min(100, (act.berries / act.need) * 100)}%`,
+                    background: act.color,
+                  }}
+                />
+                <span className="relative [text-shadow:0_1px_0_#101628,0_0_2px_#101628]">
+                  {act.evolved ? `Boost +${BOOST_MANA} mana` : 'Evolve'} (
+                  {Math.min(act.berries, act.need)}/{act.need})
+                </span>
+              </button>
+            )}
           </div>
         </div>
       </>

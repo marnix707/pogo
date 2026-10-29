@@ -5,7 +5,7 @@ import { draftTurn, matesGame } from './game';
 import { CELLS, COLS, ELEMENTS, ROWS } from './types';
 import type { Element } from './types';
 import type { MateCell, MatesMove, MatesState, TileKind } from './types';
-import { MONSTERS } from './monsters';
+import { MONSTERS, maxBerries } from './monsters';
 import { cellAt, createBoard, findMatches, legalSwaps, trySwap } from './board';
 
 const A: GamePlayer = { id: 'a', nickname: 'A', avatar: 'x' };
@@ -447,6 +447,31 @@ describe('Pet Match', () => {
     expect(s.players.every((p) => p.hp === 150 && p.maxHp === 150)).toBe(true);
     expect(matesGame.optionsSchema.parse({}).hp).toBe(100);
     expect(matesGame.optionsSchema.safeParse({ hp: 77 }).success).toBe(false);
+  });
+
+  it('berries are capped at what an evolve costs: 4, Forest Valley 3 (a boost costs the same)', () => {
+    for (const [stage, cap] of [
+      ['stadium', 4],
+      ['forest', 3],
+    ] as const) {
+      const base = start(8, stage);
+      const players = base.players.map((p) =>
+        p.id === base.turn
+          ? { ...p, berries: cap, monsters: p.monsters.map((m) => ({ ...m, evolved: true })) }
+          : p,
+      ) as MatesState['players'];
+      const s = { ...base, players };
+      expect(maxBerries(stage)).toBe(cap);
+      expect(matesGame.validateMove(s, s.turn, { type: 'boost', slot: 0 }).ok).toBe(true);
+      const after = matesGame.applyMove(s, s.turn, { type: 'boost', slot: 0 }, createSeededRng(1));
+      expect(after.players.find((p) => p.id === s.turn)!.berries).toBe(0);
+      const short = players.map((p) =>
+        p.id === s.turn ? { ...p, berries: cap - 1 } : p,
+      ) as MatesState['players'];
+      expect(
+        matesGame.validateMove({ ...s, players: short }, s.turn, { type: 'boost', slot: 0 }).ok,
+      ).toBe(false);
+    }
   });
 
   it('Frost Lake freezes the matched kinds and frozen tiles cannot move', () => {

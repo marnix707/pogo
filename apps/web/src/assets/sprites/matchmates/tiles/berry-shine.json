@@ -1,0 +1,34 @@
+{
+ "canvas": [
+  18,
+  18
+ ],
+ "z": "over berry.svg, same size and place",
+ "frames": {
+  "empty": 0,
+  "sweep": [
+   1,
+   8
+  ],
+  "twinkle": [
+   9,
+   11
+  ]
+ },
+ "ms_per_frame": [
+  1300,
+  55,
+  55,
+  55,
+  55,
+  55,
+  55,
+  55,
+  55,
+  70,
+  120,
+  70
+ ],
+ "loop": true,
+ "file": "berry-shine-animated.svg"
+}
