@@ -19,6 +19,8 @@ import {
   berryShineUrl,
   chargedUrl,
   portraitUrl,
+  END_FALL_MS,
+  END_ROW_MS,
   readySparkleUrl,
   tileUrl,
 } from './art';
@@ -82,7 +84,22 @@ interface Note {
   id: number;
   text: string;
   tone: 'good' | 'bad' | 'info';
+  /** Where the action is, in % of the board (negative / over 100 = beside it, e.g. up at the player's picture). */
+  x: number;
+  y: number;
 }
+/** Screen art pixels to % of the board (the texts sit on the board layer). */
+const boardPct = (x: number, y: number): [number, number] => [
+  ((x - SCREEN.boardX) / (COLS * SCREEN.cell)) * 100,
+  ((y - SCREEN.boardY) / (ROWS * SCREEN.cell)) * 100,
+];
+/** The middle of some squares, in % of the board, kept where a text fits. */
+const cellsPct = (cells: readonly number[]): [number, number] => {
+  const n = Math.max(1, cells.length);
+  const x = cells.reduce((s, c) => s + ((c % COLS) + 0.5) / COLS, 0) / n;
+  const y = cells.reduce((s, c) => s + (Math.floor(c / COLS) + 0.5) / ROWS, 0) / n;
+  return [Math.max(24, Math.min(76, x * 100)), Math.max(10, Math.min(90, y * 100))];
+};
 interface Spark {
   id: number;
   cell: number;
@@ -179,7 +196,9 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   const [selected, setSelected] = useState<number | null>(null);
   const [anim, setAnim] = useState<Anim | null>(null);
   const [pops, setPops] = useState<Pop[]>([]);
-  const [combo, setCombo] = useState<{ id: number; level: number } | null>(null);
+  const [combo, setCombo] = useState<{ id: number; level: number; x: number; y: number } | null>(
+    null,
+  );
   const [sparks, setSparks] = useState<Spark[]>([]);
   const [flights, setFlights] = useState<Flight[]>([]);
   const [tallies, setTallies] = useState<Tally[]>([]);
@@ -200,6 +219,8 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     null,
   );
   const [glow, setGlow] = useState<GlowState | null>(null);
+  // The game is over: every tile drops off the board, row by row from the bottom, each with its own little tilt.
+  const [dropping, setDropping] = useState(view.phase === 'over' && !reducedMotion());
   // The Reactor's bombs: a big explosion on every tile that blows up, rippling out from the bomb.
   const [blasts, setBlasts] = useState<{ id: number; cell: number; delay: number }[]>([]);
   // True from the moment a move arrives until its whole animation (cascades, attacks) has played: the turn only
@@ -226,15 +247,24 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   );
   const prevMana = useRef<Record<string, number>>(manaNow);
   const [manaShown, setManaShown] = useState<Record<string, number> | null>(null);
+  // The moves left as the animation has got to: the move is spent after the swap, an extra move is added at the end
+  // (the new diamond rises from below, with a +1).
+  const prevMoves = useRef(view.movesLeft);
+  const movesStart = useRef(view.movesLeft);
+  const [movesShown, setMovesShown] = useState<number | null>(null);
+  const [bonus, setBonus] = useState<number | null>(null);
   // Before the first paint of a new move: keep showing the hit points from before it.
   useLayoutEffect(() => {
     if (view.moveCount > seen.current && view.lastEvent && !reducedMotion()) {
       setReplaying(true);
       setHpShown({ ...prevHp.current });
       setManaShown({ ...prevMana.current });
+      setMovesShown(prevMoves.current);
+      movesStart.current = prevMoves.current;
     }
     prevHp.current = hpNow;
     prevMana.current = manaNow;
+    prevMoves.current = view.movesLeft;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view.moveCount]);
 
@@ -263,8 +293,13 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     let key = 0;
     const who = ev.by === me ? 'me' : 'opp';
     const mover = view.players.find((p) => p.id === ev.by);
-    const say = (text: string, tone: Note['tone'], ms: number) =>
-      at(ms, () => setNote({ id: nextId(), text, tone }));
+    const petAt = (id: string, slot: number): [number, number] => {
+      const spot =
+        SCREEN.slots[id === me ? 'me' : 'opp'][slot] ?? SCREEN.slots[id === me ? 'me' : 'opp'][0];
+      return [spot[0], spot[1]];
+    };
+    const say = (text: string, tone: Note['tone'], ms: number, at2: [number, number] = [50, 50]) =>
+      at(ms, () => setNote({ id: nextId(), text, tone, x: at2[0], y: at2[1] }));
     if (ev.swapped)
       setAnim({
         board,
@@ -273,6 +308,8 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         swap: ev.a !== undefined && ev.b !== undefined ? [ev.a, ev.b] : undefined,
       });
     t += SWAP_MS;
+    // The move is spent (its diamond goes out) once the swap is done.
+    at(t, () => setMovesShown(Math.max(0, movesStart.current - 1)));
     if (ev.kind === 'boost' && ev.slot !== undefined) {
       const key = `${ev.by}-${ev.slot}`;
       const boosted = mover?.monsters[ev.slot]?.element;
@@ -290,7 +327,11 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       // Charge up (glow, shake, rising notes), then the new form pops out in a flash.
       at(t, () => setEvolve({ owner: ev.by, slot, phase: 'charge' }));
       for (let n = 0; n < 5; n++) at(t + n * 200, () => chainSound(n));
-      say(`${evolvedNow ? MONSTERS[evolvedNow].names[0] : 'Your pet'} is evolving...`, 'info', t);
+      const petPos = boardPct(...petAt(ev.by, slot));
+      say(`${evolvedNow ? MONSTERS[evolvedNow].names[0] : 'Your pet'} is evolving...`, 'info', t, [
+        Math.max(24, Math.min(76, petPos[0])),
+        petPos[1] - 55,
+      ]);
       at(t + EVOLVE_MS * 0.55, () => {
         setEvolve({ owner: ev.by, slot, phase: 'pop' });
         play('win');
@@ -300,16 +341,13 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
             id: nextId(),
             text: `${MONSTERS[evolvedNow].names[1]}!`,
             tone: 'good',
+            x: Math.max(24, Math.min(76, petPos[0])),
+            y: petPos[1] - 55,
           });
       });
       at(t + EVOLVE_MS, () => setEvolve(null));
       t += EVOLVE_MS;
     }
-    const petAt = (id: string, slot: number): [number, number] => {
-      const spot =
-        SCREEN.slots[id === me ? 'me' : 'opp'][slot] ?? SCREEN.slots[id === me ? 'me' : 'opp'][0];
-      return [spot[0], spot[1]];
-    };
     // The hit points race up or down to their new value, casino style, with a rising tick.
     const countHp = (id: string, by: number, ms: number, tone: 'dmg' | 'heal' = 'dmg') => {
       const from = hpShownRef.current?.[id];
@@ -382,10 +420,14 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         at(t + ATTACK.lead + ATTACK.hit + 800, () => countHp(target, -f.damage, 560));
         // 3. Then the pet's special ability: said out loud, healing / draining shown, tiles change next.
         at(t + ATTACK.lead + ATTACK.hit + 1450, () => {
+          // (said above the pet that attacked)
+          const from = boardPct(fx, fy - 30);
           setNote({
             id: nextId(),
             text: MONSTERS[f.element].effect[f.evolved ? 1 : 0],
             tone: 'info',
+            x: Math.max(24, Math.min(76, from[0])),
+            y: from[1],
           });
           if (f.drain) {
             const drain = f.drain;
@@ -492,6 +534,10 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
           );
           return { id: nextId(), cell, delay: dist * 45 };
         });
+        {
+          const [bx, by] = cellsPct(bombs.length ? bombs : cleared);
+          say('BOOM!', 'bad', t, [bx, Math.max(6, by - 14)]);
+        }
         at(t, () => {
           setBlasts(items);
           play('boom');
@@ -501,7 +547,8 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       }
       if (step.pulled?.length) {
         // Laboratory: a charged tile went and took two more with it.
-        say(`Charged! +${step.pulled.length} tiles`, 'good', t);
+        const [px_, py_] = cellsPct(step.pulled);
+        say(`Charged! +${step.pulled.length} tiles`, 'good', t, [px_, Math.min(92, py_ + 16)]);
       }
       // The artist's glow bursts round the cleared tiles, in the colour of their kind.
       if (cleared.length > 0 && !step.bomb) {
@@ -546,7 +593,10 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         setFlights((all) => [...all, ...flying]);
         setAnim({ board: before, flash: new Set(cleared), key, flown });
         chainSound(i);
-        if (i >= 1) setCombo({ id: ev.seq * 100 + i, level: i + 1 });
+        if (i >= 1) {
+          const [cx_, cy_] = cellsPct(cleared);
+          setCombo({ id: ev.seq * 100 + i, level: i + 1, x: cx_, y: Math.max(8, cy_ - 12) });
+        }
         if (i >= 1)
           setSparks((sp) => [
             ...sp,
@@ -578,9 +628,20 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       setBlasts([]);
       setFlights([]);
     });
+    if (ev.win) {
+      // The finishing touch: the whole board falls away, bottom row first.
+      at(t + 350, () => setDropping(true));
+      for (let r = 0; r < ROWS; r++) at(t + 350 + r * END_ROW_MS, () => play('deal'));
+    }
     // What the move earned besides damage: said out loud, with a pop on the hit points.
     if (ev.heal > 0) {
-      say(`Match of ${ev.longest}: +${ev.heal} HP!`, 'good', t);
+      const hp = HP_SPOT[who];
+      say(
+        `Match of ${ev.longest}: +${ev.heal} HP!`,
+        'good',
+        t,
+        boardPct(Math.max(38, Math.min(102, hp[0])), hp[1] + 17),
+      );
       at(t, () => {
         play('score');
         countHp(ev.by, ev.heal, 560, 'heal');
@@ -599,12 +660,19 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       t += NOTE_MS;
     }
     if (ev.extraMove) {
-      say('Extra move!', 'good', t);
+      // The extra move: a +1 and a new diamond that rises from the bottom.
+      at(t, () => {
+        play('turn');
+        setMovesShown((m) => (m ?? 0) + 1);
+        setBonus(nextId());
+      });
       at(t, () => play('turn'));
       t += NOTE_MS;
     }
     at(t + 700, () => {
       setReplaying(false);
+      setMovesShown(null);
+      setBonus(null);
       setHpCounting(null);
       setHpShown(null);
       setManaShown(null);
@@ -782,93 +850,160 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
 
   const hudSide = (p: matchmates.MatePlayer, who: 'me' | 'opp') => {
     const member = memberOf(p.id);
-    const stackX = who === 'me' ? 6 : 110;
-    const avatarX = who === 'me' ? 34 : 84;
+    const movesNow = movesShown ?? view.movesLeft;
     const turn = showTurn(p.id);
+    const hpColor =
+      hpCounting?.owner === p.id && hpCounting.tone === 'heal'
+        ? '#5dde7a'
+        : hpHit?.owner === p.id || hpCounting?.owner === p.id
+          ? '#ff4d4d'
+          : '#ffffff';
+    // Berries and hit points, one under the other.
+    const stack = (
+      <div className="flex flex-col" style={{ gap: cq(1.6), paddingTop: cq(1.5) }}>
+        <div className="flex items-center" style={{ gap: cq(1.6) }}>
+          <img
+            src={hudUrl('berry')}
+            alt="Berries"
+            draggable={false}
+            style={{ ...px, width: cq(9) }}
+          />
+          <span
+            className="font-black text-white"
+            style={hudText}
+            data-testid={`mates-berries-${who}`}
+          >
+            {p.berries}/{evolveCost(stage)}
+          </span>
+        </div>
+        <div className="flex items-center" style={{ gap: cq(1.6) }}>
+          <img
+            src={hudUrl('heart')}
+            alt="Hit points"
+            draggable={false}
+            style={{ ...px, width: cq(9) }}
+          />
+          <span
+            className="font-black"
+            style={{
+              ...hudText,
+              color: hpColor,
+              fontWeight: 900,
+              textShadow:
+                hpCounting?.owner === p.id
+                  ? '0 1px 0 #101628, 1px 0 0 #101628, 0 0 2px #101628, 0.4px 0 0 currentColor'
+                  : hudText.textShadow,
+              transform: hpCounting?.owner === p.id ? 'scale(1.35)' : undefined,
+              transformOrigin: 'left center',
+              transition: 'transform 120ms ease-out',
+              animation: hpHit?.owner === p.id ? 'mates-hit 450ms linear' : undefined,
+            }}
+            data-testid={`mates-hp-${who}`}
+            title={`${hpShown?.[p.id] ?? p.hp}/${p.maxHp} HP`}
+          >
+            {hpShown?.[p.id] ?? p.hp}
+          </span>
+        </div>
+      </div>
+    );
+    // A box round the picture and the moves left; it turns yellow when it is this player's turn.
+    const box = (
+      <div
+        className="relative shrink-0 rounded-md border-2 transition-colors"
+        data-testid={`mates-box-${who}`}
+        data-turn={turn}
+        style={{
+          width: cq(36),
+          height: cq(46),
+          borderColor: turn ? '#fda200' : 'rgba(137,154,209,.35)',
+          background: 'rgba(16,22,40,.35)',
+        }}
+      >
+        <div className="absolute" style={{ left: cq(4), top: cq(1.2) }}>
+          <Avatar
+            avatar={member?.avatar ?? '🙂'}
+            size="fluid"
+            className="h-[18.6cqw] w-[18.6cqw] text-[11cqw] !border-transparent"
+          />
+        </div>
+        {turn && (
+          <span
+            className="absolute inset-x-0 flex items-center justify-center"
+            data-testid="mates-moves"
+            aria-label={`${movesNow} moves left`}
+            style={{ bottom: cq(2), gap: cq(movesNow > 2 ? 2.2 : 3.2) }}
+          >
+            {Array.from({ length: Math.max(2, movesNow) }, (_, n) => (
+              <span
+                key={n}
+                className={`inline-block rotate-45 border-2 border-[#101628] ${
+                  n < movesNow ? 'bg-accent' : 'bg-black/60'
+                }`}
+                style={{
+                  width: cq(movesNow > 2 ? 5.2 : 6.8),
+                  height: cq(movesNow > 2 ? 5.2 : 6.8),
+                  animation:
+                    bonus !== null && n === movesNow - 1
+                      ? 'mates-diamond-up 600ms cubic-bezier(.2,.9,.3,1.2) both'
+                      : undefined,
+                }}
+              />
+            ))}
+            {bonus !== null && (
+              <span
+                key={bonus}
+                aria-hidden
+                className="absolute left-1/2 font-black text-green-300"
+                style={{
+                  bottom: '55%',
+                  fontSize: cq(6),
+                  textShadow: hudText.textShadow,
+                  animation: 'mates-plus1 1100ms ease-out forwards',
+                }}
+              >
+                +1
+              </span>
+            )}
+          </span>
+        )}
+      </div>
+    );
+    // Each side is one half of the screen: the name is centred in it (at 25 % / 75 % of the width), at most
+    // half the width of the screen, and a long one wraps to a second line that pushes the rest down.
     return (
-      <div data-testid={who === 'me' ? 'mates-me' : 'mates-opp'}>
-        <img
-          src={hudUrl('berry')}
-          alt="Berries"
-          draggable={false}
-          className="absolute"
-          style={{ ...px, ...at(stackX, 28, 9) }}
-        />
-        <span
-          className="absolute font-black text-white"
-          style={{ ...hudText, ...at(stackX + 11, 29.5) }}
-          data-testid={`mates-berries-${who}`}
-        >
-          {p.berries}/{evolveCost(stage)}
-        </span>
-        <img
-          src={hudUrl('heart')}
-          alt="Hit points"
-          draggable={false}
-          className="absolute"
-          style={{ ...px, ...at(stackX, 40, 9) }}
-        />
-        <span
-          className="absolute font-black"
-          style={{
-            ...hudText,
-            ...at(stackX + 11, 40.5),
-            color:
-              hpCounting?.owner === p.id && hpCounting.tone === 'heal'
-                ? '#5dde7a'
-                : hpHit?.owner === p.id || hpCounting?.owner === p.id
-                  ? '#ff4d4d'
-                  : '#ffffff',
-            fontWeight: 900,
-            textShadow:
-              hpCounting?.owner === p.id
-                ? '0 1px 0 #101628, 1px 0 0 #101628, 0 0 2px #101628, 0.4px 0 0 currentColor'
-                : hudText.textShadow,
-            transform: hpCounting?.owner === p.id ? 'scale(1.35)' : undefined,
-            transformOrigin: 'left center',
-            transition: 'transform 120ms ease-out',
-            animation: hpHit?.owner === p.id ? 'mates-hit 450ms linear' : undefined,
-          }}
-          data-testid={`mates-hp-${who}`}
-          title={`${hpShown?.[p.id] ?? p.hp}/${p.maxHp} HP`}
-        >
-          {hpShown?.[p.id] ?? p.hp}
-        </span>
-        {/* The name above the picture; the box round the picture is bigger and holds the moves left. */}
+      <div
+        data-testid={who === 'me' ? 'mates-me' : 'mates-opp'}
+        className="absolute flex flex-col items-center"
+        style={{
+          left: who === 'me' ? 0 : '50%',
+          width: '50%',
+          top: `${(1.5 / H) * 100}%`,
+          gap: cq(1.2),
+        }}
+      >
         <div
-          className="absolute text-center font-black uppercase text-white"
+          className="text-center font-black uppercase text-white"
           style={{
-            ...at(avatarX - 4, 18, 34),
+            maxWidth: '94%',
             fontSize: cq(5),
-            lineHeight: 1,
+            lineHeight: 1.15,
+            overflowWrap: 'anywhere',
             textShadow: hudText.textShadow,
           }}
         >
           <PlayerName name={p.id === me ? 'You' : (member?.nickname ?? 'Opponent')} />
         </div>
-        <div className="absolute" style={at(avatarX, 26, 26)}>
-          <Avatar
-            avatar={member?.avatar ?? '🙂'}
-            size="fluid"
-            className={`h-[18.6cqw] w-[18.6cqw] text-[11cqw] ${turn ? '' : '!border-transparent'}`}
-          />
-          {turn && !replaying && (
-            <span
-              className="absolute inset-x-0 flex items-center justify-center"
-              data-testid="mates-moves"
-              aria-label={`${view.movesLeft} moves left`}
-              style={{ bottom: cq(1.8), gap: cq(2) }}
-            >
-              {Array.from({ length: Math.max(2, view.movesLeft) }, (_, n) => (
-                <span
-                  key={n}
-                  className={`inline-block rotate-45 border border-[#101628] ${
-                    n < view.movesLeft ? 'bg-accent' : 'bg-black/60'
-                  }`}
-                  style={{ width: cq(3.4), height: cq(3.4) }}
-                />
-              ))}
-            </span>
+        <div className="flex items-start justify-center" style={{ gap: cq(2.5), width: '100%' }}>
+          {who === 'me' ? (
+            <>
+              {stack}
+              {box}
+            </>
+          ) : (
+            <>
+              {box}
+              {stack}
+            </>
           )}
         </div>
       </div>
@@ -897,6 +1032,9 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         @keyframes mates-dmg { 0%{opacity:0;transform:translateX(-50%) translateY(10px) scale(.5)} 18%{opacity:1;transform:translateX(-50%) translateY(8px) scale(1.6)} 50%{opacity:1;transform:translateX(-50%) translateY(8px) scale(1.6) rotate(-45deg)} 85%{opacity:1;transform:translateX(-50%) translateY(-6px) scale(.8) rotate(0)} 100%{opacity:0;transform:translateX(-50%) translateY(-10px) scale(.4)} }
         @keyframes mates-sparkle { 0%{transform:translateY(0);opacity:0} 10%{opacity:1} 80%{opacity:1} 100%{transform:translateY(-310%);opacity:0} }
         @keyframes mates-heal { 0%{opacity:0;transform:translateX(-50%) translateY(-8px) scale(.4)} 25%{opacity:1;transform:translateX(-50%) translateY(2px) scale(1.4)} 60%{opacity:1;transform:translateX(-50%) translateY(10px) scale(1.6)} 100%{opacity:0;transform:translateX(-50%) translateY(16px) scale(1.2)} }
+        @keyframes mates-diamond-up { 0%{opacity:0;transform:translateY(320%) rotate(45deg)} 100%{opacity:1;transform:translateY(0) rotate(45deg)} }
+        @keyframes mates-plus1 { 0%{opacity:0;transform:translateX(-50%) translateY(8px) scale(.6)} 30%{opacity:1;transform:translateX(-50%) translateY(-4px) scale(1.5)} 100%{opacity:0;transform:translateX(-50%) translateY(-16px) scale(1)} }
+        @keyframes mates-drop-away { 0%{transform:translateY(0) rotate(0deg);opacity:1} 16%{transform:translateY(-9%) rotate(calc(var(--tilt) * -.35))} 100%{transform:translateY(560%) rotate(calc(var(--tilt) * 3));opacity:0} }
         @keyframes mates-pop { 0%{opacity:0;transform:translateY(0) scale(.6)} 20%{opacity:1;transform:translateY(-6px) scale(1.2)} 100%{opacity:0;transform:translateY(-28px) scale(1)} }
         @keyframes mates-flash { 0%{transform:scale(1);filter:none} 45%{transform:scale(1.25);filter:brightness(2.4)} 100%{transform:scale(0);opacity:0} }
         @keyframes mates-fall { 0%{transform:translateY(calc(var(--drop) * -100%))} 68%{transform:translateY(0)} 82%{transform:translateY(-7%)} 100%{transform:translateY(0)} }
@@ -1127,6 +1265,16 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                     className={`relative min-h-0 min-w-0 overflow-visible p-0 ${
                       selected === i ? 'outline outline-2 -outline-offset-2 outline-white' : ''
                     }`}
+                    style={
+                      dropping
+                        ? ({
+                            ['--tilt' as string]: `${((i * 37) % 25) - 12}deg`,
+                            animation: `mates-drop-away ${END_FALL_MS}ms cubic-bezier(.5,0,.85,.45) ${
+                              (ROWS - 1 - Math.floor(i / COLS)) * END_ROW_MS + (i % 3) * 35
+                            }ms both`,
+                          } as React.CSSProperties)
+                        : undefined
+                    }
                   >
                     <img
                       key={`${i}-${anim?.key ?? 0}`}
@@ -1233,7 +1381,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                   key={note.id}
                   data-testid="mates-note"
                   role="status"
-                  className={`absolute left-1/2 top-1/2 w-max max-w-full -translate-x-1/2 -translate-y-1/2 text-center font-black [text-shadow:0_3px_0_#101628,0_0_12px_#000] ${
+                  className={`absolute w-max max-w-[150%] -translate-x-1/2 -translate-y-1/2 text-center font-black [text-shadow:0_3px_0_#101628,0_0_12px_#000] ${
                     note.tone === 'bad'
                       ? 'text-red-300'
                       : note.tone === 'good'
@@ -1241,7 +1389,9 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                         : 'text-yellow-200'
                   }`}
                   style={{
-                    fontSize: '6.5cqw',
+                    left: `${note.x}%`,
+                    top: `${note.y}%`,
+                    fontSize: '5.2cqw',
                     animation: `mates-note ${NOTE_MS + 200}ms ease-out forwards`,
                   }}
                 >
@@ -1252,8 +1402,10 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                 <span
                   key={combo.id}
                   data-testid="mates-combo"
-                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-black text-yellow-300 [text-shadow:0_3px_0_#101628,0_0_14px_#ff9d00]"
+                  className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-black text-yellow-300 [text-shadow:0_3px_0_#101628,0_0_14px_#ff9d00]"
                   style={{
+                    left: `${combo.x}%`,
+                    top: `${combo.y}%`,
                     fontSize: `${Math.min(9, 4.5 + combo.level * 0.8)}cqw`,
                     animation: 'mates-combo 900ms ease-out forwards',
                   }}

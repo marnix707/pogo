@@ -229,3 +229,8 @@ export function arenaEdgeColors(url: string): Promise<{ top: string; bottom: str
   edgeCache.set(url, p);
   return p;
 }
+
+/** The game-over drop: every tile falls off the board, a row every END_ROW_MS, each fall END_FALL_MS (the standings wait for it). */
+export const END_ROW_MS = 150;
+export const END_FALL_MS = 950;
+export const END_DROP_MS = END_ROW_MS * 4 + 3 * 35 + END_FALL_MS + 350;
