@@ -9,7 +9,16 @@ import {
   roleSchema,
   titlesSchema,
 } from '@pogo/shared';
-import type { AdminAuditRow, AdminBanRow, AdminUserRow, PublicUser } from '@pogo/shared';
+import type {
+  AdminAuditRow,
+  AdminBanRow,
+  AdminMatchRow,
+  AdminOverview,
+  AdminUserRow,
+  MatchHistoryEntry,
+  PublicUser,
+} from '@pogo/shared';
+import type { ChatLog } from '../admin/chatLog';
 import type { BanList, BanRecord, ModerationStore } from '../admin/moderation';
 import type { TokenService } from '../auth/tokens';
 import type { UserStore } from '../auth/userStore';
@@ -22,6 +31,10 @@ export interface AdminDeps {
   bans: BanList;
   moderation: ModerationStore;
   manager: RoomManager;
+  /** The latest chat messages of all rooms (memory only). */
+  chatLog: ChatLog;
+  /** How many people have a socket open right now. */
+  onlineCount: () => number;
   /** Close every socket of this user (after a ban). */
   disconnectUser: (userId: string) => void;
   isOnline: (userId: string) => boolean;
@@ -39,6 +52,14 @@ const toBanRow = (b: BanRecord): AdminBanRow => ({
   byName: b.byName,
   createdAt: b.createdAt,
   expiresAt: b.expiresAt,
+});
+
+const toMatchRow = (e: MatchHistoryEntry): AdminMatchRow => ({
+  matchId: e.matchId,
+  gameId: e.gameId,
+  playedAt: e.playedAt,
+  players: e.players,
+  detail: e.detail,
 });
 
 /** The admin panel's API (`/api/admin/*`): moderators kick and ban for a while, admins do everything. */
@@ -107,6 +128,64 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminDeps) {
       };
     });
     return { users: rows };
+  });
+
+  // The first tab: how busy the place is (players, rooms, matches today and this week).
+  app.get('/api/admin/overview', limits, async (req, reply) => {
+    if (!(await staff(req, reply))) return;
+    const rooms = manager.listAll();
+    const dayAgo = now() - 24 * 3600_000;
+    const weekAgo = now() - 7 * 24 * 3600_000;
+    const [players, today, week] = await Promise.all([
+      users.playerCounts(),
+      users.matchCounts(dayAgo),
+      users.matchCounts(weekAgo),
+    ]);
+    const games = [...new Set([...today, ...week].map((g) => g.gameId))];
+    const overview: AdminOverview = {
+      online: deps.onlineCount(),
+      rooms: {
+        total: rooms.length,
+        lobby: rooms.filter((r) => r.status === 'lobby').length,
+        playing: rooms.filter((r) => r.status === 'playing').length,
+        finished: rooms.filter((r) => r.status === 'finished').length,
+      },
+      players,
+      matches: {
+        today: today.reduce((n, g) => n + g.matches, 0),
+        week: week.reduce((n, g) => n + g.matches, 0),
+      },
+      byGame: games
+        .map((gameId) => ({
+          gameId,
+          today: today.find((g) => g.gameId === gameId)?.matches ?? 0,
+          week: week.find((g) => g.gameId === gameId)?.matches ?? 0,
+        }))
+        .sort((a, b) => b.week - a.week),
+    };
+    return overview;
+  });
+
+  // Every finished game (newest first): who played, the scores and the game's own facts.
+  app.get('/api/admin/matches', limits, async (req, reply) => {
+    if (!(await staff(req, reply))) return;
+    const q = req.query as { game?: string; user?: string };
+    if (q.user) return { matches: (await users.history(q.user, 20)).map(toMatchRow) };
+    const game = q.game && /^[a-z0-9-]{1,30}$/.test(q.game) ? q.game : undefined;
+    return { matches: await users.recentMatches(100, game) };
+  });
+
+  // The room chat feed (the latest 500 messages of all rooms), optionally one room / player / word.
+  app.get('/api/admin/chats', limits, async (req, reply) => {
+    if (!(await staff(req, reply))) return;
+    const q = req.query as { room?: string; user?: string; q?: string };
+    return {
+      chats: deps.chatLog.recent({
+        room: q.room?.slice(0, 8).toUpperCase(),
+        user: q.user?.slice(0, 60),
+        q: q.q?.slice(0, 60),
+      }),
+    };
   });
 
   app.get('/api/admin/rooms', limits, async (req, reply) => {

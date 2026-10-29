@@ -28,8 +28,8 @@ export function BellFx({ me }: { me: string }) {
       play('bell');
       haptic('bell');
       const root = document.getElementById('root');
-      // The pop-up and the sound are for everybody, the ringer too; the screen only shakes for the others.
-      if (root && !reduced() && from.fromId !== me) {
+      // The pop-up, the sound and the shake are for everybody in the lobby, the ringer too.
+      if (root && !reduced()) {
         root.classList.remove('bell-shake');
         void root.offsetWidth; // restart the animation when the bell rings twice
         root.classList.add('bell-shake');
@@ -45,7 +45,7 @@ export function BellFx({ me }: { me: string }) {
       clearTimeout(hide);
       clearTimeout(shake);
     };
-  }, [me]);
+  }, []);
 
   if (!bell) return null;
   return (

@@ -22,6 +22,7 @@ import { registerFriendRoutes } from './http/friendRoutes';
 import { createMemoryFriendStore } from './social/friendStore';
 import type { FriendStore } from './social/friendStore';
 import { registerAccountRoutes } from './http/accountRoutes';
+import { ChatLog } from './admin/chatLog';
 import { registerAdminRoutes } from './http/adminRoutes';
 import { registerAuthRoutes } from './http/authRoutes';
 import { createBrevoMailer, createLogMailer, createSmtpMailer } from './mail/mailer';
@@ -207,6 +208,7 @@ export async function buildApp(deps: AppDeps) {
     }, 150);
   };
 
+  const chatLog = new ChatLog();
   const manager = new RoomManager({
     getGame: deps.getGame ?? getGame,
     rng: deps.rng,
@@ -225,6 +227,7 @@ export async function buildApp(deps: AppDeps) {
     emitChat: (userId, message) => {
       io.to(userChannel(userId)).emit('chat:message', message);
     },
+    onChatSent: (room, message) => chatLog.add(room, message),
     emitBell: (userId, bell) => {
       io.to(userChannel(userId)).emit('room:bell', bell);
     },
@@ -269,6 +272,12 @@ export async function buildApp(deps: AppDeps) {
     bans,
     moderation,
     manager,
+    chatLog,
+    onlineCount: () => {
+      let n = 0;
+      for (const name of io.sockets.adapter.rooms.keys()) if (name.startsWith('user:')) n += 1;
+      return n;
+    },
     publicBaseUrl: config.publicBaseUrl,
     disconnectUser: (userId) => io.in(userChannel(userId)).disconnectSockets(true),
     isOnline: (userId) => (io.sockets.adapter.rooms.get(userChannel(userId))?.size ?? 0) > 0,

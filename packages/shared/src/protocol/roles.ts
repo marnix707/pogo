@@ -98,6 +98,48 @@ export interface AdminRoomRow {
   status: string;
   visibility: string;
   members: { id: string; nickname: string; bot: boolean; connected: boolean }[];
+  host: string;
+  /** People watching a game in progress. */
+  spectators: number;
+  createdAt: number;
+  /** Messages in the room's chat so far (the last 100 are kept). */
+  chatCount: number;
+}
+
+/** One finished game for the admin panel (everybody who played, computers too). */
+export interface AdminMatchRow {
+  matchId: string;
+  gameId: string;
+  playedAt: number;
+  players: {
+    id: string;
+    nickname: string;
+    avatar: string;
+    bot: boolean;
+    rank: number;
+    score: number;
+  }[];
+  detail: Record<string, unknown> | null;
+}
+
+/** One room chat message in the admin feed (the feed keeps the latest 500 of all rooms). */
+export interface AdminChatRow {
+  id: number;
+  at: number;
+  roomCode: string;
+  gameId: string;
+  userId: string;
+  nickname: string;
+  text: string;
+}
+
+/** The numbers on the admin panel's first tab. */
+export interface AdminOverview {
+  online: number;
+  rooms: { total: number; lobby: number; playing: number; finished: number };
+  players: { registered: number; guests: number };
+  matches: { today: number; week: number };
+  byGame: { gameId: string; today: number; week: number }[];
 }
 
 export interface AdminAuditRow {

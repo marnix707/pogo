@@ -163,7 +163,11 @@ export function Home({
             data-avatar={user.avatar}
             className="relative z-10 shrink-0 active:translate-y-px"
           >
-            <Avatar avatar={user.avatar} size="md" />
+            <Avatar
+              avatar={user.avatar}
+              size="fluid"
+              className="h-11 w-11 text-2xl shadow-[0_5px_0_2px_rgb(var(--c-line))]"
+            />
           </button>
           <div
             className="min-w-0 flex-1 overflow-hidden"

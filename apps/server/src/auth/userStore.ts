@@ -1,7 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { BOT_AVATAR, displayName } from '@pogo/shared';
-import type { MatchHistoryEntry, PublicUser, Role, TogetherView } from '@pogo/shared';
+import type {
+  AdminMatchRow,
+  MatchHistoryEntry,
+  PublicUser,
+  Role,
+  TogetherView,
+} from '@pogo/shared';
 
 export interface EmailCodeRecord {
   codeHash: string;
@@ -106,6 +112,13 @@ export interface UserStore {
   leaderboard(gameId: string, limit: number): Promise<LeaderboardEntry[]>;
   /** The games `meId` and `otherId` played in the same match (the head to head). */
   together(meId: string, otherId: string): Promise<TogetherView>;
+  // ---- admin ----
+  /** The latest finished games of everybody (one entry per match), optionally one game. */
+  recentMatches(limit: number, gameId?: string): Promise<AdminMatchRow[]>;
+  /** Registered accounts and guests. */
+  playerCounts(): Promise<{ registered: number; guests: number }>;
+  /** Matches played since a time, per game (one count per match, not per player). */
+  matchCounts(sinceMs: number): Promise<{ gameId: string; matches: number }[]>;
   /** The player's last games, newest first (the match history). */
   history(userId: string, limit: number): Promise<MatchHistoryEntry[]>;
   /** Move every result of `fromId` to `toId` (skipping matches `toId` already has) and delete `fromId`. */
@@ -354,6 +367,44 @@ export function createPrismaUserStore(prisma: PrismaClient): UserStore {
         ),
       );
     },
+    async recentMatches(limit, gameId) {
+      const rows = await prisma.gameResult.findMany({
+        where: gameId ? { gameId } : {},
+        orderBy: { playedAt: 'desc' },
+        take: limit * 6,
+      });
+      const ids = [...new Set(rows.map((r) => r.userId))];
+      const people = await prisma.user.findMany({ where: { id: { in: ids } } });
+      const named = new Map(people.map((u) => [u.id, toPublic(u)]));
+      return groupMatches(
+        rows.map((r) => ({
+          matchId: r.matchId,
+          gameId: r.gameId,
+          playedAt: r.playedAt.getTime(),
+          userId: r.userId,
+          rank: r.rank,
+          score: r.score,
+          summary: r.summary,
+        })),
+        (id) => named.get(id) ?? null,
+        limit,
+      );
+    },
+    async playerCounts() {
+      const [registered, guests] = await Promise.all([
+        prisma.user.count({ where: { isGuest: false } }),
+        prisma.user.count({ where: { isGuest: true } }),
+      ]);
+      return { registered, guests };
+    },
+    async matchCounts(sinceMs) {
+      const rows = await prisma.gameResult.findMany({
+        where: { playedAt: { gte: new Date(sinceMs) } },
+        select: { matchId: true, gameId: true },
+        take: 50000,
+      });
+      return countMatches(rows);
+    },
     async together(meId, otherId) {
       const mine = await prisma.gameResult.findMany({
         where: { userId: meId },
@@ -428,6 +479,69 @@ export function createPrismaUserStore(prisma: PrismaClient): UserStore {
 }
 
 /** Yatzy ranks by best score; every other game by wins (then games played). */
+/** Result rows (one per human per game) grouped into one entry per match, newest first. */
+function groupMatches(
+  rows: {
+    matchId: string;
+    gameId: string;
+    playedAt: number;
+    userId: string;
+    rank: number;
+    score: number;
+    summary?: unknown;
+  }[],
+  who: (id: string) => PublicUser | null,
+  limit: number,
+): AdminMatchRow[] {
+  const byMatch = new Map<string, typeof rows>();
+  for (const r of rows) byMatch.set(r.matchId, [...(byMatch.get(r.matchId) ?? []), r]);
+  const out: AdminMatchRow[] = [];
+  for (const list of byMatch.values()) {
+    const first = list[0]!;
+    const stored = list.find((r) => r.summary)?.summary as
+      { players?: AdminMatchRow['players']; detail?: AdminMatchRow['detail'] } | undefined;
+    // Older rows have no summary: the humans from the result rows are all that is known.
+    const players =
+      stored?.players ??
+      list
+        .map((r) => {
+          const u = who(r.userId);
+          return {
+            id: r.userId,
+            nickname: u ? displayName(u) : 'Player',
+            avatar: u?.avatar ?? '',
+            bot: false,
+            rank: r.rank,
+            score: r.score,
+          };
+        })
+        .sort((a, b) => a.rank - b.rank);
+    out.push({
+      matchId: first.matchId,
+      gameId: first.gameId,
+      playedAt: Math.max(...list.map((r) => r.playedAt)),
+      players,
+      detail: stored?.detail ?? null,
+    });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+/** One count per match (the result rows are one per player). */
+function countMatches(
+  rows: { matchId: string; gameId: string }[],
+): { gameId: string; matches: number }[] {
+  const seen = new Set<string>();
+  const per = new Map<string, number>();
+  for (const r of rows) {
+    if (seen.has(r.matchId)) continue;
+    seen.add(r.matchId);
+    per.set(r.gameId, (per.get(r.gameId) ?? 0) + 1);
+  }
+  return [...per].map(([gameId, matches]) => ({ gameId, matches }));
+}
+
 /** The head to head of two players from their result rows (a game is "together" when they share a match id). */
 function togetherOf(
   mine: { matchId: string; gameId: string; rank: number; playedAt: number }[],
@@ -638,6 +752,23 @@ export function createMemoryUserStore(): UserStore {
           mine.filter((r) => r.gameId === g),
         ),
       );
+    },
+    async recentMatches(limit, gameId) {
+      const rows = results
+        .filter((r) => !gameId || r.gameId === gameId)
+        .sort((a, b) => b.playedAt - a.playedAt)
+        .slice(0, limit * 6);
+      return groupMatches(rows, (id) => users.get(id) ?? null, limit);
+    },
+    async playerCounts() {
+      const all = [...users.values()];
+      return {
+        registered: all.filter((u) => !u.isGuest).length,
+        guests: all.filter((u) => u.isGuest).length,
+      };
+    },
+    async matchCounts(sinceMs) {
+      return countMatches(results.filter((r) => r.playedAt >= sinceMs));
     },
     async together(meId, otherId) {
       const mine = results.filter((r) => r.userId === meId);

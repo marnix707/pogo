@@ -256,7 +256,11 @@ export function Lobby({
                   data-testid="lobby-avatar"
                   className="shrink-0 active:translate-y-px"
                 >
-                  <Avatar avatar={user.avatar} size="fluid" className="h-12 w-12 text-2xl" />
+                  <Avatar
+                    avatar={user.avatar}
+                    size="fluid"
+                    className="h-12 w-12 text-2xl shadow-[0_5px_0_2px_rgb(var(--c-line))]"
+                  />
                 </button>
                 <FriendsButton className="calm !h-12 !w-12" />
                 <TileButton

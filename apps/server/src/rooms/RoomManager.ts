@@ -36,6 +36,7 @@ export interface RoomManagerDeps {
   maskText(text: string): string;
   emitChat(userId: string, message: ChatMessage): void;
   emitBell(userId: string, bell: BellMessage): void;
+  onChatSent?(room: { code: string; gameId: string }, message: ChatMessage): void;
   emitHistory(userId: string, messages: ChatMessage[]): void;
   /** The set of public rooms (or their contents) may have changed. */
   onLobbyChanged(): void;
@@ -86,6 +87,7 @@ export class RoomManager {
         maskText: this.deps.maskText,
         emitChat: this.deps.emitChat,
         emitBell: this.deps.emitBell,
+        onChatSent: this.deps.onChatSent,
         emitHistory: this.deps.emitHistory,
         onChange: () => this.deps.onLobbyChanged(),
         onGameFinished: (finished) => this.deps.onGameFinished(finished),

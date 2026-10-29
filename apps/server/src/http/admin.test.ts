@@ -6,6 +6,7 @@ import { buildApp } from '../app';
 import { createMemoryUserStore } from '../auth/userStore';
 import type { UserStore } from '../auth/userStore';
 import { hashPassword } from '../auth/passwords';
+import { recordFinishedGame } from '../stats/record';
 
 const config = {
   nodeEnv: 'test' as const,
@@ -334,5 +335,78 @@ describe('roles and the dev tag', () => {
     await call('POST', `/api/admin/users/${p.user.id}/kick`, admin.token);
     const audit = (await call('GET', '/api/admin/audit', admin.token)).json().audit;
     expect(audit[0]).toMatchObject({ action: 'kick', targetName: 'Logged' });
+  });
+});
+
+describe('admin overview, matches and chats', () => {
+  it('shows the numbers, every finished match and the room chat feed', async () => {
+    const admin = await staffMember('Admin7', 'admin');
+    const a = await guest('Alpha');
+    const b = await guest('Beta');
+    await recordFinishedGame(users, {
+      gameId: 'karma',
+      matchId: 'ADM-1',
+      results: {
+        rankings: [
+          { playerId: a.user.id, score: 3, rank: 1 },
+          { playerId: b.user.id, score: 1, rank: 2 },
+        ],
+      },
+      humans: [a.user.id, b.user.id],
+      players: 2,
+      bots: 0,
+      roster: [
+        { id: a.user.id, nickname: 'Alpha', avatar: 'fox', bot: false },
+        { id: b.user.id, nickname: 'Beta', avatar: 'cat', bot: false },
+      ],
+      detail: { note: 'hi' },
+    });
+    const overview = (await call('GET', '/api/admin/overview', admin.token)).json();
+    expect(overview.matches.today).toBeGreaterThanOrEqual(1);
+    expect(overview.byGame).toEqual(
+      expect.arrayContaining([expect.objectContaining({ gameId: 'karma' })]),
+    );
+    expect(overview.players.registered).toBeGreaterThanOrEqual(1);
+    const matches = (await call('GET', '/api/admin/matches?game=karma', admin.token)).json()
+      .matches;
+    expect(matches[0]).toMatchObject({
+      matchId: 'ADM-1',
+      gameId: 'karma',
+      detail: { note: 'hi' },
+      players: [
+        { nickname: 'Alpha', rank: 1, score: 3 },
+        { nickname: 'Beta', rank: 2, score: 1 },
+      ],
+    });
+    // One player's own matches.
+    const mine = (await call('GET', `/api/admin/matches?user=${a.user.id}`, admin.token)).json();
+    expect(mine.matches.map((m: { matchId: string }) => m.matchId)).toContain('ADM-1');
+    // The chat feed: a message sent in a room shows up once, with the room and the sender.
+    const room = server.manager.create(
+      { id: a.user.id, nickname: 'Alpha', avatar: 'fox', isGuest: true },
+      { gameId: 'yatzy' },
+    );
+    if (!room.ok) throw new Error(room.error);
+    server.manager.chat(a.user.id, 'hello admin');
+    const chats = (await call('GET', `/api/admin/chats?room=${room.data.code}`, admin.token)).json()
+      .chats;
+    expect(chats).toEqual([
+      expect.objectContaining({
+        roomCode: room.data.code,
+        nickname: 'Alpha',
+        text: 'hello admin',
+        userId: a.user.id,
+      }),
+    ]);
+    const rooms = (await call('GET', '/api/admin/rooms', admin.token)).json().rooms;
+    expect(rooms.find((r: { code: string }) => r.code === room.data.code)).toMatchObject({
+      host: 'Alpha',
+      chatCount: 1,
+      spectators: 0,
+    });
+    // Players have no access.
+    expect((await call('GET', '/api/admin/matches', a.token)).statusCode).toBe(403);
+    expect((await call('GET', '/api/admin/chats', a.token)).statusCode).toBe(403);
+    expect((await call('GET', '/api/admin/overview', a.token)).statusCode).toBe(403);
   });
 });

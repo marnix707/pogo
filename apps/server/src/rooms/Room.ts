@@ -48,6 +48,8 @@ export interface RoomDeps {
   onEmpty(room: Room): void;
   /** Deliver one chat message to a user. */
   emitChat(userId: string, message: ChatMessage): void;
+  /** A chat message was posted (once per message, for the admin feed). */
+  onChatSent?(room: { code: string; gameId: string }, message: ChatMessage): void;
   /** Deliver the recent chat history to a user (on join / reconnect). */
   emitHistory(userId: string, messages: ChatMessage[]): void;
   /** Somebody rang the bell: deliver it to one user (the others in the lobby). */
@@ -325,6 +327,7 @@ export class Room {
     for (const m of this.members) {
       if (!m.left && !m.bot) this.deps.emitChat(m.user.id, message);
     }
+    this.deps.onChatSent?.({ code: this.code, gameId: this.game.id }, message);
     return ok(null);
   }
 
@@ -374,6 +377,13 @@ export class Room {
           bot: !!m.bot,
           connected: m.connected,
         })),
+      host: displayName(
+        this.members.find((m) => m.user.id === this.hostId)?.user ??
+          ({ nickname: '?' } as PublicUser),
+      ),
+      spectators: this.spectatorCount,
+      createdAt: this.createdAt,
+      chatCount: this.messages.length,
     };
   }
 
