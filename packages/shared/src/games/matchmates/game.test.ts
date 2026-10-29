@@ -358,6 +358,53 @@ describe('Pet Match', () => {
       }
     });
 
+    it('tiles an attack clears fill the mana of the mover’s pets of that colour', () => {
+      let sawWater = false;
+      for (const attacker of ['electric', 'fire'] as const) {
+        for (let seed = 1; seed <= 8; seed++) {
+          const base = start(3);
+          const players = base.players.map((p) =>
+            p.id === 'a'
+              ? {
+                  ...p,
+                  monsters: [
+                    { element: attacker, evolved: false, mana: MONSTERS[attacker].cost },
+                    { element: 'water' as const, evolved: false, mana: 0 },
+                  ],
+                }
+              : p,
+          ) as MatesState['players'];
+          const board = quiet();
+          set(board, 0, 0, 'berry');
+          set(board, 0, 1, 'berry');
+          set(board, 0, 2, 'psychic');
+          set(board, 1, 2, 'berry');
+          // Water all over the lower rows, so the attack's block / columns are sure to catch some.
+          for (let r = 1; r < ROWS; r++) for (let c = 3; c < COLS; c++) set(board, r, c, 'water');
+          const s: MatesState = { ...base, board, players, turn: 'a', first: 'a', movesLeft: 2 };
+          const after = matesGame.applyMove(
+            s,
+            'a',
+            { type: 'swap', a: cellAt(0, 2), b: cellAt(1, 2) },
+            createSeededRng(seed),
+          );
+          const steps = after.lastEvent!.steps;
+          const j = steps.findIndex((st) => st.ability);
+          expect(j).toBeGreaterThan(0);
+          const before = steps[j - 1]!.board;
+          const waterCleared = steps[j]!.cleared.filter((i) => before[i]!.k === 'water').length;
+          if (waterCleared > 0) sawWater = true;
+          const water = after.players.find((p) => p.id === 'a')!.monsters[1]!;
+          // (A full bar fires and starts over, so count the mana the water pet spent.)
+          const spent =
+            after.lastEvent!.fires.filter((f) => f.element === 'water').length *
+            MONSTERS.water.cost;
+          expect(water.mana + spent).toBeGreaterThanOrEqual(waterCleared);
+        }
+      }
+      expect(sawWater).toBe(true);
+    });
+
     it('earth heals as much as it hurts', () => {
       expect(fire(fireWith('earth', false))).toMatchObject({ damage: 10, heal: 10 });
       const after = fireWith('earth', true);

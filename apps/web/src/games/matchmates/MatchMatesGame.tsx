@@ -275,31 +275,33 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
           },
           to: [tx, ty - 14],
         };
-        // A short pause first: the +n totals over the bars are seen before the attack starts.
-        at(t + ATTACK.lead, () => {
-          setAtk(fx$);
+        // 1. A short pause (the +n totals over the bars are seen), then the attack flies.
+        at(t + ATTACK.lead, () => setAtk(fx$));
+        // 2. It lands: the target shakes and flashes, its hit points go down, the damage floats up.
+        at(t + ATTACK.lead + ATTACK.hit, () => {
+          play('boom');
+          setHpShown((h) => (h ? { ...h, [target]: Math.max(0, (h[target] ?? 0) - f.damage) } : h));
+          setHit({ owner: target, slot: f.slot });
+          setPops((p) => [
+            ...p,
+            { id: ++popId + ev.seq * 100, x: tx, y: ty - 26, text: `-${f.damage}` },
+          ]);
+        });
+        // 3. Then the pet's special ability: said out loud, healing / draining shown, tiles change next.
+        at(t + ATTACK.lead + ATTACK.hit + 450, () => {
           setNote({
             id: ++noteId + ev.seq * 100,
             text: MONSTERS[f.element].effect[f.evolved ? 1 : 0],
             tone: 'info',
           });
-        });
-        // The hit: the target shakes and flashes, the number floats up.
-        at(t + ATTACK.lead + ATTACK.hit, () => {
-          play('boom');
-          setHpShown((h) =>
-            h
-              ? {
-                  ...h,
-                  [target]: Math.max(0, (h[target] ?? 0) - f.damage),
-                  [f.owner]: Math.min(hpMax[f.owner] ?? 0, (h[f.owner] ?? 0) + f.heal),
-                }
-              : h,
-          );
-          setHit({ owner: target, slot: f.slot });
+          if (f.heal > 0)
+            setHpShown((h) =>
+              h
+                ? { ...h, [f.owner]: Math.min(hpMax[f.owner] ?? 0, (h[f.owner] ?? 0) + f.heal) }
+                : h,
+            );
           setPops((p) => [
             ...p,
-            { id: ++popId + ev.seq * 100, x: tx, y: ty - 26, text: `-${f.damage}` },
             ...(f.heal > 0
               ? [
                   {
@@ -322,7 +324,7 @@ export function MatchMatesGame({ room, me, sendMove, chrome }: GameUiProps) {
               : []),
           ]);
         });
-        at(t + ATTACK.lead + ATTACK.hit + 450, () => setHit(null));
+        at(t + ATTACK.lead + ATTACK.hit + 400, () => setHit(null));
         at(t + FIRE_MS, () => setAtk(null));
         t += FIRE_MS;
       }
