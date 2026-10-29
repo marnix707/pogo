@@ -330,7 +330,7 @@ function Seat({
           <AvatarFace avatar={member?.avatar ?? ''} />
         </span>
         <span className="label truncate text-[9px]">
-          <PlayerName name={member?.nickname ?? '?'} />
+          <PlayerName name={member?.nickname ?? '?'} id={member?.id} />
         </span>
       </div>
       <div className="flex items-center justify-center gap-3">

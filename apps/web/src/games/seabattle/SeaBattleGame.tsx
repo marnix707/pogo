@@ -303,7 +303,7 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
           <Avatar avatar={m?.avatar ?? 'fox'} size="md" />
         </span>
         <span className="max-w-full truncate text-sm font-bold text-onbg">
-          <PlayerName name={m?.nickname ?? (mine ? 'You' : 'Opponent')} />
+          <PlayerName name={m?.nickname ?? (mine ? 'You' : 'Opponent')} id={id} me={me} />
         </span>
         {placing && view.ready[id] && (
           <span

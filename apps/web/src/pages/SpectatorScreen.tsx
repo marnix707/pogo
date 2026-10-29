@@ -76,7 +76,7 @@ export function SpectatorScreen({
                 >
                   <Avatar avatar={m.avatar} size="sm" />
                   <span className="min-w-0 flex-1 truncate font-bold">
-                    <PlayerName name={m.nickname} />
+                    <PlayerName name={m.nickname} id={m.id} me={me} />
                     {m.bot && ' 🤖'}
                   </span>
                   {rank > 0 ? (

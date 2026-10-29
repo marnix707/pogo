@@ -511,7 +511,7 @@ export function Lobby({
                     </ProfileTap>
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-bold">
-                        <PlayerName name={m.nickname} />
+                        <PlayerName name={m.nickname} id={m.id} me={me} />
                         {m.id === me && <span className="font-normal text-muted"> (you)</span>}
                       </div>
                       <div className="label flex items-center gap-1.5 text-[10px] text-muted">

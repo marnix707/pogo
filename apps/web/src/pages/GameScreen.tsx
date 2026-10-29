@@ -126,7 +126,7 @@ function ResultsPanel({
                       <Avatar avatar={m?.avatar ?? ''} size="sm" />
                     </ProfileTap>
                     <span className="min-w-0 truncate text-xl font-bold">
-                      <PlayerName name={m?.nickname ?? 'Player'} />
+                      <PlayerName name={m?.nickname ?? 'Player'} id={r.playerId} me={me} />
                       {isMe && ' (you)'}
                     </span>
                     <span className="mb-1.5 min-w-4 flex-1 border-b-4 border-dotted border-current opacity-50" />

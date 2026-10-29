@@ -150,7 +150,7 @@ export function LeaderboardSheet({
                           <Avatar avatar={r.avatar} size="sm" />
                         </ProfileTap>
                         <span className="min-w-0 flex-1 font-bold leading-tight [overflow-wrap:anywhere]">
-                          <PlayerName name={r.nickname} />
+                          <PlayerName name={r.nickname} id={r.userId} me={me} />
                         </span>
                         <span className="w-11 shrink-0 text-right text-sm text-muted tabular-nums">
                           {r.games}

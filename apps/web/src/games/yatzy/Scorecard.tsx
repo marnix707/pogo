@@ -228,7 +228,11 @@ export function Scorecard({
                         m?.left ? 'line-through opacity-60' : ''
                       }`}
                     >
-                      {p.id === me ? 'You' : <PlayerName name={m?.nickname ?? '?'} />}
+                      {p.id === me ? (
+                        'You'
+                      ) : (
+                        <PlayerName name={m?.nickname ?? '?'} id={p.id} me={me} />
+                      )}
                     </div>
                   </th>
                 );

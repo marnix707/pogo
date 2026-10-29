@@ -1097,7 +1097,11 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
             textShadow: hudText.textShadow,
           }}
         >
-          <PlayerName name={p.id === me ? 'You' : (member?.nickname ?? 'Opponent')} />
+          <PlayerName
+            name={p.id === me ? 'You' : (member?.nickname ?? 'Opponent')}
+            id={p.id}
+            me={me}
+          />
         </div>
         <div className="flex items-start justify-center" style={{ width: '100%' }}>
           {box}

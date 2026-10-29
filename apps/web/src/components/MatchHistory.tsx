@@ -84,7 +84,7 @@ export function MatchHistory({ token, me }: { token: string; me: string }) {
                   <span className="w-5 text-center text-xs text-muted tabular-nums">{p.rank}</span>
                   <Avatar avatar={p.avatar} size="sm" />
                   <span className="min-w-0 flex-1 truncate font-bold">
-                    <PlayerName name={p.id === me ? 'You' : p.nickname} />
+                    <PlayerName name={p.id === me ? 'You' : p.nickname} id={p.id} me={me} />
                   </span>
                   <span className="font-bold tabular-nums">{scoreText(p.score)}</span>
                 </li>

@@ -78,7 +78,11 @@ export function Pick({
                 <div className="flex items-center gap-1.5">
                   <Avatar avatar={who?.avatar ?? '🙂'} size="sm" />
                   <span className="truncate text-xs font-bold">
-                    <PlayerName name={n === 0 ? 'You' : (who?.name ?? 'Opponent')} />
+                    <PlayerName
+                      name={n === 0 ? 'You' : (who?.name ?? 'Opponent')}
+                      id={p.id}
+                      me={view.me}
+                    />
                   </span>
                   {view.confirmed[p.id] && <span className="ml-auto text-xs text-neon">Ready</span>}
                 </div>
