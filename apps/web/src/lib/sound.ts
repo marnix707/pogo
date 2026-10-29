@@ -18,7 +18,8 @@ export type SoundName =
   | 'sink'
   | 'shield'
   | 'ghost'
-  | 'skull';
+  | 'skull'
+  | 'bell';
 
 let ctx: AudioContext | undefined;
 
@@ -164,6 +165,18 @@ export function play(name: SoundName) {
     case 'score':
       tone(c, 523, 0, 0.12, 'triangle');
       tone(c, 784, 0.1, 0.2, 'triangle');
+      break;
+    case 'bell':
+      // "Ring the bell!": a loud, silly ding-a-ling (brass partials, a quick two-tone warble), then a wah-wah.
+      for (let i = 0; i < 10; i++) {
+        const f = i % 2 ? 1568 : 1397;
+        const t0 = i * 0.085;
+        tone(c, f, t0, 0.2, 'triangle', 0.22);
+        tone(c, f * 2.76, t0, 0.14, 'sine', 0.1);
+        tone(c, f * 5.4, t0, 0.07, 'sine', 0.05);
+      }
+      [659, 622, 587, 554].forEach((f, i) => tone(c, f, 0.95 + i * 0.12, 0.16, 'sawtooth', 0.07));
+      sweep(c, 'sine', 300, 120, 1.45, 0.25, 0.1);
       break;
     case 'whistle':
       // A bomb falling: a pitch that drops.

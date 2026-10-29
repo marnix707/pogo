@@ -1,4 +1,10 @@
-import type { AuthResponse, GameStatsView, LeaderboardRow, ProfileInput } from '@pogo/shared';
+import type {
+  AuthResponse,
+  GameStatsView,
+  LeaderboardRow,
+  MatchHistoryEntry,
+  ProfileInput,
+} from '@pogo/shared';
 import { formatError } from '@pogo/shared';
 import { forgetPlayer, rememberPlayer } from './players';
 
@@ -206,6 +212,9 @@ export const fetchOnline = (): Promise<number | null> =>
     .then((r) => (r.ok ? (r.json() as Promise<{ players?: number }>) : null))
     .then((b) => (typeof b?.players === 'number' ? b.players : null))
     .catch(() => null);
+
+export const fetchHistory = (token: string) =>
+  request<{ history: MatchHistoryEntry[] }>('GET', '/api/me/history', token).then((r) => r.history);
 
 export const fetchLeaderboard = (game: string) =>
   request<{ entries: LeaderboardRow[] }>('GET', `/api/leaderboard?game=${game}`, null).then(

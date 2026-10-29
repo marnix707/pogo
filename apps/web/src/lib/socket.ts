@@ -86,6 +86,10 @@ export function useRealtime(token: string) {
     socket.on('social:update', () => setSocialTick((t) => t + 1));
     socket.on('dm:message', (m) => dmListeners.current.forEach((fn) => fn(m)));
     socket.on('game:invite', (i) => inviteListeners.current.forEach((fn) => fn(i)));
+    // Somebody rings the bell in the lobby: BellFx shakes the screen and rings.
+    socket.on('room:bell', (bell) =>
+      window.dispatchEvent(new CustomEvent('pogo:bell', { detail: bell })),
+    );
 
     return () => {
       socket.disconnect();

@@ -20,6 +20,7 @@ const [a, b, c] = [user(1), user(2), user(3)] as [PublicUser, PublicUser, Public
 function setup(maskText: (text: string) => string = maskProfanity) {
   const inbox = new Map<string, { room: RoomView | null; reason?: LeaveReason }[]>();
   const chats = new Map<string, ChatMessage[]>();
+  const bells = new Map<string, string[]>();
   const histories = new Map<string, ChatMessage[][]>();
   const lobby = { changes: 0 };
   const manager = new RoomManager({
@@ -33,6 +34,7 @@ function setup(maskText: (text: string) => string = maskProfanity) {
     limits: { graceMs: GRACE, emptyTtlMs: TTL, autoStepMs: STEP, botMs: BOT },
     defaultTurnTimeSec: 30,
     maskText,
+    emitBell: (userId, bell) => bells.set(userId, [...(bells.get(userId) ?? []), bell.nickname]),
     emitChat: (userId, message) => chats.set(userId, [...(chats.get(userId) ?? []), message]),
     emitHistory: (userId, messages) =>
       histories.set(userId, [...(histories.get(userId) ?? []), messages]),
@@ -47,7 +49,7 @@ function setup(maskText: (text: string) => string = maskProfanity) {
     if (!r.ok) throw new Error(r.error);
     return r.data;
   };
-  return { manager, inbox, chats, histories, lobby, last, lastRoom, must };
+  return { manager, inbox, bells, chats, histories, lobby, last, lastRoom, must };
 }
 
 beforeEach(() => vi.useFakeTimers());
@@ -762,6 +764,33 @@ describe('public lobby', () => {
     const again = must(manager.quickPlay(a, 'race'));
     expect(again.code).toBe(mine.code);
     expect(manager.roomCount).toBe(1);
+  });
+});
+
+describe('the bell', () => {
+  it('nudges everybody else in the lobby, with a cooldown, and only in the lobby', () => {
+    const { manager, bells, must } = setup();
+    const { code } = must(manager.create(a, { gameId: 'race' }));
+    must(manager.join(b, code));
+    must(manager.join(c, code));
+    must(manager.bell(a.id));
+    expect(bells.get(b.id)).toEqual(['User1']);
+    expect(bells.get(c.id)).toEqual(['User1']);
+    expect(bells.get(a.id)).toBeUndefined();
+    expect(manager.bell(a.id)).toMatchObject({
+      ok: false,
+      error: 'Wait a moment before ringing the bell again',
+    });
+    vi.advanceTimersByTime(9000);
+    must(manager.bell(a.id));
+    expect(bells.get(b.id)).toHaveLength(2);
+    must(manager.start(a.id));
+    vi.advanceTimersByTime(9000);
+    expect(manager.bell(a.id)).toMatchObject({
+      ok: false,
+      error: 'You can only ring the bell in the lobby',
+    });
+    expect(manager.bell('nobody')).toMatchObject({ ok: false });
   });
 });
 

@@ -19,6 +19,8 @@ export interface RoomApi {
   suggest(gameId: string | null): Promise<Result<unknown>>;
   /** Lock Ready: it stays on across setting changes, game switches and games. */
   readyLock(locked: boolean): Promise<Result<unknown>>;
+  /** Lobby: ring the bell, calling everybody else in the room (shakes their screen, rings). */
+  ringBell(): Promise<Result<unknown>>;
   rematch(toLobby?: boolean): Promise<Result<unknown>>;
   move(move: unknown): Promise<Result<unknown>>;
   sendChat(text: string): Promise<Result<unknown>>;

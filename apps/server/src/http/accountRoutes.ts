@@ -338,6 +338,13 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AccountDeps) {
     return { stats: await users.statsFor(me.id) };
   });
 
+  // The last ten games: who played, the scores and the game's own facts.
+  app.get('/api/me/history', async (req, reply) => {
+    const me = await authenticate(req, tokens, users);
+    if (!me) return reply.code(401).send({ error: 'Not signed in' });
+    return { history: await users.history(me.id, 10) };
+  });
+
   app.get<{ Querystring: { game?: string } }>('/api/leaderboard', async (req, reply) => {
     const game = req.query.game ?? '';
     if (!/^[a-z0-9-]{1,30}$/.test(game)) return reply.code(400).send({ error: 'Unknown game' });

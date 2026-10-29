@@ -12,6 +12,7 @@ import type {
 } from '@pogo/shared';
 import { ChevronIcon, CrownIcon, LockIcon, SlidersIcon, TrophyIcon } from '../components/icons';
 import { ChatPanel } from '../components/ChatPanel';
+import { bellSprite } from '../components/BellFx';
 import { LeaderboardSheet } from '../components/LeaderboardSheet';
 import { ProfileSheet } from '../components/ProfileSheet';
 import type { ProfileMode } from '../components/ProfileSheet';
@@ -186,6 +187,9 @@ export function Lobby({
     if (!isHost) toast.show(`The host switched to ${room.gameName}`, 'info');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room.gameId]);
+  // The bell: after ringing it you wait a few seconds (the server keeps the same cooldown).
+  const [bellUntil, setBellUntil] = useState(0);
+  const bellWait = useCountdown(bellUntil || null, Date.now()) ?? 0;
   const iAmReady = !!room.members.find((m) => m.id === me)?.ready;
   const iAmLocked = !!room.members.find((m) => m.id === me)?.readyLock;
   // Computers are always ready, so they count on both sides: me alone with one computer reads "Ready 1/2".
@@ -584,6 +588,29 @@ export function Lobby({
         data-testid="lobby-bar"
       >
         <div className="pointer-events-auto mx-auto flex max-w-md flex-col gap-1">
+          {/* Once ready (with company): RING THE BELL! calls everybody in the lobby, like an old chat nudge. */}
+          {iAmReady && room.members.length > 1 && (
+            <button
+              type="button"
+              data-testid="lobby-bell"
+              disabled={!api.online || bellWait > 0}
+              onClick={() => {
+                void api.ringBell().then((res) => {
+                  if (res.ok) setBellUntil(Date.now() + 8000);
+                });
+              }}
+              className="mb-1 flex min-h-12 w-full items-center justify-center gap-3 rounded-[8px] border-2 border-neon bg-panel2 text-base font-black uppercase tracking-[0.14em] text-neon ring-2 ring-line active:translate-y-px disabled:opacity-50"
+            >
+              <img
+                src={bellSprite}
+                alt=""
+                draggable={false}
+                className="h-8 w-auto"
+                style={{ imageRendering: 'pixelated' }}
+              />
+              {bellWait > 0 ? `Ring the bell (${bellWait})` : 'Ring the bell!'}
+            </button>
+          )}
           <div className="flex gap-2">
             <Button
               className="min-w-0 flex-1 whitespace-nowrap"
@@ -644,6 +671,7 @@ export function Lobby({
         open={boardOpen}
         onClose={() => setBoardOpen(false)}
         me={user.id}
+        token={token}
         isGuest={user.isGuest}
         onRegister={() => {
           setBoardOpen(false);

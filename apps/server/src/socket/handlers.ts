@@ -160,6 +160,7 @@ export function registerSocketHandlers({
     route('room:suggest', roomSuggestSchema, (p) => manager.suggest(user.id, p.gameId));
     route('room:readyLock', roomReadyLockSchema, (p) => manager.setReadyLock(user.id, p.locked));
     route('room:ready', roomReadySchema, (p) => manager.setReady(user.id, p.ready));
+    route('room:bell', emptyPayloadSchema, () => manager.bell(user.id));
     route('room:rematch', rematchSchema, (p) => manager.rematch(user.id, p.toLobby));
     route('room:quickplay', roomQuickplaySchema, (p) => manager.quickPlay(user, p.gameId));
     route('chat:send', chatSendSchema, (p) =>

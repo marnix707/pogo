@@ -225,6 +225,9 @@ export async function buildApp(deps: AppDeps) {
     emitChat: (userId, message) => {
       io.to(userChannel(userId)).emit('chat:message', message);
     },
+    emitBell: (userId, bell) => {
+      io.to(userChannel(userId)).emit('room:bell', bell);
+    },
     emitHistory: (userId, messages) => {
       io.to(userChannel(userId)).emit('chat:history', messages);
     },

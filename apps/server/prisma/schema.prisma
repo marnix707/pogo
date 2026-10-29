@@ -65,6 +65,8 @@ model GameResult {
   players  Int
   bots     Int
   playedAt DateTime @default(now())
+  /// Who played and the game's own facts (the match history): `{players: [...], detail}`.
+  summary  Json?
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, matchId])

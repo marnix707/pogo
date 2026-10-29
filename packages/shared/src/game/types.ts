@@ -98,6 +98,11 @@ export interface GameDefinition<State, Move, Options, PlayerView = State> {
    * set this only when `autoMove` plays a reasonable game (not just "any legal move").
    */
   supportsBots?: boolean;
+  /**
+   * Interesting facts about a finished game for the match history (JSON-able, e.g. the arena and the pets of
+   * Pet Match). Stored with the result and shown by the game's UI (`GameUi.historyDetail`).
+   */
+  matchSummary?(state: State): Record<string, unknown>;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

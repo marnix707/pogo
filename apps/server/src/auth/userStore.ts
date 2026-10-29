@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import type { PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import { BOT_AVATAR, displayName } from '@pogo/shared';
-import type { PublicUser, Role } from '@pogo/shared';
+import type { MatchHistoryEntry, PublicUser, Role } from '@pogo/shared';
 
 export interface EmailCodeRecord {
   codeHash: string;
@@ -20,6 +20,8 @@ export interface ResultRow {
   score: number;
   players: number;
   bots: number;
+  /** The match history entry (`MatchHistoryEntry` without ids): who played and the game's facts. */
+  summary?: { players: MatchHistoryEntry['players']; detail: MatchHistoryEntry['detail'] };
 }
 
 export interface GameStats {
@@ -102,6 +104,8 @@ export interface UserStore {
   recordResults(rows: ResultRow[]): Promise<void>;
   statsFor(userId: string): Promise<GameStats[]>;
   leaderboard(gameId: string, limit: number): Promise<LeaderboardEntry[]>;
+  /** The player's last games, newest first (the match history). */
+  history(userId: string, limit: number): Promise<MatchHistoryEntry[]>;
   /** Move every result of `fromId` to `toId` (skipping matches `toId` already has) and delete `fromId`. */
   mergeInto(fromId: string, toId: string): Promise<number>;
 }
@@ -332,7 +336,10 @@ export function createPrismaUserStore(prisma: PrismaClient): UserStore {
 
     async recordResults(rows) {
       if (rows.length === 0) return;
-      await prisma.gameResult.createMany({ data: rows, skipDuplicates: true });
+      await prisma.gameResult.createMany({
+        data: rows.map((r) => ({ ...r, summary: r.summary as unknown as Prisma.InputJsonValue })),
+        skipDuplicates: true,
+      });
     },
     async statsFor(userId) {
       const rows = await prisma.gameResult.findMany({ where: { userId } });
@@ -344,6 +351,14 @@ export function createPrismaUserStore(prisma: PrismaClient): UserStore {
           list.map((r) => ({ rank: r.rank, score: r.score, playedAt: r.playedAt.getTime() })),
         ),
       );
+    },
+    async history(userId, limit) {
+      const rows = await prisma.gameResult.findMany({
+        where: { userId },
+        orderBy: { playedAt: 'desc' },
+        take: limit,
+      });
+      return rows.map((r) => toHistory(r.matchId, r.gameId, r.playedAt.getTime(), r.summary));
     },
     async leaderboard(gameId, limit) {
       const grouped = await prisma.gameResult.groupBy({
@@ -392,6 +407,20 @@ export function createPrismaUserStore(prisma: PrismaClient): UserStore {
 }
 
 /** Yatzy ranks by best score; every other game by wins (then games played). */
+/** A stored result row as a match history entry (older rows have no summary: just the game and the date). */
+function toHistory(
+  matchId: string,
+  gameId: string,
+  playedAt: number,
+  summary: unknown,
+): MatchHistoryEntry {
+  const s = (summary ?? {}) as Partial<{
+    players: MatchHistoryEntry['players'];
+    detail: MatchHistoryEntry['detail'];
+  }>;
+  return { matchId, gameId, playedAt, players: s.players ?? [], detail: s.detail ?? null };
+}
+
 function ordering(gameId: string, a: LeaderboardEntry, b: LeaderboardEntry): number {
   if (gameId === 'yatzy') return b.bestScore - a.bestScore || b.wins - a.wins;
   return b.wins - a.wins || b.games - a.games;
@@ -557,6 +586,13 @@ export function createMemoryUserStore(): UserStore {
           mine.filter((r) => r.gameId === g),
         ),
       );
+    },
+    async history(userId, limit) {
+      return results
+        .filter((r) => r.userId === userId)
+        .sort((a, b) => b.playedAt - a.playedAt)
+        .slice(0, limit)
+        .map((r) => toHistory(r.matchId, r.gameId, r.playedAt, r.summary ?? null));
     },
     async leaderboard(gameId, limit) {
       const ids = [...new Set(results.filter((r) => r.gameId === gameId).map((r) => r.userId))];

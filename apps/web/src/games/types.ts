@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from 'react';
-import type { GameResults, Result, RoomView } from '@pogo/shared';
+import type { GameResults, MatchHistoryEntry, Result, RoomView } from '@pogo/shared';
 
 export interface GameUiProps {
   room: RoomView;
@@ -50,6 +50,8 @@ export interface GameUi {
   resultsHeader?: (room: RoomView) => ReactNode;
   /** Something shown under a player's row in the standings (e.g. the pets they played). */
   resultsRowExtra?: (room: RoomView, playerId: string) => ReactNode;
+  /** The interesting facts of a past game in the match history (from `GameDefinition.matchSummary`). */
+  historyDetail?: (entry: MatchHistoryEntry) => ReactNode;
   /** The game plays the end-of-game fanfare itself (GameScreen then stays silent). */
   ownFanfare?: boolean;
   /** Wait this long after the game ends before showing the results (lets a final animation play). */

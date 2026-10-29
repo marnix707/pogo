@@ -4,6 +4,7 @@ const PATTERNS = {
   tap: 10,
   roll: [15, 30, 15, 30, 15],
   success: [20, 40, 20],
+  bell: [70, 40, 70, 40, 70, 40, 70, 40, 140],
   error: [60, 40, 60],
 } as const;
 

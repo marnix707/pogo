@@ -14,6 +14,23 @@ export async function recordFinishedGame(users: UserStore, game: FinishedGame): 
       score: r.score,
       players: game.players,
       bots: game.bots,
+      summary: summary(game),
     }));
   await users.recordResults(rows);
+}
+
+/** Who played (best first, with their rank and score) and the game's own facts: the match history entry. */
+function summary(game: FinishedGame) {
+  const who = new Map(game.roster.map((p) => [p.id, p]));
+  return {
+    players: game.results.rankings.map((r) => ({
+      id: r.playerId,
+      nickname: who.get(r.playerId)?.nickname ?? 'Player',
+      avatar: who.get(r.playerId)?.avatar ?? '',
+      bot: !!who.get(r.playerId)?.bot,
+      rank: r.rank,
+      score: r.score,
+    })),
+    detail: game.detail,
+  };
 }

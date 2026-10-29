@@ -268,6 +268,7 @@ export function Home({
         open={boardOpen}
         onClose={() => setBoardOpen(false)}
         me={user.id}
+        token={token}
         isGuest={user.isGuest}
         onRegister={() => {
           setBoardOpen(false);

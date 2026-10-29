@@ -689,4 +689,15 @@ export const matesGame: GameDefinition<MatesState, MatesMove, MatesOptions, Mate
       ? COIN_MS
       : eventMs(state.lastEvent) + (state.lastEvent ? BOT_PAUSE_MS : 0),
   supportsBots: true,
+  // The match history: the arena, the pets each player ended with and the hit points left.
+  matchSummary: (state) => ({
+    stage: state.stage,
+    moves: state.moveCount,
+    players: state.players.map((p) => ({
+      id: p.id,
+      hp: p.hp,
+      maxHp: p.maxHp,
+      pets: p.monsters.map((m) => ({ element: m.element, evolved: m.evolved })),
+    })),
+  }),
 };

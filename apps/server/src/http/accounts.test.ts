@@ -99,6 +99,8 @@ describe('registering', () => {
       humans: [g.user.id],
       players: 1,
       bots: 0,
+      roster: [{ id: g.user.id, nickname: 'Early', avatar: 'fox', bot: false }],
+      detail: null,
     });
     await call('POST', '/api/account/register/start', g.token, { email: 'early@example.com' });
     await call('POST', '/api/account/register/verify', g.token, {
@@ -210,7 +212,30 @@ describe('stats, leaderboard and merge', () => {
       humans: [id],
       players: 2,
       bots: 1,
+      roster: [
+        { id, nickname: 'Me', avatar: 'fox', bot: false },
+        { id: 'bot:1', nickname: 'Robo', avatar: 'robot', bot: true },
+      ],
+      detail: { stage: 'forest' },
     });
+
+  it('keeps a match history: the last ten games, newest first, with who played and the game facts', async () => {
+    const acc = await register('Historian', 'historian@example.com');
+    for (let n = 1; n <= 12; n++) await finish(acc.user.id, `H-${n}`, n * 10);
+    const history = (await call('GET', '/api/me/history', acc.token)).json().history;
+    expect(history).toHaveLength(10);
+    expect(history[0]).toMatchObject({
+      matchId: 'H-12',
+      gameId: 'yatzy',
+      detail: { stage: 'forest' },
+      players: [
+        { id: acc.user.id, nickname: 'Me', rank: 1, score: 120, bot: false },
+        { id: 'bot:1', nickname: 'Robo', rank: 2, bot: true },
+      ],
+    });
+    expect(history[9]!.matchId).toBe('H-3');
+    expect((await call('GET', '/api/me/history')).statusCode).toBe(401);
+  });
 
   it('flags a new personal best and only lists registered players on the leaderboard', async () => {
     const acc = await register('Champ', 'champ@example.com');

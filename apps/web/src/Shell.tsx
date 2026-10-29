@@ -13,6 +13,7 @@ import { haptic } from './lib/haptics';
 import { updateProfile } from './lib/session';
 import { useRealtime } from './lib/socket';
 import { play } from './lib/sound';
+import { BellFx } from './components/BellFx';
 import { GameScreen } from './pages/GameScreen';
 import { SpectatorScreen } from './pages/SpectatorScreen';
 import { ProfileSheet } from './components/ProfileSheet';
@@ -90,6 +91,7 @@ export function Shell({
       ready: (ready) => run(request('room:ready', { ready })),
       suggest: (gameId) => run(request('room:suggest', { gameId })),
       readyLock: (locked) => run(request('room:readyLock', { locked })),
+      ringBell: () => run(request('room:bell', {})),
       rematch: (toLobby) => run(request('room:rematch', { toLobby })),
       move: (move) => run(request('game:move', { move })),
     }),
@@ -225,6 +227,7 @@ export function Shell({
       joinRoom={(code) => api.join(code)}
     >
       <ConnectionBanner connection={connection} />
+      <BellFx />
       {room && <ChatBanner key={room.code} messages={messages} me={session.user.id} />}
       {screen}
       <ProfileSheet

@@ -3,6 +3,7 @@ import { randomInt } from 'node:crypto';
 import type {
   AdminRoomRow,
   AnyGameDefinition,
+  BellMessage,
   ChatMessage,
   LeaveReason,
   PublicRoomSummary,
@@ -34,6 +35,7 @@ export interface RoomManagerDeps {
   /** Chat text filter; pass an identity function to switch the profanity filter off. */
   maskText(text: string): string;
   emitChat(userId: string, message: ChatMessage): void;
+  emitBell(userId: string, bell: BellMessage): void;
   emitHistory(userId: string, messages: ChatMessage[]): void;
   /** The set of public rooms (or their contents) may have changed. */
   onLobbyChanged(): void;
@@ -83,6 +85,7 @@ export class RoomManager {
         emit: this.deps.emit,
         maskText: this.deps.maskText,
         emitChat: this.deps.emitChat,
+        emitBell: this.deps.emitBell,
         emitHistory: this.deps.emitHistory,
         onChange: () => this.deps.onLobbyChanged(),
         onGameFinished: (finished) => this.deps.onGameFinished(finished),
@@ -205,6 +208,11 @@ export class RoomManager {
       if (joined.ok) return joined;
     }
     return this.create(user, { gameId, visibility: 'public' });
+  }
+
+  bell(userId: string): Result<null> {
+    const room = this.roomFor(userId);
+    return room ? room.bell(userId) : fail('You are not in a room');
   }
 
   chat(userId: string, text: string): Result<null> {

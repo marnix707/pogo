@@ -1,0 +1,11 @@
+{
+ "size": [
+  17,
+  18
+ ],
+ "frames": 4,
+ "ms_per_frame": 90,
+ "loop": true,
+ "file": "bell-animated.svg",
+ "use": "the Ring the bell button; swings from side to side, motion is frames not rotation"
+}

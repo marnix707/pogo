@@ -8,6 +8,7 @@ import {
 } from '@pogo/shared';
 import type {
   AdminRoomRow,
+  BellMessage,
   AnyGameDefinition,
   ChatMessage,
   GameResults,
@@ -49,6 +50,8 @@ export interface RoomDeps {
   emitChat(userId: string, message: ChatMessage): void;
   /** Deliver the recent chat history to a user (on join / reconnect). */
   emitHistory(userId: string, messages: ChatMessage[]): void;
+  /** Somebody rang the bell: deliver it to one user (the others in the lobby). */
+  emitBell(userId: string, bell: BellMessage): void;
   /** Applied to every chat message before anyone sees it (profanity filter, or identity when off). */
   maskText(text: string): string;
   /** Something about the room changed (the public lobby list may need refreshing). */
@@ -66,9 +69,15 @@ export interface FinishedGame {
   humans: string[];
   players: number;
   bots: number;
+  /** Everybody who played (computers too), for the match history. */
+  roster: { id: string; nickname: string; avatar: string; bot: boolean }[];
+  /** The game's own facts about this match (`GameDefinition.matchSummary`). */
+  detail: Record<string, unknown> | null;
 }
 
 const CHAT_HISTORY_LIMIT = 100;
+/** Ringing the bell again is possible after this long (per person). */
+export const BELL_COOLDOWN_MS = 8000;
 /** At most this many people watch one game. */
 const MAX_SPECTATORS = 20;
 /** After the last person is ready, the game starts this long later (anybody can cancel by un-readying). */
@@ -221,6 +230,28 @@ export class Room {
     if (this.memberCount + this.bots >= this.game.maxPlayers) return fail('This room is full');
     this.members.push({ user, connected: true, left: false, absentSince: null });
     this.changed();
+    return ok(null);
+  }
+
+  private lastBellAt = new Map<string, number>();
+
+  /** Lobby: ring the bell. Everybody else in the room gets a nudge (shake + bell); a short cooldown keeps it fun. */
+  bell(userId: string): Result<null> {
+    const member = this.findSeated(userId);
+    if (!member) return fail('You are not in this room');
+    if (this.status !== 'lobby') return fail('You can only ring the bell in the lobby');
+    const now = this.deps.now();
+    if (now - (this.lastBellAt.get(userId) ?? -Infinity) < BELL_COOLDOWN_MS)
+      return fail('Wait a moment before ringing the bell again');
+    this.lastBellAt.set(userId, now);
+    const bell: BellMessage = {
+      fromId: userId,
+      nickname: displayName(member.user),
+      avatar: member.user.avatar,
+      at: now,
+    };
+    for (const m of this.members)
+      if (!m.left && !m.bot && m.user.id !== userId) this.deps.emitBell(m.user.id, bell);
     return ok(null);
   }
 
@@ -654,6 +685,15 @@ export class Room {
         humans,
         players: humans.length + this.members.filter((m) => m.bot).length,
         bots: this.members.filter((m) => m.bot).length,
+        roster: this.members
+          .filter((m) => !m.spectator)
+          .map((m) => ({
+            id: m.user.id,
+            nickname: displayName(m.user),
+            avatar: m.user.avatar,
+            bot: !!m.bot,
+          })),
+        detail: this.game.matchSummary?.(this.state) ?? null,
       });
     } catch {
       // Recording stats must never break a game.

@@ -153,6 +153,8 @@ export interface ServerToClientEvents {
   'dm:message': (message: DirectMessageView) => void;
   /** A friend invites me into their lobby. */
   'game:invite': (invite: GameInviteView) => void;
+  /** Somebody in your lobby rings the bell (a nudge: shake the screen, ring). */
+  'room:bell': (bell: BellMessage) => void;
 }
 
 export interface ClientToServerEvents {
@@ -165,6 +167,8 @@ export interface ClientToServerEvents {
   'room:readyLock': (payload: RoomReadyLockInput, ack: Ack<RoomView>) => void;
   'room:setGame': (payload: RoomSetGameInput, ack: Ack<RoomView>) => void;
   'room:ready': (payload: RoomReadyInput, ack: Ack<RoomView>) => void;
+  /** Lobby: ring the bell, calling everybody else in the room (a nudge). */
+  'room:bell': (payload: EmptyPayload, ack: Ack<null>) => void;
   'room:rematch': (payload: RematchInput, ack: Ack<RoomView>) => void;
   'room:quickplay': (payload: RoomQuickplayInput, ack: Ack<RoomView>) => void;
   'game:move': (payload: GameMoveInput, ack: Ack<null>) => void;
@@ -187,6 +191,34 @@ export interface GameStatsView {
   avgRank: number;
   /** The latest result is the player's best score (and not their first game). */
   lastIsBest: boolean;
+}
+
+/** Somebody rings the bell in your lobby. */
+export interface BellMessage {
+  fromId: string;
+  nickname: string;
+  avatar: string;
+  /** Epoch ms (server clock). */
+  at: number;
+}
+
+/** One finished game in a player's match history (the last ten). */
+export interface MatchHistoryEntry {
+  matchId: string;
+  gameId: string;
+  /** Epoch ms. */
+  playedAt: number;
+  /** Everybody who played, best first (computers included). */
+  players: {
+    id: string;
+    nickname: string;
+    avatar: string;
+    bot: boolean;
+    rank: number;
+    score: number;
+  }[];
+  /** What the game itself wants to show (`GameDefinition.matchSummary`). */
+  detail: Record<string, unknown> | null;
 }
 
 export interface LeaderboardRow {
