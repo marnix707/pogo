@@ -117,7 +117,7 @@ export function FriendsSheet({
               {overview?.friends.map((f) =>
                 row(
                   f,
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 pr-2">
                     {inLobbyCode && (
                       <Button
                         variant="secondary"
