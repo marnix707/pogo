@@ -893,7 +893,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         @keyframes mates-combo { 0%{opacity:0;transform:scale(.4) rotate(-6deg)} 25%{opacity:1;transform:scale(1.25) rotate(3deg)} 100%{opacity:0;transform:scale(1) translateY(-30px)} }
         @keyframes mates-turn { 0%{opacity:0;transform:scale(.3) rotate(-8deg)} 20%{opacity:1;transform:scale(1.25) rotate(3deg)} 35%{transform:scale(1) rotate(0)} 80%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.4)} }
         @keyframes mates-slide { 0%{transform:translate(calc(var(--sx) * (100% + 2px)), calc(var(--sy) * (100% + 2px))) scale(1.12)} 100%{transform:translate(0,0) scale(1)} }
-        @keyframes mates-fly { 0%{opacity:1;transform:translate(0,0) scale(1.1)} 100%{opacity:.9;transform:translate(var(--fx),var(--fy)) scale(.45)} }
+        @keyframes mates-fly { 0%{opacity:1;transform:translate(0,0) scale(1.1)} 90%{opacity:1} 100%{opacity:0;transform:translate(var(--fx),var(--fy)) scale(.45)} }
         @keyframes mates-tally-away { 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-16px)} }
         @keyframes mates-tally { 0%{transform:translate(-50%,-50%) scale(.6)} 50%{transform:translate(-50%,-50%) scale(1.35)} 100%{transform:translate(-50%,-50%) scale(1)} }
         @keyframes mates-note { 0%{opacity:0;transform:scale(.5)} 18%{opacity:1;transform:scale(1.15)} 30%{transform:scale(1)} 85%{opacity:1} 100%{opacity:0;transform:translateY(-14px)} }
