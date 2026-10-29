@@ -222,9 +222,9 @@ export function Home({
               </div>
             </div>
             <div data-in={landed} className="slide-bottom flex flex-col gap-4">
-              {online !== null && online > 0 && (
+              {online !== null && online > 1 && (
                 <p className="label text-center text-onbg/70" data-testid="home-online">
-                  There {online === 1 ? 'is 1 player' : `are ${online} players`} online
+                  There {online === 2 ? 'is 1 more player' : `are ${online - 1} more players`} online
                 </p>
               )}
               <Button
