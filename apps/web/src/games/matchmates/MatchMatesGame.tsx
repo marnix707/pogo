@@ -809,7 +809,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
           <Avatar
             avatar={member?.avatar ?? '🙂'}
             size="fluid"
-            className={`h-[15.7cqw] w-[15.7cqw] text-[9cqw] ${turn ? '!border-white !bg-neon' : ''}`}
+            className={`h-[15.7cqw] w-[15.7cqw] text-[9cqw] ${turn ? '' : '!border-transparent'}`}
           />
         </div>
         <div
