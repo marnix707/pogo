@@ -18,7 +18,7 @@ import {
   adjacent,
   cellAt,
 } from './board';
-import { BOOST_MANA, MONSTERS, evolveCost, maxBerries } from './monsters';
+import { MONSTERS, boostMana, evolveCost, maxBerries } from './monsters';
 import { CELLS, COLS, ELEMENTS, HP_CHOICES, MAX_PLAYERS, MIN_PLAYERS, ROWS, STAGES } from './types';
 import type {
   Element,
@@ -485,7 +485,7 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
     event.before = clone(state.board);
     me.berries -= evolveCost(state.stage);
     const boosted = me.monsters[move.slot] as MateMonster;
-    boosted.mana = Math.min(MONSTERS[boosted.element].cost, boosted.mana + BOOST_MANA);
+    boosted.mana = Math.min(MONSTERS[boosted.element].cost, boosted.mana + boostMana(state.stage));
     event.slot = move.slot;
     settle(c);
   }

@@ -18,7 +18,8 @@ export interface MonsterSpec {
 }
 
 export const BERRIES_TO_EVOLVE = 4;
-export const BOOST_MANA = 4;
+/** The mana a boost gives: as many as berries it costs (4; Forest Valley 3). */
+export const boostMana = (stage: StageId): number => evolveCost(stage);
 
 export const MONSTERS: Readonly<Record<Element, MonsterSpec>> = {
   fire: {

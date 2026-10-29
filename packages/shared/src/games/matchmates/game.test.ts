@@ -579,6 +579,10 @@ describe('Pet Match', () => {
       expect(matesGame.validateMove(s, s.turn, { type: 'boost', slot: 0 }).ok).toBe(true);
       const after = matesGame.applyMove(s, s.turn, { type: 'boost', slot: 0 }, createSeededRng(1));
       expect(after.players.find((p) => p.id === s.turn)!.berries).toBe(0);
+      // A boost gives as much mana as it costs berries (4, Forest Valley 3).
+      expect(after.players.find((p) => p.id === s.turn)!.monsters[0]!.mana).toBe(
+        Math.min(MONSTERS[s.players.find((p) => p.id === s.turn)!.monsters[0]!.element].cost, cap),
+      );
       const short = players.map((p) =>
         p.id === s.turn ? { ...p, berries: cap - 1 } : p,
       ) as MatesState['players'];

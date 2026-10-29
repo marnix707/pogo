@@ -44,7 +44,7 @@ export function MatchMatesRules({ open, onClose }: { open: boolean; onClose: () 
         <li>
           <b className="text-neon">Berries:</b> match berries to collect them. You can hold 4 (3 in
           Forest Valley), which is what it costs to <b>Evolve</b> a monster into a stronger one (one
-          move) or to <b>Boost</b> an evolved monster with 4 mana (one move). Tap one of your
+          move) or to <b>Boost</b> an evolved monster with as much mana (one move). Tap one of your
           monsters to do either.
         </li>
         <li>

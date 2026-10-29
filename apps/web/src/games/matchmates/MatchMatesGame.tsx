@@ -45,7 +45,7 @@ const {
   SWAP_MS,
   EVOLVE_MS,
   NOTE_MS,
-  BOOST_MANA,
+  boostMana,
 } = matchmates;
 
 const px = { imageRendering: 'pixelated' } as const;
@@ -323,7 +323,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       at(t, () =>
         setManaShown((m) =>
           m && boosted
-            ? { ...m, [key]: Math.min(MONSTERS[boosted].cost, (m[key] ?? 0) + BOOST_MANA) }
+            ? { ...m, [key]: Math.min(MONSTERS[boosted].cost, (m[key] ?? 0) + boostMana(stage)) }
             : m,
         ),
       );

@@ -3,7 +3,7 @@ import type { MouseEvent } from 'react';
 import { matchmates } from '@pogo/shared';
 import { monsterUrl } from './art';
 
-const { MONSTERS, BOOST_MANA } = matchmates;
+const { MONSTERS } = matchmates;
 
 const px = { imageRendering: 'pixelated' } as const;
 const WIDTH = 256;
@@ -164,7 +164,7 @@ export function usePetInfo(actions?: (element: matchmates.Element) => PetActions
                   }}
                 />
                 <span className="relative [text-shadow:0_1px_0_#101628,0_0_2px_#101628]">
-                  {act.evolved ? `Boost +${BOOST_MANA} mana` : 'Evolve'} (
+                  {act.evolved ? `Boost +${act.need} mana` : 'Evolve'} (
                   {Math.min(act.berries, act.need)}/{act.need})
                 </span>
               </button>
