@@ -23,6 +23,7 @@ export function TileButton({
 export function TopBar({
   title,
   titleExtra,
+  logo,
   subtitle,
   left,
   actions,
@@ -32,6 +33,8 @@ export function TopBar({
   title: string;
   /** Small text right after the title (e.g. emoji). */
   titleExtra?: string;
+  /** The game's logo: shown in place of the title (names do not always fit, logos do). */
+  logo?: string;
   subtitle?: string;
   left?: ReactNode;
   /** Extra buttons shown before the settings button. */
@@ -55,7 +58,18 @@ export function TopBar({
             compact ? 'text-lg' : 'text-xl'
           }`}
         >
-          <RaisedColon text={title} />
+          {logo ? (
+            <img
+              src={logo}
+              alt={title}
+              draggable={false}
+              data-testid="title-logo"
+              className="block h-11 w-auto max-w-full object-contain object-left"
+              style={{ imageRendering: 'pixelated' }}
+            />
+          ) : (
+            <RaisedColon text={title} />
+          )}
           {titleExtra && (
             <span data-testid="title-extra" className="ml-2 tracking-normal">
               {titleExtra}

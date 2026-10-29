@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { matchmates } from '@pogo/shared';
 import type { GameUiProps } from '../types';
 import { Avatar, TimerDrain } from '../../components/ui';
@@ -184,6 +184,9 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   // The opponent's hit points flash red and shake when an attack lands on them.
   const [hpHit, setHpHit] = useState<{ owner: string } | null>(null);
   const [glow, setGlow] = useState<GlowState | null>(null);
+  // True from the moment a move arrives until its whole animation (cascades, attacks) has played: the turn only
+  // changes on screen when the field is stable.
+  const [replaying, setReplaying] = useState(false);
   const seen = useRef(view.moveCount);
   // Hit points as the animation has got to: they change when the attack lands, not when the move arrives.
   const hpNow = Object.fromEntries(view.players.map((p) => [p.id, p.hp]));
@@ -201,6 +204,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   // Before the first paint of a new move: keep showing the hit points from before it.
   useLayoutEffect(() => {
     if (view.moveCount > seen.current && view.lastEvent && !reducedMotion()) {
+      setReplaying(true);
       setHpShown({ ...prevHp.current });
       setManaShown({ ...prevMana.current });
     }
@@ -530,6 +534,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       t += NOTE_MS;
     }
     at(t + 700, () => {
+      setReplaying(false);
       setHpShown(null);
       setManaShown(null);
       setPops([]);
@@ -539,6 +544,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     });
     return () => {
       timers.forEach(clearTimeout);
+      setReplaying(false);
       setAnim(null);
       setAtk(null);
       setHpHit(null);
@@ -578,7 +584,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   const [turnBanner, setTurnBanner] = useState(0);
   // (starts false: the very first turn is announced too, after the coin flip)
   const wasMine = useRef(false);
-  const settled = !animating && !coin && flights.length === 0;
+  const settled = !animating && !coin && flights.length === 0 && !replaying;
   useEffect(() => {
     if (!myTurn) wasMine.current = false;
     else if (!wasMine.current && settled) {
@@ -592,7 +598,10 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     }
   }, [myTurn, settled, view.moveCount]);
   const board = anim?.board ?? view.board;
-  const canAct = myTurn && !busy && !animating;
+  const canAct = myTurn && !busy && !animating && !replaying;
+  // Whose turn the screen shows: the mover's until the animation of the last move is over.
+  const visualTurn = replaying && view.lastEvent ? view.lastEvent.by : view.turn;
+  const showTurn = (id: string) => view.phase === 'play' && !finished && visualTurn === id;
 
   const trySwap = (a: number, b: number) => {
     setSelected(null);
@@ -633,11 +642,6 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   };
 
   const stage = view.stage ?? 'stadium';
-  const winnerName = useMemo(
-    () => (view.winner ? (memberOf(view.winner)?.nickname ?? 'Opponent') : null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [view.winner, room.members],
-  );
 
   // Tapping one of my pets: its pop-up with both forms and the Evolve / Boost button (berries as a loading bar).
   const petInfo = usePetInfo((element) => {
@@ -694,7 +698,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     const member = memberOf(p.id);
     const stackX = who === 'me' ? 6 : 110;
     const avatarX = who === 'me' ? 34 : 84;
-    const turn = view.turn === p.id && view.phase === 'play' && !finished;
+    const turn = showTurn(p.id);
     return (
       <div data-testid={who === 'me' ? 'mates-me' : 'mates-opp'}>
         <img
@@ -749,13 +753,50 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         >
           <PlayerName name={p.id === me ? 'You' : (member?.nickname ?? 'Opponent')} />
         </div>
+        {(turn || (finished && view.winner === p.id)) && (
+          <div
+            className="absolute flex flex-col items-center"
+            style={{ ...at(avatarX - 4, 51, 30), gap: cq(1.2) }}
+          >
+            <span
+              data-testid="mates-turn"
+              className="font-black uppercase"
+              style={{
+                fontSize: cq(4.2),
+                lineHeight: 1,
+                textShadow: hudText.textShadow,
+                color: finished || who === 'me' ? '#fda200' : '#ffffff',
+              }}
+            >
+              {finished ? 'Winner!' : who === 'me' ? 'Your turn' : 'Turn'}
+            </span>
+            {turn && !replaying && (
+              <span
+                className="flex items-center"
+                data-testid="mates-moves"
+                aria-label={`${view.movesLeft} moves left`}
+                style={{ gap: cq(2) }}
+              >
+                {Array.from({ length: Math.max(2, view.movesLeft) }, (_, n) => (
+                  <span
+                    key={n}
+                    className={`inline-block rotate-45 border border-[#101628] ${
+                      n < view.movesLeft ? 'bg-accent' : 'bg-black/50'
+                    }`}
+                    style={{ width: cq(3.4), height: cq(3.4) }}
+                  />
+                ))}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     );
   };
 
   return (
     <div
-      className="relative z-10 flex min-h-0 flex-1 flex-col items-center gap-1.5 pb-1 pt-1"
+      className="relative z-10 flex h-full min-h-0 flex-col items-center gap-1.5 pb-1 pt-1"
       data-testid="mates-game"
       data-phase={view.phase}
     >
@@ -795,12 +836,8 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
 
       {/* The battle screen: 140 x 258 art pixels like the reference, everything placed in art pixels. */}
       <div
-        className="relative shrink-0 overflow-hidden"
-        style={{
-          containerType: 'inline-size',
-          width: `min(100%, calc((100dvh - 7.5rem - env(safe-area-inset-top)) * ${VISIBLE_W} / ${H}))`,
-          aspectRatio: `${VISIBLE_W} / ${H}`,
-        }}
+        className="relative min-h-0 w-full flex-1 overflow-hidden"
+        style={{ containerType: 'inline-size' }}
         data-testid="mates-arena"
       >
         {/* The art is 140 px wide; a few pixels are cropped off each side so the borders are slim. */}
@@ -815,7 +852,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
             src={portraitUrl(stage, STAGE_SPECS)}
             alt={STAGE_SPECS[stage].name}
             draggable={false}
-            style={px}
+            style={{ ...px, objectFit: 'fill' }}
             className="absolute inset-0 h-full w-full"
           />
 
@@ -947,7 +984,8 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
           <div
             className="absolute"
             style={{
-              ...at(SCREEN.boardX, SCREEN.boardY, COLS * SCREEN.cell, ROWS * SCREEN.cell),
+              ...at(SCREEN.boardX, SCREEN.boardY, COLS * SCREEN.cell),
+              aspectRatio: `${COLS * SCREEN.cell} / ${ROWS * SCREEN.cell}`,
               animation:
                 combo && combo.level >= 3 && anim ? 'mates-shake 300ms ease-in-out' : undefined,
             }}
@@ -1099,11 +1137,12 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
           <div
             aria-hidden
             data-testid="mates-dim"
-            data-on={!myTurn && !finished}
+            data-on={!showTurn(me) && !finished}
             className="pointer-events-none absolute bg-black/50 transition-opacity duration-300"
             style={{
-              ...at(SCREEN.panel.x, SCREEN.panel.y, SCREEN.panel.w, SCREEN.panel.h),
-              opacity: !myTurn && !finished ? 1 : 0,
+              ...at(SCREEN.panel.x, SCREEN.panel.y, SCREEN.panel.w),
+              aspectRatio: `${SCREEN.panel.w} / ${SCREEN.panel.h}`,
+              opacity: !showTurn(me) && !finished ? 1 : 0,
             }}
           />
 
@@ -1132,29 +1171,6 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         </div>
       </div>
 
-      <div className="flex w-full max-w-lg items-center justify-between gap-2 px-2 text-xs font-bold">
-        <span data-testid="mates-turn" className={myTurn ? 'text-neon' : 'text-muted'}>
-          {finished
-            ? `${winnerName === 'You' || view.winner === me ? 'You win' : `${winnerName ?? 'Opponent'} wins`}!`
-            : myTurn
-              ? 'Your turn'
-              : `${memberOf(view.turn)?.nickname ?? 'Opponent'}'s turn`}
-        </span>
-        <span
-          className="flex items-center gap-1"
-          data-testid="mates-moves"
-          aria-label={`${view.movesLeft} moves left`}
-        >
-          {Array.from({ length: Math.max(2, view.movesLeft) }, (_, i) => (
-            <span
-              key={i}
-              className={`inline-block h-3 w-3 rotate-45 border-2 border-edge ${
-                i < view.movesLeft && !finished ? 'bg-accent' : 'bg-black/40'
-              }`}
-            />
-          ))}
-        </span>
-      </div>
       <TimerDrain
         deadline={game.deadline}
         serverTime={room.serverTime}

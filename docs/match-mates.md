@@ -57,3 +57,9 @@ Cleared tiles pop, the rest fall into the holes with a small bounce (`dropsFor`,
 - Tap one of your pets (`petInfo` in `PetInfo.tsx`): a pop-up with the Base / Evolved tabs, all numbers and the Evolve (evolved: Boost) button as a berry loading bar, greyed out until you have the berries and it is your turn.
 
 - **The board is never reshuffled.** It used to get a brand-new board when no swap could make a match; since any swap is allowed (a swap that matches nothing just costs a move) that is not needed, and it was the "the whole board suddenly changes" bug. `createBoard` is only used for the very first board.
+
+## Screen fit, turn display
+
+- The arena picture is stretched over the whole play area (`objectFit: fill`, the screen is nearly the art's aspect) and everything is placed in art pixels as % of that area; the board keeps square tiles through its aspect ratio. The top bar is the standard one with the game's **logo** in place of the name (`TopBar` `logo`, from `GameUi.logo`; all games use it except Yatzy's own header).
+- "Whose turn" is under the player's picture at the top (the name, then `mates-turn` "Your turn" / "Turn" and the move diamonds `mates-moves`); the picture box is orange for the player on turn. The bottom row is gone.
+- **The turn only changes on screen when the field is stable**: while a move replays (`replaying`, from the arrival of the move to the end of its animation) the screen keeps showing the mover's turn (no dimming, no diamonds, no "Your turn!" banner) and the board cannot be touched; hit points and mana bars also follow the animation.

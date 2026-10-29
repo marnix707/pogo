@@ -88,7 +88,7 @@ export const SCREEN = {
   /** Screen y of the arena's top edge. */
   top: 16,
   /** Art pixels cropped off each side of the 140 wide screen (slimmer borders). */
-  cropX: 4,
+  cropX: 0,
   boardX: 7,
   boardY: 170,
   cell: 18,

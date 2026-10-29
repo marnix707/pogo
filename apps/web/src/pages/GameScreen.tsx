@@ -294,6 +294,7 @@ export function GameScreen({
       {!ui.ownHeader && (
         <TopBar
           title={ui.name}
+          logo={ui.logo}
           titleExtra={ui.titleExtra?.(room)}
           onSettings={onSettings}
           actions={

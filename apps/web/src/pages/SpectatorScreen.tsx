@@ -34,6 +34,7 @@ export function SpectatorScreen({
     <div className="mx-auto flex h-dvh max-w-lg flex-col" data-testid="spectator-screen">
       <TopBar
         title={ui?.name ?? room.gameName}
+        logo={ui?.logo}
         titleExtra="👀"
         onSettings={onSettings}
         actions={<FriendsButton small />}
