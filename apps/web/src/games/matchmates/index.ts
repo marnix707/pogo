@@ -20,8 +20,6 @@ export const matchMatesUi: GameUi = {
   LobbyOptions: MatesOptions,
   Rules: ({ open, onClose }) => createElement(MatchMatesRules, { open, onClose }),
   hideScores: true,
-  // The screen draws its own back / menu buttons in its HUD (like the reference).
-  ownHeader: true,
   // Let the last move (swap, cascades, the final attack) play out before the standings.
   resultsDelayMs: (room) => {
     const e = (room.game?.view as matchmates.MatesView | undefined)?.lastEvent;

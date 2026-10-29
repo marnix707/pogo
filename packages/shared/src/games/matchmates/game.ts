@@ -78,7 +78,7 @@ export const MAX_BOMBS = 2;
 export const MAX_FROZEN_KINDS = 2;
 /** Milliseconds a client needs for each step / attack, so computers wait for the animation. */
 export const STEP_MS = 650;
-export const FIRE_MS = 2800;
+export const FIRE_MS = 3700;
 export const SWAP_MS = 300;
 /** The evolve animation, and the text that says "extra move" / "turn lost" after a move. */
 export const EVOLVE_MS = 1800;

@@ -70,7 +70,7 @@ test('Pet Match: pick, play moves against the computer', async ({ browser }) => 
   await expect(page.getByTestId('mates-pet-action')).toBeDisabled();
   await page.getByTestId('mates-pet-form-1').click();
   await page.screenshot({ path: 'test-results/mates-2-petinfo.png' });
-  await page.mouse.click(4, 4); // anywhere outside closes it
+  await page.mouse.click(8, 700); // anywhere outside closes it
   await expect(page.getByTestId('mates-pet-info')).toHaveCount(0);
 
   // Play a few of my moves; the computer answers in between.

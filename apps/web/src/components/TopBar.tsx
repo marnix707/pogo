@@ -42,7 +42,7 @@ export function TopBar({
 }) {
   return (
     <header
-      className={`flex items-center gap-3 px-4 ${
+      className={`relative z-20 flex items-center gap-3 px-4 ${
         compact
           ? 'pb-1.5 pt-[calc(env(safe-area-inset-top)+0.5rem)]'
           : 'pb-3 pt-[calc(env(safe-area-inset-top)+1.25rem)]'
