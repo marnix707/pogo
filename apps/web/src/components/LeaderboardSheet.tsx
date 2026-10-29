@@ -149,6 +149,7 @@ export function LeaderboardSheet({
                     <span className="w-9 shrink-0 whitespace-nowrap text-right">
                       {game === 'yatzy' ? 'Best' : 'Wins'}
                     </span>
+                    <span className="w-12 shrink-0 whitespace-nowrap text-right">Win %</span>
                   </div>
                   <ol className="flex flex-col gap-1.5">
                     {rows.map((r, i) => (
@@ -170,6 +171,12 @@ export function LeaderboardSheet({
                         </span>
                         <span className="w-9 shrink-0 text-right font-bold tabular-nums">
                           {metric(r)}
+                        </span>
+                        <span
+                          className="w-12 shrink-0 text-right text-sm text-muted tabular-nums"
+                          data-testid="leaderboard-winpct"
+                        >
+                          {r.games > 0 ? ((r.wins / r.games) * 100).toFixed(1) : '0.0'}
                         </span>
                       </li>
                     ))}
