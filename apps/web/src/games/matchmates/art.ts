@@ -145,6 +145,8 @@ export const tileUrl = (cell: matchmates.MateCell): string =>
   '';
 export const iceUrl = (): string => tiles['ice-overlay'] ?? '';
 /** The berry's glint + sparkle loop (an overlay the size of the tile): berries are meant to stand out. */
+/** The charged-tile crackle of the Laboratory (an overlay the size of the tile). */
+export const chargedUrl = (): string => tiles['charged-animated'] ?? '';
 export const berryShineUrl = (): string => tiles['berry-shine-animated'] ?? '';
 
 export const monsterUrl = (element: matchmates.Element, evolved: boolean): string =>

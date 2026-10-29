@@ -27,7 +27,7 @@ function start(
   seed = 1,
   stage: MatesMove extends never
     ? never
-    : 'stadium' | 'forest' | 'lava' | 'frost' | 'reactor' | 'swamp' = 'stadium',
+    : 'stadium' | 'forest' | 'lava' | 'frost' | 'reactor' | 'swamp' | 'lab' = 'stadium',
 ): MatesState {
   const rng = createSeededRng(seed);
   let s = matesGame.createInitialState([A, B], opts, rng);
@@ -369,6 +369,39 @@ describe('Pet Match', () => {
       for (const m of p.monsters) expect(m.mana).toBeLessThanOrEqual(MONSTERS[m.element].cost);
   });
 
+  it('Laboratory: a tile gets charged every round; matched, it takes two random tiles with it for the mover', () => {
+    const base = start(5, 'lab');
+    expect(base.board.filter((c) => c.charged)).toHaveLength(1);
+    const board = quiet();
+    for (const c of [0, 1]) set(board, 0, c, 'fire');
+    set(board, 0, 2, 'water');
+    set(board, 1, 2, 'fire');
+    board[cellAt(0, 0)] = { k: 'fire', charged: true };
+    const s: MatesState = { ...base, board, turn: 'a', first: 'a', movesLeft: 2 };
+    const after = matesGame.applyMove(
+      s,
+      'a',
+      { type: 'swap', a: cellAt(0, 2), b: cellAt(1, 2) },
+      createSeededRng(6),
+    );
+    const step = after.lastEvent!.steps[0]!;
+    expect(step.charged).toEqual([0]);
+    expect(step.pulled).toHaveLength(2);
+    // The three matched tiles and the two it pulled in all went.
+    expect(step.cleared).toHaveLength(5);
+    expect(step.cleared.filter((i) => i > 2)).toHaveLength(2);
+    // Every round another tile is charged (the turn passes after two moves).
+    let t: MatesState = { ...base, board: quiet(), turn: 'a', first: 'a', movesLeft: 1 };
+    t = matesGame.applyMove(
+      t,
+      'a',
+      { type: 'swap', a: cellAt(4, 5), b: cellAt(4, 6) },
+      createSeededRng(1),
+    );
+    expect(t.turn).toBe('b');
+    expect(t.board.filter((c) => c.charged)).toHaveLength(1);
+  });
+
   it('the board is never reshuffled: with no matching swap left the tiles just stay', () => {
     const base = start(4);
     const board = quiet(); // no swap here makes a match
@@ -613,7 +646,15 @@ describe('Pet Match', () => {
   });
 
   it('a player at 0 hit points always means the game is over (all stages)', () => {
-    for (const stage of ['stadium', 'forest', 'lava', 'frost', 'reactor', 'swamp'] as const) {
+    for (const stage of [
+      'stadium',
+      'forest',
+      'lava',
+      'frost',
+      'reactor',
+      'swamp',
+      'lab',
+    ] as const) {
       for (const seed of [1, 2, 3, 4]) {
         const rng = createSeededRng(seed * 7);
         let s = start(seed, stage);

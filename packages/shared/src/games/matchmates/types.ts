@@ -10,7 +10,7 @@ export const CELLS = COLS * ROWS;
 export const ELEMENTS = ['fire', 'water', 'earth', 'electric', 'psychic'] as const;
 export type Element = (typeof ELEMENTS)[number];
 
-export const STAGES = ['stadium', 'forest', 'lava', 'frost', 'reactor', 'swamp'] as const;
+export const STAGES = ['stadium', 'forest', 'lava', 'frost', 'reactor', 'swamp', 'lab'] as const;
 export type StageId = (typeof STAGES)[number];
 
 /** What sits on a board square. `mystery` only exists in views: the real tile is hidden from the players. */
@@ -22,6 +22,8 @@ export interface MateCell {
   frozen?: true;
   /** Bomb countdown (Reactor): explodes in a cross when it reaches 0. */
   fuse?: number;
+  /** Charged (Laboratory): when it is matched it takes two random tiles with it, all for the mover. */
+  charged?: true;
   /** Covered by a "?" tile (Swamp). The state keeps the real tile; the view hides it. */
   hidden?: true;
 }
@@ -68,6 +70,9 @@ export interface MateStep {
   board: MateCell[];
   /** A bomb went off. */
   bomb?: true;
+  /** Laboratory: the charged squares that went in this step, and the two extra squares each one took along. */
+  charged?: number[];
+  pulled?: number[];
   /** An ability changed these squares. */
   changed?: number[];
   /** An ability cleared these squares (a column, a block). */

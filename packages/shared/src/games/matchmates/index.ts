@@ -7,6 +7,7 @@ export {
   START_HP,
   SECOND_PLAYER_HP,
   MOVES_PER_TURN,
+  MAX_CHARGED,
   STEP_MS,
   FIRE_MS,
   SWAP_MS,

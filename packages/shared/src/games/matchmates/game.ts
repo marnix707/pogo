@@ -74,6 +74,8 @@ export const MOVES_PER_TURN = 2;
 export const COMBO_HEAL = 5;
 export const BOMB_FUSE = 3;
 export const MAX_BOMBS = 2;
+/** Most charged tiles on the board at once (Laboratory). */
+export const MAX_CHARGED = 3;
 /** Most tile kinds that freeze after a move (Frost Lake). */
 export const MAX_FROZEN_KINDS = 2;
 /** Milliseconds a client needs for each step / attack, so computers wait for the animation. */
@@ -194,8 +196,20 @@ function hurt(p: MatePlayer, amount: number) {
 }
 
 /** One cascade: clear the matched squares, pay out mana / berries, drop, refill. */
-function clearMatches(c: Ctx, cells: Set<number>) {
+function clearMatches(c: Ctx, matched: Set<number>) {
   let lava = 0;
+  // Laboratory: every charged tile in the match takes two more random tiles with it (all for the mover).
+  const cells = new Set(matched);
+  const charged = c.stage === 'lab' ? [...matched].filter((i) => c.board[i]?.charged) : [];
+  const pulled: number[] = [];
+  for (let ci = 0; ci < charged.length; ci++)
+    for (let n = 0; n < 2; n++) {
+      const free = c.board.flatMap((_t, i) => (cells.has(i) ? [] : [i]));
+      if (free.length === 0) break;
+      const pick = free[c.rng.int(free.length)] as number;
+      cells.add(pick);
+      pulled.push(pick);
+    }
   const sorted = [...cells].sort((x, y) => x - y);
   const kindsBefore = new Map(sorted.map((i) => [i, c.board[i]!.k]));
   for (const i of cells) {
@@ -215,6 +229,9 @@ function clearMatches(c: Ctx, cells: Set<number>) {
     cleared: sorted,
     kinds: sorted.map((i) => kindsBefore.get(i) as string),
     board: clone(c.board),
+    ...(charged.length
+      ? { charged: [...charged].sort((x, y) => x - y), pulled: pulled.sort((x, y) => x - y) }
+      : {}),
   });
 }
 
@@ -343,6 +360,12 @@ function stageTurnStart(board: MateCell[], stage: StageId, rng: Rng) {
     const spots = board.flatMap((x, i) => (x.k !== 'bomb' ? [i] : []));
     const at = spots[rng.int(spots.length)] as number;
     board[at] = { k: 'bomb', fuse: BOMB_FUSE };
+  }
+  if (stage === 'lab' && board.filter((x) => x.charged).length < MAX_CHARGED) {
+    // Every round another tile gets charged (up to a few at a time).
+    const spots = board.flatMap((x, i) => (x.k !== 'bomb' && !x.charged ? [i] : []));
+    const at = spots[rng.int(spots.length)] as number;
+    board[at] = { ...board[at]!, charged: true };
   }
   if (stage === 'swamp') {
     for (const cell of board) delete cell.hidden;

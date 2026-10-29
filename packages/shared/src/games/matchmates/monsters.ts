@@ -77,7 +77,14 @@ export interface StageSpec {
   id: StageId;
   name: string;
   /** The arena picture (Reactor and Swamp share the stadium). */
-  arena: 'stadium' | 'forest-valley' | 'lava-caverns' | 'frost-lake';
+  arena:
+    | 'stadium'
+    | 'forest-valley'
+    | 'lava-caverns'
+    | 'frost-lake'
+    | 'reactor'
+    | 'swamp'
+    | 'laboratory';
   rule: string;
 }
 
@@ -104,13 +111,19 @@ export const STAGE_SPECS: Readonly<Record<StageId, StageSpec>> = {
   reactor: {
     id: 'reactor',
     name: 'Reactor',
-    arena: 'stadium',
+    arena: 'reactor',
     rule: 'Bombs count down with every move and blow up in a cross.',
+  },
+  lab: {
+    id: 'lab',
+    name: 'Laboratory',
+    arena: 'laboratory',
+    rule: 'Every turn a random tile gets charged: when it is matched it takes two random tiles with it, for the player who matched it.',
   },
   swamp: {
     id: 'swamp',
     name: 'Swamp',
-    arena: 'stadium',
+    arena: 'swamp',
     rule: 'Every turn a random tile is hidden behind a "?".',
   },
 };

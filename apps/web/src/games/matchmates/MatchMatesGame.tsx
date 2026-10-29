@@ -17,6 +17,7 @@ import {
   monsterUrl,
   arenaEdgeColors,
   berryShineUrl,
+  chargedUrl,
   portraitUrl,
   readySparkleUrl,
   tileUrl,
@@ -498,11 +499,17 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         });
         at(t + STEP_MS, () => setBlasts([]));
       }
+      if (step.pulled?.length) {
+        // Laboratory: a charged tile went and took two more with it.
+        say(`Charged! +${step.pulled.length} tiles`, 'good', t);
+      }
       // The artist's glow bursts round the cleared tiles, in the colour of their kind.
       if (cleared.length > 0 && !step.bomb) {
         const items = cleared.map((cell, idx) => ({
           cell,
-          kind: step.kinds?.[idx] ?? before[cell]?.k ?? 'gold',
+          kind: step.pulled?.includes(cell)
+            ? 'electric'
+            : (step.kinds?.[idx] ?? before[cell]?.k ?? 'gold'),
         }));
         for (let f = 0; f < 8; f++) at(t + f * 55, () => setGlow({ items, frame: f }));
         at(t + 8 * 55, () => setGlow(null));
@@ -1145,6 +1152,16 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                               : undefined,
                       }}
                     />
+                    {cell.charged && !flownAway && (
+                      <img
+                        src={chargedUrl()}
+                        alt=""
+                        draggable={false}
+                        data-testid="charged-tile"
+                        className="pointer-events-none absolute inset-0 h-full w-full"
+                        style={px}
+                      />
+                    )}
                     {cell.k === 'berry' && !flownAway && (
                       <img
                         src={berryShineUrl()}
