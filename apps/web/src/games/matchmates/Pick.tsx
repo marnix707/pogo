@@ -187,20 +187,20 @@ export function Pick({
           >
             {chosen ? (
               <>
-                <span className="flex shrink-0 items-end gap-2">
+                <span className="flex w-16 shrink-0 flex-col items-center gap-1">
                   <img
                     src={monsterUrl(chosen, false)}
                     alt={MONSTERS[chosen].names[0]}
                     draggable={false}
                     style={px}
-                    className="h-24"
+                    className="h-12"
                   />
                   <img
                     src={monsterUrl(chosen, true)}
                     alt={MONSTERS[chosen].names[1]}
                     draggable={false}
                     style={px}
-                    className="h-28 opacity-80"
+                    className="h-14"
                   />
                 </span>
                 <span className="min-w-0 flex-1 text-xs">
@@ -236,7 +236,7 @@ export function Pick({
                 onDraft(chosen);
                 setChosen(null);
               }}
-              className="sticky bottom-0"
+              className="sticky bottom-0 min-h-16 w-full text-lg"
             >
               {chosen && !taken.get(chosen)
                 ? `Pick ${MONSTERS[chosen].names[0]}`
@@ -294,7 +294,12 @@ export function Pick({
                 Waiting for your opponent…
               </p>
             ) : (
-              <Button data-testid="mates-ready" disabled={busy} onClick={() => onConfirm(stage)}>
+              <Button
+                data-testid="mates-ready"
+                disabled={busy}
+                className="min-h-16 w-full text-lg"
+                onClick={() => onConfirm(stage)}
+              >
                 Confirm
               </Button>
             )}
