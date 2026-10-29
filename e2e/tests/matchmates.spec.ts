@@ -69,6 +69,8 @@ test('Pet Match: pick, play moves against the computer', async ({ browser }) => 
   await expect(page.getByTestId('mates-pet-info')).toBeVisible();
   await expect(page.getByTestId('mates-pet-action')).toBeDisabled();
   await page.getByTestId('mates-pet-form-1').click();
+  // The evolved form shows what it gains, in grey (e.g. "15 +5").
+  await expect(page.getByTestId('pet-stat-gain').first()).toBeVisible();
   await page.screenshot({ path: 'test-results/mates-2-petinfo.png' });
   await page.mouse.click(8, 700); // anywhere outside closes it
   await expect(page.getByTestId('mates-pet-info')).toHaveCount(0);

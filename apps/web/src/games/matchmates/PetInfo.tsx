@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { matchmates } from '@pogo/shared';
 import { monsterUrl } from './art';
@@ -114,19 +114,27 @@ export function usePetInfo(actions?: (element: matchmates.Element) => PetActions
             </span>
             <p className="mt-1 text-xs">{spec.ability}</p>
             <dl className="mt-1 grid grid-cols-2 gap-x-3 text-xs">
-              <dt className="text-muted">Damage</dt>
-              <dd className="font-bold">{spec.damage[form]}</dd>
-              {spec.heal[form] > 0 && (
-                <>
-                  <dt className="text-muted">Heals</dt>
-                  <dd className="font-bold">{spec.heal[form]}</dd>
-                </>
-              )}
-              {spec.power[form] > 0 && (
-                <>
-                  <dt className="text-muted">Power</dt>
-                  <dd className="font-bold">{spec.power[form]}</dd>
-                </>
+              {(
+                [
+                  ['Damage', spec.damage],
+                  ['Heals', spec.heal],
+                  ['Power', spec.power],
+                ] as const
+              ).map(([label, v]) =>
+                v[form] > 0 ? (
+                  <Fragment key={label}>
+                    <dt className="text-muted">{label}</dt>
+                    <dd className="font-bold" data-testid={`pet-stat-${label.toLowerCase()}`}>
+                      {v[form]}
+                      {/* The evolved form shows what it gains over the base form, in grey: 15 +5 */}
+                      {form === 1 && v[1] > v[0] && (
+                        <span className="ml-1 font-normal text-muted" data-testid="pet-stat-gain">
+                          +{v[1] - v[0]}
+                        </span>
+                      )}
+                    </dd>
+                  </Fragment>
+                ) : null,
               )}
               <dt className="text-muted">Mana</dt>
               <dd className="font-bold">{spec.cost}</dd>
