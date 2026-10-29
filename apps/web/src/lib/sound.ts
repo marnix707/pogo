@@ -19,7 +19,8 @@ export type SoundName =
   | 'shield'
   | 'ghost'
   | 'skull'
-  | 'bell';
+  | 'bell'
+  | 'faint';
 
 let ctx: AudioContext | undefined;
 
@@ -165,6 +166,12 @@ export function play(name: SoundName) {
     case 'score':
       tone(c, 523, 0, 0.12, 'triangle');
       tone(c, 784, 0.1, 0.2, 'triangle');
+      break;
+    case 'faint':
+      // A pet faints (the classic way): a long falling pitch with a wobble, then a soft thud.
+      sweep(c, 'square', 760, 70, 0, 0.95, 0.12);
+      sweep(c, 'triangle', 380, 40, 0.05, 0.9, 0.14);
+      noise(c, 0.85, 0.12, 0.16, 500);
       break;
     case 'bell':
       // "Ring the bell!": a loud, silly ding-a-ling (brass partials, a quick two-tone warble), then a wah-wah.

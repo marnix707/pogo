@@ -19,7 +19,12 @@ import {
   berryShineUrl,
   chargedUrl,
   portraitUrl,
+  DROP_AT,
   END_FALL_MS,
+  FAINT_AT,
+  FAINT_MS,
+  WIN_AT,
+  WIN_MS,
   END_ROW_MS,
   readySparkleUrl,
   tileUrl,
@@ -228,6 +233,10 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
   const [glow, setGlow] = useState<GlowState | null>(null);
   // The game is over: every tile drops off the board, row by row from the bottom, each with its own little tilt.
   const [dropping, setDropping] = useState(view.phase === 'over' && !reducedMotion());
+  // The finale: the losing pets faint, the winning pets walk to the middle (then the board falls away).
+  const [finale, setFinale] = useState<'none' | 'faint' | 'win' | 'done'>(
+    view.phase === 'over' ? 'done' : 'none',
+  );
   // The Reactor's bombs: a big explosion on every tile that blows up, rippling out from the bomb.
   const [blasts, setBlasts] = useState<{ id: number; cell: number; delay: number }[]>([]);
   // True from the moment a move arrives until its whole animation (cascades, attacks) has played: the turn only
@@ -653,9 +662,20 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       setFlights([]);
     });
     if (ev.win) {
-      // The finishing touch: the whole board falls away, bottom row first.
-      at(t + 350, () => setDropping(true));
-      for (let r = 0; r < ROWS; r++) at(t + 350 + r * END_ROW_MS, () => play('deal'));
+      // The finale: the losing pets faint (with a falling sound), the winners walk to the middle, then the whole
+      // board falls away, bottom row first.
+      at(t + FAINT_AT, () => {
+        setFinale('faint');
+        play('faint');
+        haptic('error');
+      });
+      at(t + WIN_AT, () => {
+        setFinale('win');
+        play('win');
+        haptic('success');
+      });
+      at(t + DROP_AT, () => setDropping(true));
+      for (let r = 0; r < ROWS; r++) at(t + DROP_AT + r * END_ROW_MS, () => play('deal'));
     }
     // What the move earned besides damage: said out loud, with a pop on the hit points.
     if (ev.heal > 0) {
@@ -1115,6 +1135,8 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
         @keyframes mates-intro-fade { 0%{opacity:0} 100%{opacity:1} }
         @keyframes mates-spawn { 0%{opacity:0;transform:scale(0);filter:brightness(6)} 55%{opacity:1;transform:scale(1.28);filter:brightness(2.2)} 80%{transform:scale(.94);filter:brightness(1.2)} 100%{transform:scale(1);filter:none} }
         @keyframes mates-tile-in { 0%{opacity:0;transform:translateY(-650%)} 25%{opacity:1} 100%{opacity:1;transform:translateY(0)} }
+        @keyframes mates-faint { 0%{transform:translateY(0) scale(1);opacity:1;filter:none} 12%{transform:translateY(-3%) scale(1.04);filter:brightness(2.4)} 30%{transform:translateY(4%) scale(1);filter:brightness(1)} 100%{transform:translateY(95%) scaleY(.2);opacity:0;filter:brightness(.4)} }
+        @keyframes mates-win-walk { 0%{transform:translate(0,0)} 22%{transform:translate(calc(var(--dx) * .25), calc(var(--dy) * .25 - 16%))} 44%{transform:translate(calc(var(--dx) * .5), calc(var(--dy) * .5))} 66%{transform:translate(calc(var(--dx) * .75), calc(var(--dy) * .75 - 16%))} 85%{transform:translate(var(--dx), var(--dy))} 92%{transform:translate(var(--dx), calc(var(--dy) - 12%))} 100%{transform:translate(var(--dx), var(--dy))} }
         @keyframes mates-pop { 0%{opacity:0;transform:translateY(0) scale(.6)} 20%{opacity:1;transform:translateY(-6px) scale(1.2)} 100%{opacity:0;transform:translateY(-28px) scale(1)} }
         @keyframes mates-flash { 0%{transform:scale(1);filter:none} 45%{transform:scale(1.25);filter:brightness(2.4)} 100%{transform:scale(0);opacity:0} }
         @keyframes mates-fall { 0%{transform:translateY(calc(var(--drop) * -100%))} 68%{transform:translateY(0)} 82%{transform:translateY(-7%)} 100%{transform:translateY(0)} }
@@ -1180,6 +1202,25 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
               const spec = MONSTERS[m.element];
               const color = ELEMENT_COLOR[m.element];
               const mana = manaShown?.[`${p.id}-${slot}`] ?? m.mana;
+              // The finale: the losers faint, the winners walk to the middle of the arena (a hop at every step).
+              const isWinner = view.winner === p.id;
+              const finaleOn = finale !== 'none';
+              const instant = finale === 'done';
+              const target: [number, number] | null = isWinner ? [56 + slot * 28, 148] : null;
+              const finaleStyle =
+                isWinner && finaleOn && target
+                  ? ({
+                      ['--dx' as string]: `${((target[0] - fx) / w) * 100}%`,
+                      ['--dy' as string]: `${((target[1] - fy) / h) * 100}%`,
+                    } as React.CSSProperties)
+                  : {};
+              const finaleAnimation = !finaleOn
+                ? null
+                : isWinner
+                  ? finale === 'faint'
+                    ? null
+                    : `mates-win-walk ${instant ? 0 : WIN_MS}ms cubic-bezier(.3,0,.2,1) forwards`
+                  : `mates-faint ${instant ? 0 : FAINT_MS}ms cubic-bezier(.5,0,.8,.6) forwards`;
               return (
                 <div key={`${p.id}-${slot}`}>
                   <div
@@ -1187,9 +1228,12 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                     style={{
                       ...at(fx - w / 2, fy - h, w),
                       transformOrigin: '50% 100%',
-                      animation: intro
-                        ? `mates-spawn 620ms cubic-bezier(.2,1.5,.4,1) ${INTRO_PET_AT + ((who === 'opp' ? 0 : 2) + slot) * INTRO_PET_STEP}ms backwards`
-                        : undefined,
+                      ...finaleStyle,
+                      animation:
+                        finaleAnimation ??
+                        (intro
+                          ? `mates-spawn 620ms cubic-bezier(.2,1.5,.4,1) ${INTRO_PET_AT + ((who === 'opp' ? 0 : 2) + slot) * INTRO_PET_STEP}ms backwards`
+                          : undefined),
                     }}
                     onClick={(e) => petInfo.open(e, m.element, shownEvolved)}
                     data-testid={`mates-monster-${who}-${slot}`}
@@ -1272,6 +1316,8 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                     className="absolute"
                     style={{
                       ...at(fx - 18, fy + 1, 36),
+                      opacity: finale !== 'none' ? 0 : undefined,
+                      transition: 'opacity 300ms',
                       animation: intro
                         ? `mates-intro-fade 400ms ease-out ${INTRO_PET_AT + 300 + ((who === 'opp' ? 0 : 2) + slot) * INTRO_PET_STEP}ms backwards`
                         : undefined,

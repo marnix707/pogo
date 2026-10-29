@@ -234,3 +234,10 @@ export function arenaEdgeColors(url: string): Promise<{ top: string; bottom: str
 export const END_ROW_MS = 150;
 export const END_FALL_MS = 950;
 export const END_DROP_MS = END_ROW_MS * 4 + 3 * 35 + END_FALL_MS + 350;
+/** The finale (ms after the last move has played out): the losing pets faint, the winners walk to the middle, then the board falls. */
+export const FAINT_AT = 300;
+export const FAINT_MS = 1000;
+export const WIN_AT = 1500;
+export const WIN_MS = 900;
+export const DROP_AT = 2800;
+export const FINALE_MS = DROP_AT;

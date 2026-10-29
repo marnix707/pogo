@@ -2,7 +2,7 @@ import { createElement } from 'react';
 import { matchmates } from '@pogo/shared';
 import type { GameUi } from '../types';
 import logoUrl from '../../assets/sprites/brand/logos/match-mates.svg';
-import { END_DROP_MS, allArt } from './art';
+import { END_DROP_MS, FINALE_MS, allArt } from './art';
 import { MatesOptions } from './LobbyOptions';
 import { MatchMatesGame } from './MatchMatesGame';
 import { MatchMatesRules } from './MatchMatesRules';
@@ -33,7 +33,7 @@ export const matchMatesUi: GameUi = {
           e.steps.length * matchmates.STEP_MS +
           e.fires.length * matchmates.FIRE_MS +
           700 +
-          (e.win ? END_DROP_MS : 0)
+          (e.win ? FINALE_MS + END_DROP_MS : 0)
       : 700;
   },
 };
