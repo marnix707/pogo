@@ -544,7 +544,6 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
     });
     return () => {
       timers.forEach(clearTimeout);
-      setReplaying(false);
       setAnim(null);
       setAtk(null);
       setHpHit(null);
@@ -555,8 +554,9 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
       setTallies([]);
       setNote(null);
       setEvolve(null);
-      setHpShown(null);
-      setManaShown(null);
+      // (replaying / hpShown / manaShown are NOT reset here: this cleanup runs after the layout effect of the
+      // next move has set them, and would wipe them, so the numbers would jump to their final values at once.
+      // The end of a replay resets them itself.)
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view.moveCount]);
