@@ -20,7 +20,7 @@ import type { RoomApi } from '../lib/api';
 import { AvatarFace } from '../components/AvatarFace';
 
 /** The logo sits this many px below the exact midpoint, so its tilted corner stays clear of the top bar. */
-const LOGO_NUDGE = 10;
+const LOGO_NUDGE = 16;
 
 export function Home({
   user,
@@ -122,7 +122,7 @@ export function Home({
     if (!box || !frog || !header) return;
     const top = Math.max(header.bottom, box.top);
     const peak = frog.bottom - PEAK_ART * stageScale.frog;
-    // (+10px: the tilted logo's upper corner must not clip into the top bar.)
+    // (+16px: the tilted logo's upper corner must not clip into the top bar.)
     setWordMid((top + peak) / 2 - box.top + LOGO_NUDGE);
   }, [stageH, stageScale.frog, screen, landed]);
 
