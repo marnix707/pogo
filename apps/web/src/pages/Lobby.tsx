@@ -170,6 +170,11 @@ export function Lobby({
   const isHost = room.hostId === me;
   /** The host opened the list of games (the top card is a button): the settings make room for it. */
   const [choosing, setChoosing] = useState(false);
+  // Joining another lobby from the game list brings the page back to the top too.
+  useEffect(() => {
+    setChoosing(false);
+    window.scrollTo({ top: 0 });
+  }, [room.code]);
   /** The settings are folded by default (a fresh lobby, or back from a game); switching games inside the lobby keeps them as they are. */
   const [settingsFold, setSettingsFold] = useState(false);
   // Arriving from the Play screen: the tapped game card morphs to the top of this lobby.
@@ -322,7 +327,10 @@ export function Lobby({
               gameIdPrefix="pick-game"
               showJoin={false}
               currentRoomCode={room.code}
-              onReturn={() => setChoosing(false)}
+              onReturn={() => {
+                setChoosing(false);
+                window.scrollTo({ top: 0 });
+              }}
               // All the way at the bottom: leave the lobby for the home screen (no intro animation again).
               onMainScreen={() => void api.leave()}
               tooBigFor={(id) => room.members.length > (getGame(id)?.maxPlayers ?? Infinity)}
