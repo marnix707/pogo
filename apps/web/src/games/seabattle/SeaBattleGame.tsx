@@ -78,7 +78,33 @@ function useBoxSize(ref: React.RefObject<HTMLElement>) {
   return size;
 }
 
-export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
+/** A watcher sees the board from the first player's side; they cannot move, and the fleets stay secret while placing. */
+export function SeaBattleGame(props: GameUiProps) {
+  const { room } = props;
+  if (!room.spectating) return <SeaBattlePlay {...props} />;
+  const view = room.game!.view as seabattle.SeaBattleView;
+  if (view.phase === 'place')
+    return (
+      <p className="p-6 text-center text-onbg" data-testid="sea-spectate-placing">
+        The players are placing their fleets…
+      </p>
+    );
+  return (
+    <SeaBattlePlay
+      {...props}
+      me={view.me}
+      watching
+      sendMove={async () => ({ ok: false, error: 'You are watching this game' })}
+    />
+  );
+}
+
+function SeaBattlePlay({
+  room,
+  me,
+  sendMove,
+  watching = false,
+}: GameUiProps & { watching?: boolean }) {
   const game = room.game!;
   const view = game.view as seabattle.SeaBattleView;
   const finished = room.status === 'finished' || view.phase === 'over';
@@ -86,7 +112,8 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
   const memberOf = (id: string) => room.members.find((m) => m.id === id);
   const meMember = memberOf(me);
   const oppMember = memberOf(view.opponent);
-  const nameOf = (id: string) => (id === me ? 'You' : (memberOf(id)?.nickname ?? 'Opponent'));
+  const nameOf = (id: string) =>
+    id === me && !watching ? 'You' : (memberOf(id)?.nickname ?? 'Opponent');
   const secondsLeft = useCountdown(game.deadline, room.serverTime);
   useTimeWarning(secondsLeft, myTurn);
 
@@ -303,7 +330,11 @@ export function SeaBattleGame({ room, me, sendMove }: GameUiProps) {
           <Avatar avatar={m?.avatar ?? 'fox'} size="md" />
         </span>
         <span className="max-w-full truncate text-sm font-bold text-onbg">
-          <PlayerName name={m?.nickname ?? (mine ? 'You' : 'Opponent')} id={id} me={me} />
+          <PlayerName
+            name={m?.nickname ?? (mine && !watching ? 'You' : 'Opponent')}
+            id={id}
+            me={me}
+          />
         </span>
         {placing && view.ready[id] && (
           <span

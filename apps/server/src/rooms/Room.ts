@@ -975,8 +975,10 @@ export class Room {
     return {
       ...base,
       game: {
-        // Watchers get no player view (nobody's private cards or ships): the screen shows the standings.
-        view: base.spectating ? null : this.game.getPlayerView(this.state, forUserId),
+        // Watchers see the whole game, as somebody who is not playing: no private cards or ships.
+        view: base.spectating
+          ? (this.game.getSpectatorView ?? this.game.getPlayerView)(this.state, forUserId)
+          : this.game.getPlayerView(this.state, forUserId),
         currentPlayers: this.game.getCurrentPlayers(this.state),
         deadline: onlyComputers ? null : (this.nextAutoAt ?? this.turnDeadline),
         results: this.results,

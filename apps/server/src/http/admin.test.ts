@@ -338,6 +338,24 @@ describe('roles and the dev tag', () => {
   });
 });
 
+describe('admin analytics', () => {
+  it('counts a visit when a player connects, and new players and games', async () => {
+    const admin = await staffMember('Admin8', 'admin');
+    const g = await guest('Visitor');
+    await users.recordVisit(g.user.id, Date.now());
+    // A second connection right after is the same visit; one an hour later is a new one.
+    await users.recordVisit(g.user.id, Date.now() + 1000);
+    await users.recordVisit(g.user.id, Date.now() + 3_700_000);
+    const data = (await call('GET', '/api/admin/analytics', admin.token)).json();
+    expect(data.days).toHaveLength(90);
+    expect(data.today.visitors).toBeGreaterThanOrEqual(1);
+    expect(data.today.visits).toBeGreaterThanOrEqual(1);
+    expect(data.today.newPlayers).toBeGreaterThanOrEqual(2);
+    expect(data.players.guests).toBeGreaterThanOrEqual(1);
+    expect(data.trackingSince).toEqual(expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
+  });
+});
+
 describe('admin overview, matches and chats', () => {
   it('shows the numbers, every finished match and the room chat feed', async () => {
     const admin = await staffMember('Admin7', 'admin');
@@ -408,5 +426,6 @@ describe('admin overview, matches and chats', () => {
     expect((await call('GET', '/api/admin/matches', a.token)).statusCode).toBe(403);
     expect((await call('GET', '/api/admin/chats', a.token)).statusCode).toBe(403);
     expect((await call('GET', '/api/admin/overview', a.token)).statusCode).toBe(403);
+    expect((await call('GET', '/api/admin/analytics', a.token)).statusCode).toBe(403);
   });
 });

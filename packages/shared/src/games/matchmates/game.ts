@@ -565,6 +565,16 @@ function getPlayerView(state: MatesState, playerId: PlayerId): MatesView {
   };
 }
 
+/** A watcher sees both sides; the arena picks stay secret until the coin has been flipped. */
+function getSpectatorView(state: MatesState, watcherId: PlayerId): MatesView {
+  const view = getPlayerView(state, watcherId);
+  if (state.phase !== 'pick') return view;
+  return {
+    ...view,
+    players: view.players.map((p) => ({ ...p, stagePick: null })) as MatesView['players'],
+  };
+}
+
 function getCurrentPlayers(state: MatesState): PlayerId[] {
   if (state.phase === 'pick') {
     const drafter = draftTurn(state);
@@ -681,6 +691,7 @@ export const matesGame: GameDefinition<MatesState, MatesMove, MatesOptions, Mate
   validateMove,
   applyMove,
   getPlayerView,
+  getSpectatorView,
   getCurrentPlayers,
   isGameOver: (state) => state.phase === 'over',
   getResults,

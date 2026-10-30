@@ -14,6 +14,7 @@ import { AvatarFace } from '../components/AvatarFace';
 import { TopoBackground } from '../components/TopoBackground';
 import { PlayerName } from '../components/PlayerName';
 import { Button, Sheet } from '../components/ui';
+import { Analytics } from './AnalyticsView';
 import { ChatList, Chats, Matches, Overview, PlayerActivity } from './AdminViews';
 import {
   adminLogin,
@@ -38,7 +39,7 @@ import {
 export const isAdminSite = () =>
   window.location.hostname.startsWith('admin.') || window.location.pathname.startsWith('/admin');
 
-type Tab = 'overview' | 'players' | 'rooms' | 'matches' | 'chats' | 'bans' | 'log';
+type Tab = 'overview' | 'analytics' | 'players' | 'rooms' | 'matches' | 'chats' | 'bans' | 'log';
 
 const field =
   'hud min-h-11 w-full bg-panel px-3 text-ink outline-none placeholder:text-muted/50 focus:!border-neon';
@@ -376,7 +377,7 @@ type Sort = 'seen' | 'joined' | 'name';
 
 function Players({ me, onError }: { me: PublicUser; onError: (m: string) => void }) {
   const [q, setQ] = useState('');
-  const [show, setShow] = useState<Show>('registered');
+  const [show, setShow] = useState<Show>('everyone');
   const [sort, setSort] = useState<Sort>('seen');
   const [onlineOnly, setOnlineOnly] = useState(false);
   const [staffOnly, setStaffOnly] = useState(false);
@@ -477,6 +478,7 @@ function Players({ me, onError }: { me: PublicUser; onError: (m: string) => void
                 </span>
                 <span className="block truncate text-xs opacity-70">
                   {r.email ?? (r.isGuest ? 'guest' : 'registered')} · seen {when(r.lastSeenAt)}
+                  {r.lastIp ? ` · ${r.lastIp}` : ''}
                 </span>
               </span>
               <span className="flex flex-wrap justify-end gap-1">
@@ -737,8 +739,23 @@ export function AdminApp() {
       .finally(() => setChecking(false));
   }, []);
 
+  // The admin tab wears a red icon (the game's is yellow) so the two are easy to tell apart.
+  useEffect(() => {
+    const links = [...document.querySelectorAll<HTMLLinkElement>('link[rel="icon"]')];
+    const old = links.map((l) => l.href);
+    for (const l of links) l.href = l.type === 'image/svg+xml' ? '/favicon-admin.svg' : l.href;
+    // The .ico fallback is yellow too: drop it so the browser uses the red SVG.
+    const ico = links.filter((l) => l.getAttribute('href') === '/favicon.ico');
+    ico.forEach((l) => l.remove());
+    return () => {
+      links.forEach((l, i) => (l.href = old[i]!));
+      ico.forEach((l) => document.head.appendChild(l));
+    };
+  }, []);
+
   const tabs: [Tab, string][] = [
     ['overview', 'Overview'],
+    ['analytics', 'Analytics'],
     ['players', 'Players'],
     ['rooms', 'Rooms'],
     ['matches', 'Matches'],
@@ -794,6 +811,7 @@ export function AdminApp() {
             </p>
           )}
           {tab === 'overview' && <Overview onError={showError} />}
+          {tab === 'analytics' && <Analytics onError={showError} />}
           {tab === 'players' && <Players me={me} onError={showError} />}
           {tab === 'rooms' && <Rooms onError={showError} />}
           {tab === 'matches' && <Matches onError={showError} />}

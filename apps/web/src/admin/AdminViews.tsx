@@ -1,38 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { AdminChatRow, AdminMatchRow, AdminOverview } from '@pogo/shared';
 import { AvatarFace } from '../components/AvatarFace';
 import { PlayerName } from '../components/PlayerName';
 import { gameUis, getGameUi } from '../games/registry';
+import { useLive } from './useLive';
 import { getOverview, listChats, listMatches, listUserMatches } from './adminApi';
 
 const when = (ms: number) =>
   new Date(ms).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
 const gameName = (id: string) => getGameUi(id)?.name ?? id;
-
-/** Poll `load` every `ms` and keep the latest result. */
-function useLive<T>(
-  load: () => Promise<T>,
-  onError: (m: string) => void,
-  ms = 0,
-  deps: unknown[] = [],
-) {
-  const [data, setData] = useState<T | null>(null);
-  useEffect(() => {
-    let live = true;
-    const run = () =>
-      load()
-        .then((d) => live && setData(d))
-        .catch((e: Error) => onError(e.message));
-    void run();
-    const t = ms > 0 ? setInterval(run, ms) : undefined;
-    return () => {
-      live = false;
-      if (t) clearInterval(t);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
-  return data;
-}
 
 const Stat = ({ label, value, hint }: { label: string; value: number | string; hint?: string }) => (
   <div className="hud px-3 py-2 text-center">

@@ -192,6 +192,17 @@ function getPlayerView(state: SeaBattleState, playerId: PlayerId): SeaBattleView
   };
 }
 
+/** A watcher sees the shots and the ships that went down, never an unsunk fleet (they could tell the other player). */
+function getSpectatorView(state: SeaBattleState, watcherId: PlayerId): SeaBattleView {
+  const view = getPlayerView(state, watcherId);
+  if (state.phase === 'over') return view;
+  const mine = playerOf(state, view.me);
+  return {
+    ...view,
+    myShips: mine ? mine.ships.filter((s) => isSunk(s, mine.incoming)) : [],
+  };
+}
+
 const getCurrentPlayers = (state: SeaBattleState): PlayerId[] => {
   if (state.phase === 'place') return state.players.filter((p) => !p.ready).map((p) => p.id);
   if (state.phase === 'play') return [state.turn];
@@ -273,6 +284,7 @@ export const seaBattleGame: GameDefinition<
   validateMove,
   applyMove,
   getPlayerView,
+  getSpectatorView,
   getCurrentPlayers,
   isGameOver: (state) => state.phase === 'over',
   getResults,

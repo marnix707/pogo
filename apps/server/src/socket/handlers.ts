@@ -88,6 +88,7 @@ export function registerSocketHandlers({
       return next(Object.assign(new Error('banned'), { data: { message: banMessage(ban) } }));
     socket.data.user = user;
     void users.touch(user.id, ip);
+    void users.recordVisit(user.id, Date.now());
     next();
   });
 

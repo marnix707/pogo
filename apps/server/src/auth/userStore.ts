@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { BOT_AVATAR, displayName } from '@pogo/shared';
+import { dayKey } from '../stats/analytics';
+import type { AnalyticsRaw } from '../stats/analytics';
 import type {
   AdminMatchRow,
   MatchHistoryEntry,
@@ -117,6 +119,10 @@ export interface UserStore {
   recentMatches(limit: number, gameId?: string): Promise<AdminMatchRow[]>;
   /** Registered accounts and guests. */
   playerCounts(): Promise<{ registered: number; guests: number }>;
+  /** A player connected: counts a visit for today (connections less than 30 minutes apart are one visit). */
+  recordVisit(userId: string, nowMs: number): Promise<void>;
+  /** The raw numbers behind the admin analytics, from `sinceMs` on. */
+  analyticsRaw(sinceMs: number): Promise<AnalyticsRaw>;
   /** Matches played since a time, per game (one count per match, not per player). */
   matchCounts(sinceMs: number): Promise<{ gameId: string; matches: number }[]>;
   /** The player's last games, newest first (the match history). */
@@ -397,6 +403,45 @@ export function createPrismaUserStore(prisma: PrismaClient): UserStore {
       ]);
       return { registered, guests };
     },
+    async recordVisit(userId, nowMs) {
+      const last = lastVisit.get(userId);
+      lastVisit.set(userId, nowMs);
+      const day = dayKey(nowMs);
+      const fresh = last === undefined || nowMs - last > VISIT_GAP_MS;
+      await prisma.activityDay
+        .upsert({
+          where: { userId_day: { userId, day } },
+          create: { userId, day, visits: 1 },
+          update: fresh ? { visits: { increment: 1 } } : {},
+        })
+        .catch(() => undefined); // the player may have been deleted meanwhile
+    },
+    async analyticsRaw(sinceMs) {
+      const sinceDay = dayKey(sinceMs);
+      const since = new Date(sinceMs);
+      const [activity, created, registered, results] = await Promise.all([
+        prisma.activityDay.findMany({ where: { day: { gte: sinceDay } } }),
+        prisma.user.findMany({
+          where: { createdAt: { gte: since } },
+          select: { id: true, createdAt: true },
+        }),
+        prisma.user.findMany({
+          where: { registeredAt: { gte: since } },
+          select: { registeredAt: true },
+        }),
+        prisma.gameResult.findMany({
+          where: { playedAt: { gte: since } },
+          select: { matchId: true, gameId: true, playedAt: true },
+          take: 200000,
+        }),
+      ]);
+      return {
+        activity,
+        created: created.map((u) => ({ userId: u.id, at: u.createdAt.getTime() })),
+        registered: registered.map((u) => ({ at: u.registeredAt!.getTime() })),
+        results: results.map((r) => ({ ...r, playedAt: r.playedAt.getTime() })),
+      };
+    },
     async matchCounts(sinceMs) {
       const rows = await prisma.gameResult.findMany({
         where: { playedAt: { gte: new Date(sinceMs) } },
@@ -589,6 +634,11 @@ function toHistory(
   return { matchId, gameId, playedAt, players: s.players ?? [], detail: s.detail ?? null };
 }
 
+/** Connections closer together than this are one visit. */
+const VISIT_GAP_MS = 30 * 60_000;
+/** When each player last connected (this process only; a restart can count one extra visit). */
+const lastVisit = new Map<string, number>();
+
 /** The leaderboard pseudo game that adds up every game. */
 export const ALL_GAMES = 'all';
 
@@ -606,8 +656,9 @@ export function createMemoryUserStore(): UserStore {
   const results: (ResultRow & { playedAt: number })[] = [];
   const meta = new Map<
     string,
-    { createdAt: number; lastSeenAt: number | null; ip: string | null }
+    { createdAt: number; lastSeenAt: number | null; ip: string | null; registeredAt?: number }
   >();
+  const visitRows = new Map<string, { userId: string; day: string; visits: number }>();
   const codeKey = (email: string, purpose: string) => `${purpose}:${email}`;
   const memSearch = (query: string, limit: number, registeredOnly: boolean) => {
     const q = query.trim().toLowerCase();
@@ -652,6 +703,8 @@ export function createMemoryUserStore(): UserStore {
       if (!existing) return null;
       if ([...users.values()].some((u) => u.email === email && u.id !== id)) return 'taken';
       const updated = { ...existing, email, isGuest: false };
+      const m = meta.get(id);
+      if (m) m.registeredAt = Date.now();
       users.set(id, updated);
       passwords.set(id, passwordHash);
       return updated;
@@ -770,6 +823,26 @@ export function createMemoryUserStore(): UserStore {
       return {
         registered: all.filter((u) => !u.isGuest).length,
         guests: all.filter((u) => u.isGuest).length,
+      };
+    },
+    async recordVisit(userId, nowMs) {
+      const last = lastVisit.get(userId);
+      lastVisit.set(userId, nowMs);
+      const key = `${userId}:${dayKey(nowMs)}`;
+      const row = visitRows.get(key) ?? { userId, day: dayKey(nowMs), visits: 0 };
+      if (row.visits === 0 || last === undefined || nowMs - last > VISIT_GAP_MS) row.visits++;
+      visitRows.set(key, row);
+    },
+    async analyticsRaw(sinceMs) {
+      return {
+        activity: [...visitRows.values()].filter((r) => r.day >= dayKey(sinceMs)),
+        created: [...meta]
+          .filter(([, m]) => m.createdAt >= sinceMs)
+          .map(([userId, m]) => ({ userId, at: m.createdAt })),
+        registered: [...meta.values()]
+          .filter((m) => (m.registeredAt ?? 0) >= sinceMs)
+          .map((m) => ({ at: m.registeredAt! })),
+        results: results.filter((r) => r.playedAt >= sinceMs),
       };
     },
     async matchCounts(sinceMs) {

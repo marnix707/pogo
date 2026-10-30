@@ -28,6 +28,7 @@ model User {
   lastSeenAt   DateTime?
   image        UserImage?
   results      GameResult[]
+  activity     ActivityDay[]
 }
 
 /// An uploaded profile picture (small, resized by the client). Stored here because the host has no disk.
@@ -155,4 +156,17 @@ model DirectMessage {
 model FriendCode {
   userId String @id
   code   String @unique
+}
+
+/// One row per player per (UTC) day they connected: the visits behind the admin analytics.
+model ActivityDay {
+  userId String
+  /// 'YYYY-MM-DD' (UTC)
+  day    String
+  /// How many separate visits (connections more than half an hour apart) that day.
+  visits Int    @default(1)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, day])
+  @@index([day])
 }

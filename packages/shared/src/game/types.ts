@@ -50,6 +50,12 @@ export interface GameDefinition<State, Move, Options, PlayerView = State> {
   applyMove(state: State, playerId: PlayerId, move: Move, rng: Rng): State;
   /** What this player may see (hides private information). */
   getPlayerView(state: State, playerId: PlayerId): PlayerView;
+  /**
+   * What somebody who only watches may see (default: the view of someone who is not in the game, which
+   * every game already keeps free of other people's secrets). Override it when that view would show
+   * one seat's private information (Sea Battle: the fleet).
+   */
+  getSpectatorView?(state: State, watcherId: PlayerId): PlayerView;
   /** Players who may move right now (empty when the game is over). */
   getCurrentPlayers(state: State): PlayerId[];
   isGameOver(state: State): boolean;

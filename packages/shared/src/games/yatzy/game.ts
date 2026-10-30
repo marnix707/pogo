@@ -185,6 +185,12 @@ function getPlayerView(state: YatzyState, playerId: string): YatzyState {
   };
 }
 
+/** A watcher looks over the shoulder of the player whose turn it is (dice are not secret). */
+function getSpectatorView(state: YatzyState, _watcherId: string): YatzyState {
+  const current = state.players[state.currentPlayerIndex] ?? state.players[0];
+  return getPlayerView(state, current?.id ?? '');
+}
+
 function getCurrentPlayers(state: YatzyState): string[] {
   if (state.finished) return [];
   // Live: everybody who still has a box to fill plays at the same time.
@@ -241,6 +247,7 @@ export const yatzyGame: GameDefinition<YatzyState, YatzyMove, YatzyOptions> = {
   applyMove,
   // Turn-based: dice and scorecards are public. Live: each player sees their own dice, everybody's scorecards.
   getPlayerView,
+  getSpectatorView,
   getCurrentPlayers,
   isGameOver: (state) => state.finished,
   getResults,

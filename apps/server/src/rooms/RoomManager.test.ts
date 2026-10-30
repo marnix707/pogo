@@ -97,7 +97,7 @@ describe('creating and joining', () => {
     expect(manager.create(a, { gameId: 'race', options: { x: 1 } }).ok).toBe(false);
   });
 
-  it('takes the host\'s lobby along when they join another room, or says why not', () => {
+  it("takes the host's lobby along when they join another room, or says why not", () => {
     const { manager, must } = setup();
     const d = user(4);
     const mine = must(manager.create(a, { gameId: 'race' }));
@@ -457,11 +457,11 @@ describe('playing', () => {
       expect(other.code).not.toBe(code);
     });
 
-    it('sees the room and chats, but gets no game view and cannot move', () => {
+    it('sees the room, the whole game and the chat, but cannot move', () => {
       const { manager, lastRoom, chats, must } = watched();
       const view = lastRoom(c.id);
       expect(view).toMatchObject({ spectating: true, status: 'playing' });
-      expect(view?.game?.view).toBeNull();
+      expect(view?.game?.view).not.toBeNull();
       expect(view?.members.map((m) => m.id)).toEqual([a.id, b.id]);
       expect(lastRoom(a.id)?.spectators.map((m) => m.id)).toEqual([c.id]);
       expect(manager.move(c.id, { type: 'step' })).toMatchObject({

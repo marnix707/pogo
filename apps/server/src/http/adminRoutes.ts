@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { buildAnalytics, historyStart } from '../stats/analytics';
 import {
   MODERATOR_MAX_BAN_MINUTES,
   banSchema,
@@ -108,7 +109,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminDeps) {
     const q = String((req.query as { q?: string }).q ?? '').slice(0, 60);
     const registered = (req.query as { registered?: string }).registered === '1';
     const found = await (registered ? users.listRegistered(q, 200) : users.search(q, 200));
-    const rows: AdminUserRow[] = found.map(({ user, createdAt, lastSeenAt }) => {
+    const rows: AdminUserRow[] = found.map(({ user, createdAt, lastSeenAt, lastIp }) => {
       const ban = bans.forUser(user.id);
       return {
         id: user.id,
@@ -116,6 +117,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminDeps) {
         avatar: user.avatar,
         isGuest: user.isGuest,
         ...(me.role === 'admin' && user.email ? { email: user.email } : {}),
+        ...(me.role === 'admin' && lastIp ? { lastIp } : {}),
         role: user.role ?? 'user',
         isDev: !!user.isDev,
         prefix: user.prefix ?? '',
@@ -164,6 +166,17 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminDeps) {
         .sort((a, b) => b.week - a.week),
     };
     return overview;
+  });
+
+  // The Analytics tab: visitors, new players / accounts and games per day, with the headline periods.
+  app.get('/api/admin/analytics', limits, async (req, reply) => {
+    if (!(await staff(req, reply))) return;
+    const t = now();
+    const [raw, players] = await Promise.all([
+      users.analyticsRaw(historyStart(t)),
+      users.playerCounts(),
+    ]);
+    return buildAnalytics(raw, { now: t, online: deps.onlineCount(), players });
   });
 
   // Every finished game (newest first): who played, the scores and the game's own facts.

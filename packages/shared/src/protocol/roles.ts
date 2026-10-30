@@ -68,6 +68,8 @@ export interface AdminUserRow {
   isGuest: boolean;
   /** Admins only. */
   email?: string;
+  /** Admins only: the address they last connected from. */
+  lastIp?: string;
   role: Role;
   isDev: boolean;
   prefix: string;
@@ -140,6 +142,40 @@ export interface AdminOverview {
   players: { registered: number; guests: number };
   matches: { today: number; week: number };
   byGame: { gameId: string; today: number; week: number }[];
+}
+
+/** What happened in one stretch of time (a day, a month ...). Visitors are distinct players. */
+export interface AnalyticsPeriod {
+  visitors: number;
+  visits: number;
+  newPlayers: number;
+  newAccounts: number;
+  games: number;
+}
+
+export interface AnalyticsDay extends AnalyticsPeriod {
+  /** 'YYYY-MM-DD' (UTC) */
+  day: string;
+}
+
+/** The admin Analytics tab: daily series for the last 90 days and the headline periods (all UTC). */
+export interface AdminAnalytics {
+  days: AnalyticsDay[];
+  today: AnalyticsPeriod;
+  yesterday: AnalyticsPeriod;
+  week: AnalyticsPeriod;
+  prevWeek: AnalyticsPeriod;
+  month: AnalyticsPeriod;
+  lastMonth: AnalyticsPeriod;
+  last30: AnalyticsPeriod;
+  prev30: AnalyticsPeriod;
+  byGame: { gameId: string; today: number; month: number; last30: number }[];
+  /** Visitors in the last 30 days who joined before that: how many come back. */
+  returning30: number;
+  players: { registered: number; guests: number };
+  /** The first day with a recorded visit (the visit history starts there). */
+  trackingSince: string | null;
+  online: number;
 }
 
 export interface AdminAuditRow {

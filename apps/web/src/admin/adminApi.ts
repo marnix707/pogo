@@ -4,6 +4,7 @@ import type {
   AdminBanRow,
   AdminChatRow,
   AdminMatchRow,
+  AdminAnalytics,
   AdminOverview,
   AdminRoomRow,
   AdminUserRow,
@@ -92,6 +93,7 @@ export const recoveryLink = (id: string) =>
 export const setTitles = (id: string, prefix: string, suffix: string) =>
   call('POST', `/api/admin/users/${id}/titles`, { prefix, suffix });
 
+export const getAnalytics = () => call<AdminAnalytics>('GET', '/api/admin/analytics');
 export const getOverview = () => call<AdminOverview>('GET', '/api/admin/overview');
 /** The latest finished games of everybody, optionally one game. */
 export const listMatches = (game?: string) =>
