@@ -6,6 +6,7 @@ import { Wordmark } from '../components/PogoStage';
 import frogOnStick from '../assets/sprites/brand/frog-pogo.svg';
 import { Avatar, Button } from '../components/ui';
 import { AvatarFace } from '../components/AvatarFace';
+import { markWelcomeBack } from '../lib/greeting';
 import { forgetPlayer, readPlayers } from '../lib/players';
 import type { SavedPlayer } from '../lib/players';
 import {
@@ -71,8 +72,11 @@ export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) 
     setBusy(true);
     setError(undefined);
     try {
-      if (mode === 'login') onDone((await login(email, password)).auth);
-      else if (mode === 'reset') {
+      if (mode === 'login') {
+        const { auth } = await login(email, password);
+        markWelcomeBack();
+        onDone(auth);
+      } else if (mode === 'reset') {
         await startReset(email);
         setNote('If that email has an account, a code is on its way.');
         setMode('reset-code');

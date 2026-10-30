@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { displayName } from '@pogo/shared';
 import type { AVATARS, AuthResponse, PublicRoomSummary, PublicUser } from '@pogo/shared';
+import { clearWelcomeBack, welcomeBackPending } from '../lib/greeting';
 import { PEAK_ART, PogoStage, Wordmark, introDone, markIntroSeen } from '../components/PogoStage';
 import { InstallCard } from '../components/InstallCard';
 import { SlidersIcon, TrophyIcon } from '../components/icons';
@@ -93,6 +94,19 @@ export function Home({
     return () => timers.forEach(clearTimeout);
   }, [landed]);
   const nameOut = namePhase === 'in' || namePhase === 'scroll';
+  // After a login: Pogo pops up a speech bubble "Welcome back!" once he has landed, for a few seconds.
+  const [greet] = useState(welcomeBackPending);
+  const [welcome, setWelcome] = useState(false);
+  useEffect(() => {
+    if (!greet || !landed) return;
+    clearWelcomeBack();
+    const on = setTimeout(() => setWelcome(true), 500);
+    const off = setTimeout(() => setWelcome(false), 4500);
+    return () => {
+      clearTimeout(on);
+      clearTimeout(off);
+    };
+  }, [greet, landed]);
   const [developer, setDeveloper] = useState<string | null>(null);
   useEffect(() => {
     void fetchDeveloper().then(setDeveloper);
@@ -248,7 +262,24 @@ export function Home({
               >
                 <Wordmark shown={landed} width={stageScale.word * 30} flat />
               </div>
-              <div ref={frogBox} className="w-full">
+              <div ref={frogBox} className="relative w-full">
+                {welcome && (
+                  <div
+                    role="status"
+                    data-testid="frog-speech"
+                    className="speech-pop pointer-events-none absolute left-1/2 top-[22%] z-10 ml-10 whitespace-nowrap rounded-lg border-[3px] border-line bg-[#fff6d8] px-3 py-2 text-sm font-bold uppercase tracking-[0.08em] text-line shadow-[0_4px_0_0_rgb(var(--c-line))]"
+                  >
+                    <span
+                      aria-hidden
+                      className="absolute -left-[11px] top-1/2 h-0 w-0 -translate-y-1/2 border-y-[8px] border-r-[10px] border-y-transparent border-r-line"
+                    />
+                    <span
+                      aria-hidden
+                      className="absolute -left-[6px] top-1/2 h-0 w-0 -translate-y-1/2 border-y-[6px] border-r-[8px] border-y-transparent border-r-[#fff6d8]"
+                    />
+                    Welcome back!
+                  </div>
+                )}
                 <PogoStage scale={stageScale.frog} onLanded={() => setLanded(true)} />
               </div>
             </div>
