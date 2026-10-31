@@ -18,7 +18,7 @@ A two-player match-3 monster duel, modelled on Plato's "Match Monsters". Game id
 
 ## UI (`apps/web/src/games/matchmates`)
 
-`MatchMatesGame` (HP / berries, arena with the monsters on the two pads, mana bars, moves, evolve / boost buttons, 7x5 (7 wide, 5 high) board with tap-tap or slide; replays `lastEvent` unless reduced motion), `Pick` (draft + arena + Confirm), `Coin`, `LobbyOptions` (starting HP), `MatchMatesRules`, `art.ts`. The logo `assets/sprites/brand/logos/match-mates.svg` is the artist's (delivered as `pet-match.svg`).
+`MatchMatesGame` (HP / berries, arena with the monsters on the two pads, mana bars (above the pets), moves, evolve / boost buttons, 7x5 (7 wide, 5 high) board with tap-tap or slide; replays `lastEvent` unless reduced motion), `Pick` (draft + arena + Confirm), `Coin`, `LobbyOptions` (starting HP), `MatchMatesRules`, `art.ts`. The logo `assets/sprites/brand/logos/match-mates.svg` is the artist's (delivered as `pet-match.svg`).
 
 ## Art
 
