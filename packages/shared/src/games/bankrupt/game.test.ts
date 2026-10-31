@@ -238,35 +238,53 @@ describe('selling a space', () => {
 });
 
 describe('jail', () => {
-  const jailed = () => {
-    const s = start();
+  /** A player who has just been sent to jail by a card: asked at once. */
+  const jailed = (options = OPTIONS) => {
+    const s = start(2, options);
     const a = mover(s).id;
-    return { s: patch(patch(s, a, { pos: idx('jail'), jail: 3 }), a, {}), a };
+    const t = patch(s, a, { pos: idx('jail'), jail: 3 });
+    return { s: { ...t, phase: 'jailAsk' as const }, a };
   };
 
-  it('can be left by paying the fee', () => {
+  it('asks at once: nothing but pay or stay is possible', () => {
     const { s, a } = jailed();
     expect(game.validateMove(s, a, { type: 'roll' })).toMatchObject({ ok: false });
+    expect(game.validateMove(s, a, { type: 'payJail' }).ok).toBe(true);
+    expect(game.validateMove(s, a, { type: 'wait' }).ok).toBe(true);
+    expect(game.getCurrentPlayers(s)).toEqual([a]);
+  });
+
+  it('paying the fee frees the player at once and the turn goes on', () => {
+    const { s, a } = jailed();
     const free = play(s, a, { type: 'payJail' });
     expect(cash(free, a)).toBe(1000 - 150);
     expect(free.players.find((p) => p.id === a)!.jail).toBe(0);
-    expect(free.phase).toBe('roll');
+    expect(mover(free).id).toBe(other(s));
   });
 
-  it('can be waited out: three turns', () => {
-    const { s: s0, a } = jailed();
-    let s = s0;
-    const b = other(s);
-    for (let i = 0; i < 3; i++) {
-      expect(mover(s).id).toBe(a);
-      s = play(s, a, { type: 'wait' });
-      s = play(s, b, { type: 'roll' }, dice(3)); // b plays a turn
-      s = play(s, b, { type: 'decline' });
-      s = play(s, a, { type: 'passBid' });
-      s = play(s, b, { type: 'passBid' }); // (the turn then ends by itself)
+  it('staying means three skipped turns and nobody is asked again', () => {
+    const { s: s0, a } = jailed({ ...OPTIONS, auctionOnDecline: false });
+    const b = other(s0);
+    let s = play(s0, a, { type: 'wait' });
+    expect(mover(s).id).toBe(b);
+    for (let turn = 1; turn <= 4; turn++) {
+      expect(mover(s).id).toBe(b);
+      expect(s.phase).toBe('roll');
+      s = play(s, b, { type: 'roll' }, dice(3));
+      s = play(s, b, { type: 'decline' }); // (it stays free, the turn passes on)
+      // The jailed player's turns are skipped by themselves.
+      if (turn < 4) expect(game.getCurrentPlayers(s)).toEqual([b]);
     }
     expect(s.players.find((p) => p.id === a)!.jail).toBe(0);
+    expect(s.events.filter((e) => e.k === 'jailSkip').length).toBeLessThanOrEqual(1);
+    expect(mover(s).id).toBe(a);
     expect(game.validateMove(s, a, { type: 'roll' }).ok).toBe(true);
+  });
+
+  it('cannot pay without the money', () => {
+    const { s, a } = jailed();
+    const poor = patch(s, a, { cash: 100 });
+    expect(game.validateMove(poor, a, { type: 'payJail' })).toMatchObject({ ok: false });
   });
 });
 

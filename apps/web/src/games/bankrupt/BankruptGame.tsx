@@ -29,6 +29,7 @@ function describe(s: State, name: (id: string) => string): string {
     else if (e.k === 'card') parts.push(e.text);
     else if (e.k === 'jail') parts.push(`${name(e.by)} went to jail`);
     else if (e.k === 'free') parts.push(`${name(e.by)} is out of jail`);
+    else if (e.k === 'jailSkip') parts.push(`${name(e.by)} sits out in jail (${e.left} to go)`);
     else if (e.k === 'build') parts.push(`${name(e.by)} built on ${tile(e.tile)}`);
     else if (e.k === 'sold') parts.push(`${name(e.by)} sold ${tile(e.tile)}`);
     else if (e.k === 'auction')
@@ -424,24 +425,30 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           <p className="label text-center text-onbg/80" data-testid="bk-buy-hint">
             {broke ? 'Not enough money' : settled ? '' : 'Walking…'}
           </p>
-        ) : mePlayer!.jail > 0 && state.phase === 'roll' ? (
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="gold"
-              data-testid="bk-pay-jail"
-              disabled={busy || animating || mePlayer!.cash < state.board.jailFee}
-              onClick={() => void send({ type: 'payJail' })}
-            >
-              Pay {money(state.board.jailFee)}
-            </Button>
-            <Button
-              variant="secondary"
-              data-testid="bk-wait-jail"
-              disabled={busy || animating}
-              onClick={() => void send({ type: 'wait' })}
-            >
-              Wait ({mePlayer!.jail})
-            </Button>
+        ) : state.phase === 'jailAsk' ? (
+          <div className="flex flex-col gap-2" data-testid="bk-jail-ask">
+            <p className="label text-center">
+              You are in jail! Pay {money(state.board.jailFee)} to get out now, or stay{' '}
+              {state.board.jailTurns} turns.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="gold"
+                data-testid="bk-pay-jail"
+                disabled={busy || animating || mePlayer!.cash < state.board.jailFee}
+                onClick={() => void send({ type: 'payJail' })}
+              >
+                Pay {money(state.board.jailFee)}
+              </Button>
+              <Button
+                variant="secondary"
+                data-testid="bk-wait-jail"
+                disabled={busy || animating}
+                onClick={() => void send({ type: 'wait' })}
+              >
+                Pass
+              </Button>
+            </div>
           </div>
         ) : state.phase === 'roll' ? (
           <Button

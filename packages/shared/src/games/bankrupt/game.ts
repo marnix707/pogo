@@ -192,14 +192,25 @@ function sendToJail(s: BankruptState, p: BankruptPlayer) {
 /** After a turn-ending situation: who is next (a new round when the order wraps), or the game is over. */
 function advanceTurn(s: BankruptState) {
   const n = s.players.length;
-  const from = s.turn;
-  let i = from;
-  do i = (i + 1) % n;
-  while (s.players[i]!.bankrupt && i !== from);
-  // Passing the last seat back to the first starts a new round.
-  const wrapped = i <= from;
-  s.turn = i;
-  if (wrapped) s.round += 1;
+  const step = () => {
+    const from = s.turn;
+    let i = from;
+    do i = (i + 1) % n;
+    while (s.players[i]!.bankrupt && i !== from);
+    // Passing the last seat back to the first starts a new round.
+    if (i <= from) s.round += 1;
+    s.turn = i;
+  };
+  step();
+  // Somebody in jail sits their turn out (nothing is asked again): the next one plays.
+  for (let guard = 0; guard < n * 4; guard++) {
+    const p = s.players[s.turn]!;
+    if (p.jail === 0) break;
+    p.jail -= 1;
+    s.events.push({ k: 'jailSkip', by: p.id, left: p.jail });
+    if (p.jail === 0) s.events.push({ k: 'free', by: p.id });
+    step();
+  }
   s.phase = 'roll';
   s.sixes = 0;
   if (s.options.turns > 0 && s.round > s.options.turns) {
@@ -297,7 +308,7 @@ function land(s: BankruptState, p: BankruptPlayer, rng: Rng, depth = 0) {
       else give(p, null, -total);
     } else if (e.type === 'jail') {
       sendToJail(s, p);
-      s.phase = 'after';
+      s.phase = 'jailAsk';
     } else if (e.type === 'moveTo') {
       const target = tileIndex(s.board, e.tile);
       if (target >= 0 && target !== p.pos) {
@@ -422,15 +433,12 @@ function validateMove(
   switch (move.type) {
     case 'roll':
       if (state.phase !== 'roll') return err('You cannot do that right now');
-      if (me.jail > 0) return err('You are in jail: pay or wait');
       return OK;
     case 'payJail':
-      if (me.jail === 0) return err('You are not in jail');
-      if (state.phase !== 'roll') return err('You cannot do that right now');
+      if (state.phase !== 'jailAsk') return err('You are not in jail');
       return me.cash >= state.board.jailFee ? OK : err('Not enough money');
     case 'wait':
-      if (me.jail === 0) return err('You are not in jail');
-      return state.phase === 'roll' ? OK : err('You cannot do that right now');
+      return state.phase === 'jailAsk' ? OK : err('You are not in jail');
     case 'buy': {
       if (state.phase !== 'buy') return err('You cannot do that right now');
       const t = ownable(state, state.board.tiles[me.pos]!.id)!;
@@ -494,10 +502,10 @@ function applyMove(
       pay(s, me, null, s.board.jailFee);
       me.jail = 0;
       s.events.push({ k: 'free', by: me.id });
+      advanceTurn(s);
       break;
     case 'wait':
-      me.jail -= 1;
-      if (me.jail === 0) s.events.push({ k: 'free', by: me.id });
+      // They stay: their next turns are skipped by themselves, nothing is asked again.
       advanceTurn(s);
       break;
     case 'buy': {
@@ -690,7 +698,7 @@ function autoMove(state: BankruptState, playerId: PlayerId, _rng: Rng): AutoMove
     return me.cash - t.price >= 150 ? done({ type: 'buy' }) : done({ type: 'decline' });
   }
 
-  if (me.jail > 0 && state.phase === 'roll')
+  if (state.phase === 'jailAsk')
     return me.cash >= state.board.jailFee + 400
       ? done({ type: 'payJail' })
       : done({ type: 'wait' }, true);

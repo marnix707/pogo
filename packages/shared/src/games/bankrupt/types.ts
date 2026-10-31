@@ -60,12 +60,14 @@ export interface Trade {
 }
 
 export type BankruptPhase =
-  /** The mover may build / sell, then rolls (or pays to leave jail / waits in jail). */
+  /** The mover may build / sell, then rolls. */
   | 'roll'
   /** The mover landed on a free space and must buy it or let it go to auction. */
   | 'buy'
   /** The mover's landing is dealt with; the turn then ends by itself. */
   | 'after'
+  /** The mover was just sent to jail: pay the fee now or stay (nothing else can get them out). */
+  | 'jailAsk'
   | 'auction'
   /** The mover stands on the Auction corner: a trade of spaces between players (see `Trade`). */
   | 'trade'
@@ -83,6 +85,8 @@ export type BankruptEvent =
   /** Money moved because of a card (null = the bank). */
   | { k: 'pay'; from: PlayerId | null; to: PlayerId | null; amount: number }
   | { k: 'jail'; by: PlayerId }
+  /** A jailed player's turn is skipped; `left` turns remain. */
+  | { k: 'jailSkip'; by: PlayerId; left: number }
   | { k: 'free'; by: PlayerId }
   | { k: 'salary'; by: PlayerId; amount: number }
   | { k: 'build'; by: PlayerId; tile: string; level: number }
@@ -124,7 +128,7 @@ export type BankruptMove =
   /** Let a free space go to auction. */
   | { type: 'decline' }
   | { type: 'payJail' }
-  /** Sit out a turn in jail. */
+  /** In jail: do not pay, stay for the rest of the sentence. */
   | { type: 'wait' }
   | { type: 'build'; tile: string }
   | { type: 'sellBuilding'; tile: string }
