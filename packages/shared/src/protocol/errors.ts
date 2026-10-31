@@ -4,7 +4,7 @@
  * behind it, e.g. "Room not found (ROOM-101)".
  *
  * Areas: NET (requests, limits), SYS (server problems), MAIL (sending email), ACC (accounts and
- * sign-in), ADM (admin panel), ROOM (rooms, lobby, ready), GAME (any game), YAT (Yatzy), KAR (Karma), LAST (Last Card), SEA (Sea Battle), MATE (Pet Match).
+ * sign-in), ADM (admin panel), ROOM (rooms, lobby, ready), GAME (any game), YAT (Yatzy), KAR (Karma), LAST (Last Card), SEA (Sea Battle), MATE (Pet Match), BANK (Bankrupt!).
  * Codes are `AREA-NNN`; 1xx = the player did something that is not allowed, 5xx = our side broke.
  *
  * To add an error: add a line to KNOWN_ERRORS (exact message, or a regex for messages with a game
@@ -198,6 +198,31 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'MATE-110', message: 'Not enough berries' },
   { code: 'MATE-111', message: 'Only an evolved monster can be boosted' },
   { code: 'MATE-125', message: /^Pet Match needs \d+-\d+ players$/ },
+  { code: 'BANK-101', message: 'Roll the dice first' },
+  { code: 'BANK-102', message: 'You cannot do that right now' },
+  { code: 'BANK-103', message: 'You are in jail: pay or wait' },
+  { code: 'BANK-104', message: 'You are not in jail' },
+  { code: 'BANK-105', message: 'Not enough money' },
+  { code: 'BANK-107', message: 'You do not own that space' },
+  { code: 'BANK-108', message: 'You need the whole colour set to build' },
+  { code: 'BANK-109', message: 'That space is fully built' },
+  { code: 'BANK-110', message: 'There is nothing to sell there' },
+  { code: 'BANK-111', message: 'Sell the buildings first' },
+  { code: 'BANK-112', message: 'Bid more than the highest bid' },
+  { code: 'BANK-113', message: 'You already have the highest bid' },
+  { code: 'BANK-114', message: 'There is no auction' },
+  { code: 'BANK-115', message: 'Only the seller can cancel the auction' },
+  { code: 'BANK-116', message: 'Answer the trade offer first' },
+  { code: 'BANK-117', message: 'There is no trade offer' },
+  { code: 'BANK-118', message: 'Only the player the offer is for can answer it' },
+  { code: 'BANK-119', message: 'Pick a player to trade with' },
+  { code: 'BANK-120', message: 'Offer something to trade' },
+  { code: 'BANK-121', message: 'You can only auction on the Auction corner' },
+  { code: 'BANK-122', message: 'Unknown space' },
+  { code: 'BANK-123', message: 'Finish the auction first' },
+  { code: 'BANK-124', message: 'The seller cannot bid' },
+  { code: 'BANK-126', message: 'You can only trade spaces without buildings' },
+  { code: 'BANK-125', message: /^Bankrupt! needs \d+-\d+ players$/ },
 ];
 
 /** The code for an error message, or SYS-000 when the message is not in the catalogue. */

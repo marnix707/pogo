@@ -15,4 +15,5 @@ export * as karma from './games/karma';
 export * as lastcard from './games/lastcard';
 export * as seabattle from './games/seabattle';
 export * as matchmates from './games/matchmates';
+export * as bankrupt from './games/bankrupt';
 export * from './games/registry';

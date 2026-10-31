@@ -1,0 +1,355 @@
+{
+  "salary": 200,
+  "jailFee": 150,
+  "jailTurns": 3,
+  "bankruptBelow": -500,
+  "startCash": 1000,
+  "startCashStep": 50,
+  "tradeBonus": 100,
+  "cardTile": "cards",
+  "tiles": [
+    {
+      "id": "start",
+      "kind": "start",
+      "name": "Start"
+    },
+    {
+      "id": "rio",
+      "kind": "property",
+      "name": "Rio",
+      "color": "#8dc63f",
+      "group": "green",
+      "price": 100,
+      "sell": 80,
+      "rent": [10, 30, 90, 160],
+      "buildCost": 50
+    },
+    {
+      "id": "delhi",
+      "kind": "property",
+      "name": "Delhi",
+      "color": "#8dc63f",
+      "group": "green",
+      "price": 100,
+      "sell": 80,
+      "rent": [10, 30, 90, 160],
+      "buildCost": 50
+    },
+    {
+      "id": "bangkok",
+      "kind": "property",
+      "name": "Bangkok",
+      "color": "#2f9de0",
+      "group": "blue",
+      "price": 130,
+      "sell": 105,
+      "rent": [15, 45, 120, 285],
+      "buildCost": 70
+    },
+    {
+      "id": "harbor",
+      "kind": "transport",
+      "name": "Harbor",
+      "price": 100,
+      "sell": 80,
+      "rent": [35, 70, 140]
+    },
+    {
+      "id": "cairo",
+      "kind": "property",
+      "name": "Cairo",
+      "color": "#2f9de0",
+      "group": "blue",
+      "price": 150,
+      "sell": 120,
+      "rent": [20, 55, 140, 365],
+      "buildCost": 85
+    },
+    {
+      "id": "madrid",
+      "kind": "property",
+      "name": "Madrid",
+      "color": "#2f9de0",
+      "group": "blue",
+      "price": 150,
+      "sell": 120,
+      "rent": [20, 55, 140, 365],
+      "buildCost": 85
+    },
+    {
+      "id": "cards",
+      "kind": "card",
+      "name": "Luck"
+    },
+    {
+      "id": "jakarta",
+      "kind": "property",
+      "name": "Jakarta",
+      "color": "#c4417e",
+      "group": "pink",
+      "price": 170,
+      "sell": 135,
+      "rent": [25, 65, 160, 445],
+      "buildCost": 100
+    },
+    {
+      "id": "berlin",
+      "kind": "property",
+      "name": "Berlin",
+      "color": "#c4417e",
+      "group": "pink",
+      "price": 180,
+      "sell": 145,
+      "rent": [25, 70, 170, 490],
+      "buildCost": 105
+    },
+    {
+      "id": "moscow",
+      "kind": "property",
+      "name": "Moscow",
+      "color": "#f59a0b",
+      "group": "orange",
+      "price": 200,
+      "sell": 160,
+      "rent": [30, 80, 190, 570],
+      "buildCost": 120
+    },
+    {
+      "id": "railway",
+      "kind": "transport",
+      "name": "Railway",
+      "price": 150,
+      "sell": 120,
+      "rent": [35, 70, 140]
+    },
+    {
+      "id": "toronto",
+      "kind": "property",
+      "name": "Toronto",
+      "color": "#f59a0b",
+      "group": "orange",
+      "price": 200,
+      "sell": 160,
+      "rent": [30, 80, 190, 570],
+      "buildCost": 120
+    },
+    {
+      "id": "seoul",
+      "kind": "property",
+      "name": "Seoul",
+      "color": "#f59a0b",
+      "group": "orange",
+      "price": 200,
+      "sell": 160,
+      "rent": [30, 80, 190, 570],
+      "buildCost": 120
+    },
+    {
+      "id": "jail",
+      "kind": "jail",
+      "name": "Jail"
+    },
+    {
+      "id": "zurich",
+      "kind": "property",
+      "name": "Zurich",
+      "color": "#12896b",
+      "group": "teal",
+      "price": 250,
+      "sell": 200,
+      "rent": [35, 115, 245, 660],
+      "buildCost": 145
+    },
+    {
+      "id": "riyadh",
+      "kind": "property",
+      "name": "Riyadh",
+      "color": "#12896b",
+      "group": "teal",
+      "price": 250,
+      "sell": 200,
+      "rent": [35, 115, 245, 660],
+      "buildCost": 145
+    },
+    {
+      "id": "sydney",
+      "kind": "property",
+      "name": "Sydney",
+      "color": "#8a5a2b",
+      "group": "brown",
+      "price": 300,
+      "sell": 240,
+      "rent": [40, 150, 300, 750],
+      "buildCost": 170
+    },
+    {
+      "id": "electricity",
+      "kind": "utility",
+      "name": "Electricity",
+      "price": 150,
+      "sell": 120,
+      "rent": [6]
+    },
+    {
+      "id": "beijing",
+      "kind": "property",
+      "name": "Beijing",
+      "color": "#8a5a2b",
+      "group": "brown",
+      "price": 300,
+      "sell": 240,
+      "rent": [40, 150, 300, 750],
+      "buildCost": 170
+    },
+    {
+      "id": "dubai",
+      "kind": "property",
+      "name": "Dubai",
+      "color": "#8a5a2b",
+      "group": "brown",
+      "price": 300,
+      "sell": 240,
+      "rent": [40, 150, 300, 750],
+      "buildCost": 170
+    },
+    {
+      "id": "auction",
+      "kind": "auction",
+      "name": "Auction"
+    },
+    {
+      "id": "paris",
+      "kind": "property",
+      "name": "Paris",
+      "color": "#7a4fc4",
+      "group": "purple",
+      "price": 350,
+      "sell": 280,
+      "rent": [50, 170, 385, 810],
+      "buildCost": 180
+    },
+    {
+      "id": "hongkong",
+      "kind": "property",
+      "name": "Hong Kong",
+      "color": "#7a4fc4",
+      "group": "purple",
+      "price": 350,
+      "sell": 280,
+      "rent": [50, 170, 385, 810],
+      "buildCost": 180
+    },
+    {
+      "id": "london",
+      "kind": "property",
+      "name": "London",
+      "color": "#ff5533",
+      "group": "red",
+      "price": 420,
+      "sell": 335,
+      "rent": [70, 200, 500, 900],
+      "buildCost": 200
+    },
+    {
+      "id": "airport",
+      "kind": "transport",
+      "name": "Airport",
+      "price": 250,
+      "sell": 200,
+      "rent": [35, 70, 140]
+    },
+    {
+      "id": "tokyo",
+      "kind": "property",
+      "name": "Tokyo",
+      "color": "#ff5533",
+      "group": "red",
+      "price": 420,
+      "sell": 335,
+      "rent": [70, 200, 500, 900],
+      "buildCost": 200
+    },
+    {
+      "id": "newyork",
+      "kind": "property",
+      "name": "New York",
+      "color": "#ff5533",
+      "group": "red",
+      "price": 450,
+      "sell": 360,
+      "rent": [80, 210, 550, 940],
+      "buildCost": 210
+    }
+  ],
+  "cards": [
+    {
+      "text": "Bank error: collect $100",
+      "effect": {
+        "type": "cash",
+        "amount": 100
+      }
+    },
+    {
+      "text": "Pay the tax office $75",
+      "effect": {
+        "type": "cash",
+        "amount": -75
+      }
+    },
+    {
+      "text": "Lucky lottery: collect $150",
+      "effect": {
+        "type": "cash",
+        "amount": 150
+      }
+    },
+    {
+      "text": "You sold a stamp: collect $50",
+      "effect": {
+        "type": "cash",
+        "amount": 50
+      }
+    },
+    {
+      "text": "Birthday! Collect $20 from every player",
+      "effect": {
+        "type": "collectEach",
+        "amount": 20
+      }
+    },
+    {
+      "text": "You throw a party: pay every player $20",
+      "effect": {
+        "type": "payEach",
+        "amount": 20
+      }
+    },
+    {
+      "text": "Advance to Start",
+      "effect": {
+        "type": "moveTo",
+        "tile": "start"
+      }
+    },
+    {
+      "text": "Take a trip to the Airport",
+      "effect": {
+        "type": "moveTo",
+        "tile": "airport"
+      }
+    },
+    {
+      "text": "Repair bill: pay $40 for every building you own",
+      "effect": {
+        "type": "perBuilding",
+        "amount": -40
+      }
+    },
+    {
+      "text": "Go to jail",
+      "effect": {
+        "type": "jail"
+      }
+    }
+  ]
+}

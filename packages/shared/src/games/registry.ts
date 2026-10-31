@@ -1,4 +1,5 @@
 import type { AnyGameDefinition } from '../game/types';
+import { bankruptGame } from './bankrupt';
 import { karmaGame } from './karma';
 import { lastCardGame } from './lastcard';
 import { matesGame } from './matchmates';
@@ -12,6 +13,7 @@ export const gameRegistry: Readonly<Record<string, AnyGameDefinition>> = {
   [lastCardGame.id]: lastCardGame,
   [seaBattleGame.id]: seaBattleGame,
   [matesGame.id]: matesGame,
+  [bankruptGame.id]: bankruptGame,
 };
 
 export function getGame(id: string): AnyGameDefinition | undefined {
