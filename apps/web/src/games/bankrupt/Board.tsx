@@ -233,9 +233,9 @@ export function Board({
             );
             const k = mates.findIndex((q) => q.id === p.id);
             // Tokens that share a space stand side by side (closer, and staggered, when there are many).
-            const step = mates.length > 3 ? 5 : mates.length > 1 ? 9 : 0;
+            const step = mates.length > 3 ? 4 : mates.length > 1 ? 8 : 0;
             const spread = (k - (mates.length - 1) / 2) * step;
-            const stagger = mates.length > 2 ? (k % 2 === 0 ? -3 : 3) : 0;
+            const stagger = mates.length > 2 ? (k % 2 === 0 ? -2 : 0) : 0;
             return (
               <span
                 key={p.id}
@@ -244,9 +244,10 @@ export function Board({
                 className="absolute"
                 style={{
                   left: pct(x + TILE_PX / 2 + spread),
-                  top: pct(y + TILE_PX / 2 + stagger),
-                  width: pct(18),
-                  transform: 'translate(-50%, -62%)',
+                  // (the feet stand near the bottom of the space: the price band at the top stays readable)
+                  top: pct(y + 31 + stagger),
+                  width: pct(14.4),
+                  transform: 'translate(-50%, -100%)',
                   // The token is in the air for most of the step: it travels while it hops, then lands.
                   transition: `left ${Math.round(STEP_MS * 0.8)}ms ease-in-out, top ${Math.round(STEP_MS * 0.8)}ms ease-in-out`,
                 }}
