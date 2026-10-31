@@ -220,6 +220,23 @@ describe('buildings, selling and net worth', () => {
   });
 });
 
+describe('selling a space', () => {
+  it('pays the flat sell price from the bank, puts nothing up for auction, and the space is free again', () => {
+    let s = own(start(), 'tokyo', mover(start()).id);
+    const a = mover(s).id;
+    s = own(s, 'tokyo', a);
+    const before = cash(s, a);
+    s = play(s, a, { type: 'sellProperty', tile: 'tokyo' });
+    expect(cash(s, a)).toBe(before + 335); // 80 % of 420, rounded to 5: a flat fee
+    expect(s.auction).toBeNull();
+    expect(s.trade).toBeNull();
+    expect(s.owned['tokyo']).toBeUndefined();
+    expect(s.phase).toBe('roll');
+    // An owned space can never be put up for auction: there is no such move any more.
+    expect(game.moveSchema.safeParse({ type: 'startAuction', tile: 'rio' }).success).toBe(false);
+  });
+});
+
 describe('jail', () => {
   const jailed = () => {
     const s = start();
@@ -262,14 +279,14 @@ describe('auctions', () => {
     expect(s.phase).toBe('auction');
     const [x, y] = s.players.filter((p) => p.id !== a).map((p) => p.id) as [string, string];
     expect(game.getCurrentPlayers(s).sort()).toEqual([a, x, y].sort());
-    s = play(s, x, { type: 'bid', amount: 60 });
+    s = play(s, x, { type: 'bid', amount: 100 });
     expect(game.validateMove(s, x, { type: 'bid', amount: 80 })).toMatchObject({ ok: false });
     expect(game.getCurrentPlayers(s)).not.toContain(x);
-    s = play(s, y, { type: 'bid', amount: 90 });
+    s = play(s, y, { type: 'bid', amount: 110 });
     s = play(s, a, { type: 'passBid' });
     s = play(s, x, { type: 'passBid' });
     expect(s.owned['bangkok']).toEqual({ owner: y, level: 0 });
-    expect(cash(s, y)).toBe(1100 - 90);
+    expect(cash(s, y)).toBe(1100 - 110);
     expect(s.phase).toBe('roll');
     expect(mover(s).id).not.toBe(a);
   });
@@ -278,11 +295,11 @@ describe('auctions', () => {
     let s = start(3);
     const a = mover(s).id;
     const [x, y] = s.players.filter((p) => p.id !== a).map((p) => p.id) as [string, string];
-    s = patch(s, y, { cash: 80 });
+    s = patch(s, y, { cash: 100 });
     s = play(s, a, { type: 'roll' }, dice(3));
     s = play(s, a, { type: 'decline' });
     expect(game.getCurrentPlayers(s)).toContain(y);
-    s = play(s, x, { type: 'bid', amount: 80 }); // y has exactly 80: cannot raise
+    s = play(s, x, { type: 'bid', amount: 100 }); // y has exactly 100: cannot raise
     expect(s.auction!.passed).toContain(y);
     expect(game.getCurrentPlayers(s)).not.toContain(y);
     expect(game.getCurrentPlayers(s)).toEqual([a]);
@@ -296,7 +313,7 @@ describe('auctions', () => {
     s = play(s, a, { type: 'decline' });
     expect(game.phaseClockMs!(s)).toBe(15_000);
     const [x] = s.players.filter((p) => p.id !== a).map((p) => p.id) as [string];
-    s = play(s, x, { type: 'bid', amount: 50 });
+    s = play(s, x, { type: 'bid', amount: 100 });
     // The time is up: everybody who has not bid passes.
     for (const id of game.getCurrentPlayers(s)) {
       const t = game.timeoutMove!(s, id, createSeededRng(1));
@@ -305,6 +322,33 @@ describe('auctions', () => {
     }
     expect(s.owned['bangkok']).toEqual({ owner: x, level: 0 });
     expect(game.phaseClockMs!(s)).toBeNull();
+  });
+
+  it('opens at 70 % of the price at least', () => {
+    let s = start();
+    const a = mover(s).id;
+    const b = other(s);
+    s = play(s, a, { type: 'roll' }, dice(3)); // Bangkok, $130: opens at $95
+    s = play(s, a, { type: 'decline' });
+    expect(s.auction!.min).toBe(95);
+    expect(game.validateMove(s, b, { type: 'bid', amount: 90 })).toMatchObject({
+      ok: false,
+      error: 'The opening bid is too low',
+    });
+    expect(game.validateMove(s, b, { type: 'bid', amount: 95 }).ok).toBe(true);
+  });
+
+  it('is skipped when nobody but the player who passed can pay the opening bid', () => {
+    let s = start();
+    const a = mover(s).id;
+    const b = other(s);
+    s = patch(s, b, { cash: 90 }); // $5 short of the $95 opening bid
+    s = play(s, a, { type: 'roll' }, dice(3));
+    s = play(s, a, { type: 'decline' });
+    expect(s.auction).toBeNull();
+    expect(s.owned['bangkok']).toBeUndefined();
+    expect(mover(s).id).toBe(b);
+    expect(s.phase).toBe('roll');
   });
 
   it('with the setting off, not buying just leaves the space free', () => {
@@ -337,9 +381,9 @@ describe('auctions', () => {
     const b = other(s);
     s = play(s, a, { type: 'roll' }, dice(3));
     s = play(s, a, { type: 'decline' });
-    s = play(s, b, { type: 'bid', amount: 60 });
+    s = play(s, b, { type: 'bid', amount: 100 });
     s = play(s, a, { type: 'passBid' });
-    expect(cash(s, b)).toBe(1050 - 60);
+    expect(cash(s, b)).toBe(1050 - 100);
     expect(cash(s, a)).toBe(1000);
   });
 });

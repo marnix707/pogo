@@ -29,19 +29,29 @@ import type {
   BankruptMove,
   BankruptOptions,
   BankruptPlayer,
+  CardKind,
   BankruptState,
   BankruptView,
 } from './types';
 
 /** Milliseconds the screen needs to show the dice and one step of a token. */
 export const ROLL_MS = 900;
-export const STEP_MS = 180;
+export const STEP_MS = 280;
 /** The smallest bid, and the step bots bid in. */
 export const MIN_BID = 10;
 /** Seconds to bid in an auction before everybody who has not bid steps out. */
 export const AUCTION_SEC = 15;
+/** An auction of a space somebody did not buy opens at this share of its price at least. */
+export const AUCTION_MIN_PCT = 70;
+const ceil5 = (n: number) => Math.ceil(n / 5) * 5;
+/** The lowest opening bid for a space. */
+export const openingBid = (price: number) =>
+  Math.max(MIN_BID, ceil5((price * AUCTION_MIN_PCT) / 100));
 /** Seconds a trade on the Auction corner may take (the offers, and the choice). */
 export const TRADE_SEC = 90;
+/** A luck card slides in (CARD_SLIDE_MS), stays CARD_SHOW_MS, slides away; only then does it take effect on screen. */
+export const CARD_SLIDE_MS = 450;
+export const CARD_SHOW_MS = 3000;
 
 const optionsSchema: z.ZodType<BankruptOptions, z.ZodTypeDef, unknown> = z
   .object({
@@ -252,20 +262,39 @@ function land(s: BankruptState, p: BankruptPlayer, rng: Rng, depth = 0) {
   } else if (tile.kind === 'auction') startTrade(s, p);
   else if (tile.kind === 'card' && s.board.cards.length > 0 && depth < 3) {
     const card = s.board.cards[rng.int(s.board.cards.length)]!;
-    s.events.push({ k: 'card', by: p.id, text: card.text });
+    const kind: CardKind =
+      card.effect.type === 'cash'
+        ? card.effect.amount >= 0
+          ? 'gain'
+          : 'pay'
+        : card.effect.type === 'collectEach'
+          ? 'birthday'
+          : card.effect.type === 'payEach'
+            ? 'party'
+            : card.effect.type === 'moveTo'
+              ? 'travel'
+              : card.effect.type === 'perBuilding'
+                ? 'repair'
+                : 'jail';
+    s.events.push({ k: 'card', by: p.id, text: card.text, kind });
     const e = card.effect;
     const others = () => alivePlayers(s).filter((x) => x.id !== p.id);
+    const give = (from: BankruptPlayer | null, to: BankruptPlayer | null, amount: number) => {
+      if (amount <= 0) return;
+      s.events.push({ k: 'pay', from: from?.id ?? null, to: to?.id ?? null, amount });
+      pay(s, from, to, amount);
+    };
     if (e.type === 'cash') {
-      if (e.amount >= 0) p.cash += e.amount;
-      else pay(s, p, null, -e.amount);
+      if (e.amount >= 0) give(null, p, e.amount);
+      else give(p, null, -e.amount);
     } else if (e.type === 'collectEach') {
-      for (const o of others()) pay(s, o, p, e.amount);
+      for (const o of others()) give(o, p, e.amount);
     } else if (e.type === 'payEach') {
-      for (const o of others()) pay(s, p, o, e.amount);
+      for (const o of others()) give(p, o, e.amount);
     } else if (e.type === 'perBuilding') {
       const total = buildingsOf(s, p.id) * e.amount;
-      if (total >= 0) p.cash += total;
-      else pay(s, p, null, -total);
+      if (total >= 0) give(null, p, total);
+      else give(p, null, -total);
     } else if (e.type === 'jail') {
       sendToJail(s, p);
       s.phase = 'after';
@@ -285,7 +314,7 @@ function resolveAuction(s: BankruptState) {
   const a = s.auction;
   if (!a) return;
   // Somebody who has no more money than the highest bid cannot raise it: they step out by themselves.
-  const floor = Math.max(MIN_BID - 1, a.high?.amount ?? 0);
+  const floor = Math.max(a.min - 1, a.high?.amount ?? 0);
   for (const p of bidders(s)) if (p.id !== a.high?.player && p.cash <= floor) a.passed.push(p.id);
   const open = bidders(s).filter((p) => p.id !== a.high?.player);
   if (open.length > 0) return;
@@ -353,8 +382,8 @@ function validateMove(
     if (move.type === 'passBid')
       return a.high?.player === playerId ? err('You already have the highest bid') : OK;
     if (a.high?.player === playerId) return err('You already have the highest bid');
-    if (move.amount < MIN_BID || move.amount <= (a.high?.amount ?? 0))
-      return err('Bid more than the highest bid');
+    if (move.amount < a.min || move.amount <= (a.high?.amount ?? 0))
+      return err(a.high ? 'Bid more than the highest bid' : 'The opening bid is too low');
     if (move.amount > me.cash) return err('Not enough money');
     return OK;
   }
@@ -480,11 +509,17 @@ function applyMove(
       break;
     }
     case 'decline':
-      if (s.options.auctionOnDecline) {
-        s.auction = { tile: s.board.tiles[me.pos]!.id, high: null, passed: [] };
-        s.phase = 'auction';
-        resolveAuction(s);
-      } else s.phase = afterLanding(s); // not sold: it stays free
+      {
+        const t = ownable(s, s.board.tiles[me.pos]!.id)!;
+        const min = openingBid(t.price);
+        // Somebody other than the one who passed must be able to afford the opening bid, else no auction.
+        const rivals = alivePlayers(s).filter((p) => p.id !== me.id && p.cash >= min);
+        if (s.options.auctionOnDecline && rivals.length > 0) {
+          s.auction = { tile: t.id, min, high: null, passed: [] };
+          s.phase = 'auction';
+          resolveAuction(s);
+        } else s.phase = afterLanding(s); // not sold: it stays free
+      }
       break;
     case 'build': {
       const t = tileById(s.board, move.tile) as PropertyTile;
@@ -637,9 +672,7 @@ function autoMove(state: BankruptState, playerId: PlayerId, _rng: Rng): AutoMove
       holdingsOf(state, playerId).some((o) => o.kind === 'property' && o.group === t.group);
     const ceiling = Math.min(me.cash - 50, Math.floor(t.price * (set ? 1.3 : 1.05)));
     const step = Math.max(MIN_BID, round5(t.price * 0.1));
-    const bid = state.auction.high
-      ? state.auction.high.amount + step
-      : Math.max(MIN_BID, round5(t.price * 0.4));
+    const bid = state.auction.high ? state.auction.high.amount + step : state.auction.min;
     return bid <= ceiling && bid <= me.cash
       ? done({ type: 'bid', amount: bid }, true)
       : done({ type: 'passBid' }, true);
@@ -729,6 +762,7 @@ export const bankruptGame: GameDefinition<
     for (const e of state.events) {
       if (e.k === 'roll') ms += ROLL_MS;
       if (e.k === 'move') ms += stepsBetween(state.board, e.from, e.to) * STEP_MS;
+      if (e.k === 'card') ms += CARD_SHOW_MS + 2 * CARD_SLIDE_MS;
     }
     return ms;
   },

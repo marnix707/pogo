@@ -11,14 +11,14 @@ type Glyphs = Record<string, string[]>;
 const FONT5 = font.font5 as Glyphs;
 const TAG7 = font.tag_digits7 as Glyphs;
 const L = layout.layout;
-const CARD_W = 152;
+export const CARD_W = 152;
 /** The card is 192 high plus its 3 px shadow. */
-const CARD_H = 195;
-const NAVY = '#101628';
-const LABEL = '#796e9e';
+export const CARD_H = 195;
+export const NAVY = '#101628';
+export const LABEL = '#796e9e';
 
 /** The pixels of a text in the kit's font as one path (card art px). `align` says what `x` means. */
-function text(
+export function text(
   str: string,
   x: number,
   y: number,
@@ -62,7 +62,7 @@ export interface CardAction {
 }
 
 /** The title: white with a navy outline and shadow. */
-function Title({ d }: { d: string }) {
+export function Title({ d }: { d: string }) {
   return (
     <>
       <path d={d} fill={NAVY} transform="translate(1 1)" />

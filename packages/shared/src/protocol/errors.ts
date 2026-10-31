@@ -211,6 +211,7 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'BANK-114', message: 'There is no auction' },
   { code: 'BANK-122', message: 'Unknown space' },
   { code: 'BANK-123', message: 'Finish the auction first' },
+  { code: 'BANK-132', message: 'The opening bid is too low' },
   { code: 'BANK-127', message: 'There is no trade to answer' },
   { code: 'BANK-128', message: 'You have already answered' },
   { code: 'BANK-129', message: 'Pick one of your spaces without buildings' },

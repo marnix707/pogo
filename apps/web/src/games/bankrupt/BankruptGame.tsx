@@ -7,6 +7,7 @@ import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
 import { Board, money, seatColour } from './Board';
 import { BuyOverlay } from './BuyOverlay';
+import { LuckCard } from './LuckCard';
 import { TradePanel, pulsingTiles } from './TradePanel';
 import { TileSheet } from './TileSheet';
 import { useCashFx } from './useCashFx';
@@ -46,9 +47,14 @@ function describe(s: State, name: (id: string) => string): string {
   return parts.join(' · ');
 }
 
+type CardEvent = Extract<bankrupt.BankruptEvent, { k: 'card' }>;
+const reduced = () =>
+  typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 /**
- * Where each token is drawn: it walks to its new space one step at a time (after the dice have rolled),
- * and jumps straight there when it was sent to jail.
+ * Where each token is drawn: it walks to its new space one step at a time (after the die has rolled). When the
+ * move drew a luck card the token stops on the card space, the card slides in for CARD_SHOW_MS and slides away,
+ * and only then does what it says happen on screen (a further walk, jail, the payments).
  */
 function useWalking(state: State) {
   const [shown, setShown] = useState<Record<string, number>>(() =>
@@ -58,29 +64,58 @@ function useWalking(state: State) {
   const [rolling, setRolling] = useState(false);
   const rollTimer = useRef<ReturnType<typeof setTimeout>>();
   const n = state.board.tiles.length;
-  // A new move: the dice tumble first, then the tokens walk.
+  // The luck card of the move on screen: wait (for the walk), in, hold, out; 'done' = nothing pending.
+  const [card, setCard] = useState<{ ev: CardEvent; phase: 'wait' | 'in' | 'out' } | null>(null);
+  const [hold, setHold] = useState<Record<string, number> | null>(null);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const latest = useRef(state);
+  latest.current = state;
+  const target = (p: State['players'][number]) => hold?.[p.id] ?? p.pos;
+
+  // A new move: the die tumbles first, then the tokens walk.
   useEffect(() => {
     if (seenSeq.current === state.seq) return;
     seenSeq.current = state.seq;
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
     const rolled = state.events.some((e) => e.k === 'roll');
-    const jailed = new Set(state.events.flatMap((e) => (e.k === 'jail' ? [e.by] : [])));
-    if (jailed.size > 0)
-      setShown((cur) => ({
-        ...cur,
-        ...Object.fromEntries(
-          [...jailed].map((id) => [id, state.players.find((p) => p.id === id)!.pos]),
-        ),
-      }));
+    const cardAt = state.events.findIndex((e) => e.k === 'card');
+    if (cardAt >= 0) {
+      const ev = state.events[cardAt] as CardEvent;
+      const before = state.events.slice(0, cardAt).filter((e) => e.k === 'move' && e.by === ev.by);
+      const stop = (before.at(-1) as { to: number } | undefined)?.to;
+      if (stop !== undefined) {
+        setHold({ [ev.by]: stop });
+        setCard({ ev, phase: 'wait' });
+      }
+    } else {
+      setHold(null);
+      setCard(null);
+      const jailed = new Set(state.events.flatMap((e) => (e.k === 'jail' ? [e.by] : [])));
+      if (jailed.size > 0)
+        setShown((cur) => ({
+          ...cur,
+          ...Object.fromEntries(
+            [...jailed].map((id) => [id, state.players.find((p) => p.id === id)!.pos]),
+          ),
+        }));
+    }
     if (!rolled) return;
     setRolling(true);
     clearTimeout(rollTimer.current);
     rollTimer.current = setTimeout(() => setRolling(false), bankrupt.ROLL_MS);
   }, [state]);
   // (The timer must outlive the next state push, so it is only cleared when the screen goes away.)
-  useEffect(() => () => clearTimeout(rollTimer.current), []);
+  useEffect(
+    () => () => {
+      clearTimeout(rollTimer.current);
+      timers.current.forEach(clearTimeout);
+    },
+    [],
+  );
   useEffect(() => {
     if (rolling) return;
-    const behind = state.players.filter((p) => (shown[p.id] ?? p.pos) !== p.pos);
+    const behind = state.players.filter((p) => (shown[p.id] ?? p.pos) !== target(p));
     if (behind.length === 0) return;
     const t = setTimeout(
       () =>
@@ -88,8 +123,9 @@ function useWalking(state: State) {
           const next = { ...cur };
           for (const p of behind) {
             const at = cur[p.id] ?? p.pos;
-            const steps = (p.pos - at + n) % n;
-            next[p.id] = steps > n / 2 ? p.pos : (at + 1) % n;
+            const goal = target(p);
+            const steps = (goal - at + n) % n;
+            next[p.id] = steps > n / 2 ? goal : (at + 1) % n;
             if (next[p.id] === 0 || steps === 1) play('tap');
           }
           return next;
@@ -97,9 +133,40 @@ function useWalking(state: State) {
       bankrupt.STEP_MS,
     );
     return () => clearTimeout(t);
-  }, [state, shown, rolling, n]);
-  const settled = !rolling && state.players.every((p) => (shown[p.id] ?? p.pos) === p.pos);
-  return { shown, rolling, settled };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, shown, rolling, n, hold]);
+  const walked = !rolling && state.players.every((p) => (shown[p.id] ?? p.pos) === target(p));
+
+  // The token stands on the card space: the card slides in, stays, slides away, then the effect is shown.
+  useEffect(() => {
+    if (!card || card.phase !== 'wait' || !walked) return;
+    const slide = reduced() ? 0 : bankrupt.CARD_SLIDE_MS;
+    const show = reduced() ? 1200 : bankrupt.CARD_SHOW_MS;
+    setCard({ ev: card.ev, phase: 'in' });
+    play('turn');
+    timers.current.push(
+      setTimeout(() => setCard((c) => (c ? { ...c, phase: 'out' } : c)), slide + show),
+      setTimeout(
+        () => {
+          // Gone: now the card does what it says (walk on, jail, payments).
+          const now = latest.current;
+          const jailed = new Set(now.events.flatMap((e) => (e.k === 'jail' ? [e.by] : [])));
+          setHold(null);
+          setCard(null);
+          if (jailed.size > 0)
+            setShown((cur) => ({
+              ...cur,
+              ...Object.fromEntries(
+                [...jailed].map((id) => [id, now.players.find((p) => p.id === id)!.pos]),
+              ),
+            }));
+        },
+        slide + show + slide,
+      ),
+    );
+  }, [card, walked]);
+  const cardBusy = card !== null;
+  return { shown, rolling, settled: walked && !cardBusy, card, cardBusy };
 }
 
 export function BankruptGame({ room, me, sendMove }: GameUiProps) {
@@ -110,8 +177,11 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const mover = players[state.turn]!;
   const nickOf = (id: string) => room.members.find((m) => m.id === id);
   const name = (id: string) => nickOf(id)?.nickname ?? 'Player';
-  const { shown, rolling, settled } = useWalking(state);
-  const cashShown = useCashFx(state, settled);
+  const { shown, rolling, settled, card, cardBusy } = useWalking(state);
+  const { shown: cashShown, playing: paying } = useCashFx(state, settled);
+  void cardBusy;
+  // Nobody acts while the last player's token is still walking, the die tumbles or a payment is on show.
+  const animating = !settled || paying;
   // The die tumbles through random faces while it rolls.
   const [face, setFace] = useState(1);
   useEffect(() => {
@@ -138,7 +208,22 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
     }
   };
 
-  const note = useMemo(() => describe(state, name), [state, room.members]); // eslint-disable-line react-hooks/exhaustive-deps
+  const note = useMemo(
+    () =>
+      describe(
+        cardBusy
+          ? {
+              ...state,
+              events: state.events.slice(
+                0,
+                state.events.findIndex((e) => e.k === 'card'),
+              ),
+            }
+          : state,
+        name,
+      ),
+    [state, room.members, cardBusy], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const here = state.board.tiles[mover.pos]!;
   const owedBuy = state.phase === 'buy' && myTurn && bankrupt.isOwnable(here) ? here : null;
   const goal =
@@ -160,7 +245,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         key={p.id}
         data-testid={`bk-player-${p.id}`}
         data-turn={isMover}
-        className={`relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-md px-1 py-1 ${
+        className={`relative flex w-[calc(33.333%-0.17rem)] min-w-0 shrink-0 flex-col items-center gap-0.5 rounded-md px-1 py-1 ${
           isMover ? 'bg-neon/25 ring-2 ring-neon' : ''
         } ${p.bankrupt ? 'opacity-40 grayscale' : ''}`}
       >
@@ -208,7 +293,18 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       </div>
     );
   };
-  const half = Math.ceil(players.length / 2);
+  // Like the card games: I sit bottom left, the others follow clockwise round the board. With up to four
+  // players everybody else is on top (left to right = turn order); with more, the extra ones sit next to me on
+  // the bottom row (clockwise runs right to left along the bottom, so the one who plays just before me is
+  // right next to me). A watcher sees the first seat at the bottom left.
+  const meIdx = Math.max(
+    0,
+    players.findIndex((p) => p.id === me),
+  );
+  const around = players.map((_, i) => (meIdx + i) % players.length);
+  const others = around.slice(1);
+  const topSeats = others.slice(0, 3);
+  const bottomSeats = [around[0]!, ...others.slice(3).reverse()];
 
   return (
     <div
@@ -222,7 +318,9 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         {goal.split(' ').slice(1).join(' ')}
         <span className="text-onbg/70">{limit}</span>
       </p>
-      <div className="flex gap-1">{players.slice(0, half).map((p, i) => tag(p, i))}</div>
+      <div className="flex justify-center gap-1" data-testid="bk-seats-top">
+        {topSeats.map((i) => tag(players[i]!, i))}
+      </div>
 
       <Board
         state={state}
@@ -265,7 +363,9 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         </p>
       </Board>
 
-      <div className="flex gap-1">{players.slice(half).map((p, i) => tag(p, half + i))}</div>
+      <div className="flex justify-start gap-1" data-testid="bk-seats-bottom">
+        {bottomSeats.map((i) => tag(players[i]!, i))}
+      </div>
 
       {/* What I can do right now. */}
       <div className="hud calm flex flex-col gap-2 p-3" data-testid="bk-actions">
@@ -311,7 +411,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
             <Button
               variant="gold"
               data-testid="bk-pay-jail"
-              disabled={busy || mePlayer!.cash < state.board.jailFee}
+              disabled={busy || animating || mePlayer!.cash < state.board.jailFee}
               onClick={() => void send({ type: 'payJail' })}
             >
               Pay {money(state.board.jailFee)}
@@ -319,7 +419,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
             <Button
               variant="secondary"
               data-testid="bk-wait-jail"
-              disabled={busy}
+              disabled={busy || animating}
               onClick={() => void send({ type: 'wait' })}
             >
               Wait ({mePlayer!.jail})
@@ -329,7 +429,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           <Button
             variant="gold"
             data-testid="bk-roll"
-            disabled={busy || rolling}
+            disabled={busy || rolling || animating}
             onClick={() => void send({ type: 'roll' })}
           >
             Roll the dice
@@ -345,6 +445,13 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         )}
       </div>
 
+      {card && card.phase !== 'wait' && (
+        <LuckCard
+          kind={card.ev.kind}
+          textLine={card.ev.text}
+          phase={card.phase === 'in' ? 'in' : 'out'}
+        />
+      )}
       {owedBuy && settled && (
         <BuyOverlay state={state} me={me} tile={owedBuy} busy={busy} send={send} />
       )}
@@ -384,12 +491,12 @@ function AuctionPanel({
   const price = tile && bankrupt.isOwnable(tile) ? tile.price : 100;
   const cash = state.players.find((p) => p.id === me)?.cash ?? 0;
   const step = Math.max(bankrupt.MIN_BID, Math.round((price * 0.1) / 5) * 5);
-  const base = a.high?.amount ?? 0;
+  const base = a.high?.amount ?? a.min - step;
   const leading = a.high?.player === me;
   const passed = a.passed.includes(me);
   const left = useCountdown(deadline, serverTime);
   // Out of the bidding (stepped out, or not enough money to top the highest bid): the prices are greyed out.
-  const out = passed || (!leading && cash <= Math.max(bankrupt.MIN_BID - 1, base));
+  const out = passed || (!leading && cash <= Math.max(a.min - 1, a.high?.amount ?? 0));
   return (
     <div className="flex flex-col gap-2" data-testid="bk-auction">
       <p className="label text-center">
@@ -404,7 +511,9 @@ function AuctionPanel({
         )}
       </p>
       <p className="text-center text-sm" data-testid="bk-high-bid">
-        {a.high ? `Highest bid ${money(a.high.amount)} by ${name(a.high.player)}` : 'No bids yet'}
+        {a.high
+          ? `Highest bid ${money(a.high.amount)} by ${name(a.high.player)}`
+          : `No bids yet · opens at ${money(a.min)}`}
       </p>
       <>
         {leading ? (

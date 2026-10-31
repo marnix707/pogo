@@ -173,7 +173,8 @@ export function Board({
                   top: pct(y + TILE_PX / 2),
                   width: pct(9),
                   transform: 'translate(-50%, -62%)',
-                  transition: `left ${STEP_MS}ms linear, top ${STEP_MS}ms linear`,
+                  // The token is in the air for most of the step: it travels while it hops, then lands.
+                  transition: `left ${Math.round(STEP_MS * 0.8)}ms ease-in-out, top ${Math.round(STEP_MS * 0.8)}ms ease-in-out`,
                 }}
               >
                 <img

@@ -33,6 +33,30 @@
    "w": 14,
    "h": 13
   },
+  "card-gain": {
+   "w": 16,
+   "h": 15
+  },
+  "card-pay": {
+   "w": 16,
+   "h": 14
+  },
+  "card-birthday": {
+   "w": 16,
+   "h": 14
+  },
+  "card-party": {
+   "w": 16,
+   "h": 15
+  },
+  "card-travel": {
+   "w": 16,
+   "h": 14
+  },
+  "card-repair": {
+   "w": 16,
+   "h": 15
+  },
   "cash": {
    "w": 14,
    "h": 10

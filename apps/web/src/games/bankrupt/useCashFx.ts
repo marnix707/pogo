@@ -26,6 +26,8 @@ function transfersOf(s: State): Transfer[] {
     else if (e.k === 'buy') out.push({ from: e.by, to: null, tile: e.tile, amount: e.price });
     else if (e.k === 'auction' && e.winner)
       out.push({ from: e.winner, to: null, tile: e.tile, amount: e.amount });
+    else if (e.k === 'pay')
+      out.push({ from: e.from, to: e.to, tile: s.board.cardTile, amount: e.amount });
     else if (e.k === 'trade') {
       // The bank pays both players a bonus.
       out.push({ from: null, to: e.by, tile: e.give, amount: e.bonus });
@@ -125,10 +127,15 @@ function fly(from: { x: number; y: number }, to: { x: number; y: number }, amoun
  * the amount pops on the space, the payer's number counts down, banknotes fly to the receiver and the
  * receiver's number counts up (like the damage numbers in Pet Match). Everything else just updates.
  */
-export function useCashFx(state: State, ready: boolean): Record<string, number> {
+export function useCashFx(
+  state: State,
+  ready: boolean,
+): { shown: Record<string, number>; playing: boolean } {
   const [shown, setShown] = useState<Record<string, number>>(() =>
     Object.fromEntries(state.players.map((p) => [p.id, p.cash])),
   );
+  // True from the move that brings a payment until its show is over: nobody acts before it.
+  const [playing, setPlaying] = useState(false);
   const values = useRef(shown);
   values.current = shown;
   const seenSeq = useRef(state.seq);
@@ -137,8 +144,10 @@ export function useCashFx(state: State, ready: boolean): Record<string, number> 
   const latest = useRef(state);
   latest.current = state;
 
-  const snap = () =>
+  const snap = () => {
     setShown(Object.fromEntries(latest.current.players.map((p) => [p.id, p.cash])));
+    setPlaying(false);
+  };
 
   useEffect(() => {
     if (seenSeq.current === state.seq) return;
@@ -146,6 +155,7 @@ export function useCashFx(state: State, ready: boolean): Record<string, number> 
     stop.current?.();
     const transfers = reduced() ? [] : transfersOf(state);
     job.current = transfers.length > 0 ? transfers : null;
+    setPlaying(transfers.length > 0);
     const involved = new Set(transfers.flatMap((t) => [t.from, t.to]).filter(Boolean) as string[]);
     // Everybody not in a payment shows the new cash at once; the others wait for the show.
     setShown((cur) =>
@@ -206,5 +216,5 @@ export function useCashFx(state: State, ready: boolean): Record<string, number> 
   }, [ready, state]);
 
   useEffect(() => () => stop.current?.(), []);
-  return shown;
+  return { shown, playing };
 }

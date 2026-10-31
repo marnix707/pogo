@@ -114,6 +114,84 @@ save('icon-electricity', [
     '....ssss....',
     '.....ss.....'])
 
+
+# ---- luck card icons (about 16 px): money bag, bill, cake, balloons, suitcase, wrench ----
+save('card-gain', [
+    '.....KKKK.....',
+    '......gg......',
+    '.....gggg.....',
+    '....gggggg....',
+    '...gggyyggg...',
+    '..ggggyyyggg..',
+    '..gggyKKygggg.',
+    '..gggyyKyyggg.',
+    '..ggggyKKygg..',
+    '..gggggyyygg..',
+    '...gggyyyggg..',
+    '....gggggg....'])
+save('card-pay', [
+    'nnnnnnnnnnnnnn',
+    'nccccnnnnccccn',
+    'nccnnnccnnnccn',
+    'nncnncnncnncnn',
+    'nnnnnccccnnnnn',
+    'nncnncnncnncnn',
+    'nccnnnccnnnccn',
+    'nccccnnnnccccn',
+    'nnnnnnnnnnnnnn',
+    '.rrrrrrrrrrrr.',
+    '..rrrrrrrrrr..'])
+save('card-birthday', [
+    '.....o..o.....',
+    '.....y..y.....',
+    '.....c..c.....',
+    '...pppppppp...',
+    '..pcpcpcpcpp..',
+    '..pppppppppp..',
+    '..cccccccccc..',
+    '.kkkkkkkkkkkk.',
+    '.kcckccckcckk.',
+    '.kkkkkkkkkkkk.',
+    '.wwwwwwwwwwww.'])
+save('card-party', [
+    '..rrr....bbb..',
+    '.rrrrr..bbbbb.',
+    '.rcrrr..bcbbb.',
+    '.rrrrr..bbbbb.',
+    '..rrr....bbb..',
+    '...K......K...',
+    '....K....K....',
+    '..ooo.KK.nnn..',
+    '.ooooo..nnnnn.',
+    '.ocooo..ncnnn.',
+    '.ooooo..nnnnn.',
+    '..ooo....nnn..'])
+save('card-travel', [
+    '......KK......',
+    '....wwwwww....',
+    '....w....w....',
+    '.rrrrrrrrrrrr.',
+    '.rcrrrrrrrrcr.',
+    '.rrrrrrrrrrrr.',
+    '.yyyyyyyyyyyy.',
+    '.rrrrrrrrrrrr.',
+    '.rrrrrrrrrrrr.',
+    '.rrrrrrrrrrrr.',
+    '..ss......ss..'])
+save('card-repair', [
+    '.....ssss.....',
+    '....ssssss....',
+    '....ss..ss....',
+    '....ss..ss....',
+    '.....ssss.....',
+    '.....ssss.....',
+    '......ww......',
+    '......ww......',
+    '......ww......',
+    '......ww......',
+    '......ww......',
+    '......ww......'])
+
 # ---- a banknote that flies to the player who gets paid ----
 save('cash', [
     'nnnnnnnnnnnn',
@@ -262,7 +340,7 @@ write_svg(logo, os.path.join(OUT, '..', 'brand', 'logos', 'bankrupt.svg') if os.
 
 json.dump({'note': 'Bankrupt! art: every sprite is a whole-number-scaled pixel SVG (image-rendering: pixelated). Tokens sit centred on their square; buildings and icons are centred in their tile.',
            'sprites': {k: {'w': len(v[0]), 'h': len(v)} for k, v in SAVE.items()}}, open(os.path.join(OUT, 'bankrupt-sprites.json'), 'w'), indent=1)
-icons = [SAVE[k] for k in SAVE if k.startswith(('icon-', 'build-'))]
+icons = [SAVE[k] for k in SAVE if k.startswith(('icon-', 'build-', 'card-'))]
 preview(icons, os.path.join(PREV, 'icons.png'), s=8, cols=6)
 preview([SAVE[k] for k in SAVE if k.startswith('token-')], os.path.join(PREV, 'tokens.png'), s=10, cols=6)
 png(SAVE['landmark'], os.path.join(PREV, 'landmark.png'), s=8, bg=(60, 100, 150, 255))

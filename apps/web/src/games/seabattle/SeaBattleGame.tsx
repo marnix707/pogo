@@ -223,7 +223,19 @@ function SeaBattlePlay({
   // followed by a second tap that is out of turn); after a hit you can fire again while the bomb is still falling.
   const [inflight, setInflight] = useState(false);
   useEffect(() => setInflight(false), [view.shotCount]);
-  const locked = coin || finished || inflight;
+  // The opponent's shot (bomb, splash, sinking) must be over before it is my turn to fire.
+  const [foeShot, setFoeShot] = useState(false);
+  useEffect(() => {
+    const e = view.lastEvent;
+    if (!e || e.by === me || watching) return;
+    setFoeShot(true);
+    const t = setTimeout(
+      () => setFoeShot(false),
+      seabattle.SHOT_FX_MS + (e.result === 'sunk' ? seabattle.SINK_MS : 0),
+    );
+    return () => clearTimeout(t);
+  }, [view.shotCount]); // eslint-disable-line react-hooks/exhaustive-deps
+  const locked = coin || finished || inflight || foeShot;
   const send = async (move: unknown) => {
     if (busy) return;
     setBusy(true);

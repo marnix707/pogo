@@ -38,6 +38,8 @@ export interface Holding {
 
 export interface Auction {
   tile: string;
+  /** The lowest opening bid: 70 % of the price. */
+  min: number;
   high: { player: PlayerId; amount: number } | null;
   /** Players who stepped out. */
   passed: PlayerId[];
@@ -69,12 +71,17 @@ export type BankruptPhase =
   | 'trade'
   | 'over';
 
+export type CardKind = 'gain' | 'pay' | 'birthday' | 'party' | 'travel' | 'repair' | 'jail';
+
 export type BankruptEvent =
   | { k: 'roll'; by: PlayerId; dice: number }
   | { k: 'move'; by: PlayerId; from: number; to: number; passedStart: boolean }
   | { k: 'rent'; by: PlayerId; to: PlayerId; tile: string; amount: number }
   | { k: 'buy'; by: PlayerId; tile: string; price: number }
-  | { k: 'card'; by: PlayerId; text: string }
+  /** A luck card was drawn; `kind` picks its icon. The effect follows as `pay` / `move` / `jail` events. */
+  | { k: 'card'; by: PlayerId; text: string; kind: CardKind }
+  /** Money moved because of a card (null = the bank). */
+  | { k: 'pay'; from: PlayerId | null; to: PlayerId | null; amount: number }
   | { k: 'jail'; by: PlayerId }
   | { k: 'free'; by: PlayerId }
   | { k: 'salary'; by: PlayerId; amount: number }
