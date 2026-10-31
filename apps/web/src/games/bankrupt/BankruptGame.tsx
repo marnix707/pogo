@@ -7,6 +7,7 @@ import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
 import { Board, TOKEN_HEX, money } from './Board';
 import { TileSheet } from './TileSheet';
+import { TradeOffer, TradeSheet } from './TradeSheet';
 import { art, dieUrl, tokenOf } from './art';
 
 type State = bankrupt.BankruptState;
@@ -103,6 +104,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const name = (id: string) => nickOf(id)?.nickname ?? 'Player';
   const { shown, rolling } = useWalking(state);
   const [tileOpen, setTileOpen] = useState<string | null>(null);
+  const [tradeOpen, setTradeOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [tip, setTip] = useState<string | null>(null);
   const finished = state.phase === 'over';
@@ -255,13 +257,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         ) : state.auction ? (
           <AuctionPanel state={state} me={me} name={name} send={send} busy={busy} />
         ) : state.trade ? (
-          <p className="label text-center" data-testid="bk-trade-wait">
-            {state.trade.from === me
-              ? `Waiting for ${name(state.trade.to)} to answer your offer`
-              : state.trade.to === me
-                ? `${name(state.trade.from)} made you an offer`
-                : 'A trade is being decided'}
-          </p>
+          <TradeOffer state={state} me={me} name={name} send={send} busy={busy} />
         ) : !myTurn ? (
           <p className="label text-center text-onbg/80" data-testid="bk-wait">
             Waiting for {name(mover.id)}…
@@ -330,6 +326,20 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
             </Button>
           </div>
         )}
+        {myTurn &&
+          !state.auction &&
+          !state.trade &&
+          (state.phase === 'roll' || state.phase === 'after') &&
+          players.some((p) => p.id !== me && !p.bankrupt) && (
+            <Button
+              variant="secondary"
+              data-testid="bk-trade"
+              disabled={busy}
+              onClick={() => setTradeOpen(true)}
+            >
+              Trade
+            </Button>
+          )}
         {mePlayer && mePlayer.cash < 0 && !mePlayer.bankrupt && (
           <p className="label text-center text-[10px] text-[#ff8f73]" data-testid="bk-warning">
             You are in debt. Below {money(state.board.bankruptBelow)} you are bankrupt: tap a space
@@ -338,6 +348,14 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         )}
       </div>
 
+      <TradeSheet
+        state={state}
+        me={me}
+        open={tradeOpen}
+        name={name}
+        send={send}
+        onClose={() => setTradeOpen(false)}
+      />
       <TileSheet
         state={state}
         me={me}

@@ -49,21 +49,21 @@ function Space({
         </>
       ) : (
         <>
-          <span className="block px-[4%] pt-[6%] text-center text-[1.9cqw] font-bold uppercase leading-tight text-[#2b3b57]">
+          <span className="block px-[4%] pt-[3%] text-center text-[1.8cqw] font-bold uppercase leading-tight text-[#2b3b57]">
             {tile.kind === 'transport' || tile.kind === 'utility' ? tile.name : ''}
           </span>
-          <span className="flex flex-1 items-center justify-center">
+          <span className="flex min-h-0 flex-1 items-center justify-center">
             {icon && (
               <img
                 src={art(icon)}
                 alt=""
                 draggable={false}
-                className="h-[44%] w-auto max-w-[70%] object-contain"
+                className="max-h-full w-auto max-w-[70%] object-contain"
                 style={{ imageRendering: 'pixelated' }}
               />
             )}
           </span>
-          <span className="block pb-[6%] text-center text-[1.9cqw] font-bold uppercase leading-tight text-[#2b3b57]">
+          <span className="block pb-[3%] text-center text-[1.8cqw] font-bold uppercase leading-tight text-[#2b3b57]">
             {tile.kind === 'transport' || tile.kind === 'utility'
               ? money(tile.price)
               : tile.kind === 'start' ||

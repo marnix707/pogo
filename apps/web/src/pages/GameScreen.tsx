@@ -319,7 +319,7 @@ export function GameScreen({
         <div
           role="status"
           data-testid="spectating-badge"
-          className="label pointer-events-none fixed left-1/2 top-[calc(env(safe-area-inset-top)+0.15rem)] z-30 -translate-x-1/2 rounded-full border-2 border-line bg-panel/90 px-2.5 py-0.5 text-[10px] text-onbg"
+          className="label pointer-events-none fixed bottom-[max(0.4rem,env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2 rounded-full border-2 border-line bg-panel/90 px-2.5 py-0.5 text-[10px] text-onbg"
         >
           👀 Spectating
         </div>
