@@ -1,15 +1,13 @@
 import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { bankrupt } from '@pogo/shared';
-import font from '../../assets/sprites/bankrupt/city/pixel-font.json';
+import { measure, pixelTextRects } from './pixel-text/pixelText';
+import type { FontName } from './pixel-text/pixelText';
 import layout from '../../assets/sprites/bankrupt/city/card-layout.json';
 import { art } from './art';
 import { cityArt, slug } from './cityArt';
 import { useArtScale } from './useArtScale';
 
-type Glyphs = Record<string, string[]>;
-const FONT5 = font.font5 as Glyphs;
-const TAG7 = font.tag_digits7 as Glyphs;
 const L = layout.layout;
 export const CARD_W = 152;
 /** The card is 192 high plus its 3 px shadow. */
@@ -17,33 +15,28 @@ export const CARD_H = 195;
 export const NAVY = '#101628';
 export const LABEL = '#796e9e';
 
-/** The pixels of a text in the kit's font as one path (card art px). `align` says what `x` means. */
+/**
+ * The pixels of a text as one path (card art px), drawn from `pixel-text/pixelText.ts`: the only text drawing
+ * used for the game's numbers and names, so the `$` and digits are the same pixels as the art. `scale` doubles
+ * (or more) everything, the gap included. `x` is the centre, the left or the right edge.
+ */
 export function text(
   str: string,
   x: number,
   y: number,
   scale = 1,
-  gap = 1,
   align: 'centre' | 'left' | 'right' = 'centre',
-  glyphsOf: Glyphs = FONT5,
+  font: FontName = 'font5',
 ): string {
-  const glyphs = [...str.toUpperCase()].map((c) => glyphsOf[c] ?? glyphsOf['?'] ?? glyphsOf['0']!);
-  const widths = glyphs.map((g) => g[0]!.length * scale);
-  const total = widths.reduce((a, b) => a + b, 0) + gap * (glyphs.length - 1);
-  let at = Math.round(align === 'left' ? x : align === 'right' ? x - total : x - total / 2);
-  const out: string[] = [];
-  glyphs.forEach((g, i) => {
-    // The '$' of the big font has seven rows: it stands one pixel higher than the letters.
-    const dy = glyphsOf === FONT5 && g.length > 5 ? -1 : 0;
-    g.forEach((row, r) =>
-      [...row].forEach((ch, c) => {
-        if (ch === 'X')
-          out.push(`M${at + c * scale} ${y + dy + r * scale}h${scale}v${scale}h-${scale}z`);
-      }),
-    );
-    at += widths[i]! + gap;
-  });
-  return out.join('');
+  str = str.toUpperCase(); // (the pixel fonts are capitals only)
+  const w = measure(str, font).width * scale;
+  const left = Math.round(align === 'left' ? x : align === 'right' ? x - w : x - w / 2);
+  return pixelTextRects(str, 0, 0, font)
+    .map(
+      ([a, b, rw, rh]) =>
+        `M${left + a * scale} ${y + b * scale}h${rw * scale}v${rh * scale}h-${rw * scale}z`,
+    )
+    .join('');
 }
 
 const dollars = (n: number) => `$${n}`;
@@ -119,7 +112,7 @@ export function PropertyCard({
   ];
   const cols = L.cols_cx;
   const header = L.header;
-  const title = text(tile.name, header[0]! + header[2]! / 2 - 4, header[1]! + 9, 2, 2);
+  const title = text(tile.name, header[0]! + header[2]! / 2 - 4, header[1]! + 9, 2);
   const slots =
     actions.length === 1
       ? [[(CARD_W - 64) / 2, L.buttons[0]![1]!, 64, 20] as const]
@@ -188,7 +181,7 @@ export function PropertyCard({
   const current = tile.kind === 'property' ? level + 1 : -1;
   const back = face(
     <>
-      <path d={text('RENT', CARD_W / 2, 37, 1, 1)} fill={LABEL} />
+      <path d={text('RENT', CARD_W / 2, 37)} fill={LABEL} />
       {rows.map((r, i) => {
         const y = 50 + i * rowH;
         const on = tile.kind === 'property' ? (level === 0 ? i === 0 : i === level + 1) : false;
@@ -198,12 +191,12 @@ export function PropertyCard({
               <rect x={10} y={y - 4} width={132} height={rowH - 6} fill="#fdcf51" opacity="0.55" />
             )}
             {r.icon && <image href={art(r.icon)} x={12} y={y - 3} width={12} height={12} />}
-            <path d={text(r.label, r.icon ? 28 : 14, y + 1, 1, 1, 'left')} fill={LABEL} />
-            <path d={text(dollars(r.value), 138, y - 2, 2, 2, 'right')} fill={NAVY} />
+            <path d={text(r.label, r.icon ? 28 : 14, y + 1, 1, 'left')} fill={LABEL} />
+            <path d={text(dollars(r.value), 138, y - 2, 2, 'right')} fill={NAVY} />
           </g>
         );
       })}
-      <path d={text('TAP TO TURN BACK', CARD_W / 2, 176, 1, 1)} fill={LABEL} />
+      <path d={text('TAP TO TURN BACK', CARD_W / 2, 176)} fill={LABEL} />
     </>,
   );
   void current;
@@ -222,8 +215,8 @@ export function PropertyCard({
     <>
       {stats.map(([label, value], i) => (
         <g key={label}>
-          <path d={text(label, cols[i]!, L.labels_y, 1, 1)} fill={LABEL} />
-          <path d={text(value, cols[i]!, L.values_y, 2, 2)} fill={NAVY} />
+          <path d={text(label, cols[i]!, L.labels_y)} fill={LABEL} />
+          <path d={text(value, cols[i]!, L.values_y, 2)} fill={NAVY} />
         </g>
       ))}
       {Array.from({ length: 70 }).map((_, i) => (
@@ -250,7 +243,7 @@ export function PropertyCard({
         <>
           <image href={tagUrl} x={tagX} y={tagY} width={tagW} height={17} />
           <path
-            d={text(tagText!, tagX + 10 + (tagW - 12 - 0) / 2 - 0, tagY + 3, 1, 1, 'centre', TAG7)}
+            d={text(tagText!, tagX + 10 + (tagW - 12) / 2, tagY + 3, 1, 'centre', 'digits7')}
             fill={upgrade!.enabled ? NAVY : LABEL}
           />
         </>

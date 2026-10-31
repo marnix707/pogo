@@ -50,6 +50,7 @@ CLAUDE.md is kept short on purpose (it is loaded in every session). Feature deta
 - **After changing `schema.prisma`**: regenerate the Prisma client in the same container before typecheck, and in the **running** dev server (see `docs/friends.md`), or you get stale-client errors.
 - **Render**: never put a `value:` on a dashboard-tunable env key in `render.yaml` (see Deployment).
 - **The info / invite / top bar** is the bar with the picture, Invite and the icon buttons (leaderboard, friends, settings): every such bar (lobby, Play screen) wears `.info-bar` (`index.css`: a bit taller, more room below so the icons' lip stays inside its border); the game screens use `TopBar`. New bars with those icons use the same class.
+- **All in-game text uses `pixel-text/pixelText.ts` (or the Pogo TTFs at their listed sizes). Never use other fonts for game text.** (Bankrupt!: `apps/web/src/games/bankrupt/pixel-text/`: `pixelTextSVG`, `rentOnTileSVG`, `priceOnTileSVG`, fonts `font5` / `font4` / `digits7`; TTFs `PogoPixel` at 8 x the art scale, `PogoPixelSmall` at 6 x, `PogoDigits` at 10 x, no smoothing, no letter-spacing.)
 - **Pictures** are always the `Avatar` tile; names in JSX go through `PlayerName` (dev tag).
 - **Docker / ports**: the dev stack is localhost-only (`make up`), `make up-lan` for phones; host ports can move with `HOST_SERVER_PORT` / `HOST_WEB_PORT` (`docs/security.md`).
 - Standing user rules live in the memory directory (push only when told; UI-only changes need no e2e).

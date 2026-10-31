@@ -52,7 +52,7 @@ export function LuckCard({
   const box = useRef<HTMLDivElement>(null);
   // Fits the middle of the board it slides over.
   const s = useArtScale(box, CARD_W, true, CARD_H);
-  const title = text(TITLE[kind], CARD_W / 2, 12, 2, 2);
+  const title = text(TITLE[kind], CARD_W / 2, 12, 2);
   return (
     <div
       className="flex h-full w-full items-center justify-center overflow-hidden bg-[#101628]/60 p-[1.5%]"

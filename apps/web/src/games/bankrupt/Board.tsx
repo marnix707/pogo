@@ -3,15 +3,12 @@ import type { ReactNode } from 'react';
 import { bankrupt } from '@pogo/shared';
 import { gridPos } from './grid';
 import { art } from './art';
-import { BOARD_PX, INNER, TILE_PITCH, TILE_PX, cityArt } from './cityArt';
+import { BOARD_PX, INNER, TILE_PITCH, TILE_PX, cityArt, slug } from './cityArt';
 import { STEP_MS } from './timing';
 import { useArtScale } from './useArtScale';
-import { text } from './PropertyCard';
-import font from '../../assets/sprites/bankrupt/city/pixel-font.json';
+import { measure, pixelTextSVG, priceOnTileSVG, rentOnTileSVG } from './pixel-text/pixelText';
 import layout from '../../assets/sprites/bankrupt/city/card-layout.json';
 
-const TAG7 = font.tag_digits7 as Record<string, string[]>;
-const FONT4 = font.font4 as Record<string, string[]>;
 const SPECIAL_DARK = (layout.groups as Record<string, string[]>).special![2]!;
 export const money = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString('en-US')}`;
 
@@ -27,8 +24,6 @@ export const SEAT_HEX: Record<string, string> = {
   orange: '#eb6b43',
 };
 
-/** Seat colours that are too light for cream text. */
-const LIGHT_SEATS = new Set(['yellow', 'orange']);
 const BUILD = ['build-house', 'build-shop', 'build-hotel'] as const;
 
 /**
@@ -81,15 +76,27 @@ export function Board({
           className="absolute inset-0 h-full w-full"
           style={{ imageRendering: 'pixelated' }}
         />
-        {/* owner frames and buildings */}
+        {/* owned spaces: the artist's owned tile (the owner's colour in the band, no frame) with the rent on it, and buildings */}
         {state.board.tiles.map((tile, i) => {
           const holding = state.owned[tile.id];
           if (!holding) return null;
           const { x, y } = at(i);
           const seat = state.players.findIndex((p) => p.id === holding.owner);
+          const file = tile.kind === 'property' ? `city-${slug(tile)}` : slug(tile);
           return (
             <span key={tile.id}>
-              {/* once somebody owns it the price band shows the rent to pay instead of the price */}
+              <img
+                src={cityArt(`${file}-${seatColour(seat)}`)}
+                alt=""
+                data-testid={`bk-owner-${tile.id}`}
+                className="pointer-events-none absolute"
+                style={{
+                  left: pct(x),
+                  top: pct(y),
+                  width: pct(TILE_PX),
+                  imageRendering: 'pixelated',
+                }}
+              />
               {(tile.kind === 'property' || tile.kind === 'transport') && (
                 <svg
                   aria-hidden
@@ -98,19 +105,11 @@ export function Board({
                   shapeRendering="crispEdges"
                   className="pointer-events-none absolute"
                   style={{ left: pct(x), top: pct(y), width: pct(TILE_PX), height: pct(TILE_PX) }}
-                >
-                  <rect
-                    x={1}
-                    y={2}
-                    width={31}
-                    height={8}
-                    fill={SEAT_HEX[seatColour(seat)] ?? '#101628'}
-                  />
-                  <path
-                    d={text(`$${bankrupt.rentOf(state, tile)}`, 16.5, 2, 1, 1, 'centre', TAG7)}
-                    fill={LIGHT_SEATS.has(seatColour(seat)) ? '#101628' : '#f7f1e4'}
-                  />
-                </svg>
+                  // (pixelText draws the rent: the same pixels as the art)
+                  dangerouslySetInnerHTML={{
+                    __html: rentOnTileSVG(bankrupt.rentOf(state, tile), 0, 0),
+                  }}
+                />
               )}
               {holding.level > 0 && (
                 <img
@@ -129,11 +128,11 @@ export function Board({
             </span>
           );
         })}
-        {/* special spaces: the name moves to the bottom; free ones show their price in a dark band at the top */}
+        {/* free special spaces: a dark band with the price at the top, the name at the bottom */}
         {state.board.tiles.map((tile, i) => {
-          if (tile.kind !== 'transport') return null;
+          if (tile.kind !== 'transport' || state.owned[tile.id]) return null;
           const { x, y } = at(i);
-          const owned = !!state.owned[tile.id];
+          const label = (tile.id === 'electricity' ? 'POWER' : tile.name).toUpperCase();
           return (
             <svg
               key={`sp-${tile.id}`}
@@ -144,24 +143,19 @@ export function Board({
               className="pointer-events-none absolute"
               style={{ left: pct(x), top: pct(y), width: pct(TILE_PX), height: pct(TILE_PX) }}
             >
-              {!owned && (
-                <>
-                  <rect x={1} y={2} width={31} height={8} fill={SPECIAL_DARK} />
-                  <path d={text(`$${tile.price}`, 16.5, 2, 1, 1, 'centre', TAG7)} fill="#f7f1e4" />
-                </>
-              )}
+              <rect x={1} y={2} width={31} height={8} fill={SPECIAL_DARK} />
+              <g dangerouslySetInnerHTML={{ __html: priceOnTileSVG(tile.price, 0, 0) }} />
               <rect x={2} y={25} width={29} height={6} fill="#f7f1e4" />
-              <path
-                d={text(
-                  tile.id === 'electricity' ? 'POWER' : tile.name,
-                  16.5,
-                  26,
-                  1,
-                  1,
-                  'centre',
-                  FONT4,
-                )}
-                fill="#3f7a62"
+              <g
+                dangerouslySetInnerHTML={{
+                  __html: pixelTextSVG(
+                    label,
+                    Math.floor((TILE_PX - measure(label, 'font4').width) / 2),
+                    26,
+                    '#3f7a62',
+                    'font4',
+                  ),
+                }}
               />
             </svg>
           );
