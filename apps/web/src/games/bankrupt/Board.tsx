@@ -1,8 +1,8 @@
 import { useRef } from 'react';
 import type { ReactNode } from 'react';
 import { bankrupt } from '@pogo/shared';
+import { chevronsPath, tileChevronsAt } from './chevrons';
 import { gridPos } from './grid';
-import { art } from './art';
 import { BOARD_PX, INNER, TILE_PITCH, TILE_PX, cityArt, slug } from './cityArt';
 import { STEP_MS } from './timing';
 import { useArtScale } from './useArtScale';
@@ -23,8 +23,6 @@ export const SEAT_HEX: Record<string, string> = {
   purple: '#935adc',
   orange: '#eb6b43',
 };
-
-const BUILD = ['build-house', 'build-shop', 'build-hotel'] as const;
 
 /**
  * The board in the artist's pixel art: the 257 x 257 board picture, owner frames over owned spaces, buildings,
@@ -105,25 +103,27 @@ export function Board({
                   shapeRendering="crispEdges"
                   className="pointer-events-none absolute"
                   style={{ left: pct(x), top: pct(y), width: pct(TILE_PX), height: pct(TILE_PX) }}
-                  // (pixelText draws the rent: the same pixels as the art)
-                  dangerouslySetInnerHTML={{
-                    __html: rentOnTileSVG(bankrupt.rentOf(state, tile), 0, 0),
-                  }}
-                />
-              )}
-              {holding.level > 0 && (
-                <img
-                  src={art(BUILD[Math.min(2, holding.level - 1)]!)}
-                  alt=""
-                  data-testid={`bk-level-${tile.id}`}
-                  className="pointer-events-none absolute"
-                  style={{
-                    left: pct(x + 20),
-                    top: pct(y + 19),
-                    width: pct(12),
-                    imageRendering: 'pixelated',
-                  }}
-                />
+                >
+                  {/* (pixelText draws the rent: the same pixels as the art) */}
+                  <g
+                    dangerouslySetInnerHTML={{
+                      __html: rentOnTileSVG(bankrupt.rentOf(state, tile), 0, 0),
+                    }}
+                  />
+                  {/* one ^ per upgrade, stacked beside the rent like rank insignia */}
+                  {holding.level > 0 && tile.kind === 'property' && (
+                    <path
+                      data-testid={`bk-level-${tile.id}`}
+                      data-level={holding.level}
+                      fill="#101628"
+                      d={chevronsPath(
+                        holding.level,
+                        tileChevronsAt(holding.level).x,
+                        tileChevronsAt(holding.level).y,
+                      )}
+                    />
+                  )}
+                </svg>
               )}
             </span>
           );

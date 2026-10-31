@@ -4,7 +4,7 @@ import type { bankrupt } from '@pogo/shared';
 import { measure, pixelTextRects } from './pixel-text/pixelText';
 import type { FontName } from './pixel-text/pixelText';
 import layout from '../../assets/sprites/bankrupt/city/card-layout.json';
-import { art } from './art';
+import { chevronsPath } from './chevrons';
 import { cityArt, slug } from './cityArt';
 import { useArtScale } from './useArtScale';
 
@@ -168,9 +168,9 @@ export function PropertyCard({
       ? [
           { icon: null, label: 'EMPTY', value: tile.rent[0]! },
           { icon: null, label: 'FULL SET', value: tile.rent[0]! * 2 },
-          { icon: 'build-house', label: 'HOUSE', value: tile.rent[1]! },
-          { icon: 'build-shop', label: 'SHOP', value: tile.rent[2]! },
-          { icon: 'build-hotel', label: 'HOTEL', value: tile.rent[3]! },
+          { icon: 'up1', label: 'LEVEL 1', value: tile.rent[1]! },
+          { icon: 'up2', label: 'LEVEL 2', value: tile.rent[2]! },
+          { icon: 'up3', label: 'LEVEL 3', value: tile.rent[3]! },
         ]
       : tile.rent.map((r, i) => ({
           icon: null,
@@ -190,7 +190,12 @@ export function PropertyCard({
             {on && (
               <rect x={10} y={y - 4} width={132} height={rowH - 6} fill="#fdcf51" opacity="0.55" />
             )}
-            {r.icon && <image href={art(r.icon)} x={12} y={y - 3} width={12} height={12} />}
+            {r.icon && (
+              <path
+                d={chevronsPath(Number(r.icon.slice(2)), 14, y - Number(r.icon.slice(2)) + 3)}
+                fill={NAVY}
+              />
+            )}
             <path d={text(r.label, r.icon ? 28 : 14, y + 1, 1, 'left')} fill={LABEL} />
             <path d={text(dollars(r.value), 138, y - 2, 2, 'right')} fill={NAVY} />
           </g>

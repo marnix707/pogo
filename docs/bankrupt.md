@@ -76,3 +76,5 @@ Nobody can roll (or pay jail / wait) while the previous player's token is still 
 - **All game text** (card titles, PRICE / RENT / SELL, the values, the rent table, the upgrade tag, names) is drawn with `pixelText.ts` (`text()` in `PropertyCard.tsx` wraps it; `font5`, `font4`, `digits7`); the kit's old `pixel-font.json` is gone. Rule in CLAUDE.md. HTML text in the interface (player tags, buttons, the luck card's sentence) is ordinary UI text.
 
 The trade pop-up and the pulsing spaces only appear once everything before them has been played out (the walk, the card, the payments): `tradeOn` in `BankruptGame.tsx`.
+
+**Upgrades on the board**: no building icons any more. Each upgrade is one pixel chevron (^, `chevrons.ts`) in the rent box, stacked tight beside the rent like rank insignia (level 3 = three) and navy like the rent (`bk-level-<id>`, `data-level`). The back of a card shows the same emblem per level (LEVEL 1-3).
