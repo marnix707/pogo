@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { bankrupt } from '@pogo/shared';
 import { ICON_OF_TILE, BUILD_ICONS, art, tokenOf } from './art';
+import { STEP_MS } from './timing';
 import { gridPos } from './grid';
 
 export const money = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString('en-US')}`;
@@ -11,12 +12,10 @@ type Tile = bankrupt.Tile;
 function Space({
   tile,
   state,
-  tokens,
   onTap,
 }: {
   tile: Tile;
   state: bankrupt.BankruptState;
-  tokens: { id: string; seat: number }[];
   onTap: () => void;
 }) {
   const holding = state.owned[tile.id];
@@ -97,22 +96,6 @@ function Space({
           ))}
         </span>
       )}
-
-      {/* Tokens standing here. */}
-      {tokens.length > 0 && (
-        <span className="pointer-events-none absolute inset-0 flex flex-wrap content-center items-center justify-center gap-[2%] p-[6%]">
-          {tokens.map((t) => (
-            <img
-              key={t.id}
-              src={art(`token-${tokenOf(t.seat)}`)}
-              alt=""
-              data-testid={`bk-token-${t.id}`}
-              className="h-[5.2cqw] w-[5.2cqw] drop-shadow"
-              style={{ imageRendering: 'pixelated' }}
-            />
-          ))}
-        </span>
-      )}
     </button>
   );
 }
@@ -142,33 +125,66 @@ export function Board({
   const dim = n / 4 + 1;
   return (
     <div className="[container-type:inline-size]" data-testid="bk-board">
-      <div
-        className="grid aspect-square w-full gap-px overflow-hidden rounded-md border-2 border-[#101628] bg-[#101628]"
-        style={{
-          gridTemplateColumns: `repeat(${dim}, minmax(0, 1fr))`,
-          gridTemplateRows: `repeat(${dim}, minmax(0, 1fr))`,
-        }}
-      >
-        {state.board.tiles.map((tile, i) => {
-          const { row, col } = gridPos(i, n);
-          const tokens = state.players
-            .map((p, seat) => ({ id: p.id, seat, at: shown[p.id] ?? p.pos, out: p.bankrupt }))
-            .filter((t) => t.at === i && !t.out);
-          return (
-            <div
-              key={tile.id}
-              style={{ gridRow: row + 1, gridColumn: col + 1 }}
-              className="flex min-w-0"
-            >
-              <Space tile={tile} state={state} tokens={tokens} onTap={() => onTile(tile.id)} />
-            </div>
-          );
-        })}
+      <div className="relative">
         <div
-          className="flex flex-col items-center justify-center gap-[3%] bg-[#c3d5e0] p-[2%]"
-          style={{ gridRow: `2 / ${dim}`, gridColumn: `2 / ${dim}` }}
+          className="grid aspect-square w-full gap-px overflow-hidden rounded-md border-2 border-[#101628] bg-[#101628]"
+          style={{
+            gridTemplateColumns: `repeat(${dim}, minmax(0, 1fr))`,
+            gridTemplateRows: `repeat(${dim}, minmax(0, 1fr))`,
+          }}
         >
-          {children}
+          {state.board.tiles.map((tile, i) => {
+            const { row, col } = gridPos(i, n);
+            return (
+              <div
+                key={tile.id}
+                style={{ gridRow: row + 1, gridColumn: col + 1 }}
+                className="flex min-w-0"
+              >
+                <Space tile={tile} state={state} onTap={() => onTile(tile.id)} />
+              </div>
+            );
+          })}
+          <div
+            className="flex flex-col items-center justify-center gap-[3%] bg-[#c3d5e0] p-[2%]"
+            style={{ gridRow: `2 / ${dim}`, gridColumn: `2 / ${dim}` }}
+          >
+            {children}
+          </div>
+        </div>
+        {/* The tokens glide from space to space (and hop on every step). */}
+        <div className="pointer-events-none absolute inset-0">
+          {state.players.map((p, seat) => {
+            if (p.bankrupt) return null;
+            const at = shown[p.id] ?? p.pos;
+            const { row, col } = gridPos(at, n);
+            // Tokens that share a space stand side by side.
+            const mates = state.players.filter((q) => !q.bankrupt && (shown[q.id] ?? q.pos) === at);
+            const k = mates.findIndex((q) => q.id === p.id);
+            const spread = mates.length > 1 ? (k - (mates.length - 1) / 2) * 3.4 : 0;
+            return (
+              <span
+                key={p.id}
+                data-testid={`bk-token-${p.id}`}
+                data-at={at}
+                className="absolute"
+                style={{
+                  left: `${((col + 0.5) / dim) * 100}%`,
+                  top: `${((row + 0.5) / dim) * 100}%`,
+                  transform: `translate(calc(-50% + ${spread}cqw), -50%)`,
+                  transition: `left ${STEP_MS}ms linear, top ${STEP_MS}ms linear, transform ${STEP_MS}ms linear`,
+                }}
+              >
+                <img
+                  key={at}
+                  src={art(`token-${tokenOf(seat)}`)}
+                  alt=""
+                  className="bk-hop block h-[5.4cqw] w-[5.4cqw] drop-shadow"
+                  style={{ imageRendering: 'pixelated', animationDuration: `${STEP_MS}ms` }}
+                />
+              </span>
+            );
+          })}
         </div>
       </div>
     </div>

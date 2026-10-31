@@ -10,9 +10,9 @@ export function BankruptRules({ open, onClose }: { open: boolean; onClose: () =>
           worth: cash plus what your spaces and buildings sell for.
         </li>
         <li>
-          <b className="text-neon">Your turn:</b> roll two dice and walk your token round the board.
-          A double lets you roll again; three doubles in a row send you to jail. Passing or landing
-          on <b>Start</b> pays your salary.
+          <b className="text-neon">Your turn:</b> roll the die and walk your token round the board.
+          A six lets you roll again (no penalty). Passing or landing on <b>Start</b> pays your
+          salary.
         </li>
         <li>
           <b className="text-neon">Free space:</b> buy it, or put it up for <b>auction</b>:
@@ -26,10 +26,6 @@ export function BankruptRules({ open, onClose }: { open: boolean; onClose: () =>
         <li>
           <b className="text-neon">Luck:</b> the <b>?</b> space draws a card. The <b>Auction</b>{' '}
           corner lets you auction one of your own spaces (you can cancel it).
-        </li>
-        <li>
-          <b className="text-neon">Trades:</b> swap spaces with another player. When they accept,
-          you both get $100 from the bank.
         </li>
         <li>
           <b className="text-neon">Money:</b> your cash can go below zero, but below -$500 you are{' '}

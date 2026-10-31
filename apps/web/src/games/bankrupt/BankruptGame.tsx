@@ -6,8 +6,9 @@ import { PlayerName } from '../../components/PlayerName';
 import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
 import { Board, TOKEN_HEX, money } from './Board';
+import { BuyOverlay } from './BuyOverlay';
 import { TileSheet } from './TileSheet';
-import { TradeOffer, TradeSheet } from './TradeSheet';
+import { useCashFx } from './useCashFx';
 import { art, dieUrl, tokenOf } from './art';
 
 type State = bankrupt.BankruptState;
@@ -17,7 +18,7 @@ function describe(s: State, name: (id: string) => string): string {
   const tile = (id: string) => s.board.tiles.find((t) => t.id === id)?.name ?? id;
   const parts: string[] = [];
   for (const e of s.events) {
-    if (e.k === 'roll') parts.push(`${name(e.by)} rolled ${e.dice[0] + e.dice[1]}`);
+    if (e.k === 'roll') parts.push(`${name(e.by)} rolled ${e.dice}`);
     else if (e.k === 'salary') parts.push(`${name(e.by)} passed Start: +${money(e.amount)}`);
     else if (e.k === 'rent') parts.push(`${name(e.by)} paid ${name(e.to)} ${money(e.amount)} rent`);
     else if (e.k === 'buy') parts.push(`${name(e.by)} bought ${tile(e.tile)}`);
@@ -29,11 +30,9 @@ function describe(s: State, name: (id: string) => string): string {
     else if (e.k === 'auction')
       parts.push(
         e.winner
-          ? `${name(e.winner)} won ${tile(e.tile)} for ${money(e.amount)}`
+          ? `${name(e.winner)} won ${tile(e.tile)} for ${money(e.amount)}${e.bonus > 0 ? ` · +${money(e.bonus)} each` : ''}`
           : `${tile(e.tile)} was not sold`,
       );
-    else if (e.k === 'trade')
-      parts.push(`${name(e.from)} and ${name(e.to)} made a trade: +$100 each`);
     else if (e.k === 'bankrupt') parts.push(`${name(e.by)} is bankrupt!`);
   }
   return parts.join(' · ');
@@ -91,7 +90,8 @@ function useWalking(state: State) {
     );
     return () => clearTimeout(t);
   }, [state, shown, rolling, n]);
-  return { shown, rolling };
+  const settled = !rolling && state.players.every((p) => (shown[p.id] ?? p.pos) === p.pos);
+  return { shown, rolling, settled };
 }
 
 export function BankruptGame({ room, me, sendMove }: GameUiProps) {
@@ -102,9 +102,16 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const mover = players[state.turn]!;
   const nickOf = (id: string) => room.members.find((m) => m.id === id);
   const name = (id: string) => nickOf(id)?.nickname ?? 'Player';
-  const { shown, rolling } = useWalking(state);
+  const { shown, rolling, settled } = useWalking(state);
+  const cashShown = useCashFx(state, settled);
+  // The die tumbles through random faces while it rolls.
+  const [face, setFace] = useState(1);
+  useEffect(() => {
+    if (!rolling) return;
+    const t = setInterval(() => setFace(1 + Math.floor(Math.random() * 6)), 90);
+    return () => clearInterval(t);
+  }, [rolling]);
   const [tileOpen, setTileOpen] = useState<string | null>(null);
-  const [tradeOpen, setTradeOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [tip, setTip] = useState<string | null>(null);
   const finished = state.phase === 'over';
@@ -135,7 +142,9 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       : ` · round ${state.round}`;
 
   const tag = (p: State['players'][number], seat: number) => {
-    const worth = bankrupt.netWorth(state, p.id);
+    const cash = cashShown[p.id] ?? p.cash;
+    // The green number follows the cash while a payment is still being shown.
+    const worth = bankrupt.netWorth(state, p.id) - (p.cash - cash);
     const isMover = p.id === mover.id && !finished;
     return (
       <div
@@ -165,7 +174,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           data-testid={`bk-cash-${p.id}`}
           onClick={() => setTip(tip === `cash-${p.id}` ? null : `cash-${p.id}`)}
         >
-          <span className={p.cash < 0 ? 'text-[#ff8f73]' : 'text-onbg'}>{money(p.cash)}</span>{' '}
+          <span className={cash < 0 ? 'text-[#ff8f73]' : 'text-onbg'}>{money(cash)}</span>{' '}
           <span className="text-[#7ee08c]" data-testid={`bk-networth-${p.id}`}>
             ({money(worth)})
           </span>
@@ -210,21 +219,20 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         <img
           src={art('landmark')}
           alt=""
-          className="h-[44%] w-auto"
+          className="h-[32%] w-auto"
           style={{ imageRendering: 'pixelated' }}
         />
-        <div className="flex gap-2" data-testid="bk-dice">
-          {(state.dice ?? [0, 0]).map((d, i) =>
-            d > 0 || rolling ? (
-              <img
-                key={i}
-                src={dieUrl(rolling ? 1 + ((state.seq + i * 2) % 6) : d)}
-                alt={rolling ? 'rolling' : `die ${d}`}
-                className={`h-[7cqw] w-[7cqw] ${rolling ? 'animate-pulse' : ''}`}
-                style={{ imageRendering: 'pixelated' }}
-              />
-            ) : null,
-          )}
+        <div className="flex h-[17cqw] items-center" data-testid="bk-dice">
+          {(state.dice ?? 0) > 0 || rolling ? (
+            <img
+              src={dieUrl(rolling ? face : state.dice!)}
+              alt={rolling ? 'rolling' : `die ${state.dice}`}
+              data-testid="bk-die"
+              data-value={rolling ? 0 : state.dice}
+              className={`h-[17cqw] w-[17cqw] ${rolling ? 'bk-tumble' : ''}`}
+              style={{ imageRendering: 'pixelated' }}
+            />
+          ) : null}
         </div>
         <p
           className="line-clamp-3 max-w-full px-1 text-center text-[2.2cqw] font-bold leading-tight text-[#2b3b57]"
@@ -256,31 +264,14 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           </p>
         ) : state.auction ? (
           <AuctionPanel state={state} me={me} name={name} send={send} busy={busy} />
-        ) : state.trade ? (
-          <TradeOffer state={state} me={me} name={name} send={send} busy={busy} />
         ) : !myTurn ? (
           <p className="label text-center text-onbg/80" data-testid="bk-wait">
             Waiting for {name(mover.id)}…
           </p>
         ) : state.phase === 'buy' && owedBuy ? (
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="gold"
-              data-testid="bk-buy"
-              disabled={busy || mePlayer!.cash < owedBuy.price}
-              onClick={() => void send({ type: 'buy' })}
-            >
-              Buy {money(owedBuy.price)}
-            </Button>
-            <Button
-              variant="secondary"
-              data-testid="bk-decline"
-              disabled={busy}
-              onClick={() => void send({ type: 'decline' })}
-            >
-              Auction
-            </Button>
-          </div>
+          <p className="label text-center text-onbg/80" data-testid="bk-buy-hint">
+            {settled ? 'Buy it or cancel…' : 'Walking…'}
+          </p>
         ) : mePlayer!.jail > 0 && state.phase === 'roll' ? (
           <div className="grid grid-cols-2 gap-2">
             <Button
@@ -311,35 +302,19 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           </Button>
         ) : (
           <div className="flex flex-col gap-2">
-            {state.auctionRight && (
-              <p className="label text-center text-[10px] text-onbg/80">
-                You are on the Auction corner: tap one of your spaces to auction it.
-              </p>
-            )}
+            <p className="label text-center text-[10px] text-onbg/80">
+              You are on the Auction corner: tap one of your spaces to auction it, or skip.
+            </p>
             <Button
-              variant="gold"
+              variant="secondary"
               data-testid="bk-end"
               disabled={busy || rolling}
               onClick={() => void send({ type: 'endTurn' })}
             >
-              End turn
+              Skip
             </Button>
           </div>
         )}
-        {myTurn &&
-          !state.auction &&
-          !state.trade &&
-          (state.phase === 'roll' || state.phase === 'after') &&
-          players.some((p) => p.id !== me && !p.bankrupt) && (
-            <Button
-              variant="secondary"
-              data-testid="bk-trade"
-              disabled={busy}
-              onClick={() => setTradeOpen(true)}
-            >
-              Trade
-            </Button>
-          )}
         {mePlayer && mePlayer.cash < 0 && !mePlayer.bankrupt && (
           <p className="label text-center text-[10px] text-[#ff8f73]" data-testid="bk-warning">
             You are in debt. Below {money(state.board.bankruptBelow)} you are bankrupt: tap a space
@@ -348,19 +323,14 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         )}
       </div>
 
-      <TradeSheet
-        state={state}
-        me={me}
-        open={tradeOpen}
-        name={name}
-        send={send}
-        onClose={() => setTradeOpen(false)}
-      />
+      {owedBuy && settled && (
+        <BuyOverlay state={state} me={me} tile={owedBuy} busy={busy} send={send} />
+      )}
       <TileSheet
         state={state}
         me={me}
         tileId={tileOpen}
-        canAct={myTurn && !state.auction && !state.trade && state.phase !== 'buy'}
+        canAct={myTurn && !state.auction && state.phase !== 'buy'}
         send={send}
         name={name}
         onClose={() => setTileOpen(null)}

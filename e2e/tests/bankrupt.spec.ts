@@ -27,6 +27,10 @@ test('Bankrupt!: play a few rounds against the computer', async ({ browser }) =>
   let seq = 0;
   while (!(await page.getByTestId('results-panel').isVisible())) {
     if (Date.now() - started > 280_000) break;
+    if (!shot && (await page.getByTestId('bk-buy-overlay').count())) {
+      await page.waitForTimeout(400);
+      await page.screenshot({ path: 'test-results/bankrupt-buy.png' });
+    }
     const btn = ['bk-buy', 'bk-roll', 'bk-end', 'bk-pass', 'bk-pay-jail', 'bk-wait-jail'];
     let clicked = false;
     for (const id of btn) {

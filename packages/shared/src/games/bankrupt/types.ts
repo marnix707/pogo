@@ -14,6 +14,8 @@ export interface BankruptOptions {
   target: number;
   /** After this many rounds the richest player wins; 0 = no limit. */
   turns: number;
+  /** A space somebody does not buy goes to auction (on), or just stays free (off). */
+  auctionOnDecline: boolean;
 }
 
 export interface BankruptPlayer {
@@ -43,28 +45,18 @@ export interface Auction {
   passed: PlayerId[];
 }
 
-export interface Trade {
-  from: PlayerId;
-  to: PlayerId;
-  /** Spaces `from` gives / `to` gives. */
-  give: string[];
-  take: string[];
-  /** Cash `from` pays to `to` (negative: `to` pays `from`). */
-  cash: number;
-}
-
 export type BankruptPhase =
-  /** The mover may build / sell / trade, then rolls (or pays to leave jail / waits in jail). */
+  /** The mover may build / sell, then rolls (or pays to leave jail / waits in jail). */
   | 'roll'
   /** The mover landed on a free space and must buy it or let it go to auction. */
   | 'buy'
-  /** The mover's turn is played: build / sell / trade, then end the turn. */
+  /** The mover stands on the Auction corner and may auction a space (or skip); every other turn ends by itself. */
   | 'after'
   | 'auction'
   | 'over';
 
 export type BankruptEvent =
-  | { k: 'roll'; by: PlayerId; dice: [number, number] }
+  | { k: 'roll'; by: PlayerId; dice: number }
   | { k: 'move'; by: PlayerId; from: number; to: number; passedStart: boolean }
   | { k: 'rent'; by: PlayerId; to: PlayerId; tile: string; amount: number }
   | { k: 'buy'; by: PlayerId; tile: string; price: number }
@@ -74,8 +66,15 @@ export type BankruptEvent =
   | { k: 'salary'; by: PlayerId; amount: number }
   | { k: 'build'; by: PlayerId; tile: string; level: number }
   | { k: 'sold'; by: PlayerId; tile: string; amount: number }
-  | { k: 'auction'; tile: string; winner: PlayerId | null; amount: number }
-  | { k: 'trade'; from: PlayerId; to: PlayerId }
+  /** `bonus`: what the seller and the winner each got from the bank when a player sold to a player. */
+  | {
+      k: 'auction';
+      tile: string;
+      winner: PlayerId | null;
+      seller: PlayerId | null;
+      amount: number;
+      bonus: number;
+    }
   | { k: 'bankrupt'; by: PlayerId };
 
 export interface BankruptState {
@@ -89,14 +88,13 @@ export interface BankruptState {
   /** 1-based round; a round is everybody's turn. */
   round: number;
   phase: BankruptPhase;
-  /** Doubles rolled in a row this turn. */
-  doubles: number;
-  /** The last roll, for the utility rent and the dice on screen. */
-  dice: [number, number] | null;
+  /** Sixes rolled in a row this turn (a six rolls again, with no penalty). */
+  sixes: number;
+  /** The last roll, for the utility rent and the die on screen. */
+  dice: number | null;
   /** The mover stands on the Auction corner and may auction one of their spaces. */
   auctionRight: boolean;
   auction: Auction | null;
-  trade: Trade | null;
   /** What the last move did, in order (the screen replays it). */
   events: BankruptEvent[];
   /** Counts moves, so the screen can tell a new event list from the last one. */
@@ -119,11 +117,7 @@ export type BankruptMove =
   | { type: 'startAuction'; tile: string }
   | { type: 'bid'; amount: number }
   | { type: 'passBid' }
-  | { type: 'cancelAuction' }
-  | { type: 'proposeTrade'; to: PlayerId; give: string[]; take: string[]; cash: number }
-  | { type: 'acceptTrade' }
-  | { type: 'declineTrade' }
-  | { type: 'cancelTrade' };
+  | { type: 'cancelAuction' };
 
 /** Everything is public in this game, so the view is the state. */
 export type BankruptView = BankruptState;

@@ -5,7 +5,7 @@
   "bankruptBelow": -500,
   "startCash": 1000,
   "startCashStep": 50,
-  "tradeBonus": 100,
+  "auctionBonus": 100,
   "cardTile": "cards",
   "tiles": [
     {
@@ -188,7 +188,7 @@
       "name": "Electricity",
       "price": 150,
       "sell": 120,
-      "rent": [6]
+      "rent": [12]
     },
     {
       "id": "beijing",

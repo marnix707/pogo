@@ -51,6 +51,7 @@ const optionsSchema: z.ZodType<BankruptOptions, z.ZodTypeDef, unknown> = z
       .int()
       .refine((n) => (TURN_LIMITS as readonly number[]).includes(n))
       .default(0),
+    auctionOnDecline: z.boolean().default(true),
   })
   .strict();
 
@@ -70,16 +71,6 @@ export const bankruptMoveSchema: z.ZodType<BankruptMove, z.ZodTypeDef, unknown> 
     z.object({ type: z.literal('bid'), amount: z.number().int().min(1).max(1_000_000) }),
     z.object({ type: z.literal('passBid') }),
     z.object({ type: z.literal('cancelAuction') }),
-    z.object({
-      type: z.literal('proposeTrade'),
-      to: z.string().min(1).max(64),
-      give: z.array(tileKey).max(30),
-      take: z.array(tileKey).max(30),
-      cash: z.number().int().min(-100_000).max(100_000),
-    }),
-    z.object({ type: z.literal('acceptTrade') }),
-    z.object({ type: z.literal('declineTrade') }),
-    z.object({ type: z.literal('cancelTrade') }),
   ]);
 
 const OK: MoveValidation = { ok: true };
@@ -114,11 +105,10 @@ function createInitialState(
     turn: 0,
     round: 1,
     phase: 'roll',
-    doubles: 0,
+    sixes: 0,
     dice: null,
     auctionRight: false,
     auction: null,
-    trade: null,
     events: [],
     seq: 0,
     winner: null,
@@ -133,7 +123,6 @@ function draft(s: BankruptState): BankruptState {
     players: s.players.map((p) => ({ ...p })),
     owned: Object.fromEntries(Object.entries(s.owned).map(([k, v]) => [k, { ...v }])),
     auction: s.auction ? { ...s.auction, passed: [...s.auction.passed] } : null,
-    trade: s.trade ? { ...s.trade, give: [...s.trade.give], take: [...s.trade.take] } : null,
     events: [],
     seq: s.seq + 1,
   };
@@ -156,7 +145,6 @@ function declareBankrupt(s: BankruptState, p: BankruptPlayer) {
   p.outAt = s.players.filter((x) => x.bankrupt).length;
   for (const [tile, h] of Object.entries(s.owned)) if (h.owner === p.id) delete s.owned[tile];
   s.events.push({ k: 'bankrupt', by: p.id });
-  if (s.trade && (s.trade.from === p.id || s.trade.to === p.id)) s.trade = null;
   if (s.auction?.seller === p.id) s.auction = null;
 }
 
@@ -182,7 +170,7 @@ function pay(
 function sendToJail(s: BankruptState, p: BankruptPlayer) {
   p.pos = tileIndex(s.board, s.board.tiles.find((t) => t.kind === 'jail')!.id);
   p.jail = s.board.jailTurns;
-  s.doubles = 0;
+  s.sixes = 0;
   s.events.push({ k: 'jail', by: p.id });
 }
 
@@ -198,7 +186,7 @@ function advanceTurn(s: BankruptState) {
   s.turn = i;
   if (wrapped) s.round += 1;
   s.phase = 'roll';
-  s.doubles = 0;
+  s.sixes = 0;
   s.dice = null;
   s.auctionRight = false;
   if (s.options.turns > 0 && s.round > s.options.turns) {
@@ -213,7 +201,6 @@ function endGame(s: BankruptState) {
   s.winner = best?.id ?? null;
   s.phase = 'over';
   s.auction = null;
-  s.trade = null;
 }
 
 function checkWin(s: BankruptState) {
@@ -226,13 +213,12 @@ function checkWin(s: BankruptState) {
       s.winner = [...reached].sort((a, b) => netWorth(s, b.id) - netWorth(s, a.id))[0]!.id;
       s.phase = 'over';
       s.auction = null;
-      s.trade = null;
     }
   }
 }
 
 /** The phase to return to when the mover has dealt with what they landed on. */
-const afterLanding = (s: BankruptState) => (s.doubles > 0 ? 'roll' : 'after');
+const afterLanding = (s: BankruptState) => (s.sixes > 0 ? 'roll' : 'after');
 
 function moveBy(s: BankruptState, p: BankruptPlayer, steps: number) {
   const n = s.board.tiles.length;
@@ -302,8 +288,29 @@ function resolveAuction(s: BankruptState) {
     const seller = a.seller ? (playerOf(s, a.seller) ?? null) : null;
     pay(s, winner, seller, a.high.amount);
     s.owned[a.tile] = { owner: winner.id, level: 0 };
-    s.events.push({ k: 'auction', tile: a.tile, winner: winner.id, amount: a.high.amount });
-  } else s.events.push({ k: 'auction', tile: a.tile, winner: null, amount: 0 });
+    // Selling to another player is a trade: the bank gives both of them a bonus.
+    const bonus = seller ? s.board.auctionBonus : 0;
+    if (seller) {
+      seller.cash += bonus;
+      winner.cash += bonus;
+    }
+    s.events.push({
+      k: 'auction',
+      tile: a.tile,
+      winner: winner.id,
+      seller: a.seller,
+      amount: a.high.amount,
+      bonus,
+    });
+  } else
+    s.events.push({
+      k: 'auction',
+      tile: a.tile,
+      winner: null,
+      seller: a.seller,
+      amount: 0,
+      bonus: 0,
+    });
   s.auction = null;
   s.phase = afterLanding(s);
 }
@@ -338,26 +345,8 @@ function validateMove(
     if (!state.auction) return err('There is no auction');
     return state.auction.seller === playerId ? OK : err('Only the seller can cancel the auction');
   }
-  if (move.type === 'acceptTrade' || move.type === 'declineTrade') {
-    const t = state.trade;
-    if (!t) return err('There is no trade offer');
-    if (t.to !== playerId) return err('Only the player the offer is for can answer it');
-    if (move.type === 'declineTrade') return OK;
-    const from = playerOf(state, t.from)!;
-    if (t.cash > 0 && from.cash < t.cash) return err('Not enough money');
-    if (t.cash < 0 && me.cash < -t.cash) return err('Not enough money');
-    return OK;
-  }
-  if (move.type === 'cancelTrade') {
-    if (!state.trade) return err('There is no trade offer');
-    return state.trade.from === playerId
-      ? OK
-      : err('Only the player the offer is for can answer it');
-  }
-
   // ---- everything else is the mover's
   if (!isMover) return err('Not your turn');
-  if (state.trade) return err('Answer the trade offer first');
   if (state.auction) return err('Finish the auction first');
   const free = state.phase === 'roll' || state.phase === 'after';
 
@@ -415,23 +404,6 @@ function validateMove(
       if (h?.owner !== playerId) return err('You do not own that space');
       return h.level > 0 ? err('Sell the buildings first') : OK;
     }
-    case 'proposeTrade': {
-      if (!free) return err('You cannot do that right now');
-      const other = playerOf(state, move.to);
-      if (!other || other.bankrupt || other.id === playerId)
-        return err('Pick a player to trade with');
-      if (move.give.length + move.take.length === 0 && move.cash === 0)
-        return err('Offer something to trade');
-      const mine = (id: string) =>
-        state.owned[id]?.owner === playerId && (state.owned[id]?.level ?? 0) === 0;
-      const theirs = (id: string) =>
-        state.owned[id]?.owner === other.id && (state.owned[id]?.level ?? 0) === 0;
-      if (!move.give.every(mine) || !move.take.every(theirs))
-        return err('You can only trade spaces without buildings');
-      if (move.cash > 0 && me.cash < move.cash) return err('Not enough money');
-      if (move.cash < 0 && other.cash < -move.cash) return err('Not enough money');
-      return OK;
-    }
   }
   return err('You cannot do that right now');
 }
@@ -452,17 +424,13 @@ function applyMove(
 
   switch (move.type) {
     case 'roll': {
-      const dice: [number, number] = [rng.int(6) + 1, rng.int(6) + 1];
-      s.dice = dice;
-      s.events.push({ k: 'roll', by: me.id, dice });
-      s.doubles = dice[0] === dice[1] ? s.doubles + 1 : 0;
-      if (s.doubles >= 3) {
-        sendToJail(s, me);
-        s.phase = 'after';
-      } else {
-        moveBy(s, me, dice[0] + dice[1]);
-        land(s, me, rng);
-      }
+      // One die. A six moves you and then lets you roll again, with no penalty however often it comes.
+      const die = rng.int(6) + 1;
+      s.dice = die;
+      s.events.push({ k: 'roll', by: me.id, dice: die });
+      s.sixes = die === 6 ? s.sixes + 1 : 0;
+      moveBy(s, me, die);
+      land(s, me, rng);
       break;
     }
     case 'payJail':
@@ -484,9 +452,11 @@ function applyMove(
       break;
     }
     case 'decline':
-      s.auction = { tile: s.board.tiles[me.pos]!.id, seller: null, high: null, passed: [] };
-      s.phase = 'auction';
-      resolveAuction(s);
+      if (s.options.auctionOnDecline) {
+        s.auction = { tile: s.board.tiles[me.pos]!.id, seller: null, high: null, passed: [] };
+        s.phase = 'auction';
+        resolveAuction(s);
+      } else s.phase = afterLanding(s); // not sold: it stays free
       break;
     case 'endTurn':
       advanceTurn(s);
@@ -531,30 +501,17 @@ function applyMove(
       resolveAuction(s);
       break;
     case 'cancelAuction':
-      s.events.push({ k: 'auction', tile: s.auction!.tile, winner: null, amount: 0 });
+      s.events.push({
+        k: 'auction',
+        tile: s.auction!.tile,
+        winner: null,
+        seller: s.auction!.seller,
+        amount: 0,
+        bonus: 0,
+      });
       s.auction = null;
       s.phase = afterLanding(s);
       break;
-    case 'proposeTrade':
-      s.trade = { from: me.id, to: move.to, give: move.give, take: move.take, cash: move.cash };
-      break;
-    case 'cancelTrade':
-    case 'declineTrade':
-      s.trade = null;
-      break;
-    case 'acceptTrade': {
-      const t = s.trade!;
-      const from = playerOf(s, t.from)!;
-      for (const id of t.give) s.owned[id] = { owner: t.to, level: 0 };
-      for (const id of t.take) s.owned[id] = { owner: t.from, level: 0 };
-      from.cash -= t.cash;
-      me.cash += t.cash;
-      from.cash += s.board.tradeBonus;
-      me.cash += s.board.tradeBonus;
-      s.events.push({ k: 'trade', from: t.from, to: t.to });
-      s.trade = null;
-      break;
-    }
   }
 
   // Somebody may have gone out (rent, a card, a bill): their holdings are back with the bank.
@@ -563,6 +520,9 @@ function applyMove(
     if (m.bankrupt && s.phase !== 'auction') advanceTurn(s);
     else if (s.auction === null && s.phase === 'auction') s.phase = afterLanding(s);
   }
+  // Every turn ends by itself once its landing is dealt with (no End turn button); only the Auction
+  // corner waits for the mover to auction a space or skip.
+  if (s.phase === 'after' && !s.auctionRight) advanceTurn(s);
   checkWin(s);
   return s;
 }
@@ -575,7 +535,6 @@ function getPlayerView(state: BankruptState): BankruptView {
 
 function getCurrentPlayers(state: BankruptState): PlayerId[] {
   if (state.phase === 'over') return [];
-  if (state.trade) return [state.trade.to];
   if (state.phase === 'auction' && state.auction)
     return bidders(state)
       .filter((p) => p.id !== state.auction!.high?.player)
@@ -618,8 +577,6 @@ function autoMove(state: BankruptState, playerId: PlayerId, _rng: Rng): AutoMove
     move,
     endsTurn,
   });
-
-  if (state.trade && state.trade.to === playerId) return done({ type: 'declineTrade' }, true);
 
   if (state.phase === 'auction' && state.auction) {
     const t = ownable(state, state.auction.tile)!;
@@ -675,15 +632,11 @@ export const bankruptGame: GameDefinition<
   minPlayers: MIN_PLAYERS,
   maxPlayers: MAX_PLAYERS,
   optionsSchema,
-  defaultOptions: { target: 5000, turns: 0 },
+  defaultOptions: { target: 5000, turns: 0, auctionOnDecline: true },
   moveSchema: bankruptMoveSchema,
-  // Building, selling and trade talk must not buy anybody more time.
+  // Building and selling must not buy anybody more time.
   isFreeMove: (move) =>
-    move.type === 'build' ||
-    move.type === 'sellBuilding' ||
-    move.type === 'sellProperty' ||
-    move.type === 'proposeTrade' ||
-    move.type === 'cancelTrade',
+    move.type === 'build' || move.type === 'sellBuilding' || move.type === 'sellProperty',
   createInitialState,
   validateMove,
   applyMove,
@@ -693,7 +646,7 @@ export const bankruptGame: GameDefinition<
   getResults,
   autoMove,
   supportsBots: true,
-  // The dice and the token's walk take a while on screen; computers wait for it.
+  // The die and the token's walk take a while on screen; computers wait for it.
   settleMs: (state) => {
     let ms = 0;
     for (const e of state.events) {

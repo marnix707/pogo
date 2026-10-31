@@ -114,6 +114,16 @@ save('icon-electricity', [
     '....ssss....',
     '.....ss.....'])
 
+# ---- a banknote that flies to the player who gets paid ----
+save('cash', [
+    'nnnnnnnnnnnn',
+    'ncccnnnnccnn',
+    'nccnncnnnccn',
+    'nncnccnncnnn',
+    'nnnncncnnccn',
+    'ncccnnnnccnn',
+    'nnnnnnnnnnnn'])
+
 # ---- buildings (what you can build on a colour set) ----
 save('build-house', [
     '....rr....',

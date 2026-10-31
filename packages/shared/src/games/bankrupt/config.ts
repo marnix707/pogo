@@ -41,7 +41,7 @@ export const tileSchema = z.discriminatedUnion('kind', [
     kind: z.literal('utility'),
     price: money,
     sell: money,
-    /** Rent = this x the dice just rolled. */
+    /** Rent = this x the die just rolled. */
     rent: z.tuple([money]),
   }),
 ]);
@@ -77,8 +77,8 @@ export const boardConfigSchema = z
     startCash: money,
     /** Extra start cash per seat in turn order (the later you play, the more you start with). */
     startCashStep: money,
-    /** Both players get this from the bank when a trade goes through. */
-    tradeBonus: money,
+    /** Seller and winner each get this from the bank when a player sells a space to another player in an auction. */
+    auctionBonus: money,
     /** The space that draws a card. */
     cardTile: tileId,
   })

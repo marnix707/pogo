@@ -11,7 +11,7 @@ const people = [
   { id: 'b', nickname: 'B', avatar: 'cat' },
   { id: 'c', nickname: 'C', avatar: 'owl' },
 ];
-const OPTIONS: BankruptOptions = { target: 0, turns: 0 };
+const OPTIONS: BankruptOptions = { target: 0, turns: 0, auctionOnDecline: true };
 
 const start = (n = 2, options = OPTIONS): BankruptState =>
   game.createInitialState(people.slice(0, n), options, createSeededRng(7));
@@ -87,6 +87,12 @@ describe('Bankrupt! board and set-up', () => {
 
   it('checks the lobby options', () => {
     expect(game.optionsSchema.safeParse({ target: 7000, turns: 30 }).success).toBe(true);
+    expect(game.optionsSchema.parse({})).toEqual({
+      target: 5000,
+      turns: 0,
+      auctionOnDecline: true,
+    });
+    expect(game.optionsSchema.safeParse({ auctionOnDecline: 'no' }).success).toBe(false);
     expect(game.optionsSchema.safeParse({ target: 0, turns: 0 }).success).toBe(true);
     expect(game.optionsSchema.safeParse({ target: 1234, turns: 0 }).success).toBe(false);
     expect(game.optionsSchema.safeParse({ target: 0, turns: 7 }).success).toBe(false);
@@ -97,17 +103,16 @@ describe('moving, buying and rent', () => {
   it('moves by the dice, buys the space and goes on to the next player', () => {
     let s = start();
     const a = mover(s).id;
-    s = play(s, a, { type: 'roll' }, dice(1, 2));
-    expect(s.dice).toEqual([1, 2]);
+    s = play(s, a, { type: 'roll' }, dice(3));
+    expect(s.dice).toBe(3);
     expect(s.players.find((p) => p.id === a)!.pos).toBe(idx('bangkok'));
     expect(s.phase).toBe('buy');
     expect(game.validateMove(s, a, { type: 'endTurn' }).ok).toBe(false);
+    const b = other(s);
     s = play(s, a, { type: 'buy' });
     expect(s.owned['bangkok']).toEqual({ owner: a, level: 0 });
     expect(cash(s, a)).toBe(1000 - 130);
-    expect(s.phase).toBe('after');
-    const b = other(s);
-    s = play(s, a, { type: 'endTurn' });
+    // The turn ends by itself (there is no End turn button).
     expect(mover(s).id).toBe(b);
     expect(s.phase).toBe('roll');
   });
@@ -116,7 +121,7 @@ describe('moving, buying and rent', () => {
     let s = start();
     const a = mover(s).id;
     s = patch(s, a, { pos: 26 });
-    s = play(s, a, { type: 'roll' }, dice(2, 3)); // 26 + 5 = 31 -> 3
+    s = play(s, a, { type: 'roll' }, dice(5)); // 26 + 5 = 31 -> 3
     expect(s.players.find((p) => p.id === a)!.pos).toBe(3);
     expect(cash(s, a)).toBe(1000 + 200);
   });
@@ -129,7 +134,7 @@ describe('moving, buying and rent', () => {
     s = patch(s, a, { pos: 0 });
     // Rio is 1 step away: roll 1+? impossible, so stand at the start of the row.
     s = patch(s, a, { pos: 27 }); // New York, one before Start
-    s = play(s, a, { type: 'roll' }, dice(1, 1)); // 2 steps: Start (salary), Rio
+    s = play(s, a, { type: 'roll' }, dice(2)); // 2 steps: Start (salary), Rio
     expect(cash(s, a)).toBe(1000 + 200 - 10);
     expect(cash(s, b)).toBe(1050 + 10);
     // With Delhi too the base rent doubles.
@@ -137,24 +142,30 @@ describe('moving, buying and rent', () => {
     expect(rentOf(set, tileById(set.board, 'rio') as never, null)).toBe(20);
   });
 
-  it('turns a double into another roll, and three doubles into jail', () => {
+  it('a six rolls again, with no penalty however often it comes', () => {
     let s = start();
     const a = mover(s).id;
-    s = play(s, a, { type: 'roll' }, dice(1, 1)); // delhi, a double
-    s = play(s, a, { type: 'decline' }); // starts a bank auction; the mover is a bidder too
-    s = play(s, other(s), { type: 'passBid' });
-    s = play(s, a, { type: 'passBid' });
-    expect(s.phase).toBe('roll');
-    expect(mover(s).id).toBe(a);
-    s = play(s, a, { type: 'roll' }, dice(2, 2)); // another double: moves on
-    s = play(s, a, { type: 'decline' });
-    s = play(s, other(s), { type: 'passBid' });
-    s = play(s, a, { type: 'passBid' });
-    s = play(s, a, { type: 'roll' }, dice(3, 3)); // third double: jail
-    const me = s.players.find((p) => p.id === a)!;
-    expect(me.jail).toBe(3);
-    expect(me.pos).toBe(idx('jail'));
-    expect(s.phase).toBe('after');
+    const b = other(s);
+    for (const [from, tile] of [
+      [0, 'madrid'],
+      [6, 'zurich'],
+      [12, 'auction'],
+    ] as const) {
+      s = play(s, a, { type: 'roll' }, dice(6)); // 6 steps
+      expect(s.players.find((p) => p.id === a)!.pos).toBe(from + 6);
+      expect(tileById(s.board, tile)).toBeDefined();
+      if (s.phase === 'buy') {
+        s = play(s, a, { type: 'decline' });
+        s = play(s, b, { type: 'passBid' });
+        s = play(s, a, { type: 'passBid' });
+      }
+      expect(s.phase).toBe('roll');
+      expect(mover(s).id).toBe(a);
+    }
+    // Three sixes in a row sent nobody to jail; a 3 ends the run.
+    expect(s.players.find((p) => p.id === a)!.jail).toBe(0);
+    s = play(s, a, { type: 'roll' }, dice(3));
+    expect(s.phase === 'buy' || s.phase === 'after').toBe(true);
   });
 
   it('refuses moves out of turn and in the wrong phase', () => {
@@ -201,7 +212,7 @@ describe('buildings, selling and net worth', () => {
     s = own(own(s, 'airport', 'b'), 'railway', 'b');
     expect(rentOf(s, tileById(s.board, 'harbor') as never, null)).toBe(140);
     s = own(s, 'electricity', 'b');
-    expect(rentOf(s, tileById(s.board, 'electricity') as never, [3, 4])).toBe(42);
+    expect(rentOf(s, tileById(s.board, 'electricity') as never, 4)).toBe(48);
   });
 });
 
@@ -228,12 +239,10 @@ describe('jail', () => {
     for (let i = 0; i < 3; i++) {
       expect(mover(s).id).toBe(a);
       s = play(s, a, { type: 'wait' });
-      s = play(s, b, { type: 'roll' }, dice(1, 2)); // b plays a turn
+      s = play(s, b, { type: 'roll' }, dice(3)); // b plays a turn
       s = play(s, b, { type: 'decline' });
       s = play(s, a, { type: 'passBid' });
-      s = play(s, b, { type: 'passBid' });
-      s = play(s, b, { type: 'endTurn' });
-      // b can only roll again if it was a double; 1+2 is not.
+      s = play(s, b, { type: 'passBid' }); // (the turn then ends by itself)
     }
     expect(s.players.find((p) => p.id === a)!.jail).toBe(0);
     expect(game.validateMove(s, a, { type: 'roll' }).ok).toBe(true);
@@ -244,7 +253,7 @@ describe('auctions', () => {
   it('a declined space goes to the highest bidder', () => {
     let s = start(3);
     const a = mover(s).id;
-    s = play(s, a, { type: 'roll' }, dice(1, 2)); // bangkok 130
+    s = play(s, a, { type: 'roll' }, dice(3)); // bangkok 130
     s = play(s, a, { type: 'decline' });
     expect(s.phase).toBe('auction');
     const [x, y] = s.players.filter((p) => p.id !== a).map((p) => p.id) as [string, string];
@@ -257,18 +266,32 @@ describe('auctions', () => {
     s = play(s, x, { type: 'passBid' });
     expect(s.owned['bangkok']).toEqual({ owner: y, level: 0 });
     expect(cash(s, y)).toBe(1100 - 90);
-    expect(s.phase).toBe('after');
+    expect(s.phase).toBe('roll');
+    expect(mover(s).id).not.toBe(a);
+  });
+
+  it('with the setting off, not buying just leaves the space free', () => {
+    let s = start(2, { ...OPTIONS, auctionOnDecline: false });
+    const a = mover(s).id;
+    const b = other(s);
+    s = play(s, a, { type: 'roll' }, dice(3));
+    s = play(s, a, { type: 'decline' });
+    expect(s.auction).toBeNull();
+    expect(s.owned['bangkok']).toBeUndefined();
+    expect(mover(s).id).toBe(b);
+    expect(s.phase).toBe('roll');
   });
 
   it('with no bids the space stays with the bank', () => {
     let s = start();
     const a = mover(s).id;
-    s = play(s, a, { type: 'roll' }, dice(1, 2));
+    s = play(s, a, { type: 'roll' }, dice(3));
     s = play(s, a, { type: 'decline' });
     s = play(s, other(s), { type: 'passBid' });
     s = play(s, a, { type: 'passBid' });
     expect(s.owned['bangkok']).toBeUndefined();
-    expect(s.phase).toBe('after');
+    expect(s.phase).toBe('roll');
+    expect(mover(s).id).not.toBe(a);
   });
 
   it('a seller on the Auction corner can sell one space or cancel', () => {
@@ -277,52 +300,32 @@ describe('auctions', () => {
     const b = other(s);
     s = own(s, 'rio', a);
     s = patch(s, a, { pos: idx('auction') - 4 });
-    s = play(s, a, { type: 'roll' }, dice(1, 3));
+    s = play(s, a, { type: 'roll' }, dice(4));
     expect(s.auctionRight).toBe(true);
     s = play(s, a, { type: 'startAuction', tile: 'rio' });
     expect(game.getCurrentPlayers(s)).toEqual([b]);
     expect(game.validateMove(s, b, { type: 'cancelAuction' })).toMatchObject({ ok: false });
     const cancelled = play(s, a, { type: 'cancelAuction' });
     expect(cancelled.owned['rio']!.owner).toBe(a);
-    expect(cancelled.phase).toBe('after');
+    expect(mover(cancelled).id).toBe(b);
     s = play(s, b, { type: 'bid', amount: 70 });
     expect(s.owned['rio']).toEqual({ owner: b, level: 0 });
-    expect(cash(s, a)).toBe(1000 + 70);
+    // Selling to another player is a trade: the bank gives both a $100 bonus.
+    expect(cash(s, a)).toBe(1000 + 70 + 100);
+    expect(cash(s, b)).toBe(1050 - 70 + 100);
   });
-});
 
-describe('trades', () => {
-  it('swaps spaces and cash, and both players get $100 from the bank', () => {
+  it('only a player-to-player sale pays the bonus; the bank sale does not', () => {
     let s = start();
     const a = mover(s).id;
     const b = other(s);
-    s = own(own(s, 'rio', a), 'madrid', b);
-    s = play(s, a, { type: 'proposeTrade', to: b, give: ['rio'], take: ['madrid'], cash: 50 });
-    expect(game.getCurrentPlayers(s)).toEqual([b]);
-    expect(game.validateMove(s, a, { type: 'roll' })).toMatchObject({ ok: false });
-    const declined = play(s, b, { type: 'declineTrade' });
-    expect(declined.trade).toBeNull();
-    const before = [cash(s, a), cash(s, b)];
-    s = play(s, b, { type: 'acceptTrade' });
-    expect(s.owned['rio']!.owner).toBe(b);
-    expect(s.owned['madrid']!.owner).toBe(a);
-    expect(cash(s, a)).toBe(before[0]! - 50 + 100);
-    expect(cash(s, b)).toBe(before[1]! + 50 + 100);
-  });
-
-  it('only trades spaces without buildings', () => {
-    let s = start();
-    const a = mover(s).id;
-    s = own(own(s, 'rio', a, 1), 'delhi', a);
-    expect(
-      game.validateMove(s, a, {
-        type: 'proposeTrade',
-        to: other(s),
-        give: ['rio'],
-        take: [],
-        cash: 0,
-      }),
-    ).toMatchObject({ ok: false, error: 'You can only trade spaces without buildings' });
+    s = play(s, a, { type: 'roll' }, dice(3));
+    s = play(s, a, { type: 'decline' });
+    s = play(s, b, { type: 'bid', amount: 60 });
+    s = play(s, a, { type: 'passBid' });
+    expect(cash(s, b)).toBe(1050 - 60);
+    expect(cash(s, a)).toBe(1000);
+    expect(s.events.find((e) => e.k === 'auction')).toMatchObject({ winner: b, bonus: 0 });
   });
 });
 
@@ -333,7 +336,7 @@ describe('bankruptcy and winning', () => {
     s = own(own(own(s, 'madrid', c), 'cairo', c), 'bangkok', c);
     s = own(s, 'rio', a);
     s = patch(s, a, { pos: idx('madrid') - 3, cash: -480 });
-    s = play(s, a, { type: 'roll' }, dice(1, 2)); // 20 x2 (the whole blue set) = 40 rent -> -520
+    s = play(s, a, { type: 'roll' }, dice(3)); // 20 x2 (the whole blue set) = 40 rent -> -520
     const out = s.players.find((p) => p.id === a)!;
     expect(out.bankrupt).toBe(true);
     expect(s.owned['rio']).toBeUndefined();
@@ -344,7 +347,7 @@ describe('bankruptcy and winning', () => {
     const first = mover(t).id;
     t = patch(t, first, { pos: idx('madrid') - 3, cash: -460 });
     t = own(t, 'madrid', first === 'a' ? 'b' : 'a');
-    t = play(t, first, { type: 'roll' }, dice(1, 2));
+    t = play(t, first, { type: 'roll' }, dice(3));
     expect(t.players.find((p) => p.id === first)!.bankrupt).toBe(false);
     expect(t.players.find((p) => p.id === first)!.cash).toBe(-480);
   });
@@ -355,7 +358,7 @@ describe('bankruptcy and winning', () => {
     const b = other(s);
     s = own(s, 'madrid', b);
     s = patch(s, a, { pos: idx('madrid') - 3, cash: -499 });
-    s = play(s, a, { type: 'roll' }, dice(1, 2));
+    s = play(s, a, { type: 'roll' }, dice(3));
     expect(s.phase).toBe('over');
     expect(s.winner).toBe(b);
     expect(game.isGameOver(s)).toBe(true);
@@ -365,35 +368,34 @@ describe('bankruptcy and winning', () => {
   });
 
   it('the first to reach the net worth target wins', () => {
-    let s = start(2, { target: 3000, turns: 0 });
+    let s = start(2, { ...OPTIONS, target: 3000 });
     const a = mover(s).id;
+    const b = other(s);
     s = patch(s, a, { cash: 2990 });
-    s = play(s, a, { type: 'roll' }, dice(1, 2)); // stops on Bangkok
-    s = play(s, a, { type: 'buy' }); // 2860 cash + 105 sell value = 2965
+    s = play(s, a, { type: 'roll' }, dice(3)); // stops on Bangkok
+    s = play(s, a, { type: 'buy' }); // 2860 cash + 105 sell value = 2965: not yet
     expect(s.phase).not.toBe('over');
-    s = play(s, a, { type: 'sellProperty', tile: 'bangkok' }); // 2940 cash
     s = patch(s, a, { cash: 3100 });
-    s = play(s, a, { type: 'endTurn' });
+    s = play(s, b, { type: 'roll' }, dice(2)); // anything: the check runs after every move
     expect(s.phase).toBe('over');
     expect(s.winner).toBe(a);
   });
 
   it('at the round limit the richest player wins', () => {
-    let s = start(2, { target: 0, turns: 1 });
+    let s = start(2, { ...OPTIONS, turns: 1 });
     const a = mover(s).id;
     const b = other(s);
     s = patch(s, b, { cash: 1800 });
-    s = play(s, a, { type: 'roll' }, dice(1, 2));
+    s = play(s, a, { type: 'roll' }, dice(3));
     s = play(s, a, { type: 'decline' });
     s = play(s, b, { type: 'passBid' });
     s = play(s, a, { type: 'passBid' });
-    s = play(s, a, { type: 'endTurn' });
     expect(s.phase).toBe('roll');
-    s = play(s, b, { type: 'roll' }, dice(1, 2));
+    expect(mover(s).id).toBe(b);
+    s = play(s, b, { type: 'roll' }, dice(3));
     s = play(s, b, { type: 'decline' });
     s = play(s, a, { type: 'passBid' });
     s = play(s, b, { type: 'passBid' });
-    s = play(s, b, { type: 'endTurn' });
     expect(s.phase).toBe('over');
     expect(s.winner).toBe(b);
   });
@@ -403,7 +405,7 @@ describe('computer players', () => {
   it('play whole games to the end (with a round limit) without ever making an illegal move', () => {
     for (let seed = 1; seed <= 6; seed++) {
       const rng = createSeededRng(seed);
-      let s = game.createInitialState(people, { target: 0, turns: 20 }, rng);
+      let s = game.createInitialState(people, { ...OPTIONS, turns: 20 }, rng);
       let guard = 0;
       while (!game.isGameOver(s)) {
         if (++guard > 20000) throw new Error(`game ${seed} did not finish`);
