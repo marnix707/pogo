@@ -44,11 +44,13 @@ const optionsSchema: z.ZodType<BankruptOptions, z.ZodTypeDef, unknown> = z
     target: z
       .number()
       .int()
-      .refine((n) => (TARGETS as readonly number[]).includes(n)),
+      .refine((n) => (TARGETS as readonly number[]).includes(n))
+      .default(5000),
     turns: z
       .number()
       .int()
-      .refine((n) => (TURN_LIMITS as readonly number[]).includes(n)),
+      .refine((n) => (TURN_LIMITS as readonly number[]).includes(n))
+      .default(0),
   })
   .strict();
 

@@ -83,6 +83,9 @@ export const boardConfigSchema = z
     cardTile: tileId,
   })
   .superRefine((b, ctx) => {
+    // The board is a square ring: the same number of spaces on each side.
+    if (b.tiles.length % 4 !== 0)
+      ctx.addIssue({ code: 'custom', message: 'The number of spaces must be a multiple of 4' });
     const ids = new Set<string>();
     for (const t of b.tiles) {
       if (ids.has(t.id)) ctx.addIssue({ code: 'custom', message: `Duplicate space ${t.id}` });

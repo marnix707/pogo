@@ -38,6 +38,8 @@ describe('Bankrupt! board and set-up', () => {
     expect(DEFAULT_BOARD.tiles[0]?.kind).toBe('start');
     const dup = { ...DEFAULT_BOARD, tiles: [...DEFAULT_BOARD.tiles, DEFAULT_BOARD.tiles[1]!] };
     expect(boardConfigSchema.safeParse(dup).success).toBe(false);
+    const odd = { ...DEFAULT_BOARD, tiles: DEFAULT_BOARD.tiles.slice(0, 27) };
+    expect(boardConfigSchema.safeParse(odd).success).toBe(false);
     const noJail = {
       ...DEFAULT_BOARD,
       tiles: DEFAULT_BOARD.tiles.filter((t) => t.kind !== 'jail'),

@@ -1,0 +1,77 @@
+{
+ "note": "Bankrupt! art: every sprite is a whole-number-scaled pixel SVG (image-rendering: pixelated). Tokens sit centred on their square; buildings and icons are centred in their tile.",
+ "sprites": {
+  "icon-start": {
+   "w": 16,
+   "h": 14
+  },
+  "icon-jail": {
+   "w": 16,
+   "h": 12
+  },
+  "icon-auction": {
+   "w": 15,
+   "h": 12
+  },
+  "icon-cards": {
+   "w": 14,
+   "h": 15
+  },
+  "icon-railway": {
+   "w": 14,
+   "h": 13
+  },
+  "icon-harbor": {
+   "w": 16,
+   "h": 14
+  },
+  "icon-airport": {
+   "w": 16,
+   "h": 13
+  },
+  "icon-electricity": {
+   "w": 14,
+   "h": 13
+  },
+  "build-house": {
+   "w": 12,
+   "h": 13
+  },
+  "build-shop": {
+   "w": 12,
+   "h": 12
+  },
+  "build-hotel": {
+   "w": 12,
+   "h": 14
+  },
+  "token-green": {
+   "w": 13,
+   "h": 14
+  },
+  "token-yellow": {
+   "w": 13,
+   "h": 14
+  },
+  "token-blue": {
+   "w": 13,
+   "h": 14
+  },
+  "token-red": {
+   "w": 13,
+   "h": 14
+  },
+  "token-purple": {
+   "w": 13,
+   "h": 14
+  },
+  "token-orange": {
+   "w": 13,
+   "h": 14
+  },
+  "landmark": {
+   "w": 42,
+   "h": 37
+  }
+ }
+}

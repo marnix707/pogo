@@ -5,6 +5,7 @@ They import `mm_common` (the same code as `scripts/pixel.py`). Run them from thi
 - mm_arenas.py: lo-fi backgrounds (bands, ridges, speckle, ellipses)
 - pm_screen.py: portrait battle screen, HUD, see-through board, match glow (pulse + burst)
 - pm_attack.py: attack spirit, trail sparks, impact, damage digits
+- bk_art.py: Bankrupt! board icons, buildings, tokens, the landmark and the logo (char grids + a procedural dome, `render`, `preview`)
 - build_petmatch_logo.py: chunky wordmark with per-letter colours + composition
 - build_fire_lofi.py: lo-fi fire with seamless looping noise
 - attack-demo-template.html: canvas player for the attack timeline (path maths, trail, shake, flash, refill)
