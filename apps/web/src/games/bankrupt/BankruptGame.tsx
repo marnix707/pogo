@@ -5,10 +5,11 @@ import { Avatar, Button } from '../../components/ui';
 import { PlayerName } from '../../components/PlayerName';
 import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
-import { Board, TOKEN_HEX, money } from './Board';
+import { Board, money } from './Board';
 import { BuyOverlay } from './BuyOverlay';
 import { TileSheet } from './TileSheet';
 import { useCashFx } from './useCashFx';
+import { useCountdown } from '../../lib/useCountdown';
 import { art, dieUrl, tokenOf } from './art';
 
 type State = bankrupt.BankruptState;
@@ -263,7 +264,15 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
                 : ''}
           </p>
         ) : state.auction ? (
-          <AuctionPanel state={state} me={me} name={name} send={send} busy={busy} />
+          <AuctionPanel
+            state={state}
+            me={me}
+            name={name}
+            send={send}
+            busy={busy}
+            deadline={game.deadline}
+            serverTime={room.serverTime}
+          />
         ) : !myTurn ? (
           <p className="label text-center text-onbg/80" data-testid="bk-wait">
             Waiting for {name(mover.id)}…
@@ -346,12 +355,16 @@ function AuctionPanel({
   name,
   send,
   busy,
+  deadline,
+  serverTime,
 }: {
   state: State;
   me: string;
   name: (id: string) => string;
   send: (m: bankrupt.BankruptMove) => Promise<void>;
   busy: boolean;
+  deadline: number | null;
+  serverTime: number;
 }) {
   const a = state.auction!;
   const tile = state.board.tiles.find((t) => t.id === a.tile);
@@ -362,11 +375,22 @@ function AuctionPanel({
   const isSeller = a.seller === me;
   const leading = a.high?.player === me;
   const passed = a.passed.includes(me);
+  const left = useCountdown(deadline, serverTime);
+  // Out of the bidding (stepped out, or not enough money to top the highest bid): the prices are greyed out.
+  const out = passed || (!leading && cash <= Math.max(bankrupt.MIN_BID - 1, base));
   return (
     <div className="flex flex-col gap-2" data-testid="bk-auction">
       <p className="label text-center">
         Auction: <b className="text-neon">{tile?.name}</b>
         {a.seller ? ` (${name(a.seller)} sells)` : ''}
+        {left !== null && (
+          <span
+            className={`ml-2 tabular-nums ${left <= 5 ? 'text-[#ff8f73]' : 'text-onbg/80'}`}
+            data-testid="bk-auction-timer"
+          >
+            {left}s
+          </span>
+        )}
       </p>
       <p className="text-center text-sm" data-testid="bk-high-bid">
         {a.high ? `Highest bid ${money(a.high.amount)} by ${name(a.high.player)}` : 'No bids yet'}
@@ -380,22 +404,26 @@ function AuctionPanel({
         >
           Cancel auction
         </Button>
-      ) : leading ? (
-        <p className="label text-center text-[#7ee08c]">You have the highest bid</p>
-      ) : passed ? (
-        <p className="label text-center text-onbg/80">You stepped out</p>
       ) : (
         <>
+          {leading ? (
+            <p className="label text-center text-[#7ee08c]">You have the highest bid</p>
+          ) : out ? (
+            <p className="label text-center text-onbg/80" data-testid="bk-stepped-out">
+              {passed ? 'You stepped out' : 'You cannot top that bid: you step out'}
+            </p>
+          ) : null}
           <div className="grid grid-cols-3 gap-2">
             {[1, 2, 5].map((k) => {
               const amount = base + k * step;
+              const off = busy || leading || out || amount > cash;
               return (
                 <Button
                   key={k}
                   variant="gold"
                   data-testid={`bk-bid-${k}`}
-                  className="!px-1"
-                  disabled={busy || amount > cash}
+                  className={`!px-1 ${off ? 'grayscale' : ''}`}
+                  disabled={off}
                   onClick={() => void send({ type: 'bid', amount })}
                 >
                   {money(amount)}
@@ -406,7 +434,7 @@ function AuctionPanel({
           <Button
             variant="secondary"
             data-testid="bk-pass"
-            disabled={busy}
+            disabled={busy || leading || passed}
             onClick={() => void send({ type: 'passBid' })}
           >
             Pass
@@ -416,5 +444,3 @@ function AuctionPanel({
     </div>
   );
 }
-
-export { TOKEN_HEX };

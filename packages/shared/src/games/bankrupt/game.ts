@@ -38,6 +38,8 @@ export const ROLL_MS = 900;
 export const STEP_MS = 180;
 /** The smallest bid, and the step bots bid in. */
 export const MIN_BID = 10;
+/** Seconds to bid in an auction before everybody who has not bid steps out. */
+export const AUCTION_SEC = 15;
 
 const optionsSchema: z.ZodType<BankruptOptions, z.ZodTypeDef, unknown> = z
   .object({
@@ -281,6 +283,9 @@ function land(s: BankruptState, p: BankruptPlayer, rng: Rng, depth = 0) {
 function resolveAuction(s: BankruptState) {
   const a = s.auction;
   if (!a) return;
+  // Somebody who has no more money than the highest bid cannot raise it: they step out by themselves.
+  const floor = Math.max(MIN_BID - 1, a.high?.amount ?? 0);
+  for (const p of bidders(s)) if (p.id !== a.high?.player && p.cash <= floor) a.passed.push(p.id);
   const open = bidders(s).filter((p) => p.id !== a.high?.player);
   if (open.length > 0) return;
   if (a.high) {
@@ -646,6 +651,13 @@ export const bankruptGame: GameDefinition<
   getResults,
   autoMove,
   supportsBots: true,
+  // An auction runs on its own 15 second clock (it starts again with every bid); when it runs out,
+  // everybody who has not bid steps out.
+  phaseClockMs: (state) => (state.phase === 'auction' && state.auction ? AUCTION_SEC * 1000 : null),
+  timeoutMove: (state, playerId, rng) =>
+    state.phase === 'auction' && state.auction
+      ? { move: { type: 'passBid' }, endsTurn: true }
+      : autoMove(state, playerId, rng),
   // The die and the token's walk take a while on screen; computers wait for it.
   settleMs: (state) => {
     let ms = 0;

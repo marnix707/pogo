@@ -684,8 +684,12 @@ export class Room {
   private startTurnClock(): void {
     this.turnStartedAt = this.deps.now();
     const bonus = this.state ? (this.game.clockBonusMs?.(this.state) ?? 0) : 0;
-    this.turnDeadline =
-      this.turnTime > 0 ? this.turnStartedAt + this.turnTime * 1000 + bonus : null;
+    const phase = this.state ? (this.game.phaseClockMs?.(this.state) ?? null) : null;
+    const ends = [
+      ...(this.turnTime > 0 ? [this.turnStartedAt + this.turnTime * 1000 + bonus] : []),
+      ...(phase !== null ? [this.turnStartedAt + phase] : []),
+    ];
+    this.turnDeadline = ends.length > 0 ? Math.min(...ends) : null;
   }
 
   /** The game says the clock keeps running across the move that took `before` to the current state. */
@@ -742,7 +746,7 @@ export class Room {
     let endsTurn = true;
     const before = this.state;
     for (const id of this.game.getCurrentPlayers(this.state)) {
-      const auto = autoMove.call(this.game, this.state, id, this.rng);
+      const auto = (this.game.timeoutMove ?? autoMove).call(this.game, this.state, id, this.rng);
       this.state = this.game.applyMove(this.state, id, auto.move, this.rng);
       endsTurn = endsTurn && auto.endsTurn;
     }

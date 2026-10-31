@@ -277,6 +277,39 @@ describe('auctions', () => {
     expect(mover(s).id).not.toBe(a);
   });
 
+  it('a player who cannot top the highest bid steps out by themselves', () => {
+    let s = start(3);
+    const a = mover(s).id;
+    const [x, y] = s.players.filter((p) => p.id !== a).map((p) => p.id) as [string, string];
+    s = patch(s, y, { cash: 80 });
+    s = play(s, a, { type: 'roll' }, dice(3));
+    s = play(s, a, { type: 'decline' });
+    expect(game.getCurrentPlayers(s)).toContain(y);
+    s = play(s, x, { type: 'bid', amount: 80 }); // y has exactly 80: cannot raise
+    expect(s.auction!.passed).toContain(y);
+    expect(game.getCurrentPlayers(s)).not.toContain(y);
+    expect(game.getCurrentPlayers(s)).toEqual([a]);
+  });
+
+  it('an auction has its own 15 second clock and the clock steps everybody out', () => {
+    let s = start(3);
+    const a = mover(s).id;
+    expect(game.phaseClockMs!(s)).toBeNull();
+    s = play(s, a, { type: 'roll' }, dice(3));
+    s = play(s, a, { type: 'decline' });
+    expect(game.phaseClockMs!(s)).toBe(15_000);
+    const [x] = s.players.filter((p) => p.id !== a).map((p) => p.id) as [string];
+    s = play(s, x, { type: 'bid', amount: 50 });
+    // The time is up: everybody who has not bid passes.
+    for (const id of game.getCurrentPlayers(s)) {
+      const t = game.timeoutMove!(s, id, createSeededRng(1));
+      expect(t.move).toEqual({ type: 'passBid' });
+      s = play(s, id, t.move);
+    }
+    expect(s.owned['bangkok']).toEqual({ owner: x, level: 0 });
+    expect(game.phaseClockMs!(s)).toBeNull();
+  });
+
   it('with the setting off, not buying just leaves the space free', () => {
     let s = start(2, { ...OPTIONS, auctionOnDecline: false });
     const a = mover(s).id;

@@ -78,6 +78,13 @@ export interface GameDefinition<State, Move, Options, PlayerView = State> {
    */
   keepsClock?(before: State, after: State): boolean;
   /**
+   * A clock that always runs for this state, whatever the room's turn timer says (Bankrupt!'s auction:
+   * 15 seconds to bid). It restarts with every move; at the end every current player gets `timeoutMove`.
+   */
+  phaseClockMs?(state: State): number | null;
+  /** What a current player does when `phaseClockMs` (or the turn timer) runs out. Default: `autoMove`. */
+  timeoutMove?(state: State, playerId: PlayerId, rng: Rng): AutoMove<Move>;
+  /**
    * Extra milliseconds added to the clock when it (re)starts for this state, e.g. while the clients
    * play an introduction before anything can be done.
    */
