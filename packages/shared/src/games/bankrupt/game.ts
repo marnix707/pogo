@@ -270,6 +270,10 @@ function land(s: BankruptState, p: BankruptPlayer, rng: Rng, depth = 0) {
       pay(s, p, owner, amount);
       s.events.push({ k: 'rent', by: p.id, to: owner.id, tile: tile.id, amount });
     }
+  } else if (tile.kind === 'jail') {
+    // The Jail space itself puts you in jail: pay now or sit three turns out.
+    sendToJail(s, p);
+    s.phase = 'jailAsk';
   } else if (tile.kind === 'auction') startTrade(s, p);
   else if (tile.kind === 'card' && s.board.cards.length > 0 && depth < 3) {
     const card = s.board.cards[rng.int(s.board.cards.length)]!;

@@ -126,7 +126,7 @@ export function TileSheet({
           <p className="text-center text-sm">
             {tile.kind === 'start' && `Pass or land here and collect ${money(state.board.salary)}.`}
             {tile.kind === 'jail' &&
-              `Just visiting is free. In jail, pay ${money(state.board.jailFee)} or wait ${state.board.jailTurns} turns.`}
+              `Land here and you go to jail: pay ${money(state.board.jailFee)} to get out at once, or pass and sit out ${state.board.jailTurns} turns.`}
             {tile.kind === 'auction' && 'Land here to put one of your spaces up for auction.'}
             {tile.kind === 'card' && 'Land here to draw a luck card.'}
           </p>
