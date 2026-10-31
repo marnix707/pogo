@@ -29,6 +29,8 @@ export const SEAT_HEX: Record<string, string> = {
   orange: '#eb6b43',
 };
 
+/** Seat colours that are too light for cream text. */
+const LIGHT_SEATS = new Set(['yellow', 'orange']);
 const BUILD = ['build-house', 'build-shop', 'build-hotel'] as const;
 
 /**
@@ -86,18 +88,21 @@ export function Board({
           const seat = state.players.findIndex((p) => p.id === holding.owner);
           return (
             <span key={tile.id}>
-              <img
-                src={cityArt(`owner-${seatColour(seat)}`)}
-                alt=""
-                data-testid={`bk-owner-${tile.id}`}
-                className="pointer-events-none absolute"
-                style={{
-                  left: pct(x),
-                  top: pct(y),
-                  width: pct(TILE_PX),
-                  imageRendering: 'pixelated',
-                }}
-              />
+              {/* a property shows its owner in the rent band; the special spaces (no band) keep the frame */}
+              {tile.kind !== 'property' && (
+                <img
+                  src={cityArt(`owner-${seatColour(seat)}`)}
+                  alt=""
+                  data-testid={`bk-owner-${tile.id}`}
+                  className="pointer-events-none absolute"
+                  style={{
+                    left: pct(x),
+                    top: pct(y),
+                    width: pct(TILE_PX),
+                    imageRendering: 'pixelated',
+                  }}
+                />
+              )}
               {/* once somebody owns it the price band shows the rent to pay instead of the price */}
               {tile.kind === 'property' && (
                 <svg
@@ -113,11 +118,11 @@ export function Board({
                     y={2}
                     width={31}
                     height={8}
-                    fill={GROUP_DARK[tile.group] ?? '#101628'}
+                    fill={SEAT_HEX[seatColour(seat)] ?? GROUP_DARK[tile.group] ?? '#101628'}
                   />
                   <path
                     d={text(`$${bankrupt.rentOf(state, tile)}`, 16.5, 2, 1, 1, 'centre', TAG7)}
-                    fill="#f7f1e4"
+                    fill={LIGHT_SEATS.has(seatColour(seat)) ? '#101628' : '#f7f1e4'}
                   />
                 </svg>
               )}
