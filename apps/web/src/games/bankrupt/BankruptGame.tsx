@@ -188,7 +188,9 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const [busy, setBusy] = useState(false);
   const [tip, setTip] = useState<string | null>(null);
   const finished = state.phase === 'over';
-  const pulse = pulsingTiles(state, me);
+  // (the trade starts only when everything before it has been played out: walk, card, payments)
+  const tradeOn = !!state.trade && !animating;
+  const pulse = tradeOn ? pulsingTiles(state, me) : new Set<string>();
   // The space chosen for a trade, waiting for the confirmation (nothing is sent by a tap on the board).
   const [pick, setPick] = useState<string | null>(null);
   useEffect(() => {
@@ -348,7 +350,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         name={name}
         onClose={() => setTileOpen(null)}
       />
-    ) : state.trade ? (
+    ) : tradeOn ? (
       <TradePanel
         state={state}
         me={me}
@@ -441,7 +443,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
                 ? 'You are out of the game'
                 : ''}
           </p>
-        ) : state.trade ? (
+        ) : tradeOn ? (
           <p className="label text-center text-onbg/80" data-testid="bk-trade-hint">
             Trade: see the middle of the board
           </p>
