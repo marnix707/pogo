@@ -62,3 +62,9 @@ Nobody can roll (or pay jail / wait) while the previous player's token is still 
 **Who owns what**: an owned property's price band turns into a **rent band** in the owner's token colour (`bk-rent-<id>`, cream text, navy on yellow / orange) showing the rent to pay; there is no frame round it, so a bought property is told from a free one (which still shows its price in the group colour) at a glance. The four special spaces have no band and keep the coloured frame.
 
 **Special spaces on the board** (`Board.tsx`, `bk-special-<id>`): the name of Harbor / Railway / Airport / Power sits at the **bottom** of the space (the kit's font4, drawn over the baked name; Electricity reads POWER like the kit), the top has a band like a property's: **free** = the price on a dark band, **bought** = the rent on a band in the owner's token colour (`bk-rent-<id>`). They have no frame any more.
+
+## Pop-ups stay inside the board, and nothing is spoiled
+
+- Every pop-up (the property card, the buy card, the luck card, a corner's text, the not-enough-money note) is drawn **inside the middle of the board** (`Board` `overlay`, `bk-overlay`; the cards fit that box: `useArtScale` with a height) and never covers a space. The middle holds the hall (86 art px wide), the big die (23 cqw) and the note, centred.
+- The board is drawn **as it was before the move** until the move has been played out (`ui` / `seen` in `BankruptGame.tsx`: the token walks, the die rolls, the card shows, the payments fly): who owns the space it is walking to, buildings, jail, bankruptcy and the green numbers only change at the end. A token sent to jail **walks** there (by the shorter way round); tokens never jump.
+- The Roll button (and everything else) is inert from the instant a move arrives (`fresh`) until its last animation is over, so there is no instant in between where it can be tapped.

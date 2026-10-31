@@ -50,11 +50,12 @@ export function LuckCard({
   phase: 'in' | 'out';
 }) {
   const box = useRef<HTMLDivElement>(null);
-  const s = useArtScale(box, CARD_W);
+  // Fits the middle of the board it slides over.
+  const s = useArtScale(box, CARD_W, true, CARD_H);
   const title = text(TITLE[kind], CARD_W / 2, 12, 2, 2);
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4"
+      className="flex h-full w-full items-center justify-center overflow-hidden bg-[#101628]/60 p-[1.5%]"
       data-testid="bk-luck-overlay"
       data-kind={kind}
       role="dialog"
@@ -62,10 +63,9 @@ export function LuckCard({
     >
       <div
         ref={box}
-        className={`mx-auto w-full ${phase === 'in' ? 'bk-card-in' : 'bk-card-out'}`}
-        style={{ maxWidth: CARD_W * 3 }}
+        className={`flex h-full w-full items-center justify-center ${phase === 'in' ? 'bk-card-in' : 'bk-card-out'}`}
       >
-        <div className="relative mx-auto" style={{ width: CARD_W * s, height: CARD_H * s }}>
+        <div className="relative" style={{ width: CARD_W * s, height: CARD_H * s }}>
           <svg
             viewBox={`0 0 ${CARD_W} ${CARD_H}`}
             width={CARD_W * s}

@@ -1,5 +1,4 @@
 import { bankrupt } from '@pogo/shared';
-import { Button, Sheet } from '../../components/ui';
 import { money } from './Board';
 import { PropertyCard } from './PropertyCard';
 import { ICON_OF_TILE, art } from './art';
@@ -44,16 +43,13 @@ export function TileSheet({
       cash >= tile.buildCost;
     return (
       <div
-        className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 px-4"
+        className="bk-pop flex h-full w-full flex-col items-center gap-[1%] bg-[#101628]/70 p-[1.5%]"
         data-testid="bk-tile-sheet"
         role="dialog"
         aria-label={tile.name}
         onClick={onClose}
       >
-        <div
-          className="bk-pop flex w-full max-w-sm flex-col items-center gap-3"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="min-h-0 w-full flex-1" onClick={(e) => e.stopPropagation()}>
           <PropertyCard
             tile={tile}
             level={level}
@@ -80,58 +76,56 @@ export function TileSheet({
               },
             ]}
           />
-          <p className="label text-center text-[11px] text-white" data-testid="bk-tile-owner">
-            {holding ? `Owned by ${name(holding.owner)}` : 'Not owned yet'}
-            {holding && tile.kind === 'property' ? ` · buildings ${level}/3` : ''}
-          </p>
-          {tile.kind === 'transport' && (
-            <p className="label text-center text-[10px] text-white/80">
-              Rent by how many of the{' '}
-              {state.board.tiles.filter((t) => t.kind === 'transport').length} special spaces you
-              own: {tile.rent.map((r) => money(r)).join(' · ')}
-            </p>
-          )}
-          {mine && canAct && (
-            <div className="flex w-full gap-2">
-              {tile.kind === 'property' && level > 0 && (
-                <Button
-                  variant="secondary"
-                  className="flex-1"
-                  data-testid="bk-sell-building"
-                  onClick={() => void send({ type: 'sellBuilding', tile: tile.id })}
-                >
-                  Sell building
-                </Button>
-              )}
-            </div>
-          )}
         </div>
+        <p
+          className="label shrink-0 text-center text-[2.1cqw] leading-tight text-white"
+          data-testid="bk-tile-owner"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {holding ? `Owned by ${name(holding.owner)}` : 'Not owned yet'}
+          {holding && tile.kind === 'property' ? ` · buildings ${level}/3` : ''}
+          {mine && canAct && tile.kind === 'property' && level > 0 && (
+            <button
+              type="button"
+              data-testid="bk-sell-building"
+              className="ml-2 rounded border border-white/60 px-1.5 py-0.5"
+              onClick={() => void send({ type: 'sellBuilding', tile: tile.id })}
+            >
+              Sell building
+            </button>
+          )}
+        </p>
       </div>
     );
   }
 
   const icon = tile ? (ICON_OF_TILE[tile.id] ?? ICON_OF_TILE[tile.kind]) : undefined;
+  if (!tile) return null;
   return (
-    <Sheet open={!!tile} onClose={onClose} title={tile?.name ?? 'Space'}>
-      {tile && (
-        <div className="flex flex-col gap-3" data-testid="bk-tile-sheet">
-          {icon && (
-            <img
-              src={art(icon)}
-              alt=""
-              className="mx-auto h-20 w-auto"
-              style={{ imageRendering: 'pixelated' }}
-            />
-          )}
-          <p className="text-center text-sm">
-            {tile.kind === 'start' && `Pass or land here and collect ${money(state.board.salary)}.`}
-            {tile.kind === 'jail' &&
-              `Land here and you go to jail: pay ${money(state.board.jailFee)} to get out at once, or pass and sit out ${state.board.jailTurns} turns.`}
-            {tile.kind === 'auction' && 'Land here to put one of your spaces up for auction.'}
-            {tile.kind === 'card' && 'Land here to draw a luck card.'}
-          </p>
-        </div>
+    <div
+      className="bk-pop flex h-full w-full flex-col items-center justify-center gap-[3%] bg-[#101628]/80 p-[3%] text-center"
+      data-testid="bk-tile-sheet"
+      role="dialog"
+      aria-label={tile.name}
+      onClick={onClose}
+    >
+      <p className="text-[4cqw] font-extrabold uppercase text-white">{tile.name}</p>
+      {icon && (
+        <img
+          src={art(icon)}
+          alt=""
+          className="h-[20%] w-auto"
+          style={{ imageRendering: 'pixelated' }}
+        />
       )}
-    </Sheet>
+      <p className="max-w-[90%] text-[2.6cqw] leading-tight text-white">
+        {tile.kind === 'start' && `Pass or land here and collect ${money(state.board.salary)}.`}
+        {tile.kind === 'jail' &&
+          `Land here and you go to jail: pay ${money(state.board.jailFee)} to get out at once, or pass and sit out ${state.board.jailTurns} turns.`}
+        {tile.kind === 'auction' && 'Land here to trade one of your spaces with the other players.'}
+        {tile.kind === 'card' && 'Land here to draw a luck card.'}
+      </p>
+      <p className="text-[2cqw] uppercase text-white/70">Tap to close</p>
+    </div>
   );
 }

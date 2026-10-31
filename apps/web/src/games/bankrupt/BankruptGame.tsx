@@ -69,8 +69,6 @@ function useWalking(state: State) {
   const [card, setCard] = useState<{ ev: CardEvent; phase: 'wait' | 'in' | 'out' } | null>(null);
   const [hold, setHold] = useState<Record<string, number> | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const latest = useRef(state);
-  latest.current = state;
   const target = (p: State['players'][number]) => hold?.[p.id] ?? p.pos;
 
   // A new move: the die tumbles first, then the tokens walk.
@@ -92,14 +90,6 @@ function useWalking(state: State) {
     } else {
       setHold(null);
       setCard(null);
-      const jailed = new Set(state.events.flatMap((e) => (e.k === 'jail' ? [e.by] : [])));
-      if (jailed.size > 0)
-        setShown((cur) => ({
-          ...cur,
-          ...Object.fromEntries(
-            [...jailed].map((id) => [id, state.players.find((p) => p.id === id)!.pos]),
-          ),
-        }));
     }
     if (!rolled) return;
     setRolling(true);
@@ -126,8 +116,9 @@ function useWalking(state: State) {
             const at = cur[p.id] ?? p.pos;
             const goal = target(p);
             const steps = (goal - at + n) % n;
-            next[p.id] = steps > n / 2 ? goal : (at + 1) % n;
-            if (next[p.id] === 0 || steps === 1) play('tap');
+            // Always walk, by the shorter way round (a token sent to jail walks there too).
+            next[p.id] = steps <= n / 2 ? (at + 1) % n : (at - 1 + n) % n;
+            if (next[p.id] === 0 || next[p.id] === goal) play('tap');
           }
           return next;
         }),
@@ -149,18 +140,9 @@ function useWalking(state: State) {
       setTimeout(() => setCard((c) => (c ? { ...c, phase: 'out' } : c)), slide + show),
       setTimeout(
         () => {
-          // Gone: now the card does what it says (walk on, jail, payments).
-          const now = latest.current;
-          const jailed = new Set(now.events.flatMap((e) => (e.k === 'jail' ? [e.by] : [])));
+          // Gone: now the card does what it says (walk on, walk to jail, the payments).
           setHold(null);
           setCard(null);
-          if (jailed.size > 0)
-            setShown((cur) => ({
-              ...cur,
-              ...Object.fromEntries(
-                [...jailed].map((id) => [id, now.players.find((p) => p.id === id)!.pos]),
-              ),
-            }));
         },
         slide + show + slide,
       ),
@@ -182,7 +164,19 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const { shown: cashShown, playing: paying } = useCashFx(state, settled);
   void cardBusy;
   // Nobody acts while the last player's token is still walking, the die tumbles or a payment is on show.
-  const animating = !settled || paying;
+  // (`fresh`: a new move has just arrived and the hooks above have not started its animations yet: there is
+  // no instant in between where the buttons work.)
+  const [doneSeq, setDoneSeq] = useState(state.seq);
+  useEffect(() => setDoneSeq(state.seq), [state.seq]);
+  const fresh = doneSeq !== state.seq;
+  const animating = fresh || !settled || paying;
+  // The board shows the position as it was before this move until the move has been played out (no spoilers:
+  // who owns the space the token is walking to, what got built, who is in jail ...).
+  const [seen, setSeen] = useState(state);
+  useEffect(() => {
+    if (!animating) setSeen(state);
+  }, [animating, state]);
+  const ui = animating ? seen : state;
   // The die tumbles through random faces while it rolls.
   const [face, setFace] = useState(1);
   useEffect(() => {
@@ -237,7 +231,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const [shortMsg, setShortMsg] = useState<string | null>(null);
   useEffect(() => {
     // (Nothing to say any more: the note goes away with the situation, it can never get stuck.)
-    if (!broke || !settled || !owedBuy) {
+    if (!broke || !settled || fresh || !owedBuy) {
       setShortMsg(null);
       return;
     }
@@ -249,7 +243,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       clearTimeout(gone);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [broke, settled, owedBuy?.id]);
+  }, [broke, settled, fresh, owedBuy?.id]);
   const goal =
     state.options.target > 0
       ? `${money(state.options.target)} net worth to win`
@@ -259,10 +253,13 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       ? ` · round ${state.round}/${state.options.turns}`
       : ` · round ${state.round}`;
 
-  const tag = (p: State['players'][number], seat: number) => {
+  const tag = (latestP: State['players'][number], seat: number) => {
+    // (what is shown follows the board: jail / bankrupt only show once the move is played out)
+    const p = ui.players.find((q) => q.id === latestP.id) ?? latestP;
     const cash = cashShown[p.id] ?? p.cash;
     // The green number follows the cash while a payment is still being shown.
-    const worth = bankrupt.netWorth(state, p.id) - (p.cash - cash);
+    // (spaces and buildings as the board shows them; the cash as it counts)
+    const worth = p.bankrupt ? 0 : bankrupt.netWorth(ui, p.id) - p.cash + cash;
     const isMover = p.id === mover.id && !finished;
     return (
       <div
@@ -329,6 +326,38 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const topSeats = others.slice(0, 3);
   const bottomSeats = [around[0]!, ...others.slice(3).reverse()];
 
+  // Everything that pops up lives inside the middle of the board (never over a space).
+  const popupNode =
+    card && card.phase !== 'wait' ? (
+      <LuckCard
+        kind={card.ev.kind}
+        textLine={card.ev.text}
+        who={card.ev.by}
+        whoName={name(card.ev.by)}
+        phase={card.phase === 'in' ? 'in' : 'out'}
+      />
+    ) : owedBuy && settled && !fresh && !paying && !broke ? (
+      <BuyOverlay state={state} me={me} tile={owedBuy} busy={busy} send={send} />
+    ) : tileOpen ? (
+      <TileSheet
+        state={state}
+        me={me}
+        tileId={tileOpen}
+        canAct={myTurn && !state.auction && !state.trade && state.phase !== 'buy'}
+        send={send}
+        name={name}
+        onClose={() => setTileOpen(null)}
+      />
+    ) : shortMsg ? (
+      <p
+        role="status"
+        data-testid="bk-not-enough"
+        className="label flex h-full w-full items-center justify-center bg-[#ff6b57]/90 p-[4%] text-center text-[3.2cqw] text-white"
+      >
+        {shortMsg}
+      </p>
+    ) : null;
+
   return (
     <div
       className="flex h-full flex-col gap-1 overflow-y-auto px-3 pb-3"
@@ -346,21 +375,22 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       </div>
 
       <Board
-        state={state}
+        state={ui}
         shown={shown}
         onTile={setTileOpen}
         pulse={pulse}
         picked={pick}
+        overlay={popupNode}
         onPulse={(id) => setPick(id === pick ? null : id)}
       >
-        <div className="flex h-[11cqw] items-center" data-testid="bk-dice">
+        <div className="flex h-[23cqw] items-center" data-testid="bk-dice">
           {(state.dice ?? 0) > 0 || rolling ? (
             <img
               src={dieUrl(rolling ? face : state.dice!)}
               alt={rolling ? 'rolling' : `die ${state.dice}`}
               data-testid="bk-die"
               data-value={rolling ? 0 : state.dice}
-              className={`h-[11cqw] w-[11cqw] ${rolling ? 'bk-tumble' : ''}`}
+              className={`h-[23cqw] w-[23cqw] ${rolling ? 'bk-tumble' : ''}`}
               style={{ imageRendering: 'pixelated' }}
             />
           ) : null}
@@ -473,37 +503,6 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           </p>
         )}
       </div>
-
-      {card && card.phase !== 'wait' && (
-        <LuckCard
-          kind={card.ev.kind}
-          textLine={card.ev.text}
-          who={card.ev.by}
-          whoName={name(card.ev.by)}
-          phase={card.phase === 'in' ? 'in' : 'out'}
-        />
-      )}
-      {shortMsg && (
-        <p
-          role="status"
-          data-testid="bk-not-enough"
-          className="label pointer-events-none fixed inset-x-0 top-1/3 z-40 mx-auto w-fit rounded-md border-2 border-[#101628] bg-[#ff6b57] px-3 py-2 text-center text-sm text-white shadow-[0_4px_0_0_#101628]"
-        >
-          {shortMsg}
-        </p>
-      )}
-      {owedBuy && settled && !broke && (
-        <BuyOverlay state={state} me={me} tile={owedBuy} busy={busy} send={send} />
-      )}
-      <TileSheet
-        state={state}
-        me={me}
-        tileId={tileOpen}
-        canAct={myTurn && !state.auction && !state.trade && state.phase !== 'buy'}
-        send={send}
-        name={name}
-        onClose={() => setTileOpen(null)}
-      />
     </div>
   );
 }

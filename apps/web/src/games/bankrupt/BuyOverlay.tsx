@@ -20,12 +20,12 @@ export function BuyOverlay({
   const canBuy = cash >= tile.price;
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 px-4"
+      className="bk-pop flex h-full w-full flex-col items-center gap-[1%] bg-[#101628]/70 p-[1.5%]"
       data-testid="bk-buy-overlay"
       role="dialog"
       aria-label={`Buy ${tile.name}?`}
     >
-      <div className="bk-pop flex w-full max-w-sm flex-col items-center gap-3">
+      <div className="min-h-0 w-full flex-1">
         <PropertyCard
           tile={tile}
           level={0}
@@ -42,20 +42,17 @@ export function BuyOverlay({
             },
           ]}
         />
-        <p className="label text-center text-[11px] text-white" data-testid="bk-buy-note">
-          {!canBuy
-            ? `You need ${money(tile.price - cash)} more. Tap X to pass.`
-            : state.options.auctionOnDecline
-              ? 'Tap X to put it up for auction.'
-              : 'Tap X to leave it.'}
-        </p>
-        {tile.kind === 'transport' && (
-          <p className="label text-center text-[10px] text-white/80" data-testid="bk-rent-ladder">
-            Rent by how many of the {state.board.tiles.filter((t) => t.kind === 'transport').length}{' '}
-            special spaces you own: {tile.rent.map((r) => money(r)).join(' · ')}
-          </p>
-        )}
       </div>
+      <p
+        className="label shrink-0 text-center text-[2.1cqw] leading-tight text-white"
+        data-testid="bk-buy-note"
+      >
+        {!canBuy
+          ? `You need ${money(tile.price - cash)} more. Tap X to pass.`
+          : state.options.auctionOnDecline
+            ? 'Tap X to put it up for auction.'
+            : 'Tap X to leave it.'}
+      </p>
     </div>
   );
 }

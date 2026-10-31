@@ -109,7 +109,8 @@ export function PropertyCard({
   closeLabel?: string;
 }) {
   const box = useRef<HTMLDivElement>(null);
-  const s = useArtScale(box, CARD_W);
+  // The card fits the box it is put in (the middle of the board): never bigger than that.
+  const s = useArtScale(box, CARD_W, true, CARD_H);
   const [flipped, setFlipped] = useState(false);
   const stats: [string, string][] = [
     ['PRICE', dollars(tile.price)],
@@ -262,8 +263,8 @@ export function PropertyCard({
     WebkitBackfaceVisibility: 'hidden' as const,
   };
   return (
-    <div ref={box} className="mx-auto w-full" style={{ maxWidth: CARD_W * 3 }}>
-      <div className="mx-auto" style={{ ...size, perspective: 900 }}>
+    <div ref={box} className="flex h-full w-full items-center justify-center">
+      <div style={{ ...size, perspective: 900 }}>
         <div
           className="relative bk-flip"
           style={{

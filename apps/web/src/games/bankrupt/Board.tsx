@@ -43,6 +43,7 @@ export function Board({
   pulse,
   onPulse,
   picked,
+  overlay,
   children,
 }: {
   state: bankrupt.BankruptState;
@@ -53,6 +54,8 @@ export function Board({
   onPulse: (id: string) => void;
   /** The space chosen for the trade (waiting for the confirmation). */
   picked: string | null;
+  /** A pop-up (a card ...): drawn inside the middle of the board only, so it never covers a space. */
+  overlay?: ReactNode;
   children: ReactNode;
 }) {
   const n = state.board.tiles.length;
@@ -194,7 +197,7 @@ export function Board({
         })}
         {/* the middle */}
         <div
-          className="pointer-events-none absolute flex flex-col items-center justify-start gap-[1%]"
+          className="pointer-events-none absolute flex flex-col items-center justify-center gap-[2%]"
           style={{
             left: pct(INNER[0]),
             top: pct(INNER[1]),
@@ -206,10 +209,25 @@ export function Board({
             src={cityArt('city-hall')}
             alt=""
             draggable={false}
-            style={{ width: pct(156), imageRendering: 'pixelated' }}
+            style={{ width: pct(86), imageRendering: 'pixelated' }}
           />
           {children}
         </div>
+        {/* pop-ups live inside the middle of the board */}
+        {overlay && (
+          <div
+            className="absolute z-20 overflow-hidden"
+            style={{
+              left: pct(INNER[0]),
+              top: pct(INNER[1]),
+              width: pct(INNER[2]),
+              height: pct(INNER[3]),
+            }}
+            data-testid="bk-overlay"
+          >
+            {overlay}
+          </div>
+        )}
         {/* the tokens glide from space to space (and hop on every step) */}
         <div className="pointer-events-none absolute inset-0">
           {state.players.map((p, seat) => {
