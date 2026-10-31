@@ -41,8 +41,8 @@ export function TileSheet({
                 <span>
                   <span className="label block text-[10px] text-muted">Rent</span>
                   <b className="text-lg">
-                    {ownable.kind === 'utility'
-                      ? `${ownable.rent[0]} x dice`
+                    {ownable.kind === 'transport'
+                      ? `${money(ownable.rent[0]!)}-${money(ownable.rent.at(-1)!)}`
                       : money(ownable.rent[0]!)}
                   </b>
                 </span>

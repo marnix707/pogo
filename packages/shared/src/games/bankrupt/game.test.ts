@@ -139,7 +139,7 @@ describe('moving, buying and rent', () => {
     expect(cash(s, b)).toBe(1050 + 10);
     // With Delhi too the base rent doubles.
     const set = own(own(start(), 'rio', b), 'delhi', b);
-    expect(rentOf(set, tileById(set.board, 'rio') as never, null)).toBe(20);
+    expect(rentOf(set, tileById(set.board, 'rio') as never)).toBe(20);
   });
 
   it('a six rolls again, with no penalty however often it comes', () => {
@@ -196,7 +196,7 @@ describe('buildings, selling and net worth', () => {
     s = play(s, a, { type: 'build', tile: 'rio' });
     expect(s.owned['rio']!.level).toBe(1);
     expect(cash(s, a)).toBe(950);
-    expect(rentOf(s, tileById(s.board, 'rio') as never, null)).toBe(30);
+    expect(rentOf(s, tileById(s.board, 'rio') as never)).toBe(30);
     // 950 cash + sell 80 + 80 + one building (half of 50)
     expect(netWorth(s, a)).toBe(950 + 80 + 80 + 25);
     s = play(s, a, { type: 'sellBuilding', tile: 'rio' });
@@ -206,13 +206,20 @@ describe('buildings, selling and net worth', () => {
     expect(s.owned['delhi']).toBeUndefined();
   });
 
-  it('scales transport rent with how many the owner has, and utility rent with the dice', () => {
+  it('special spaces pay by how many of the four the owner has (35 / 70 / 100 / 140) and cannot be built on', () => {
     let s = own(start(), 'harbor', 'b');
-    expect(rentOf(s, tileById(s.board, 'harbor') as never, null)).toBe(35);
-    s = own(own(s, 'airport', 'b'), 'railway', 'b');
-    expect(rentOf(s, tileById(s.board, 'harbor') as never, null)).toBe(140);
+    const rent = (id: string) => rentOf(s, tileById(s.board, id) as never);
+    expect(rent('harbor')).toBe(35);
+    s = own(s, 'airport', 'b');
+    expect(rent('harbor')).toBe(70);
+    s = own(s, 'railway', 'b');
+    expect(rent('airport')).toBe(100);
     s = own(s, 'electricity', 'b');
-    expect(rentOf(s, tileById(s.board, 'electricity') as never, 4)).toBe(48);
+    expect(rent('railway')).toBe(140);
+    expect(rent('electricity')).toBe(140);
+    expect(game.validateMove(s, 'b', { type: 'build', tile: 'harbor' })).toMatchObject({
+      ok: false,
+    });
   });
 });
 

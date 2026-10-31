@@ -90,7 +90,7 @@ export interface BankruptState {
   phase: BankruptPhase;
   /** Sixes rolled in a row this turn (a six rolls again, with no penalty). */
   sixes: number;
-  /** The last roll, for the utility rent and the die on screen. */
+  /** The last roll, for the die on screen. */
   dice: number | null;
   /** The mover stands on the Auction corner and may auction one of their spaces. */
   auctionRight: boolean;

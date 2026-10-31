@@ -241,7 +241,7 @@ function land(s: BankruptState, p: BankruptPlayer, rng: Rng, depth = 0) {
     const holding = s.owned[tile.id];
     if (!holding) s.phase = 'buy';
     else if (holding.owner !== p.id) {
-      const amount = rentOf(s, tile, s.dice);
+      const amount = rentOf(s, tile);
       const owner = playerOf(s, holding.owner)!;
       pay(s, p, owner, amount);
       s.events.push({ k: 'rent', by: p.id, to: owner.id, tile: tile.id, amount });

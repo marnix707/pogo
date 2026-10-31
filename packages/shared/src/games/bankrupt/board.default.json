@@ -52,7 +52,7 @@
       "name": "Harbor",
       "price": 100,
       "sell": 80,
-      "rent": [35, 70, 140]
+      "rent": [35, 70, 100, 140]
     },
     {
       "id": "cairo",
@@ -120,7 +120,7 @@
       "name": "Railway",
       "price": 150,
       "sell": 120,
-      "rent": [35, 70, 140]
+      "rent": [35, 70, 100, 140]
     },
     {
       "id": "toronto",
@@ -184,11 +184,11 @@
     },
     {
       "id": "electricity",
-      "kind": "utility",
+      "kind": "transport",
       "name": "Electricity",
       "price": 150,
       "sell": 120,
-      "rent": [12]
+      "rent": [35, 70, 100, 140]
     },
     {
       "id": "beijing",
@@ -256,7 +256,7 @@
       "name": "Airport",
       "price": 250,
       "sell": 200,
-      "rent": [35, 70, 140]
+      "rent": [35, 70, 100, 140]
     },
     {
       "id": "tokyo",

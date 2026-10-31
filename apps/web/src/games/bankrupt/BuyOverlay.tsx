@@ -42,9 +42,7 @@ export function BuyOverlay({
           </span>
           <span>
             <span className="label block text-[10px] text-[#55657f]">Rent</span>
-            <b className="text-xl">
-              {tile.kind === 'utility' ? `${tile.rent[0]} x die` : money(tile.rent[0]!)}
-            </b>
+            <b className="text-xl">{money(tile.rent[0]!)}</b>
           </span>
           <span>
             <span className="label block text-[10px] text-[#55657f]">Sell price</span>
@@ -73,14 +71,29 @@ export function BuyOverlay({
             </p>
           </div>
         ) : (
-          icon && (
-            <img
-              src={art(icon)}
-              alt=""
-              className="mx-auto mt-2 h-16 w-auto"
-              style={{ imageRendering: 'pixelated' }}
-            />
-          )
+          <>
+            <div
+              className="grid grid-cols-4 gap-1 px-3 pt-2 text-center"
+              data-testid="bk-rent-ladder"
+            >
+              {tile.rent.map((r, i) => (
+                <span key={i}>
+                  <span className="label block text-[10px] text-[#55657f]">
+                    {i + 1} of {state.board.tiles.filter((t) => t.kind === 'transport').length}
+                  </span>
+                  <b>{money(r)}</b>
+                </span>
+              ))}
+            </div>
+            {icon && (
+              <img
+                src={art(icon)}
+                alt=""
+                className="mx-auto mt-2 h-16 w-auto"
+                style={{ imageRendering: 'pixelated' }}
+              />
+            )}
+          </>
         )}
         <div className="grid grid-cols-2 gap-2 p-3">
           <Button

@@ -33,21 +33,13 @@ export const tileSchema = z.discriminatedUnion('kind', [
     kind: z.literal('transport'),
     price: money,
     sell: money,
-    /** Rent when the owner has 1, 2, 3 ... transport spaces. */
+    /** Special spaces (Harbor, Railway, Airport, Electricity): rent when the owner has 1, 2, 3 ... of them. No buildings. */
     rent: z.array(money).min(1).max(8),
-  }),
-  z.object({
-    ...baseTile,
-    kind: z.literal('utility'),
-    price: money,
-    sell: money,
-    /** Rent = this x the die just rolled. */
-    rent: z.tuple([money]),
   }),
 ]);
 export type Tile = z.infer<typeof tileSchema>;
 export type PropertyTile = Extract<Tile, { kind: 'property' }>;
-export type OwnableTile = Extract<Tile, { kind: 'property' | 'transport' | 'utility' }>;
+export type OwnableTile = Extract<Tile, { kind: 'property' | 'transport' }>;
 
 export const cardEffectSchema = z.discriminatedUnion('type', [
   /** Gain (positive) or lose (negative) money. */
@@ -108,4 +100,4 @@ export type BoardConfig = z.infer<typeof boardConfigSchema>;
 export const DEFAULT_BOARD: BoardConfig = boardConfigSchema.parse(defaultBoardJson);
 
 export const isOwnable = (t: Tile): t is OwnableTile =>
-  t.kind === 'property' || t.kind === 'transport' || t.kind === 'utility';
+  t.kind === 'property' || t.kind === 'transport';

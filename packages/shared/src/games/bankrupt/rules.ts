@@ -43,19 +43,16 @@ export function netWorth(s: BankruptState, id: PlayerId): number {
   return total;
 }
 
-/** The rent somebody pays for stopping on `tile` (the owner must exist; `dice` is the last roll of the die). */
-export function rentOf(s: BankruptState, tile: OwnableTile, dice: number | null): number {
+/** The rent somebody pays for stopping on `tile` (the owner must exist). */
+export function rentOf(s: BankruptState, tile: OwnableTile): number {
   const holding = s.owned[tile.id];
   if (!holding) return 0;
   if (tile.kind === 'property') {
     if (holding.level > 0) return tile.rent[Math.min(3, holding.level)] ?? 0;
     return tile.rent[0] * (ownsSet(s, holding.owner, tile) ? 2 : 1);
   }
-  if (tile.kind === 'transport') {
-    const n = holdingsOf(s, holding.owner).filter((t) => t.kind === 'transport').length;
-    return tile.rent[Math.min(n, tile.rent.length) - 1] ?? 0;
-  }
-  return tile.rent[0] * (dice ?? 4);
+  const n = holdingsOf(s, holding.owner).filter((t) => t.kind === 'transport').length;
+  return tile.rent[Math.min(n, tile.rent.length) - 1] ?? 0;
 }
 
 /** How many spaces the token moves from `from` to `to` going forward. */

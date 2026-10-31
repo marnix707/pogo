@@ -49,7 +49,7 @@ function Space({
       ) : (
         <>
           <span className="block px-[4%] pt-[3%] text-center text-[1.8cqw] font-bold uppercase leading-tight text-[#2b3b57]">
-            {tile.kind === 'transport' || tile.kind === 'utility' ? tile.name : ''}
+            {tile.kind === 'transport' ? tile.name : ''}
           </span>
           <span className="flex min-h-0 flex-1 items-center justify-center">
             {icon && (
@@ -63,7 +63,7 @@ function Space({
             )}
           </span>
           <span className="block pb-[3%] text-center text-[1.8cqw] font-bold uppercase leading-tight text-[#2b3b57]">
-            {tile.kind === 'transport' || tile.kind === 'utility'
+            {tile.kind === 'transport'
               ? money(tile.price)
               : tile.kind === 'start' ||
                   tile.kind === 'jail' ||
