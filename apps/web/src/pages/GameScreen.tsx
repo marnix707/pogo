@@ -158,7 +158,15 @@ function ResultsPanel({
             className="res-bottom flex flex-col gap-3"
             style={delay(rowsDone + (account?.isGuest ? 0.9 : 0.4))}
           >
-            {room.autoNextAt ? (
+            {room.spectating ? (
+              <Button
+                variant="secondary"
+                data-testid="results-leave"
+                onClick={() => void api.leave()}
+              >
+                Stop watching
+              </Button>
+            ) : room.autoNextAt ? (
               <>
                 {/* Everybody locked Ready: the next match starts by itself. Leaving the loop is an explicit choice. */}
                 <p
@@ -248,6 +256,8 @@ export function GameScreen({
   account?: AccountProps;
 }) {
   const ui = getGameUi(room.gameId);
+  // Watching a game you are not in looks exactly like playing it (the watcher's view, no moves).
+  const watching = !!room.spectating;
   const [confirmLeave, setConfirmLeave] = useState(false);
   // Every new game (a rematch that starts at once) mounts the game afresh: no state of the last one.
   const [game, setGame] = useState(0);
@@ -305,6 +315,15 @@ export function GameScreen({
 
   return (
     <div className="mx-auto flex h-dvh max-w-lg flex-col">
+      {watching && (
+        <div
+          role="status"
+          data-testid="spectating-badge"
+          className="label pointer-events-none fixed left-1/2 top-[calc(env(safe-area-inset-top)+0.15rem)] z-30 -translate-x-1/2 rounded-full border-2 border-line bg-panel/90 px-2.5 py-0.5 text-[10px] text-onbg"
+        >
+          👀 Spectating
+        </div>
+      )}
       {!ui.ownHeader && (
         <TopBar
           title={ui.name}
@@ -348,7 +367,7 @@ export function GameScreen({
           left={
             <TileButton
               small
-              onClick={() => (finished ? void api.leave() : setConfirmLeave(true))}
+              onClick={() => (finished || watching ? void api.leave() : setConfirmLeave(true))}
               aria-label="Leave game"
               data-testid="leave-game"
             >
@@ -364,7 +383,7 @@ export function GameScreen({
           me={me}
           sendMove={api.move}
           chrome={{
-            onLeave: () => (finished ? void api.leave() : setConfirmLeave(true)),
+            onLeave: () => (finished || watching ? void api.leave() : setConfirmLeave(true)),
             onChat: () => setChatOpen(true),
             onSettings,
             unread,

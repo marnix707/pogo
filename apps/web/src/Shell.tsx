@@ -15,7 +15,6 @@ import { useRealtime } from './lib/socket';
 import { play } from './lib/sound';
 import { BellFx } from './components/BellFx';
 import { GameScreen } from './pages/GameScreen';
-import { SpectatorScreen } from './pages/SpectatorScreen';
 import { ProfileSheet } from './components/ProfileSheet';
 import { Home } from './pages/Home';
 import { Lobby } from './pages/Lobby';
@@ -185,16 +184,6 @@ export function Shell({
             toast.show((e as Error).message, 'error');
           }
         }}
-      />
-    );
-  } else if (room.spectating) {
-    screen = (
-      <SpectatorScreen
-        room={room}
-        me={session.user.id}
-        api={api}
-        messages={messages}
-        onSettings={openSettings}
       />
     );
   } else {
