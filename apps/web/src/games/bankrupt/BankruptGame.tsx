@@ -236,7 +236,11 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const broke = !!owedBuy && (mePlayer?.cash ?? 0) < owedBuy.price;
   const [shortMsg, setShortMsg] = useState<string | null>(null);
   useEffect(() => {
-    if (!broke || !settled || !owedBuy) return;
+    // (Nothing to say any more: the note goes away with the situation, it can never get stuck.)
+    if (!broke || !settled || !owedBuy) {
+      setShortMsg(null);
+      return;
+    }
     setShortMsg(`Not enough money for ${owedBuy.name}`);
     const pass = setTimeout(() => void sendMove({ type: 'decline' }), 1100);
     const gone = setTimeout(() => setShortMsg(null), 1500);
@@ -245,7 +249,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       clearTimeout(gone);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [broke, settled, owedBuy?.id, state.seq]);
+  }, [broke, settled, owedBuy?.id]);
   const goal =
     state.options.target > 0
       ? `${money(state.options.target)} net worth to win`

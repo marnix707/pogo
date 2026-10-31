@@ -369,6 +369,19 @@ describe('auctions', () => {
     expect(s.phase).toBe('roll');
   });
 
+  it('a player who cannot afford the space does not start an auction', () => {
+    let s = start();
+    const a = mover(s).id;
+    const b = other(s);
+    s = patch(s, a, { cash: 100 }); // Bangkok costs $130
+    s = play(s, a, { type: 'roll' }, dice(3));
+    expect(game.validateMove(s, a, { type: 'buy' })).toMatchObject({ ok: false });
+    s = play(s, a, { type: 'decline' });
+    expect(s.auction).toBeNull();
+    expect(s.owned['bangkok']).toBeUndefined();
+    expect(mover(s).id).toBe(b);
+  });
+
   it('with the setting off, not buying just leaves the space free', () => {
     let s = start(2, { ...OPTIONS, auctionOnDecline: false });
     const a = mover(s).id;

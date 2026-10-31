@@ -522,7 +522,8 @@ function applyMove(
         const min = openingBid(t.price);
         // Somebody other than the one who passed must be able to afford the opening bid, else no auction.
         const rivals = alivePlayers(s).filter((p) => p.id !== me.id && p.cash >= min);
-        if (s.options.auctionOnDecline && rivals.length > 0) {
+        // Only a player who chose not to buy puts it up for auction: one who cannot afford it just passes.
+        if (s.options.auctionOnDecline && me.cash >= t.price && rivals.length > 0) {
           s.auction = { tile: t.id, min, high: null, passed: [] };
           s.phase = 'auction';
           resolveAuction(s);
