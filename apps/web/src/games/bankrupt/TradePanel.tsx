@@ -48,7 +48,7 @@ function Chip({ state, id, open }: { state: State; id: string; open: (id: string
  * The trade on the Auction corner, in the action area under the board (so it never covers a space): the
  * mover picks one of their pulsing spaces, the others offer one of theirs (or pass), and the mover chooses.
  */
-export function TradePanel({
+function TradeBody({
   state,
   me,
   name,
@@ -278,6 +278,21 @@ export function TradePanel({
     <div data-testid="bk-trade-panel">
       {head}
       <p className="text-center text-sm">{name(t.by)} is choosing an offer…</p>
+    </div>
+  );
+}
+
+/**
+ * The trade, in the middle of the board (a pop-up like the cards: it never covers a space, and the pulsing spaces
+ * around it stay tappable).
+ */
+export function TradePanel(props: Parameters<typeof TradeBody>[0]) {
+  return (
+    <div
+      className="flex h-full w-full flex-col justify-center overflow-y-auto bg-[#101628]/85 p-[3%] text-white [&_button]:!min-h-9 [&_button]:!text-xs"
+      data-testid="bk-trade-box"
+    >
+      <TradeBody {...props} />
     </div>
   );
 }

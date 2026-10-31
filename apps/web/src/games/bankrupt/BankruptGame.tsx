@@ -348,6 +348,19 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         name={name}
         onClose={() => setTileOpen(null)}
       />
+    ) : state.trade ? (
+      <TradePanel
+        state={state}
+        me={me}
+        name={name}
+        send={send}
+        busy={busy}
+        deadline={game.deadline}
+        serverTime={room.serverTime}
+        open={setTileOpen}
+        pick={pick}
+        onClearPick={() => setPick(null)}
+      />
     ) : shortMsg ? (
       <p
         role="status"
@@ -429,18 +442,9 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
                 : ''}
           </p>
         ) : state.trade ? (
-          <TradePanel
-            state={state}
-            me={me}
-            name={name}
-            send={send}
-            busy={busy}
-            deadline={game.deadline}
-            serverTime={room.serverTime}
-            open={setTileOpen}
-            pick={pick}
-            onClearPick={() => setPick(null)}
-          />
+          <p className="label text-center text-onbg/80" data-testid="bk-trade-hint">
+            Trade: see the middle of the board
+          </p>
         ) : state.auction ? (
           <AuctionPanel
             state={state}
