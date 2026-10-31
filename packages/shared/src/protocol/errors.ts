@@ -198,7 +198,6 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'MATE-110', message: 'Not enough berries' },
   { code: 'MATE-111', message: 'Only an evolved monster can be boosted' },
   { code: 'MATE-125', message: /^Pet Match needs \d+-\d+ players$/ },
-  { code: 'BANK-101', message: 'Roll the dice first' },
   { code: 'BANK-102', message: 'You cannot do that right now' },
   { code: 'BANK-103', message: 'You are in jail: pay or wait' },
   { code: 'BANK-104', message: 'You are not in jail' },
