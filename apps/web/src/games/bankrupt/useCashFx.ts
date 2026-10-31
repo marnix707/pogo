@@ -25,7 +25,12 @@ function transfersOf(s: State): Transfer[] {
     else if (e.k === 'salary') out.push({ from: null, to: e.by, tile: start, amount: e.amount });
     else if (e.k === 'buy') out.push({ from: e.by, to: null, tile: e.tile, amount: e.price });
     else if (e.k === 'auction' && e.winner)
-      out.push({ from: e.winner, to: e.seller, tile: e.tile, amount: e.amount });
+      out.push({ from: e.winner, to: null, tile: e.tile, amount: e.amount });
+    else if (e.k === 'trade') {
+      // The bank pays both players a bonus.
+      out.push({ from: null, to: e.by, tile: e.give, amount: e.bonus });
+      out.push({ from: null, to: e.with, tile: e.take, amount: e.bonus });
+    }
   }
   return out.filter((t) => t.amount > 0);
 }

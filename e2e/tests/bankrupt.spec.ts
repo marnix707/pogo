@@ -31,22 +31,23 @@ test('Bankrupt!: play a few rounds against the computer', async ({ browser }) =>
       await page.waitForTimeout(400);
       await page.screenshot({ path: 'test-results/bankrupt-buy.png' });
     }
-    const btn = ['bk-buy', 'bk-roll', 'bk-end', 'bk-pass', 'bk-pay-jail', 'bk-wait-jail'];
     let clicked = false;
-    for (const id of btn) {
+    for (const id of ['bk-buy', 'bk-roll', 'bk-pass', 'bk-trade-cancel', 'bk-trade-pass']) {
       const b = page.getByTestId(id);
       if ((await b.count()) && (await b.isEnabled())) {
-        if (id === 'bk-buy' || id === 'bk-roll' || id === 'bk-end' || id === 'bk-pass') {
-          await b.click().catch(() => undefined);
-          clicked = true;
-          break;
-        }
+        await b.click().catch(() => undefined);
+        clicked = true;
+        break;
       }
     }
     if (!clicked) {
-      const decline = page.getByTestId('bk-decline');
-      if ((await decline.count()) && (await decline.isEnabled()))
-        await decline.click().catch(() => undefined);
+      // A space it cannot afford: the X on the card passes.
+      const overlay = page.getByTestId('bk-buy-overlay');
+      if (await overlay.count())
+        await overlay
+          .getByTestId('bk-card-close')
+          .click()
+          .catch(() => undefined);
       const wait = page.getByTestId('bk-wait-jail');
       if ((await wait.count()) && (await wait.isEnabled()))
         await wait.click().catch(() => undefined);

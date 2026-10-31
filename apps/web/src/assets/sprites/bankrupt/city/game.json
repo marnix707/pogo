@@ -1,0 +1,554 @@
+{
+ "name": "City board game (POGO pixel style)",
+ "art_px_note": "Art px. Tiles overlap by 1px (pitch 28, size 29) so neighbours share one navy line. Show the whole board at a whole number of DEVICE pixels per art px (e.g. 5 on a 3x phone = 375pt wide).",
+ "board": {
+  "size": 257,
+  "tile_size": 33,
+  "tile_pitch": 32,
+  "background": "board/board-empty.svg",
+  "centre_building": {
+   "file": "board/centre/city-hall.svg",
+   "size": [
+    52,
+    49
+   ],
+   "place": "centred in the inner area"
+  },
+  "inner_area": [
+   32,
+   32,
+   193,
+   193
+  ],
+  "order": "index 0 = START (bottom-left), moving clockwise up the left side"
+ },
+ "spaces": [
+  {
+   "index": 0,
+   "type": "corner",
+   "name": "Start",
+   "x": 0,
+   "y": 224,
+   "tile": "board/tiles/corner-start.svg"
+  },
+  {
+   "index": 1,
+   "type": "city",
+   "name": "Rio",
+   "price": 100,
+   "group": "green",
+   "x": 0,
+   "y": 192,
+   "tile": "board/tiles/city-rio.svg",
+   "rent": 30,
+   "sell": 80,
+   "upgrade": 50,
+   "card": "cards/cards/card-rio.svg",
+   "card_no_upgrade": "cards/cards/card-rio-no-upgrade.svg"
+  },
+  {
+   "index": 2,
+   "type": "city",
+   "name": "Delhi",
+   "price": 100,
+   "group": "green",
+   "x": 0,
+   "y": 160,
+   "tile": "board/tiles/city-delhi.svg",
+   "rent": 30,
+   "sell": 80,
+   "upgrade": 50,
+   "card": "cards/cards/card-delhi.svg",
+   "card_no_upgrade": "cards/cards/card-delhi-no-upgrade.svg"
+  },
+  {
+   "index": 3,
+   "type": "city",
+   "name": "Bangkok",
+   "price": 130,
+   "group": "sky",
+   "x": 0,
+   "y": 128,
+   "tile": "board/tiles/city-bangkok.svg",
+   "rent": 40,
+   "sell": 105,
+   "upgrade": 65,
+   "card": "cards/cards/card-bangkok.svg",
+   "card_no_upgrade": "cards/cards/card-bangkok-no-upgrade.svg"
+  },
+  {
+   "index": 4,
+   "type": "transport",
+   "name": "Harbor",
+   "x": 0,
+   "y": 96,
+   "tile": "board/tiles/harbor.svg",
+   "rent": 35,
+   "sell": 80,
+   "upgrade": null,
+   "price": 100,
+   "card": "cards/cards/card-harbor.svg"
+  },
+  {
+   "index": 5,
+   "type": "city",
+   "name": "Cairo",
+   "price": 150,
+   "group": "sky",
+   "x": 0,
+   "y": 64,
+   "tile": "board/tiles/city-cairo.svg",
+   "rent": 45,
+   "sell": 120,
+   "upgrade": 75,
+   "card": "cards/cards/card-cairo.svg",
+   "card_no_upgrade": "cards/cards/card-cairo-no-upgrade.svg"
+  },
+  {
+   "index": 6,
+   "type": "city",
+   "name": "Madrid",
+   "price": 150,
+   "group": "sky",
+   "x": 0,
+   "y": 32,
+   "tile": "board/tiles/city-madrid.svg",
+   "rent": 45,
+   "sell": 120,
+   "upgrade": 75,
+   "card": "cards/cards/card-madrid.svg",
+   "card_no_upgrade": "cards/cards/card-madrid-no-upgrade.svg"
+  },
+  {
+   "index": 7,
+   "type": "corner",
+   "name": "Chance",
+   "x": 0,
+   "y": 0,
+   "tile": "board/tiles/corner-chance.svg"
+  },
+  {
+   "index": 8,
+   "type": "city",
+   "name": "Jakarta",
+   "price": 170,
+   "group": "pink",
+   "x": 32,
+   "y": 0,
+   "tile": "board/tiles/city-jakarta.svg",
+   "rent": 50,
+   "sell": 135,
+   "upgrade": 85,
+   "card": "cards/cards/card-jakarta.svg",
+   "card_no_upgrade": "cards/cards/card-jakarta-no-upgrade.svg"
+  },
+  {
+   "index": 9,
+   "type": "city",
+   "name": "Berlin",
+   "price": 180,
+   "group": "pink",
+   "x": 64,
+   "y": 0,
+   "tile": "board/tiles/city-berlin.svg",
+   "rent": 55,
+   "sell": 145,
+   "upgrade": 90,
+   "card": "cards/cards/card-berlin.svg",
+   "card_no_upgrade": "cards/cards/card-berlin-no-upgrade.svg"
+  },
+  {
+   "index": 10,
+   "type": "city",
+   "name": "Moscow",
+   "price": 200,
+   "group": "yellow",
+   "x": 96,
+   "y": 0,
+   "tile": "board/tiles/city-moscow.svg",
+   "rent": 60,
+   "sell": 160,
+   "upgrade": 100,
+   "card": "cards/cards/card-moscow.svg",
+   "card_no_upgrade": "cards/cards/card-moscow-no-upgrade.svg"
+  },
+  {
+   "index": 11,
+   "type": "transport",
+   "name": "Railway",
+   "x": 128,
+   "y": 0,
+   "tile": "board/tiles/railway.svg",
+   "rent": 35,
+   "sell": 80,
+   "upgrade": null,
+   "price": 100,
+   "card": "cards/cards/card-railway.svg"
+  },
+  {
+   "index": 12,
+   "type": "city",
+   "name": "Toronto",
+   "price": 200,
+   "group": "yellow",
+   "x": 160,
+   "y": 0,
+   "tile": "board/tiles/city-toronto.svg",
+   "rent": 60,
+   "sell": 160,
+   "upgrade": 100,
+   "card": "cards/cards/card-toronto.svg",
+   "card_no_upgrade": "cards/cards/card-toronto-no-upgrade.svg"
+  },
+  {
+   "index": 13,
+   "type": "city",
+   "name": "Seoul",
+   "price": 200,
+   "group": "yellow",
+   "x": 192,
+   "y": 0,
+   "tile": "board/tiles/city-seoul.svg",
+   "rent": 60,
+   "sell": 160,
+   "upgrade": 100,
+   "card": "cards/cards/card-seoul.svg",
+   "card_no_upgrade": "cards/cards/card-seoul-no-upgrade.svg"
+  },
+  {
+   "index": 14,
+   "type": "corner",
+   "name": "Jail",
+   "x": 224,
+   "y": 0,
+   "tile": "board/tiles/corner-jail.svg"
+  },
+  {
+   "index": 15,
+   "type": "city",
+   "name": "Zurich",
+   "price": 250,
+   "group": "orange",
+   "x": 224,
+   "y": 32,
+   "tile": "board/tiles/city-zurich.svg",
+   "rent": 75,
+   "sell": 200,
+   "upgrade": 125,
+   "card": "cards/cards/card-zurich.svg",
+   "card_no_upgrade": "cards/cards/card-zurich-no-upgrade.svg"
+  },
+  {
+   "index": 16,
+   "type": "city",
+   "name": "Riyadh",
+   "price": 250,
+   "group": "orange",
+   "x": 224,
+   "y": 64,
+   "tile": "board/tiles/city-riyadh.svg",
+   "rent": 75,
+   "sell": 200,
+   "upgrade": 125,
+   "card": "cards/cards/card-riyadh.svg",
+   "card_no_upgrade": "cards/cards/card-riyadh-no-upgrade.svg"
+  },
+  {
+   "index": 17,
+   "type": "city",
+   "name": "Sydney",
+   "price": 300,
+   "group": "brown",
+   "x": 224,
+   "y": 96,
+   "tile": "board/tiles/city-sydney.svg",
+   "rent": 90,
+   "sell": 240,
+   "upgrade": 150,
+   "card": "cards/cards/card-sydney.svg",
+   "card_no_upgrade": "cards/cards/card-sydney-no-upgrade.svg"
+  },
+  {
+   "index": 18,
+   "type": "utility",
+   "name": "Power",
+   "x": 224,
+   "y": 128,
+   "tile": "board/tiles/power.svg",
+   "rent": 50,
+   "sell": 120,
+   "upgrade": null,
+   "price": 150,
+   "card": "cards/cards/card-power.svg"
+  },
+  {
+   "index": 19,
+   "type": "city",
+   "name": "Beijing",
+   "price": 300,
+   "group": "brown",
+   "x": 224,
+   "y": 160,
+   "tile": "board/tiles/city-beijing.svg",
+   "rent": 90,
+   "sell": 240,
+   "upgrade": 150,
+   "card": "cards/cards/card-beijing.svg",
+   "card_no_upgrade": "cards/cards/card-beijing-no-upgrade.svg"
+  },
+  {
+   "index": 20,
+   "type": "city",
+   "name": "Dubai",
+   "price": 300,
+   "group": "brown",
+   "x": 224,
+   "y": 192,
+   "tile": "board/tiles/city-dubai.svg",
+   "rent": 90,
+   "sell": 240,
+   "upgrade": 150,
+   "card": "cards/cards/card-dubai.svg",
+   "card_no_upgrade": "cards/cards/card-dubai-no-upgrade.svg"
+  },
+  {
+   "index": 21,
+   "type": "corner",
+   "name": "Auction",
+   "x": 224,
+   "y": 224,
+   "tile": "board/tiles/corner-auction.svg"
+  },
+  {
+   "index": 22,
+   "type": "city",
+   "name": "Paris",
+   "price": 350,
+   "group": "purple",
+   "x": 192,
+   "y": 224,
+   "tile": "board/tiles/city-paris.svg",
+   "rent": 105,
+   "sell": 280,
+   "upgrade": 175,
+   "card": "cards/cards/card-paris.svg",
+   "card_no_upgrade": "cards/cards/card-paris-no-upgrade.svg"
+  },
+  {
+   "index": 23,
+   "type": "city",
+   "name": "Hong Kong",
+   "price": 350,
+   "group": "purple",
+   "x": 160,
+   "y": 224,
+   "tile": "board/tiles/city-hong-kong.svg",
+   "rent": 105,
+   "sell": 280,
+   "upgrade": 175,
+   "card": "cards/cards/card-hong-kong.svg",
+   "card_no_upgrade": "cards/cards/card-hong-kong-no-upgrade.svg"
+  },
+  {
+   "index": 24,
+   "type": "city",
+   "name": "London",
+   "price": 420,
+   "group": "red",
+   "x": 128,
+   "y": 224,
+   "tile": "board/tiles/city-london.svg",
+   "rent": 125,
+   "sell": 335,
+   "upgrade": 210,
+   "card": "cards/cards/card-london.svg",
+   "card_no_upgrade": "cards/cards/card-london-no-upgrade.svg"
+  },
+  {
+   "index": 25,
+   "type": "transport",
+   "name": "Airport",
+   "x": 96,
+   "y": 224,
+   "tile": "board/tiles/airport.svg",
+   "rent": 35,
+   "sell": 80,
+   "upgrade": null,
+   "price": 100,
+   "card": "cards/cards/card-airport.svg"
+  },
+  {
+   "index": 26,
+   "type": "city",
+   "name": "Tokyo",
+   "price": 420,
+   "group": "red",
+   "x": 64,
+   "y": 224,
+   "tile": "board/tiles/city-tokyo.svg",
+   "rent": 125,
+   "sell": 335,
+   "upgrade": 210,
+   "card": "cards/cards/card-tokyo.svg",
+   "card_no_upgrade": "cards/cards/card-tokyo-no-upgrade.svg"
+  },
+  {
+   "index": 27,
+   "type": "city",
+   "name": "New York",
+   "price": 450,
+   "group": "red",
+   "x": 32,
+   "y": 224,
+   "tile": "board/tiles/city-new-york.svg",
+   "rent": 135,
+   "sell": 360,
+   "upgrade": 225,
+   "card": "cards/cards/card-new-york.svg",
+   "card_no_upgrade": "cards/cards/card-new-york-no-upgrade.svg"
+  }
+ ],
+ "groups": {
+  "green": [
+   "#74cca8",
+   "#56a786",
+   "#3f7a62"
+  ],
+  "sky": [
+   "#83e9f8",
+   "#3aaef7",
+   "#0061b8"
+  ],
+  "pink": [
+   "#fdc4c6",
+   "#ff9690",
+   "#e8475f"
+  ],
+  "yellow": [
+   "#fdcf51",
+   "#fda200",
+   "#c97a00"
+  ],
+  "orange": [
+   "#fd7957",
+   "#eb6b43",
+   "#c14139"
+  ],
+  "brown": [
+   "#d9b672",
+   "#b88828",
+   "#7a5a2a"
+  ],
+  "purple": [
+   "#ae65ff",
+   "#935adc",
+   "#6b3fa8"
+  ],
+  "red": [
+   "#ff8a80",
+   "#fd5f55",
+   "#a61a1f"
+  ]
+ },
+ "tokens": {
+  "green": "board/tokens/token-green.svg",
+  "yellow": "board/tokens/token-yellow.svg",
+  "blue": "board/tokens/token-blue.svg",
+  "red": "board/tokens/token-red.svg"
+ },
+ "token_size": [
+  9,
+  11
+ ],
+ "owner_frames": {
+  "green": "board/owner/owner-green.svg",
+  "yellow": "board/owner/owner-yellow.svg",
+  "blue": "board/owner/owner-blue.svg",
+  "red": "board/owner/owner-red.svg"
+ },
+ "card": {
+  "size": [
+   152,
+   176
+  ],
+  "shadow_px": 3,
+  "layout": {
+   "header": [
+    3,
+    3,
+    146,
+    28
+   ],
+   "labels_y": 37,
+   "values_y": 45,
+   "cols_cx": [
+    22,
+    58,
+    94,
+    130
+   ],
+   "art": [
+    20,
+    64,
+    112,
+    68
+   ],
+   "button": [
+    40,
+    142,
+    72,
+    20
+   ],
+   "buttons": [
+    [
+     8,
+     142,
+     64,
+     20
+    ],
+    [
+     80,
+     142,
+     64,
+     20
+    ]
+   ],
+   "close_x": [
+    130,
+    9,
+    15,
+    15
+   ]
+  },
+  "build_steps": [
+   "card-base.svg",
+   "header-<group>.svg at layout.header",
+   "title text",
+   "4 stats: PRICE, RENT, SELL, UPGRADE (\"-\" when it cannot be upgraded)",
+   "divider",
+   "art-<key>.svg at layout.art",
+   "button-sell.svg at layout.buttons[0], button-upgrade.svg (or button-upgrade-disabled.svg) at layout.buttons[1]; button-buy.svg can replace either",
+   "button-close-x.svg at layout.close_x"
+  ],
+  "parts_root": "cards/parts/"
+ },
+ "buttons": {
+  "sell": "cards/parts/buttons/button-sell.svg",
+  "sell_disabled": "cards/parts/buttons/button-sell-disabled.svg",
+  "upgrade": "cards/parts/buttons/button-upgrade.svg",
+  "upgrade_disabled": "cards/parts/buttons/button-upgrade-disabled.svg",
+  "buy": "cards/parts/buttons/button-buy.svg",
+  "buy_disabled": "cards/parts/buttons/button-buy-disabled.svg",
+  "close": "cards/parts/buttons/button-close-x.svg"
+ },
+ "dice": {
+  "1": "dice/die-1.svg",
+  "2": "dice/die-2.svg",
+  "3": "dice/die-3.svg",
+  "4": "dice/die-4.svg",
+  "5": "dice/die-5.svg",
+  "6": "dice/die-6.svg"
+ },
+ "font": "cards/pixel-font.json",
+ "numbers_note": "Rent = 30%, sell = 80% and upgrade = 50% of price (rounded to 5) are placeholders. Transport 100/35/80 and power 150/50/120 too. Change them to your game rules; the finished cards use these numbers."
+}

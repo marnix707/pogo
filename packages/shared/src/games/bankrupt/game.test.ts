@@ -107,7 +107,6 @@ describe('moving, buying and rent', () => {
     expect(s.dice).toBe(3);
     expect(s.players.find((p) => p.id === a)!.pos).toBe(idx('bangkok'));
     expect(s.phase).toBe('buy');
-    expect(game.validateMove(s, a, { type: 'endTurn' }).ok).toBe(false);
     const b = other(s);
     s = play(s, a, { type: 'buy' });
     expect(s.owned['bangkok']).toEqual({ owner: a, level: 0 });
@@ -165,7 +164,8 @@ describe('moving, buying and rent', () => {
     // Three sixes in a row sent nobody to jail; a 3 ends the run.
     expect(s.players.find((p) => p.id === a)!.jail).toBe(0);
     s = play(s, a, { type: 'roll' }, dice(3));
-    expect(s.phase === 'buy' || s.phase === 'after').toBe(true);
+    expect(s.dice).toBe(3);
+    expect(s.phase === 'buy' || s.phase === 'roll').toBe(true);
   });
 
   it('refuses moves out of turn and in the wrong phase', () => {
@@ -175,10 +175,7 @@ describe('moving, buying and rent', () => {
       ok: false,
       error: 'Not your turn',
     });
-    expect(game.validateMove(s, a, { type: 'endTurn' })).toEqual({
-      ok: false,
-      error: 'Roll the dice first',
-    });
+    expect(game.validateMove(s, a, { type: 'tradeCancel' }).ok).toBe(false);
     expect(game.validateMove(s, a, { type: 'buy' })).toEqual({
       ok: false,
       error: 'You cannot do that right now',
@@ -334,28 +331,7 @@ describe('auctions', () => {
     expect(mover(s).id).not.toBe(a);
   });
 
-  it('a seller on the Auction corner can sell one space or cancel', () => {
-    let s = start();
-    const a = mover(s).id;
-    const b = other(s);
-    s = own(s, 'rio', a);
-    s = patch(s, a, { pos: idx('auction') - 4 });
-    s = play(s, a, { type: 'roll' }, dice(4));
-    expect(s.auctionRight).toBe(true);
-    s = play(s, a, { type: 'startAuction', tile: 'rio' });
-    expect(game.getCurrentPlayers(s)).toEqual([b]);
-    expect(game.validateMove(s, b, { type: 'cancelAuction' })).toMatchObject({ ok: false });
-    const cancelled = play(s, a, { type: 'cancelAuction' });
-    expect(cancelled.owned['rio']!.owner).toBe(a);
-    expect(mover(cancelled).id).toBe(b);
-    s = play(s, b, { type: 'bid', amount: 70 });
-    expect(s.owned['rio']).toEqual({ owner: b, level: 0 });
-    // Selling to another player is a trade: the bank gives both a $100 bonus.
-    expect(cash(s, a)).toBe(1000 + 70 + 100);
-    expect(cash(s, b)).toBe(1050 - 70 + 100);
-  });
-
-  it('only a player-to-player sale pays the bonus; the bank sale does not', () => {
+  it('a bank sale pays no bonus', () => {
     let s = start();
     const a = mover(s).id;
     const b = other(s);
@@ -365,7 +341,101 @@ describe('auctions', () => {
     s = play(s, a, { type: 'passBid' });
     expect(cash(s, b)).toBe(1050 - 60);
     expect(cash(s, a)).toBe(1000);
-    expect(s.events.find((e) => e.k === 'auction')).toMatchObject({ winner: b, bonus: 0 });
+  });
+});
+
+describe('the trade on the Auction corner', () => {
+  const corner = (n = 2) => {
+    let s = start(n);
+    const a = mover(s).id;
+    const others = s.players.filter((p) => p.id !== a).map((p) => p.id);
+    s = own(own(s, 'rio', a), 'madrid', others[0]!);
+    if (others[1]) s = own(s, 'zurich', others[1]);
+    s = patch(s, a, { pos: idx('auction') - 4 });
+    s = play(s, a, { type: 'roll' }, dice(4));
+    return { s, a, others };
+  };
+
+  it('starts when the mover stops on the corner and both sides have a space', () => {
+    const { s, a } = corner();
+    expect(s.phase).toBe('trade');
+    expect(s.trade).toMatchObject({ by: a, stage: 'pick', give: null });
+    expect(game.getCurrentPlayers(s)).toEqual([a]);
+    expect(game.phaseClockMs!(s)).toBe(90_000);
+  });
+
+  it('does not start when somebody has nothing to trade', () => {
+    let s = start();
+    const a = mover(s).id;
+    s = own(s, 'rio', a); // the other player owns nothing
+    s = patch(s, a, { pos: idx('auction') - 4 });
+    s = play(s, a, { type: 'roll' }, dice(4));
+    expect(s.trade).toBeNull();
+    expect(s.phase).toBe('roll');
+    expect(mover(s).id).not.toBe(a);
+  });
+
+  it('the mover picks, the others offer or pass, the mover accepts one: swapped, +$100 each', () => {
+    const { s: s0, a, others } = corner(3);
+    const [b, c] = others as [string, string];
+    let s = play(s0, a, { type: 'tradePick', tile: 'rio' });
+    expect(s.trade!.stage).toBe('offers');
+    expect(game.getCurrentPlayers(s).sort()).toEqual([b, c].sort());
+    expect(game.validateMove(s, b, { type: 'tradeOffer', tile: 'zurich' })).toMatchObject({
+      ok: false,
+    });
+    s = play(s, b, { type: 'tradeOffer', tile: 'madrid' });
+    expect(game.getCurrentPlayers(s)).toEqual([c]);
+    expect(game.keepsClock!(s0, s)).toBe(false);
+    s = play(s, c, { type: 'tradePass' });
+    expect(s.trade!.stage).toBe('choose');
+    expect(game.getCurrentPlayers(s)).toEqual([a]);
+    const cashA = cash(s, a);
+    const cashB = cash(s, b);
+    s = play(s, a, { type: 'tradeAccept', from: b });
+    expect(s.owned['rio']).toEqual({ owner: b, level: 0 });
+    expect(s.owned['madrid']).toEqual({ owner: a, level: 0 });
+    expect(cash(s, a)).toBe(cashA + 100);
+    expect(cash(s, b)).toBe(cashB + 100);
+    expect(s.trade).toBeNull();
+    expect(mover(s).id).not.toBe(a);
+  });
+
+  it('the mover can cancel at the start, and take none of the offers', () => {
+    const { s, a, others } = corner();
+    const cancelled = play(s, a, { type: 'tradeCancel' });
+    expect(cancelled.owned['rio']!.owner).toBe(a);
+    expect(cancelled.trade).toBeNull();
+    let t = play(s, a, { type: 'tradePick', tile: 'rio' });
+    t = play(t, others[0]!, { type: 'tradeOffer', tile: 'madrid' });
+    expect(t.trade!.stage).toBe('choose');
+    t = play(t, a, { type: 'tradeCancel' });
+    expect(t.owned['rio']!.owner).toBe(a);
+    expect(t.owned['madrid']!.owner).toBe(others[0]);
+  });
+
+  it('when everybody passes the trade is over, and the clock steps everybody out', () => {
+    const { s: s0, a, others } = corner(3);
+    let s = play(s0, a, { type: 'tradePick', tile: 'rio' });
+    for (const id of game.getCurrentPlayers(s)) {
+      const t = game.timeoutMove!(s, id, createSeededRng(1));
+      expect(t.move).toEqual({ type: 'tradePass' });
+      s = play(s, id, t.move);
+    }
+    expect(s.trade).toBeNull();
+    expect(s.owned['rio']!.owner).toBe(a);
+    // The mover who does not pick in time cancels.
+    const waiting = game.timeoutMove!(s0, a, createSeededRng(1));
+    expect(waiting.move).toEqual({ type: 'tradeCancel' });
+    void others;
+  });
+
+  it('only spaces without buildings can be traded', () => {
+    const { s, a } = corner();
+    const built = own(s, 'rio', a, 1);
+    expect(game.validateMove(built, a, { type: 'tradePick', tile: 'rio' })).toMatchObject({
+      ok: false,
+    });
   });
 });
 

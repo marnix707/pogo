@@ -38,11 +38,23 @@ export interface Holding {
 
 export interface Auction {
   tile: string;
-  /** The player who sells it, or null when the bank sells a space nobody bought. */
-  seller: PlayerId | null;
   high: { player: PlayerId; amount: number } | null;
   /** Players who stepped out. */
   passed: PlayerId[];
+}
+
+/**
+ * The trade on the Auction corner. `pick`: the mover chooses one of their spaces (or cancels). `offers`: every other
+ * player offers one of theirs for it, or passes (one clock for everybody). `choose`: the mover takes one offer
+ * (or none).
+ */
+export interface Trade {
+  by: PlayerId;
+  stage: 'pick' | 'offers' | 'choose';
+  /** The mover's space on offer. */
+  give: string | null;
+  /** The other players' answers: the space they offer, or null = passed. A player who has not answered is absent. */
+  offers: Record<PlayerId, string | null>;
 }
 
 export type BankruptPhase =
@@ -50,9 +62,11 @@ export type BankruptPhase =
   | 'roll'
   /** The mover landed on a free space and must buy it or let it go to auction. */
   | 'buy'
-  /** The mover stands on the Auction corner and may auction a space (or skip); every other turn ends by itself. */
+  /** The mover's landing is dealt with; the turn then ends by itself. */
   | 'after'
   | 'auction'
+  /** The mover stands on the Auction corner: a trade of spaces between players (see `Trade`). */
+  | 'trade'
   | 'over';
 
 export type BankruptEvent =
@@ -66,15 +80,10 @@ export type BankruptEvent =
   | { k: 'salary'; by: PlayerId; amount: number }
   | { k: 'build'; by: PlayerId; tile: string; level: number }
   | { k: 'sold'; by: PlayerId; tile: string; amount: number }
-  /** `bonus`: what the seller and the winner each got from the bank when a player sold to a player. */
-  | {
-      k: 'auction';
-      tile: string;
-      winner: PlayerId | null;
-      seller: PlayerId | null;
-      amount: number;
-      bonus: number;
-    }
+  | { k: 'auction'; tile: string; winner: PlayerId | null; amount: number }
+  /** A trade went through: `by` gave `give`, `with` gave `take`, both got `bonus` from the bank. */
+  | { k: 'trade'; by: PlayerId; with: PlayerId; give: string; take: string; bonus: number }
+  | { k: 'tradeEnd'; by: PlayerId }
   | { k: 'bankrupt'; by: PlayerId };
 
 export interface BankruptState {
@@ -92,9 +101,9 @@ export interface BankruptState {
   sixes: number;
   /** The last roll, for the die on screen. */
   dice: number | null;
-  /** The mover stands on the Auction corner and may auction one of their spaces. */
-  auctionRight: boolean;
   auction: Auction | null;
+  /** The trade going on (the mover stands on the Auction corner), or null. */
+  trade: Trade | null;
   /** What the last move did, in order (the screen replays it). */
   events: BankruptEvent[];
   /** Counts moves, so the screen can tell a new event list from the last one. */
@@ -107,17 +116,23 @@ export type BankruptMove =
   | { type: 'buy' }
   /** Let a free space go to auction. */
   | { type: 'decline' }
-  | { type: 'endTurn' }
   | { type: 'payJail' }
   /** Sit out a turn in jail. */
   | { type: 'wait' }
   | { type: 'build'; tile: string }
   | { type: 'sellBuilding'; tile: string }
   | { type: 'sellProperty'; tile: string }
-  | { type: 'startAuction'; tile: string }
   | { type: 'bid'; amount: number }
   | { type: 'passBid' }
-  | { type: 'cancelAuction' };
+  /** Trade: the mover offers one of their spaces. */
+  | { type: 'tradePick'; tile: string }
+  /** Trade: another player offers one of theirs for it. */
+  | { type: 'tradeOffer'; tile: string }
+  | { type: 'tradePass' }
+  /** Trade: the mover takes the offer of `from`. */
+  | { type: 'tradeAccept'; from: PlayerId }
+  /** Trade: the mover cancels (before or after the offers). */
+  | { type: 'tradeCancel' };
 
 /** Everything is public in this game, so the view is the state. */
 export type BankruptView = BankruptState;

@@ -1,0 +1,452 @@
+{
+ "card_size": [
+  152,
+  192
+ ],
+ "shadow_px": 3,
+ "layout": {
+  "header": [
+   3,
+   3,
+   146,
+   28
+  ],
+  "labels_y": 37,
+  "values_y": 45,
+  "cols_cx": [
+   27,
+   76,
+   125
+  ],
+  "art": [
+   20,
+   64,
+   112,
+   68
+  ],
+  "button": [
+   40,
+   142,
+   72,
+   20
+  ],
+  "buttons": [
+   [
+    8,
+    158,
+    64,
+    20
+   ],
+   [
+    80,
+    158,
+    64,
+    20
+   ]
+  ],
+  "close_x": [
+   130,
+   9,
+   15,
+   15
+  ]
+ },
+ "layout_note": "All coordinates in art px from the card top-left. header: x,y,w,h. Stats: label (font5, #796e9e) centred on each cols_cx at labels_y; value (font5 doubled, navy) at values_y. Divider: every 2nd px at y=59 in #dcd3c0. art: x,y,w,h. buttons: two bottom buttons x,y,w,h (+3px shadow). close_x: the X button at the top-right of the header (+2px shadow). layout.button is unused (old single button).",
+ "build_steps": [
+  "card-base.svg",
+  "header-<group>.svg at layout.header",
+  "title text",
+  "3 stats: PRICE, RENT, SELL",
+  "divider",
+  "art-<key>.svg at layout.art",
+  "button-sell.svg at layout.buttons[0], button-upgrade.svg (or button-upgrade-disabled.svg) at layout.buttons[1]; button-buy.svg can replace either",
+  "button-close-x.svg at layout.close_x",
+  "cities only: upgrade-tag-<3|4>.svg (by length of e.g. \"$50\" / \"$210\"; -disabled when Upgrade is greyed out) the file includes the hanging string; place it so its bottom row lies on the button top line (y = buttons[1].y - height + 1), x = buttons[1].x + (64 - width)/2 + 2; write the upgrade price in tag_digits7 (pixel-font.json), navy (grey #796e9e when disabled), centred in the tag body right of the hole, 3px from the tag top"
+ ],
+ "groups": {
+  "green": [
+   "#74cca8",
+   "#56a786",
+   "#3f7a62"
+  ],
+  "sky": [
+   "#83e9f8",
+   "#3aaef7",
+   "#0061b8"
+  ],
+  "pink": [
+   "#fdc4c6",
+   "#ff9690",
+   "#e8475f"
+  ],
+  "yellow": [
+   "#fdcf51",
+   "#fda200",
+   "#c97a00"
+  ],
+  "orange": [
+   "#fd7957",
+   "#eb6b43",
+   "#c14139"
+  ],
+  "brown": [
+   "#d9b672",
+   "#b88828",
+   "#7a5a2a"
+  ],
+  "purple": [
+   "#ae65ff",
+   "#935adc",
+   "#6b3fa8"
+  ],
+  "red": [
+   "#ff8a80",
+   "#fd5f55",
+   "#a61a1f"
+  ],
+  "special": [
+   "#4f6367",
+   "#334461",
+   "#233049"
+  ]
+ },
+ "cards": [
+  {
+   "key": "rio",
+   "name": "Rio",
+   "type": "city",
+   "group": "green",
+   "price": 100,
+   "rent": 30,
+   "sell": 80,
+   "upgrade": 50,
+   "art": "parts/art/art-rio.svg",
+   "header": "parts/headers/header-green.svg",
+   "card": "cards/card-rio.svg",
+   "card_no_upgrade": "cards/card-rio-no-upgrade.svg"
+  },
+  {
+   "key": "delhi",
+   "name": "Delhi",
+   "type": "city",
+   "group": "green",
+   "price": 100,
+   "rent": 30,
+   "sell": 80,
+   "upgrade": 50,
+   "art": "parts/art/art-delhi.svg",
+   "header": "parts/headers/header-green.svg",
+   "card": "cards/card-delhi.svg",
+   "card_no_upgrade": "cards/card-delhi-no-upgrade.svg"
+  },
+  {
+   "key": "bangkok",
+   "name": "Bangkok",
+   "type": "city",
+   "group": "sky",
+   "price": 130,
+   "rent": 40,
+   "sell": 105,
+   "upgrade": 65,
+   "art": "parts/art/art-bangkok.svg",
+   "header": "parts/headers/header-sky.svg",
+   "card": "cards/card-bangkok.svg",
+   "card_no_upgrade": "cards/card-bangkok-no-upgrade.svg"
+  },
+  {
+   "key": "harbor",
+   "name": "Harbor",
+   "type": "transport",
+   "group": "special",
+   "price": 100,
+   "rent": 35,
+   "sell": 80,
+   "upgrade": null,
+   "art": "parts/art/art-harbor.svg",
+   "header": "parts/headers/header-special.svg",
+   "card": "cards/card-harbor.svg",
+   "note": "transport/utility: no upgrades, upgrade button always greyed out"
+  },
+  {
+   "key": "cairo",
+   "name": "Cairo",
+   "type": "city",
+   "group": "sky",
+   "price": 150,
+   "rent": 45,
+   "sell": 120,
+   "upgrade": 75,
+   "art": "parts/art/art-cairo.svg",
+   "header": "parts/headers/header-sky.svg",
+   "card": "cards/card-cairo.svg",
+   "card_no_upgrade": "cards/card-cairo-no-upgrade.svg"
+  },
+  {
+   "key": "madrid",
+   "name": "Madrid",
+   "type": "city",
+   "group": "sky",
+   "price": 150,
+   "rent": 45,
+   "sell": 120,
+   "upgrade": 75,
+   "art": "parts/art/art-madrid.svg",
+   "header": "parts/headers/header-sky.svg",
+   "card": "cards/card-madrid.svg",
+   "card_no_upgrade": "cards/card-madrid-no-upgrade.svg"
+  },
+  {
+   "key": "jakarta",
+   "name": "Jakarta",
+   "type": "city",
+   "group": "pink",
+   "price": 170,
+   "rent": 50,
+   "sell": 135,
+   "upgrade": 85,
+   "art": "parts/art/art-jakarta.svg",
+   "header": "parts/headers/header-pink.svg",
+   "card": "cards/card-jakarta.svg",
+   "card_no_upgrade": "cards/card-jakarta-no-upgrade.svg"
+  },
+  {
+   "key": "berlin",
+   "name": "Berlin",
+   "type": "city",
+   "group": "pink",
+   "price": 180,
+   "rent": 55,
+   "sell": 145,
+   "upgrade": 90,
+   "art": "parts/art/art-berlin.svg",
+   "header": "parts/headers/header-pink.svg",
+   "card": "cards/card-berlin.svg",
+   "card_no_upgrade": "cards/card-berlin-no-upgrade.svg"
+  },
+  {
+   "key": "moscow",
+   "name": "Moscow",
+   "type": "city",
+   "group": "yellow",
+   "price": 200,
+   "rent": 60,
+   "sell": 160,
+   "upgrade": 100,
+   "art": "parts/art/art-moscow.svg",
+   "header": "parts/headers/header-yellow.svg",
+   "card": "cards/card-moscow.svg",
+   "card_no_upgrade": "cards/card-moscow-no-upgrade.svg"
+  },
+  {
+   "key": "railway",
+   "name": "Railway",
+   "type": "transport",
+   "group": "special",
+   "price": 100,
+   "rent": 35,
+   "sell": 80,
+   "upgrade": null,
+   "art": "parts/art/art-railway.svg",
+   "header": "parts/headers/header-special.svg",
+   "card": "cards/card-railway.svg",
+   "note": "transport/utility: no upgrades, upgrade button always greyed out"
+  },
+  {
+   "key": "toronto",
+   "name": "Toronto",
+   "type": "city",
+   "group": "yellow",
+   "price": 200,
+   "rent": 60,
+   "sell": 160,
+   "upgrade": 100,
+   "art": "parts/art/art-toronto.svg",
+   "header": "parts/headers/header-yellow.svg",
+   "card": "cards/card-toronto.svg",
+   "card_no_upgrade": "cards/card-toronto-no-upgrade.svg"
+  },
+  {
+   "key": "seoul",
+   "name": "Seoul",
+   "type": "city",
+   "group": "yellow",
+   "price": 200,
+   "rent": 60,
+   "sell": 160,
+   "upgrade": 100,
+   "art": "parts/art/art-seoul.svg",
+   "header": "parts/headers/header-yellow.svg",
+   "card": "cards/card-seoul.svg",
+   "card_no_upgrade": "cards/card-seoul-no-upgrade.svg"
+  },
+  {
+   "key": "zurich",
+   "name": "Zurich",
+   "type": "city",
+   "group": "orange",
+   "price": 250,
+   "rent": 75,
+   "sell": 200,
+   "upgrade": 125,
+   "art": "parts/art/art-zurich.svg",
+   "header": "parts/headers/header-orange.svg",
+   "card": "cards/card-zurich.svg",
+   "card_no_upgrade": "cards/card-zurich-no-upgrade.svg"
+  },
+  {
+   "key": "riyadh",
+   "name": "Riyadh",
+   "type": "city",
+   "group": "orange",
+   "price": 250,
+   "rent": 75,
+   "sell": 200,
+   "upgrade": 125,
+   "art": "parts/art/art-riyadh.svg",
+   "header": "parts/headers/header-orange.svg",
+   "card": "cards/card-riyadh.svg",
+   "card_no_upgrade": "cards/card-riyadh-no-upgrade.svg"
+  },
+  {
+   "key": "sydney",
+   "name": "Sydney",
+   "type": "city",
+   "group": "brown",
+   "price": 300,
+   "rent": 90,
+   "sell": 240,
+   "upgrade": 150,
+   "art": "parts/art/art-sydney.svg",
+   "header": "parts/headers/header-brown.svg",
+   "card": "cards/card-sydney.svg",
+   "card_no_upgrade": "cards/card-sydney-no-upgrade.svg"
+  },
+  {
+   "key": "power",
+   "name": "Power",
+   "type": "utility",
+   "group": "special",
+   "price": 150,
+   "rent": 50,
+   "sell": 120,
+   "upgrade": null,
+   "art": "parts/art/art-power.svg",
+   "header": "parts/headers/header-special.svg",
+   "card": "cards/card-power.svg",
+   "note": "transport/utility: no upgrades, upgrade button always greyed out"
+  },
+  {
+   "key": "beijing",
+   "name": "Beijing",
+   "type": "city",
+   "group": "brown",
+   "price": 300,
+   "rent": 90,
+   "sell": 240,
+   "upgrade": 150,
+   "art": "parts/art/art-beijing.svg",
+   "header": "parts/headers/header-brown.svg",
+   "card": "cards/card-beijing.svg",
+   "card_no_upgrade": "cards/card-beijing-no-upgrade.svg"
+  },
+  {
+   "key": "dubai",
+   "name": "Dubai",
+   "type": "city",
+   "group": "brown",
+   "price": 300,
+   "rent": 90,
+   "sell": 240,
+   "upgrade": 150,
+   "art": "parts/art/art-dubai.svg",
+   "header": "parts/headers/header-brown.svg",
+   "card": "cards/card-dubai.svg",
+   "card_no_upgrade": "cards/card-dubai-no-upgrade.svg"
+  },
+  {
+   "key": "paris",
+   "name": "Paris",
+   "type": "city",
+   "group": "purple",
+   "price": 350,
+   "rent": 105,
+   "sell": 280,
+   "upgrade": 175,
+   "art": "parts/art/art-paris.svg",
+   "header": "parts/headers/header-purple.svg",
+   "card": "cards/card-paris.svg",
+   "card_no_upgrade": "cards/card-paris-no-upgrade.svg"
+  },
+  {
+   "key": "hong-kong",
+   "name": "Hong Kong",
+   "type": "city",
+   "group": "purple",
+   "price": 350,
+   "rent": 105,
+   "sell": 280,
+   "upgrade": 175,
+   "art": "parts/art/art-hong-kong.svg",
+   "header": "parts/headers/header-purple.svg",
+   "card": "cards/card-hong-kong.svg",
+   "card_no_upgrade": "cards/card-hong-kong-no-upgrade.svg"
+  },
+  {
+   "key": "london",
+   "name": "London",
+   "type": "city",
+   "group": "red",
+   "price": 420,
+   "rent": 125,
+   "sell": 335,
+   "upgrade": 210,
+   "art": "parts/art/art-london.svg",
+   "header": "parts/headers/header-red.svg",
+   "card": "cards/card-london.svg",
+   "card_no_upgrade": "cards/card-london-no-upgrade.svg"
+  },
+  {
+   "key": "airport",
+   "name": "Airport",
+   "type": "transport",
+   "group": "special",
+   "price": 100,
+   "rent": 35,
+   "sell": 80,
+   "upgrade": null,
+   "art": "parts/art/art-airport.svg",
+   "header": "parts/headers/header-special.svg",
+   "card": "cards/card-airport.svg",
+   "note": "transport/utility: no upgrades, upgrade button always greyed out"
+  },
+  {
+   "key": "tokyo",
+   "name": "Tokyo",
+   "type": "city",
+   "group": "red",
+   "price": 420,
+   "rent": 125,
+   "sell": 335,
+   "upgrade": 210,
+   "art": "parts/art/art-tokyo.svg",
+   "header": "parts/headers/header-red.svg",
+   "card": "cards/card-tokyo.svg",
+   "card_no_upgrade": "cards/card-tokyo-no-upgrade.svg"
+  },
+  {
+   "key": "new-york",
+   "name": "New York",
+   "type": "city",
+   "group": "red",
+   "price": 450,
+   "rent": 135,
+   "sell": 360,
+   "upgrade": 225,
+   "art": "parts/art/art-new-york.svg",
+   "header": "parts/headers/header-red.svg",
+   "card": "cards/card-new-york.svg",
+   "card_no_upgrade": "cards/card-new-york-no-upgrade.svg"
+  }
+ ],
+ "numbers_note": "Rent = 30%, sell = 80% and upgrade = 50% of price (rounded to 5) are placeholders. Transport 100/35/80 and power 150/50/120 too. Change them to your game rules; the finished cards use these numbers."
+}

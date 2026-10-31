@@ -1,185 +1,186 @@
+import { useRef } from 'react';
 import type { ReactNode } from 'react';
 import type { bankrupt } from '@pogo/shared';
-import { ICON_OF_TILE, BUILD_ICONS, art, tokenOf } from './art';
-import { STEP_MS } from './timing';
 import { gridPos } from './grid';
+import { art } from './art';
+import { BOARD_PX, INNER, TILE_PITCH, TILE_PX, cityArt } from './cityArt';
+import { STEP_MS } from './timing';
+import { useArtScale } from './useArtScale';
 
 export const money = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString('en-US')}`;
 
-type Tile = bankrupt.Tile;
-
-/** One space of the ring: a coloured price band and name, or an icon for the corners and special spaces. */
-function Space({
-  tile,
-  state,
-  onTap,
-}: {
-  tile: Tile;
-  state: bankrupt.BankruptState;
-  onTap: () => void;
-}) {
-  const holding = state.owned[tile.id];
-  const ownerSeat = holding ? state.players.findIndex((p) => p.id === holding.owner) : -1;
-  const priced = tile.kind === 'property';
-  const icon = ICON_OF_TILE[tile.id] ?? ICON_OF_TILE[tile.kind];
-  return (
-    <button
-      type="button"
-      onClick={onTap}
-      data-testid={`bk-tile-${tile.id}`}
-      data-owner={holding?.owner ?? ''}
-      aria-label={tile.name}
-      className="relative flex w-full min-w-0 flex-1 flex-col items-stretch overflow-hidden bg-[#c3d5e0] text-left text-[#101628]"
-    >
-      {priced ? (
-        <>
-          <span
-            className="block px-[6%] py-[2%] text-center text-[2.1cqw] font-bold leading-tight text-white/95"
-            style={{ background: `color-mix(in srgb, ${tile.color} 72%, white)` }}
-          >
-            {money(tile.price)}
-          </span>
-          <span
-            className="flex flex-1 items-center justify-center px-[4%] text-center text-[1.9cqw] font-bold uppercase leading-[1.1] text-white [overflow-wrap:anywhere]"
-            style={{ background: tile.color }}
-          >
-            {tile.name}
-          </span>
-        </>
-      ) : (
-        <>
-          <span className="block px-[4%] pt-[3%] text-center text-[1.8cqw] font-bold uppercase leading-tight text-[#2b3b57]">
-            {tile.kind === 'transport' ? tile.name : ''}
-          </span>
-          <span className="flex min-h-0 flex-1 items-center justify-center">
-            {icon && (
-              <img
-                src={art(icon)}
-                alt=""
-                draggable={false}
-                className="max-h-full w-auto max-w-[70%] object-contain"
-                style={{ imageRendering: 'pixelated' }}
-              />
-            )}
-          </span>
-          <span className="block pb-[3%] text-center text-[1.8cqw] font-bold uppercase leading-tight text-[#2b3b57]">
-            {tile.kind === 'transport'
-              ? money(tile.price)
-              : tile.kind === 'start' ||
-                  tile.kind === 'jail' ||
-                  tile.kind === 'auction' ||
-                  tile.kind === 'card'
-                ? tile.name
-                : ''}
-          </span>
-        </>
-      )}
-
-      {/* The owner's colour along the bottom edge, and the buildings. */}
-      {ownerSeat >= 0 && (
-        <span
-          className="absolute inset-x-0 bottom-0 h-[9%]"
-          style={{ background: TOKEN_HEX[tokenOf(ownerSeat)] }}
-          data-testid={`bk-owner-${tile.id}`}
-        />
-      )}
-      {holding && holding.level > 0 && (
-        <span className="absolute right-[3%] top-[26%] flex flex-col items-center">
-          {Array.from({ length: holding.level }).map((_, i) => (
-            <img
-              key={i}
-              src={art(BUILD_ICONS[Math.min(i, 2)]!)}
-              alt=""
-              className="h-[3.4cqw] w-auto"
-              style={{ imageRendering: 'pixelated' }}
-            />
-          ))}
-        </span>
-      )}
-    </button>
-  );
-}
-
-export const TOKEN_HEX: Record<string, string> = {
-  green: '#3fbf5f',
-  yellow: '#fdcf51',
+/** Token / owner-frame colour per seat (the kit has green, yellow, blue and red; purple and orange are recoloured). */
+export const SEAT_COLOURS = ['green', 'yellow', 'blue', 'red', 'purple', 'orange'] as const;
+export const seatColour = (seat: number) => SEAT_COLOURS[seat % SEAT_COLOURS.length]!;
+export const SEAT_HEX: Record<string, string> = {
+  green: '#56a786',
+  yellow: '#fda200',
   blue: '#3aaef7',
-  red: '#eb4a3f',
+  red: '#fd5f55',
   purple: '#935adc',
-  orange: '#f59a0b',
+  orange: '#eb6b43',
 };
 
-/** The square ring of spaces with `children` in the middle. `shown` is where each token is drawn (it walks). */
+const BUILD = ['build-house', 'build-shop', 'build-hotel'] as const;
+
+/**
+ * The board in the artist's pixel art: the 257 x 257 board picture, owner frames over owned spaces, buildings,
+ * the tokens (they glide and hop) and invisible buttons over every space. Drawn at a whole number of device
+ * pixels per art pixel. `children` go in the middle.
+ */
 export function Board({
   state,
   shown,
   onTile,
+  pulse,
+  onPulse,
   children,
 }: {
   state: bankrupt.BankruptState;
   shown: Record<string, number>;
   onTile: (id: string) => void;
+  /** Spaces that pulse (a trade is waiting for the player to pick one of them) and what tapping one does. */
+  pulse: Set<string>;
+  onPulse: (id: string) => void;
   children: ReactNode;
 }) {
   const n = state.board.tiles.length;
   const dim = n / 4 + 1;
+  const box = useRef<HTMLDivElement>(null);
+  const s = useArtScale(box, BOARD_PX);
+  const pct = (v: number) => `${(v / BOARD_PX) * 100}%`;
+  const at = (i: number) => {
+    const { row, col } = gridPos(i, n);
+    return { x: col * TILE_PITCH, y: row * TILE_PITCH };
+  };
+  void dim;
   return (
-    <div className="[container-type:inline-size]" data-testid="bk-board">
-      <div className="relative">
+    <div ref={box} className="w-full" data-testid="bk-board">
+      <div
+        className="relative mx-auto [container-type:inline-size]"
+        style={{ width: BOARD_PX * s, height: BOARD_PX * s }}
+      >
+        <img
+          src={cityArt('board')}
+          alt=""
+          draggable={false}
+          className="absolute inset-0 h-full w-full"
+          style={{ imageRendering: 'pixelated' }}
+        />
+        {/* owner frames and buildings */}
+        {state.board.tiles.map((tile, i) => {
+          const holding = state.owned[tile.id];
+          if (!holding) return null;
+          const { x, y } = at(i);
+          const seat = state.players.findIndex((p) => p.id === holding.owner);
+          return (
+            <span key={tile.id}>
+              <img
+                src={cityArt(`owner-${seatColour(seat)}`)}
+                alt=""
+                data-testid={`bk-owner-${tile.id}`}
+                className="pointer-events-none absolute"
+                style={{
+                  left: pct(x),
+                  top: pct(y),
+                  width: pct(TILE_PX),
+                  imageRendering: 'pixelated',
+                }}
+              />
+              {holding.level > 0 && (
+                <img
+                  src={art(BUILD[Math.min(2, holding.level - 1)]!)}
+                  alt=""
+                  data-testid={`bk-level-${tile.id}`}
+                  className="pointer-events-none absolute"
+                  style={{
+                    left: pct(x + 20),
+                    top: pct(y + 19),
+                    width: pct(12),
+                    imageRendering: 'pixelated',
+                  }}
+                />
+              )}
+            </span>
+          );
+        })}
+        {/* the spaces that may be picked pulse */}
+        {state.board.tiles.map((tile, i) => {
+          if (!pulse.has(tile.id)) return null;
+          const { x, y } = at(i);
+          return (
+            <span
+              key={`p-${tile.id}`}
+              data-testid={`bk-pulse-${tile.id}`}
+              className="bk-pulse pointer-events-none absolute"
+              style={{ left: pct(x), top: pct(y), width: pct(TILE_PX), height: pct(TILE_PX) }}
+            />
+          );
+        })}
+        {/* the space buttons */}
+        {state.board.tiles.map((tile, i) => {
+          const { x, y } = at(i);
+          return (
+            <button
+              key={tile.id}
+              type="button"
+              onClick={() => (pulse.has(tile.id) ? onPulse(tile.id) : onTile(tile.id))}
+              data-testid={`bk-tile-${tile.id}`}
+              data-owner={state.owned[tile.id]?.owner ?? ''}
+              aria-label={tile.name}
+              className="absolute"
+              style={{ left: pct(x), top: pct(y), width: pct(TILE_PX), height: pct(TILE_PX) }}
+            />
+          );
+        })}
+        {/* the middle */}
         <div
-          className="grid aspect-square w-full gap-px overflow-hidden rounded-md border-2 border-[#101628] bg-[#101628]"
+          className="pointer-events-none absolute flex flex-col items-center justify-center gap-[3%]"
           style={{
-            gridTemplateColumns: `repeat(${dim}, minmax(0, 1fr))`,
-            gridTemplateRows: `repeat(${dim}, minmax(0, 1fr))`,
+            left: pct(INNER[0]),
+            top: pct(INNER[1]),
+            width: pct(INNER[2] - INNER[0] + 1),
+            height: pct(INNER[3] - INNER[1] + 1),
           }}
         >
-          {state.board.tiles.map((tile, i) => {
-            const { row, col } = gridPos(i, n);
-            return (
-              <div
-                key={tile.id}
-                style={{ gridRow: row + 1, gridColumn: col + 1 }}
-                className="flex min-w-0"
-              >
-                <Space tile={tile} state={state} onTap={() => onTile(tile.id)} />
-              </div>
-            );
-          })}
-          <div
-            className="flex flex-col items-center justify-center gap-[3%] bg-[#c3d5e0] p-[2%]"
-            style={{ gridRow: `2 / ${dim}`, gridColumn: `2 / ${dim}` }}
-          >
-            {children}
-          </div>
+          <img
+            src={cityArt('city-hall')}
+            alt=""
+            draggable={false}
+            style={{ width: pct(52), imageRendering: 'pixelated' }}
+          />
+          {children}
         </div>
-        {/* The tokens glide from space to space (and hop on every step). */}
+        {/* the tokens glide from space to space (and hop on every step) */}
         <div className="pointer-events-none absolute inset-0">
           {state.players.map((p, seat) => {
             if (p.bankrupt) return null;
-            const at = shown[p.id] ?? p.pos;
-            const { row, col } = gridPos(at, n);
-            // Tokens that share a space stand side by side.
-            const mates = state.players.filter((q) => !q.bankrupt && (shown[q.id] ?? q.pos) === at);
+            const pos = shown[p.id] ?? p.pos;
+            const { x, y } = at(pos);
+            const mates = state.players.filter(
+              (q) => !q.bankrupt && (shown[q.id] ?? q.pos) === pos,
+            );
             const k = mates.findIndex((q) => q.id === p.id);
-            const spread = mates.length > 1 ? (k - (mates.length - 1) / 2) * 3.4 : 0;
+            const spread = mates.length > 1 ? (k - (mates.length - 1) / 2) * 8 : 0;
             return (
               <span
                 key={p.id}
                 data-testid={`bk-token-${p.id}`}
-                data-at={at}
+                data-at={pos}
                 className="absolute"
                 style={{
-                  left: `${((col + 0.5) / dim) * 100}%`,
-                  top: `${((row + 0.5) / dim) * 100}%`,
-                  transform: `translate(calc(-50% + ${spread}cqw), -50%)`,
-                  transition: `left ${STEP_MS}ms linear, top ${STEP_MS}ms linear, transform ${STEP_MS}ms linear`,
+                  left: pct(x + TILE_PX / 2 + spread),
+                  top: pct(y + TILE_PX / 2),
+                  width: pct(9),
+                  transform: 'translate(-50%, -62%)',
+                  transition: `left ${STEP_MS}ms linear, top ${STEP_MS}ms linear`,
                 }}
               >
                 <img
-                  key={at}
-                  src={art(`token-${tokenOf(seat)}`)}
+                  key={pos}
+                  src={cityArt(`token-${seatColour(seat)}`)}
                   alt=""
-                  className="bk-hop block h-[5.4cqw] w-[5.4cqw] drop-shadow"
+                  className="bk-hop block w-full"
                   style={{ imageRendering: 'pixelated', animationDuration: `${STEP_MS}ms` }}
                 />
               </span>

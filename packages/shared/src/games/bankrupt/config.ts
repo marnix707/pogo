@@ -69,8 +69,8 @@ export const boardConfigSchema = z
     startCash: money,
     /** Extra start cash per seat in turn order (the later you play, the more you start with). */
     startCashStep: money,
-    /** Seller and winner each get this from the bank when a player sells a space to another player in an auction. */
-    auctionBonus: money,
+    /** Both players get this from the bank when a trade on the Auction corner goes through. */
+    tradeBonus: money,
     /** The space that draws a card. */
     cardTile: tileId,
   })

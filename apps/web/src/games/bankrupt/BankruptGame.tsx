@@ -5,12 +5,14 @@ import { Avatar, Button } from '../../components/ui';
 import { PlayerName } from '../../components/PlayerName';
 import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
-import { Board, money } from './Board';
+import { Board, money, seatColour } from './Board';
 import { BuyOverlay } from './BuyOverlay';
+import { TradePanel, pulsingTiles } from './TradePanel';
 import { TileSheet } from './TileSheet';
 import { useCashFx } from './useCashFx';
 import { useCountdown } from '../../lib/useCountdown';
-import { art, dieUrl, tokenOf } from './art';
+import { dieUrl } from './art';
+import { cityArt } from './cityArt';
 
 type State = bankrupt.BankruptState;
 
@@ -31,9 +33,14 @@ function describe(s: State, name: (id: string) => string): string {
     else if (e.k === 'auction')
       parts.push(
         e.winner
-          ? `${name(e.winner)} won ${tile(e.tile)} for ${money(e.amount)}${e.bonus > 0 ? ` · +${money(e.bonus)} each` : ''}`
+          ? `${name(e.winner)} won ${tile(e.tile)} for ${money(e.amount)}`
           : `${tile(e.tile)} was not sold`,
       );
+    else if (e.k === 'trade')
+      parts.push(
+        `${name(e.by)} and ${name(e.with)} traded ${tile(e.give)} for ${tile(e.take)}: +${money(e.bonus)} each`,
+      );
+    else if (e.k === 'tradeEnd') parts.push(`${name(e.by)} did not trade`);
     else if (e.k === 'bankrupt') parts.push(`${name(e.by)} is bankrupt!`);
   }
   return parts.join(' · ');
@@ -116,6 +123,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const [busy, setBusy] = useState(false);
   const [tip, setTip] = useState<string | null>(null);
   const finished = state.phase === 'over';
+  const pulse = pulsingTiles(state, me);
   const myTurn = !room.spectating && mover.id === me && !finished && !mePlayer?.bankrupt;
   const canAct = !!mePlayer && !mePlayer.bankrupt && !finished;
 
@@ -158,9 +166,9 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       >
         <div className="flex items-center gap-1">
           <img
-            src={art(`token-${tokenOf(seat)}`)}
+            src={cityArt(`token-${seatColour(seat)}`)}
             alt=""
-            className="h-5 w-5"
+            className="h-6 w-auto"
             style={{ imageRendering: 'pixelated' }}
           />
           <Avatar avatar={nickOf(p.id)?.avatar ?? 'fox'} size="sm" />
@@ -216,13 +224,19 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       </p>
       <div className="flex gap-1">{players.slice(0, half).map((p, i) => tag(p, i))}</div>
 
-      <Board state={state} shown={shown} onTile={setTileOpen}>
-        <img
-          src={art('landmark')}
-          alt=""
-          className="h-[32%] w-auto"
-          style={{ imageRendering: 'pixelated' }}
-        />
+      <Board
+        state={state}
+        shown={shown}
+        onTile={setTileOpen}
+        pulse={pulse}
+        onPulse={(id) =>
+          void send(
+            state.trade?.stage === 'pick'
+              ? { type: 'tradePick', tile: id }
+              : { type: 'tradeOffer', tile: id },
+          )
+        }
+      >
         <div className="flex h-[17cqw] items-center" data-testid="bk-dice">
           {(state.dice ?? 0) > 0 || rolling ? (
             <img
@@ -236,7 +250,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           ) : null}
         </div>
         <p
-          className="line-clamp-3 max-w-full px-1 text-center text-[2.2cqw] font-bold leading-tight text-[#2b3b57]"
+          className="line-clamp-3 max-w-full px-1 text-center text-[2.2cqw] font-bold leading-tight text-[#f7f1e4] [text-shadow:0_1px_0_#101628]"
           data-testid="bk-note"
           role="status"
         >
@@ -263,6 +277,17 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
                 ? 'You are out of the game'
                 : ''}
           </p>
+        ) : state.trade ? (
+          <TradePanel
+            state={state}
+            me={me}
+            name={name}
+            send={send}
+            busy={busy}
+            deadline={game.deadline}
+            serverTime={room.serverTime}
+            open={setTileOpen}
+          />
         ) : state.auction ? (
           <AuctionPanel
             state={state}
@@ -310,19 +335,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
             Roll the dice
           </Button>
         ) : (
-          <div className="flex flex-col gap-2">
-            <p className="label text-center text-[10px] text-onbg/80">
-              You are on the Auction corner: tap one of your spaces to auction it, or skip.
-            </p>
-            <Button
-              variant="secondary"
-              data-testid="bk-end"
-              disabled={busy || rolling}
-              onClick={() => void send({ type: 'endTurn' })}
-            >
-              Skip
-            </Button>
-          </div>
+          <p className="label text-center text-onbg/80">…</p>
         )}
         {mePlayer && mePlayer.cash < 0 && !mePlayer.bankrupt && (
           <p className="label text-center text-[10px] text-[#ff8f73]" data-testid="bk-warning">
@@ -339,7 +352,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         state={state}
         me={me}
         tileId={tileOpen}
-        canAct={myTurn && !state.auction && state.phase !== 'buy'}
+        canAct={myTurn && !state.auction && !state.trade && state.phase !== 'buy'}
         send={send}
         name={name}
         onClose={() => setTileOpen(null)}
@@ -372,7 +385,6 @@ function AuctionPanel({
   const cash = state.players.find((p) => p.id === me)?.cash ?? 0;
   const step = Math.max(bankrupt.MIN_BID, Math.round((price * 0.1) / 5) * 5);
   const base = a.high?.amount ?? 0;
-  const isSeller = a.seller === me;
   const leading = a.high?.player === me;
   const passed = a.passed.includes(me);
   const left = useCountdown(deadline, serverTime);
@@ -382,7 +394,6 @@ function AuctionPanel({
     <div className="flex flex-col gap-2" data-testid="bk-auction">
       <p className="label text-center">
         Auction: <b className="text-neon">{tile?.name}</b>
-        {a.seller ? ` (${name(a.seller)} sells)` : ''}
         {left !== null && (
           <span
             className={`ml-2 tabular-nums ${left <= 5 ? 'text-[#ff8f73]' : 'text-onbg/80'}`}
@@ -395,52 +406,41 @@ function AuctionPanel({
       <p className="text-center text-sm" data-testid="bk-high-bid">
         {a.high ? `Highest bid ${money(a.high.amount)} by ${name(a.high.player)}` : 'No bids yet'}
       </p>
-      {isSeller ? (
+      <>
+        {leading ? (
+          <p className="label text-center text-[#7ee08c]">You have the highest bid</p>
+        ) : out ? (
+          <p className="label text-center text-onbg/80" data-testid="bk-stepped-out">
+            {passed ? 'You stepped out' : 'You cannot top that bid: you step out'}
+          </p>
+        ) : null}
+        <div className="grid grid-cols-3 gap-2">
+          {[1, 2, 5].map((k) => {
+            const amount = base + k * step;
+            const off = busy || leading || out || amount > cash;
+            return (
+              <Button
+                key={k}
+                variant="gold"
+                data-testid={`bk-bid-${k}`}
+                className={`!px-1 ${off ? 'grayscale' : ''}`}
+                disabled={off}
+                onClick={() => void send({ type: 'bid', amount })}
+              >
+                {money(amount)}
+              </Button>
+            );
+          })}
+        </div>
         <Button
           variant="secondary"
-          data-testid="bk-cancel-auction"
-          disabled={busy}
-          onClick={() => void send({ type: 'cancelAuction' })}
+          data-testid="bk-pass"
+          disabled={busy || leading || passed}
+          onClick={() => void send({ type: 'passBid' })}
         >
-          Cancel auction
+          Pass
         </Button>
-      ) : (
-        <>
-          {leading ? (
-            <p className="label text-center text-[#7ee08c]">You have the highest bid</p>
-          ) : out ? (
-            <p className="label text-center text-onbg/80" data-testid="bk-stepped-out">
-              {passed ? 'You stepped out' : 'You cannot top that bid: you step out'}
-            </p>
-          ) : null}
-          <div className="grid grid-cols-3 gap-2">
-            {[1, 2, 5].map((k) => {
-              const amount = base + k * step;
-              const off = busy || leading || out || amount > cash;
-              return (
-                <Button
-                  key={k}
-                  variant="gold"
-                  data-testid={`bk-bid-${k}`}
-                  className={`!px-1 ${off ? 'grayscale' : ''}`}
-                  disabled={off}
-                  onClick={() => void send({ type: 'bid', amount })}
-                >
-                  {money(amount)}
-                </Button>
-              );
-            })}
-          </div>
-          <Button
-            variant="secondary"
-            data-testid="bk-pass"
-            disabled={busy || leading || passed}
-            onClick={() => void send({ type: 'passBid' })}
-          >
-            Pass
-          </Button>
-        </>
-      )}
+      </>
     </div>
   );
 }
