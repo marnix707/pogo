@@ -193,9 +193,10 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const pulse = tradeOn ? pulsingTiles(state, me) : new Set<string>();
   // The space chosen for a trade, waiting for the confirmation (nothing is sent by a tap on the board).
   const [pick, setPick] = useState<string | null>(null);
+  const pickStillValid = !pick || pulse.has(pick);
   useEffect(() => {
-    if (pick && !pulse.has(pick)) setPick(null);
-  }, [pick, pulse]);
+    if (!pickStillValid) setPick(null);
+  }, [pickStillValid]);
   const myTurn = !room.spectating && mover.id === me && !finished && !mePlayer?.bankrupt;
   const canAct = !!mePlayer && !mePlayer.bankrupt && !finished;
 
