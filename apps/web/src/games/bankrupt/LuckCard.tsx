@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { PlayerName } from '../../components/PlayerName';
 import type { bankrupt } from '@pogo/shared';
 import { art } from './art';
 import { cityArt } from './cityArt';
@@ -37,10 +38,15 @@ const SKY: Record<bankrupt.CardKind, string> = {
 export function LuckCard({
   kind,
   textLine,
+  who,
+  whoName,
   phase,
 }: {
   kind: bankrupt.CardKind;
   textLine: string;
+  /** The player who drew it. */
+  who: string;
+  whoName: string;
   phase: 'in' | 'out';
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -81,17 +87,25 @@ export function LuckCard({
             />
             <image href={art(ICON[kind])} x={CARD_W / 2 - 24} y={44} width={48} height={48} />
           </svg>
-          <p
-            className="absolute inset-x-[12%] flex items-center justify-center text-center font-extrabold uppercase leading-tight text-[#101628]"
-            style={{
-              top: `${(116 / CARD_H) * 100}%`,
-              height: `${(64 / CARD_H) * 100}%`,
-              fontSize: `${s * 8}px`,
-            }}
-            data-testid="bk-luck-text"
+          <div
+            className="absolute inset-x-[10%] flex flex-col items-center justify-center gap-1 text-center uppercase"
+            style={{ top: `${(112 / CARD_H) * 100}%`, height: `${(70 / CARD_H) * 100}%` }}
           >
-            {textLine}
-          </p>
+            <span
+              className="font-extrabold leading-none text-[#796e9e]"
+              style={{ fontSize: `${s * 7}px` }}
+              data-testid="bk-luck-who"
+            >
+              <PlayerName name={whoName} id={who} />
+            </span>
+            <p
+              className="font-extrabold leading-tight text-[#101628]"
+              style={{ fontSize: `${s * 8}px` }}
+              data-testid="bk-luck-text"
+            >
+              {textLine}
+            </p>
+          </div>
         </div>
       </div>
     </div>

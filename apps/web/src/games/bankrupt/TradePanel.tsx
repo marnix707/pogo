@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { bankrupt } from '@pogo/shared';
 import { Button } from '../../components/ui';
 import { useCountdown } from '../../lib/useCountdown';
@@ -56,6 +57,8 @@ export function TradePanel({
   deadline,
   serverTime,
   open,
+  pick,
+  onClearPick,
 }: {
   state: State;
   me: string;
@@ -65,8 +68,36 @@ export function TradePanel({
   deadline: number | null;
   serverTime: number;
   open: (id: string) => void;
+  /** The space tapped on the board, waiting for the confirmation. */
+  pick: string | null;
+  onClearPick: () => void;
 }) {
   const t = state.trade!;
+  const [accept, setAccept] = useState<string | null>(null);
+  // The confirmation of the chosen space: nothing is offered by one tap.
+  const confirm = (type: 'tradePick' | 'tradeOffer', text: string) => (
+    <div className="flex flex-col gap-2" data-testid="bk-trade-confirm-box">
+      <p className="text-center text-sm">
+        {text} <Chip state={state} id={pick!} open={open} />?
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        <Button
+          variant="gold"
+          data-testid="bk-trade-confirm"
+          disabled={busy}
+          onClick={() => {
+            void send({ type, tile: pick! });
+            onClearPick();
+          }}
+        >
+          Confirm
+        </Button>
+        <Button variant="secondary" data-testid="bk-trade-change" onClick={onClearPick}>
+          Change
+        </Button>
+      </div>
+    </div>
+  );
   const left = useCountdown(deadline, serverTime);
   const iAmMover = t.by === me;
   const others = bankrupt
@@ -94,9 +125,13 @@ export function TradePanel({
     return iAmMover ? (
       <div className="flex flex-col gap-2" data-testid="bk-trade-panel">
         {head}
-        <p className="text-center text-sm">
-          Tap one of your pulsing spaces to offer it for a trade.
-        </p>
+        {pick ? (
+          confirm('tradePick', 'Offer')
+        ) : (
+          <p className="text-center text-sm">
+            Tap one of your pulsing spaces to offer it for a trade.
+          </p>
+        )}
         <Button
           variant="secondary"
           data-testid="bk-trade-cancel"
@@ -157,9 +192,13 @@ export function TradePanel({
           </p>
         ) : bankrupt.holdingsOf(state, me).some((x) => (state.owned[x.id]?.level ?? 0) === 0) ? (
           <>
-            <p className="text-center text-sm">
-              Tap one of your pulsing spaces to trade for it, or pass.
-            </p>
+            {pick ? (
+              confirm('tradeOffer', 'Trade')
+            ) : (
+              <p className="text-center text-sm">
+                Tap one of your pulsing spaces to trade for it, or pass.
+              </p>
+            )}
             <Button
               variant="secondary"
               data-testid="bk-trade-pass"
@@ -190,15 +229,36 @@ export function TradePanel({
             <span className="min-w-0 text-sm">
               {name(id)} <Chip state={state} id={tile} open={open} />
             </span>
-            <Button
-              variant="gold"
-              className="!min-h-9 !px-3 text-xs"
-              data-testid={`bk-trade-accept-${id}`}
-              disabled={busy}
-              onClick={() => void send({ type: 'tradeAccept', from: id })}
-            >
-              Trade
-            </Button>
+            {accept === id ? (
+              <span className="flex gap-1.5">
+                <Button
+                  variant="gold"
+                  className="!min-h-9 !px-3 text-xs"
+                  data-testid={`bk-trade-accept-${id}`}
+                  disabled={busy}
+                  onClick={() => void send({ type: 'tradeAccept', from: id })}
+                >
+                  Confirm
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="!min-h-9 !px-2 text-xs"
+                  onClick={() => setAccept(null)}
+                >
+                  Back
+                </Button>
+              </span>
+            ) : (
+              <Button
+                variant="gold"
+                className="!min-h-9 !px-3 text-xs"
+                data-testid={`bk-trade-take-${id}`}
+                disabled={busy}
+                onClick={() => setAccept(id)}
+              >
+                Trade
+              </Button>
+            )}
           </li>
         ))}
       </ul>

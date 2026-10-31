@@ -1,11 +1,19 @@
 import { useRef } from 'react';
 import type { ReactNode } from 'react';
-import type { bankrupt } from '@pogo/shared';
+import { bankrupt } from '@pogo/shared';
 import { gridPos } from './grid';
 import { art } from './art';
 import { BOARD_PX, INNER, TILE_PITCH, TILE_PX, cityArt } from './cityArt';
 import { STEP_MS } from './timing';
 import { useArtScale } from './useArtScale';
+import { text } from './PropertyCard';
+import font from '../../assets/sprites/bankrupt/city/pixel-font.json';
+import layout from '../../assets/sprites/bankrupt/city/card-layout.json';
+
+const TAG7 = font.tag_digits7 as Record<string, string[]>;
+const GROUP_DARK = Object.fromEntries(
+  Object.entries(layout.groups as Record<string, string[]>).map(([k, v]) => [k, v[2]!]),
+);
 
 export const money = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString('en-US')}`;
 
@@ -34,6 +42,7 @@ export function Board({
   onTile,
   pulse,
   onPulse,
+  picked,
   children,
 }: {
   state: bankrupt.BankruptState;
@@ -42,12 +51,14 @@ export function Board({
   /** Spaces that pulse (a trade is waiting for the player to pick one of them) and what tapping one does. */
   pulse: Set<string>;
   onPulse: (id: string) => void;
+  /** The space chosen for the trade (waiting for the confirmation). */
+  picked: string | null;
   children: ReactNode;
 }) {
   const n = state.board.tiles.length;
   const dim = n / 4 + 1;
   const box = useRef<HTMLDivElement>(null);
-  const s = useArtScale(box, BOARD_PX);
+  const s = useArtScale(box, BOARD_PX, true);
   const pct = (v: number) => `${(v / BOARD_PX) * 100}%`;
   const at = (i: number) => {
     const { row, col } = gridPos(i, n);
@@ -55,7 +66,7 @@ export function Board({
   };
   void dim;
   return (
-    <div ref={box} className="w-full" data-testid="bk-board">
+    <div ref={box} className="-mx-3 w-[calc(100%+1.5rem)]" data-testid="bk-board">
       <div
         className="relative mx-auto [container-type:inline-size]"
         style={{ width: BOARD_PX * s, height: BOARD_PX * s }}
@@ -87,6 +98,29 @@ export function Board({
                   imageRendering: 'pixelated',
                 }}
               />
+              {/* once somebody owns it the price band shows the rent to pay instead of the price */}
+              {tile.kind === 'property' && (
+                <svg
+                  aria-hidden
+                  data-testid={`bk-rent-${tile.id}`}
+                  viewBox={`0 0 ${TILE_PX} ${TILE_PX}`}
+                  shapeRendering="crispEdges"
+                  className="pointer-events-none absolute"
+                  style={{ left: pct(x), top: pct(y), width: pct(TILE_PX), height: pct(TILE_PX) }}
+                >
+                  <rect
+                    x={1}
+                    y={2}
+                    width={31}
+                    height={8}
+                    fill={GROUP_DARK[tile.group] ?? '#101628'}
+                  />
+                  <path
+                    d={text(`$${bankrupt.rentOf(state, tile)}`, 16.5, 2, 1, 1, 'centre', TAG7)}
+                    fill="#f7f1e4"
+                  />
+                </svg>
+              )}
               {holding.level > 0 && (
                 <img
                   src={art(BUILD[Math.min(2, holding.level - 1)]!)}
@@ -112,7 +146,7 @@ export function Board({
             <span
               key={`p-${tile.id}`}
               data-testid={`bk-pulse-${tile.id}`}
-              className="bk-pulse pointer-events-none absolute"
+              className={`${picked === tile.id ? 'bk-picked' : 'bk-pulse'} pointer-events-none absolute`}
               style={{ left: pct(x), top: pct(y), width: pct(TILE_PX), height: pct(TILE_PX) }}
             />
           );
@@ -135,19 +169,19 @@ export function Board({
         })}
         {/* the middle */}
         <div
-          className="pointer-events-none absolute flex flex-col items-center justify-center gap-[3%]"
+          className="pointer-events-none absolute flex flex-col items-center justify-start gap-[1%]"
           style={{
             left: pct(INNER[0]),
             top: pct(INNER[1]),
-            width: pct(INNER[2] - INNER[0] + 1),
-            height: pct(INNER[3] - INNER[1] + 1),
+            width: pct(INNER[2]),
+            height: pct(INNER[3]),
           }}
         >
           <img
             src={cityArt('city-hall')}
             alt=""
             draggable={false}
-            style={{ width: pct(52), imageRendering: 'pixelated' }}
+            style={{ width: pct(156), imageRendering: 'pixelated' }}
           />
           {children}
         </div>
@@ -161,7 +195,10 @@ export function Board({
               (q) => !q.bankrupt && (shown[q.id] ?? q.pos) === pos,
             );
             const k = mates.findIndex((q) => q.id === p.id);
-            const spread = mates.length > 1 ? (k - (mates.length - 1) / 2) * 8 : 0;
+            // Tokens that share a space stand side by side (closer, and staggered, when there are many).
+            const step = mates.length > 3 ? 5 : mates.length > 1 ? 9 : 0;
+            const spread = (k - (mates.length - 1) / 2) * step;
+            const stagger = mates.length > 2 ? (k % 2 === 0 ? -3 : 3) : 0;
             return (
               <span
                 key={p.id}
@@ -170,8 +207,8 @@ export function Board({
                 className="absolute"
                 style={{
                   left: pct(x + TILE_PX / 2 + spread),
-                  top: pct(y + TILE_PX / 2),
-                  width: pct(9),
+                  top: pct(y + TILE_PX / 2 + stagger),
+                  width: pct(18),
                   transform: 'translate(-50%, -62%)',
                   // The token is in the air for most of the step: it travels while it hops, then lands.
                   transition: `left ${Math.round(STEP_MS * 0.8)}ms ease-in-out, top ${Math.round(STEP_MS * 0.8)}ms ease-in-out`,

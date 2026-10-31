@@ -51,7 +51,7 @@ export const openingBid = (price: number) =>
 export const TRADE_SEC = 90;
 /** A luck card slides in (CARD_SLIDE_MS), stays CARD_SHOW_MS, slides away; only then does it take effect on screen. */
 export const CARD_SLIDE_MS = 450;
-export const CARD_SHOW_MS = 3000;
+export const CARD_SHOW_MS = 2000;
 
 const optionsSchema: z.ZodType<BankruptOptions, z.ZodTypeDef, unknown> = z
   .object({

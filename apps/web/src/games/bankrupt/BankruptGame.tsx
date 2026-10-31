@@ -194,6 +194,11 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const [tip, setTip] = useState<string | null>(null);
   const finished = state.phase === 'over';
   const pulse = pulsingTiles(state, me);
+  // The space chosen for a trade, waiting for the confirmation (nothing is sent by a tap on the board).
+  const [pick, setPick] = useState<string | null>(null);
+  useEffect(() => {
+    if (pick && !pulse.has(pick)) setPick(null);
+  }, [pick, pulse]);
   const myTurn = !room.spectating && mover.id === me && !finished && !mePlayer?.bankrupt;
   const canAct = !!mePlayer && !mePlayer.bankrupt && !finished;
 
@@ -226,6 +231,20 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   );
   const here = state.board.tiles[mover.pos]!;
   const owedBuy = state.phase === 'buy' && myTurn && bankrupt.isOwnable(here) ? here : null;
+  // Cannot pay for it: no card, just "Not enough money" and the game goes on at once (it is passed for me).
+  const broke = !!owedBuy && (mePlayer?.cash ?? 0) < owedBuy.price;
+  const [shortMsg, setShortMsg] = useState<string | null>(null);
+  useEffect(() => {
+    if (!broke || !settled || !owedBuy) return;
+    setShortMsg(`Not enough money for ${owedBuy.name}`);
+    const pass = setTimeout(() => void sendMove({ type: 'decline' }), 1100);
+    const gone = setTimeout(() => setShortMsg(null), 1500);
+    return () => {
+      clearTimeout(pass);
+      clearTimeout(gone);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [broke, settled, owedBuy?.id, state.seq]);
   const goal =
     state.options.target > 0
       ? `${money(state.options.target)} net worth to win`
@@ -260,7 +279,6 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         </div>
         <span className="max-w-full truncate text-xs font-bold text-onbg">
           <PlayerName name={name(p.id)} id={p.id} me={me} />
-          {p.id === me && ' (you)'}
         </span>
         <button
           type="button"
@@ -293,7 +311,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       </div>
     );
   };
-  // Like the card games: I sit bottom left, the others follow clockwise round the board. With up to four
+  // Like the card games: with up to four players I sit bottom centre, with five or six bottom left, the others follow clockwise round the board. With up to four
   // players everybody else is on top (left to right = turn order); with more, the extra ones sit next to me on
   // the bottom row (clockwise runs right to left along the bottom, so the one who plays just before me is
   // right next to me). A watcher sees the first seat at the bottom left.
@@ -327,28 +345,23 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         shown={shown}
         onTile={setTileOpen}
         pulse={pulse}
-        onPulse={(id) =>
-          void send(
-            state.trade?.stage === 'pick'
-              ? { type: 'tradePick', tile: id }
-              : { type: 'tradeOffer', tile: id },
-          )
-        }
+        picked={pick}
+        onPulse={(id) => setPick(id === pick ? null : id)}
       >
-        <div className="flex h-[17cqw] items-center" data-testid="bk-dice">
+        <div className="flex h-[11cqw] items-center" data-testid="bk-dice">
           {(state.dice ?? 0) > 0 || rolling ? (
             <img
               src={dieUrl(rolling ? face : state.dice!)}
               alt={rolling ? 'rolling' : `die ${state.dice}`}
               data-testid="bk-die"
               data-value={rolling ? 0 : state.dice}
-              className={`h-[17cqw] w-[17cqw] ${rolling ? 'bk-tumble' : ''}`}
+              className={`h-[11cqw] w-[11cqw] ${rolling ? 'bk-tumble' : ''}`}
               style={{ imageRendering: 'pixelated' }}
             />
           ) : null}
         </div>
         <p
-          className="line-clamp-3 max-w-full px-1 text-center text-[2.2cqw] font-bold leading-tight text-[#f7f1e4] [text-shadow:0_1px_0_#101628]"
+          className="line-clamp-3 max-w-full px-1 text-center text-[2.4cqw] font-bold leading-none text-[#f7f1e4] [text-shadow:0_1px_0_#101628]"
           data-testid="bk-note"
           role="status"
         >
@@ -363,7 +376,10 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         </p>
       </Board>
 
-      <div className="flex justify-start gap-1" data-testid="bk-seats-bottom">
+      <div
+        className={`flex gap-1 ${bottomSeats.length === 1 ? 'justify-center' : 'justify-start'}`}
+        data-testid="bk-seats-bottom"
+      >
         {bottomSeats.map((i) => tag(players[i]!, i))}
       </div>
 
@@ -387,6 +403,8 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
             deadline={game.deadline}
             serverTime={room.serverTime}
             open={setTileOpen}
+            pick={pick}
+            onClearPick={() => setPick(null)}
           />
         ) : state.auction ? (
           <AuctionPanel
@@ -404,7 +422,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           </p>
         ) : state.phase === 'buy' && owedBuy ? (
           <p className="label text-center text-onbg/80" data-testid="bk-buy-hint">
-            {settled ? 'Buy it or cancel…' : 'Walking…'}
+            {broke ? 'Not enough money' : settled ? '' : 'Walking…'}
           </p>
         ) : mePlayer!.jail > 0 && state.phase === 'roll' ? (
           <div className="grid grid-cols-2 gap-2">
@@ -449,10 +467,21 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         <LuckCard
           kind={card.ev.kind}
           textLine={card.ev.text}
+          who={card.ev.by}
+          whoName={name(card.ev.by)}
           phase={card.phase === 'in' ? 'in' : 'out'}
         />
       )}
-      {owedBuy && settled && (
+      {shortMsg && (
+        <p
+          role="status"
+          data-testid="bk-not-enough"
+          className="label pointer-events-none fixed inset-x-0 top-1/3 z-40 mx-auto w-fit rounded-md border-2 border-[#101628] bg-[#ff6b57] px-3 py-2 text-center text-sm text-white shadow-[0_4px_0_0_#101628]"
+        >
+          {shortMsg}
+        </p>
+      )}
+      {owedBuy && settled && !broke && (
         <BuyOverlay state={state} me={me} tile={owedBuy} busy={busy} send={send} />
       )}
       <TileSheet
@@ -500,7 +529,14 @@ function AuctionPanel({
   return (
     <div className="flex flex-col gap-2" data-testid="bk-auction">
       <p className="label text-center">
-        Auction: <b className="text-neon">{tile?.name}</b>
+        Auction:{' '}
+        <b
+          className={tile?.kind === 'property' ? '' : 'text-neon'}
+          style={tile?.kind === 'property' ? { color: tile.color } : undefined}
+          data-testid="bk-auction-name"
+        >
+          {tile?.name}
+        </b>
         {left !== null && (
           <span
             className={`ml-2 tabular-nums ${left <= 5 ? 'text-[#ff8f73]' : 'text-onbg/80'}`}
