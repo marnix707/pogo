@@ -247,7 +247,7 @@ export function Toggle({
         {hint && <span className="block text-sm font-normal text-muted">{hint}</span>}
       </span>
       <span
-        className={`relative h-8 w-14 rounded-md border-2 transition ${
+        className={`relative h-8 w-14 shrink-0 rounded-md border-2 transition ${
           checked ? 'border-neon bg-neon/25' : 'border-edge/40 bg-panel2'
         }`}
       >
