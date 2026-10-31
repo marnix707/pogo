@@ -190,7 +190,8 @@ interface Ctx {
   /** Tile kinds cleared this move, in order of first appearance. */
   kinds: string[];
   /** A special attack fired during this move: what it clears and what falls after it never counts for combos. */
-  attacked: boolean;
+  /** A pet's attack just turned tiles (Water): the match those tiles make does not count as the player's own line. */
+  attackMatch: boolean;
 }
 
 const clone = (b: readonly MateCell[]): MateCell[] => b.map((c) => ({ ...c }));
@@ -253,7 +254,7 @@ function fireReady(c: Ctx): boolean {
       // The attack empties the bar; only tiles that fall or match after it (from the attack itself) fill it again.
       m.mana = 0;
       any = true;
-      c.attacked = true;
+      if (m.element === 'water') c.attackMatch = true;
       const damage = spec.damage[form];
       hurt(c.opp, damage);
       const power = spec.power[form];
@@ -318,10 +319,13 @@ function settle(c: Ctx) {
   for (let guard = 0; guard < 60 && c.opp.hp > 0; guard++) {
     const m = findMatches(c.board);
     if (m.cells.size > 0) {
-      if (!c.attacked) c.longest = Math.max(c.longest, m.biggest);
+      // Only the line the attack itself made is left out; lines made later by falling tiles count.
+      if (!c.attackMatch) c.longest = Math.max(c.longest, m.biggest);
+      c.attackMatch = false;
       clearMatches(c, m.cells);
       continue;
     }
+    c.attackMatch = false;
     if (!fireReady(c)) break;
   }
 }
@@ -437,7 +441,7 @@ function applyMove(state: MatesState, playerId: PlayerId, move: MatesMove, rng: 
     fires: [],
     longest: 0,
     kinds: [],
-    attacked: false,
+    attackMatch: false,
   };
   const event: MateEvent = {
     seq: state.moveCount + 1,

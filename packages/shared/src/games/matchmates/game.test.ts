@@ -462,7 +462,7 @@ describe('Pet Match', () => {
     const fire = (after: MatesState) => after.lastEvent!.fires[0]!;
     const hpOf = (after: MatesState, id: string) => after.players.find((p) => p.id === id)!.hp;
 
-    it('tiles cleared by an attack (and what falls after it) never give an extra move', () => {
+    it('tiles cleared or changed by an attack never give an extra move (lines made by what falls after it do)', () => {
       for (const el of ['fire', 'electric', 'water', 'earth', 'psychic'] as const) {
         for (const evolved of [false, true]) {
           const after = fireWith(el, evolved);
