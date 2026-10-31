@@ -11,10 +11,8 @@ import font from '../../assets/sprites/bankrupt/city/pixel-font.json';
 import layout from '../../assets/sprites/bankrupt/city/card-layout.json';
 
 const TAG7 = font.tag_digits7 as Record<string, string[]>;
-const GROUP_DARK = Object.fromEntries(
-  Object.entries(layout.groups as Record<string, string[]>).map(([k, v]) => [k, v[2]!]),
-);
-
+const FONT4 = font.font4 as Record<string, string[]>;
+const SPECIAL_DARK = (layout.groups as Record<string, string[]>).special![2]!;
 export const money = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString('en-US')}`;
 
 /** Token / owner-frame colour per seat (the kit has green, yellow, blue and red; purple and orange are recoloured). */
@@ -88,23 +86,8 @@ export function Board({
           const seat = state.players.findIndex((p) => p.id === holding.owner);
           return (
             <span key={tile.id}>
-              {/* a property shows its owner in the rent band; the special spaces (no band) keep the frame */}
-              {tile.kind !== 'property' && (
-                <img
-                  src={cityArt(`owner-${seatColour(seat)}`)}
-                  alt=""
-                  data-testid={`bk-owner-${tile.id}`}
-                  className="pointer-events-none absolute"
-                  style={{
-                    left: pct(x),
-                    top: pct(y),
-                    width: pct(TILE_PX),
-                    imageRendering: 'pixelated',
-                  }}
-                />
-              )}
               {/* once somebody owns it the price band shows the rent to pay instead of the price */}
-              {tile.kind === 'property' && (
+              {(tile.kind === 'property' || tile.kind === 'transport') && (
                 <svg
                   aria-hidden
                   data-testid={`bk-rent-${tile.id}`}
@@ -118,7 +101,7 @@ export function Board({
                     y={2}
                     width={31}
                     height={8}
-                    fill={SEAT_HEX[seatColour(seat)] ?? GROUP_DARK[tile.group] ?? '#101628'}
+                    fill={SEAT_HEX[seatColour(seat)] ?? '#101628'}
                   />
                   <path
                     d={text(`$${bankrupt.rentOf(state, tile)}`, 16.5, 2, 1, 1, 'centre', TAG7)}
@@ -141,6 +124,43 @@ export function Board({
                 />
               )}
             </span>
+          );
+        })}
+        {/* special spaces: the name moves to the bottom; free ones show their price in a dark band at the top */}
+        {state.board.tiles.map((tile, i) => {
+          if (tile.kind !== 'transport') return null;
+          const { x, y } = at(i);
+          const owned = !!state.owned[tile.id];
+          return (
+            <svg
+              key={`sp-${tile.id}`}
+              aria-hidden
+              data-testid={`bk-special-${tile.id}`}
+              viewBox={`0 0 ${TILE_PX} ${TILE_PX}`}
+              shapeRendering="crispEdges"
+              className="pointer-events-none absolute"
+              style={{ left: pct(x), top: pct(y), width: pct(TILE_PX), height: pct(TILE_PX) }}
+            >
+              {!owned && (
+                <>
+                  <rect x={1} y={2} width={31} height={8} fill={SPECIAL_DARK} />
+                  <path d={text(`$${tile.price}`, 16.5, 2, 1, 1, 'centre', TAG7)} fill="#f7f1e4" />
+                </>
+              )}
+              <rect x={2} y={25} width={29} height={6} fill="#f7f1e4" />
+              <path
+                d={text(
+                  tile.id === 'electricity' ? 'POWER' : tile.name,
+                  16.5,
+                  26,
+                  1,
+                  1,
+                  'centre',
+                  FONT4,
+                )}
+                fill="#3f7a62"
+              />
+            </svg>
           );
         })}
         {/* the spaces that may be picked pulse */}

@@ -60,3 +60,5 @@ Nobody can roll (or pay jail / wait) while the previous player's token is still 
 **Confirming trade picks**: tapping a pulsing space only selects it (it turns green); the panel asks "Offer / Trade <space>?" with **Confirm** (`bk-trade-confirm`) or **Change** (`bk-trade-change`). Taking one of the offers is confirmed the same way (Trade -> Confirm / Back).
 
 **Who owns what**: an owned property's price band turns into a **rent band** in the owner's token colour (`bk-rent-<id>`, cream text, navy on yellow / orange) showing the rent to pay; there is no frame round it, so a bought property is told from a free one (which still shows its price in the group colour) at a glance. The four special spaces have no band and keep the coloured frame.
+
+**Special spaces on the board** (`Board.tsx`, `bk-special-<id>`): the name of Harbor / Railway / Airport / Power sits at the **bottom** of the space (the kit's font4, drawn over the baked name; Electricity reads POWER like the kit), the top has a band like a property's: **free** = the price on a dark band, **bought** = the rent on a band in the owner's token colour (`bk-rent-<id>`). They have no frame any more.
