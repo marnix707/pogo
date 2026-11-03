@@ -23,26 +23,42 @@ const loaded = new Map<string, Promise<Loaded | undefined>>();
 let playing: { id: string; nodes: AudioBufferSourceNode[] } | undefined;
 let master: GainNode | undefined;
 
-function urlOf(id: string, part: 'intro' | 'loop'): string | undefined {
-  const key = Object.keys(FILES).find((k) => new RegExp(`/music/${id}/${part}\\.`).test(k));
-  return key ? FILES[key] : undefined;
+/** Every file of a part, ogg first (smallest), then mp3, then wav: the first one the browser can decode is used. */
+function urlsOf(id: string, part: 'intro' | 'loop'): string[] {
+  const re = new RegExp(`/music/${id}/${part}\\.(ogg|mp3|wav)$`);
+  return Object.keys(FILES)
+    .filter((k) => re.test(k))
+    .sort(
+      (a, b) =>
+        ['ogg', 'mp3', 'wav'].indexOf(a.slice(-3)) - ['ogg', 'mp3', 'wav'].indexOf(b.slice(-3)),
+    )
+    .map((k) => FILES[k]!);
 }
 
-async function decode(ctx: AudioContext, url: string): Promise<AudioBuffer> {
-  const res = await fetch(url);
-  return ctx.decodeAudioData(await res.arrayBuffer());
+async function decode(ctx: AudioContext, urls: string[]): Promise<AudioBuffer> {
+  let error: unknown;
+  for (const url of urls) {
+    try {
+      const res = await fetch(url);
+      return await ctx.decodeAudioData(await res.arrayBuffer());
+    } catch (e) {
+      error = e; // e.g. Safari without Ogg Vorbis: try the next format
+    }
+  }
+  throw error ?? new Error('no music file');
 }
 
 function load(id: string): Promise<Loaded | undefined> {
   const ctx = getAudioContext();
-  const introUrl = urlOf(id, 'intro');
-  const loopUrl = urlOf(id, 'loop');
-  if (!ctx || !introUrl || !loopUrl) return Promise.resolve(undefined);
+  const introUrl = urlsOf(id, 'intro');
+  const loopUrl = urlsOf(id, 'loop');
+  if (!ctx || !introUrl.length || !loopUrl.length) return Promise.resolve(undefined);
   let p = loaded.get(id);
   if (!p) {
     p = Promise.all([decode(ctx, introUrl), decode(ctx, loopUrl)])
       .then(([intro, loop]) => ({ intro, loop }))
-      .catch(() => {
+      .catch((e) => {
+        console.warn(`Music "${id}" could not be loaded`, e);
         loaded.delete(id);
         return undefined;
       });
