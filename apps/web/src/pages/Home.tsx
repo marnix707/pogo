@@ -18,6 +18,7 @@ import { TileButton } from '../components/TopBar';
 import { FriendsButton } from '../friends/FriendsButton';
 import { getGameUi } from '../games/registry';
 import type { RoomApi } from '../lib/api';
+import { musicEnteredMenu } from '../lib/music';
 import { AvatarFace } from '../components/AvatarFace';
 
 /** The logo sits this many px below the exact midpoint, so its tilted corner stays clear of the top bar. */
@@ -51,6 +52,10 @@ export function Home({
   onProfile: (profile: { nickname: string; avatar: (typeof AVATARS)[number] }) => Promise<void>;
 }) {
   const [screen, setScreen] = useState<'menu' | 'play'>('menu');
+  // The song restarts whenever the player comes back to the main menu (it plays on through games).
+  useEffect(() => {
+    if (screen === 'menu' && introDone()) musicEnteredMenu();
+  }, [screen]);
   // Play is a history entry, so the phone's back gesture or button returns to the menu
   // (instead of leaving the app), and an edge swipe does the same inside an installed app.
   const open = (next: 'play') => {

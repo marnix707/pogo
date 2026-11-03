@@ -1,4 +1,4 @@
-import { getSettings } from './settings';
+import { getSettings, subscribeSettings } from './settings';
 
 export type SoundName =
   | 'tap'
@@ -40,6 +40,26 @@ function audio(): AudioContext | undefined {
   }
 }
 
+/** The shared AudioContext (music uses it too, so one tap unlocks everything). */
+export function getAudioContext(): AudioContext | undefined {
+  return audio();
+}
+
+let bus: GainNode | undefined;
+/** All synthesized sounds go through one gain node, which is the sound-effects volume slider. */
+function sfxBus(c: AudioContext): GainNode {
+  if (!bus) {
+    bus = c.createGain();
+    bus.connect(c.destination);
+    subscribeSettings(applyBus);
+  }
+  applyBus();
+  return bus;
+}
+function applyBus() {
+  if (bus) bus.gain.value = getSettings().sound / 100;
+}
+
 /** True while the browser still refuses sound (nothing has been tapped yet); false when it is muted anyway. */
 export function audioLocked(): boolean {
   if (!getSettings().sound) return false;
@@ -68,7 +88,7 @@ function tone(
   gain.gain.setValueAtTime(0.0001, t0);
   gain.gain.exponentialRampToValueAtTime(volume, t0 + 0.01);
   gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
-  osc.connect(gain).connect(c.destination);
+  osc.connect(gain).connect(sfxBus(c));
   osc.start(t0);
   osc.stop(t0 + duration + 0.02);
 }
@@ -88,7 +108,7 @@ function noise(c: AudioContext, start: number, duration: number, volume: number,
   const t0 = c.currentTime + start;
   gain.gain.setValueAtTime(volume, t0);
   gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
-  src.connect(filter).connect(gain).connect(c.destination);
+  src.connect(filter).connect(gain).connect(sfxBus(c));
   src.start(t0);
 }
 
@@ -110,7 +130,7 @@ function sweep(
   osc.frequency.exponentialRampToValueAtTime(to, t0 + duration);
   gain.gain.setValueAtTime(volume, t0);
   gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
-  osc.connect(gain).connect(c.destination);
+  osc.connect(gain).connect(sfxBus(c));
   osc.start(t0);
   osc.stop(t0 + duration + 0.02);
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { playSfx } from '../lib/sfx';
+import { musicLeftMenu, playMusic, preloadMusic } from '../lib/music';
 import { audioLocked, unlockAudio } from '../lib/sound';
 import sideData from '../assets/sprites/animation-side/pogo-side-animation.json';
 import frontData from '../assets/sprites/animation/pogo-animation.json';
@@ -97,6 +98,7 @@ export const introDone = () => introPlayed || reducedMotion();
 /** Call when the player leaves the menu on purpose (enters a game room, opens Play or Join). */
 export const markIntroSeen = () => {
   introPlayed = true;
+  musicLeftMenu();
 };
 
 /** Bounces after landing before he rests; after that he only jumps when tapped. */
@@ -153,6 +155,8 @@ export function PogoStage({ onLanded, scale }: { onLanded: () => void; scale: nu
       setStep(st);
       setTick((t) => t + 1);
       if (st.sfx) playSfx(st.sfx);
+      // The menu song starts with the first frog croak (its intro, then the loop, gapless).
+      if (st.sfx === 'frogJump') playMusic('menu');
       if (st.landing) {
         introPlayed = true;
         setOnIntro(false);
@@ -166,6 +170,8 @@ export function PogoStage({ onLanded, scale }: { onLanded: () => void; scale: nu
     setStep(REST);
     busy.current = false;
   };
+
+  useEffect(() => preloadMusic('menu'), []);
 
   useEffect(() => {
     if (reduced || !started || skip) {

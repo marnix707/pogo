@@ -12,7 +12,7 @@ export function playSfx(name: SfxName) {
   if (!getSettings().sound) return;
   try {
     const a = new Audio(FILES[name]);
-    a.volume = VOLUME[name];
+    a.volume = (VOLUME[name] * getSettings().sound) / 100;
     void a.play().catch(() => undefined);
   } catch {
     /* no audio available */

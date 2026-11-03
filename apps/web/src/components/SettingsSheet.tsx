@@ -25,7 +25,7 @@ export function SettingsSheet({
 }) {
   const settings = useSettings();
   return (
-    <Sheet open={open} onClose={onClose} title="Settings" from="top" dim={false}>
+    <Sheet open={open} onClose={onClose} title="Settings" from="top" dim={false} titleClass="mt-3">
       <div className="flex flex-col gap-2 pt-3">
         {roomCode && (
           <div className="flex items-center justify-between py-2" data-testid="settings-room-code">
@@ -38,10 +38,17 @@ export function SettingsSheet({
             Leave lobby
           </Button>
         )}
-        <Toggle
+        <VolumeSlider
           label="Sound effects"
-          checked={settings.sound}
+          testId="sound-slider"
+          value={settings.sound}
           onChange={(sound) => updateSettings({ sound })}
+        />
+        <VolumeSlider
+          label="Music"
+          testId="music-slider"
+          value={settings.music}
+          onChange={(music) => updateSettings({ music })}
         />
         <Toggle
           label="Vibration"
@@ -82,5 +89,39 @@ export function SettingsSheet({
         <DisplayModeNote />
       </div>
     </Sheet>
+  );
+}
+
+function VolumeSlider({
+  label,
+  testId,
+  value,
+  onChange,
+}: {
+  label: string;
+  testId: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="flex flex-col gap-2 py-2">
+      <span className="flex items-center justify-between font-semibold">
+        {label}
+        <span data-testid={`${testId}-value`} className="tabular-nums">
+          {value === 0 ? 'Off' : `${value}%`}
+        </span>
+      </span>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        step={5}
+        value={value}
+        data-testid={testId}
+        aria-label={label}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="h-8 w-full accent-[#3cb4ff]"
+      />
+    </label>
   );
 }
