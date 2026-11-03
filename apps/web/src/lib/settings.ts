@@ -11,7 +11,7 @@ export interface Settings {
 }
 
 const KEY = 'pogo.settings';
-const defaults: Settings = { sound: 100, music: 100, vibration: true, crt: 20 };
+const defaults: Settings = { sound: 100, music: 50, vibration: true, crt: 20 };
 
 function load(): Settings {
   try {
