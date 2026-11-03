@@ -33,7 +33,8 @@ function audio(): AudioContext | undefined {
       if (!AC) return undefined;
       ctx = new AC();
     }
-    if (ctx.state === 'suspended') void ctx.resume();
+    // 'suspended' at the start, and on iOS also 'interrupted' after the app was in the background.
+    if (ctx.state !== 'running') void ctx.resume().catch(() => undefined);
     return ctx;
   } catch {
     return undefined;
@@ -43,6 +44,51 @@ function audio(): AudioContext | undefined {
 /** The shared AudioContext (music uses it too, so one tap unlocks everything). */
 export function getAudioContext(): AudioContext | undefined {
   return audio();
+}
+
+const resetListeners = new Set<() => void>();
+/** Called when the audio engine was rebuilt (see `reviveAudio`): whatever was wired to the old one must be wired again. */
+export function onAudioReset(cb: () => void): () => void {
+  resetListeners.add(cb);
+  return () => resetListeners.delete(cb);
+}
+
+let reviving = false;
+/**
+ * iOS can leave the AudioContext dead after the app was in the background (state 'interrupted' or
+ * 'suspended', and `resume()` only works inside a tap), and then every sound and the music stay silent
+ * until the app is restarted. So: try to resume; when a tap could not bring it back, throw the engine
+ * away and build a new one (music starts again from the top).
+ */
+async function reviveAudio(fromTap: boolean) {
+  const old = ctx;
+  if (!old || old.state === 'running' || reviving) return;
+  reviving = true;
+  try {
+    await Promise.race([
+      old.resume().catch(() => undefined),
+      new Promise((done) => setTimeout(done, 400)),
+    ]);
+    if ((old.state as string) === 'running' || !fromTap || ctx !== old) return;
+    ctx = undefined;
+    bus = undefined;
+    void old.close().catch(() => undefined);
+    audio();
+    resetListeners.forEach((cb) => cb());
+  } finally {
+    reviving = false;
+  }
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void reviveAudio(false);
+  });
+  window.addEventListener('pageshow', () => void reviveAudio(false));
+  // Every tap is a chance to bring a dead engine back (a gesture is what iOS wants).
+  window.addEventListener('pointerdown', () => void reviveAudio(true), {
+    capture: true,
+    passive: true,
+  });
 }
 
 let bus: GainNode | undefined;

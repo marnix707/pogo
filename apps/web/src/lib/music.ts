@@ -1,5 +1,5 @@
 import { getSettings, subscribeSettings } from './settings';
-import { getAudioContext } from './sound';
+import { getAudioContext, onAudioReset } from './sound';
 
 /**
  * Songs made of an intro and a loop. Drop `intro.<ext>` and `loop.<ext>` (ogg/mp3/wav) into
@@ -72,6 +72,14 @@ export function preloadMusic(id: string): () => void {
   void load(id);
   return () => undefined;
 }
+
+// The audio engine was rebuilt (iOS killed it in the background): the old nodes are gone, play the song again.
+onAudioReset(() => {
+  const id = playing?.id;
+  playing = undefined;
+  master = undefined;
+  if (id) void playMusic(id);
+});
 
 function applyMute() {
   if (master) master.gain.value = (VOLUME * getSettings().music) / 100;
