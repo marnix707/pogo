@@ -119,20 +119,13 @@ export function stopMusic() {
   playing = undefined;
 }
 
-let leftMenu = false;
-
 /** The player left the main menu (entered a game, Play or Join): the song keeps playing, and starts if it had not. */
 export function musicLeftMenu() {
-  leftMenu = true;
   void playMusic('menu');
 }
 
-/** The player is on the main menu: restarts the song if they were away, otherwise just makes sure it plays. */
+/** The player is on the main menu: makes sure the song plays, but never restarts it (only an app restart does). */
 export function musicEnteredMenu() {
   if (getAudioContext()?.state !== 'running') return;
-  if (leftMenu) {
-    leftMenu = false;
-    stopMusic();
-  }
   void playMusic('menu');
 }
