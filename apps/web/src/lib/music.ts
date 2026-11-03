@@ -2,7 +2,7 @@ import { getSettings, subscribeSettings } from './settings';
 import { getAudioContext } from './sound';
 
 /**
- * Songs made of an intro and a loop. Drop `intro.<ext>` and `loop.<ext>` (mp3/ogg/wav) into
+ * Songs made of an intro and a loop. Drop `intro.<ext>` and `loop.<ext>` (ogg/mp3/wav) into
  * `assets/music/<id>/` and `playMusic('<id>')` plays the intro, then starts the loop at the exact
  * sample the intro ends (Web Audio scheduling, no gap). A track without files is just silent.
  */
