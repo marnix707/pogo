@@ -1318,7 +1318,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
                   <div
                     className="absolute"
                     style={{
-                      ...at(fx - 18, fy - h - 9, 36),
+                      ...at(fx - 18, fy + 1, 36),
                       opacity: finale !== 'none' ? 0 : undefined,
                       transition: 'opacity 300ms',
                       animation: intro
