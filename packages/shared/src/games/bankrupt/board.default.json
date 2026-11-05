@@ -43,7 +43,7 @@
       "group": "sky",
       "price": 130,
       "sell": 105,
-      "rent": [15, 45, 120, 285],
+      "rent": [15, 40, 120, 300],
       "buildCost": 70
     },
     {
@@ -62,8 +62,8 @@
       "group": "sky",
       "price": 150,
       "sell": 120,
-      "rent": [20, 55, 140, 365],
-      "buildCost": 85
+      "rent": [15, 60, 150, 350],
+      "buildCost": 80
     },
     {
       "id": "madrid",
@@ -73,8 +73,8 @@
       "group": "sky",
       "price": 150,
       "sell": 120,
-      "rent": [20, 55, 140, 365],
-      "buildCost": 85
+      "rent": [15, 60, 150, 350],
+      "buildCost": 80
     },
     {
       "id": "cards",
@@ -89,8 +89,8 @@
       "group": "pink",
       "price": 170,
       "sell": 135,
-      "rent": [25, 65, 160, 445],
-      "buildCost": 100
+      "rent": [20, 60, 160, 360],
+      "buildCost": 90
     },
     {
       "id": "berlin",
@@ -100,8 +100,8 @@
       "group": "pink",
       "price": 180,
       "sell": 145,
-      "rent": [25, 70, 170, 490],
-      "buildCost": 105
+      "rent": [20, 70, 180, 400],
+      "buildCost": 100
     },
     {
       "id": "moscow",
@@ -130,7 +130,7 @@
       "group": "yellow",
       "price": 200,
       "sell": 160,
-      "rent": [30, 80, 190, 570],
+      "rent": [30, 90, 200, 570],
       "buildCost": 120
     },
     {
@@ -141,7 +141,7 @@
       "group": "yellow",
       "price": 200,
       "sell": 160,
-      "rent": [30, 80, 190, 570],
+      "rent": [30, 90, 200, 570],
       "buildCost": 120
     },
     {
@@ -157,8 +157,8 @@
       "group": "orange",
       "price": 250,
       "sell": 200,
-      "rent": [35, 115, 245, 660],
-      "buildCost": 145
+      "rent": [35, 130, 250, 520],
+      "buildCost": 140
     },
     {
       "id": "riyadh",
@@ -168,8 +168,8 @@
       "group": "orange",
       "price": 250,
       "sell": 200,
-      "rent": [35, 115, 245, 660],
-      "buildCost": 145
+      "rent": [35, 130, 250, 520],
+      "buildCost": 140
     },
     {
       "id": "sydney",
@@ -186,8 +186,8 @@
       "id": "electricity",
       "kind": "transport",
       "name": "Electricity",
-      "price": 150,
-      "sell": 120,
+      "price": 200,
+      "sell": 160,
       "rent": [35, 70, 100, 140]
     },
     {
@@ -225,8 +225,8 @@
       "group": "purple",
       "price": 350,
       "sell": 280,
-      "rent": [50, 170, 385, 810],
-      "buildCost": 180
+      "rent": [45, 140, 350, 650],
+      "buildCost": 200
     },
     {
       "id": "hongkong",
@@ -236,8 +236,8 @@
       "group": "purple",
       "price": 350,
       "sell": 280,
-      "rent": [50, 170, 385, 810],
-      "buildCost": 180
+      "rent": [50, 140, 350, 650],
+      "buildCost": 200
     },
     {
       "id": "london",
@@ -277,8 +277,8 @@
       "group": "red",
       "price": 450,
       "sell": 360,
-      "rent": [80, 210, 550, 940],
-      "buildCost": 210
+      "rent": [80, 250, 650, 1000],
+      "buildCost": 200
     }
   ],
   "cards": [

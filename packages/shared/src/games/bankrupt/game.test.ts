@@ -664,7 +664,7 @@ describe('bankruptcy and winning', () => {
     t = own(t, 'madrid', first === 'a' ? 'b' : 'a');
     t = play(t, first, { type: 'roll' }, dice(3));
     expect(t.players.find((p) => p.id === first)!.bankrupt).toBe(false);
-    expect(t.players.find((p) => p.id === first)!.cash).toBe(-480);
+    expect(t.players.find((p) => p.id === first)!.cash).toBe(-460 - (tileById(DEFAULT_BOARD, 'madrid') as { rent: number[] }).rent[0]!);
   });
 
   it('a six that bankrupts the mover does not give them another roll', () => {
