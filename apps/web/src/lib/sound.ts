@@ -3,6 +3,7 @@ import { getSettings, subscribeSettings } from './settings';
 export type SoundName =
   | 'tap'
   | 'cash'
+  | 'jail'
   | 'roll'
   | 'score'
   | 'turn'
@@ -316,6 +317,15 @@ export function play(name: SoundName) {
       // A low, dark knell with a rattle.
       sweep(c, 'sawtooth', 160, 60, 0, 0.5, 0.12);
       noise(c, 0.02, 0.18, 0.2, 1200);
+      break;
+    case 'jail':
+      // A heavy cell door: the slam, a long iron clang that rings, and the bolt dropping in.
+      sweep(c, 'sine', 120, 40, 0, 0.3, 0.35);
+      noise(c, 0, 0.12, 0.5, 700);
+      [310, 467, 703, 1190].forEach((f, i) => tone(c, f, 0.02, 0.9 - i * 0.15, 'square', 0.05 / (i + 1)));
+      tone(c, 233, 0.02, 1, 'triangle', 0.12);
+      noise(c, 0.55, 0.06, 0.4, 1800);
+      tone(c, 180, 0.55, 0.12, 'square', 0.1);
       break;
     case 'cash':
       // "Cha-ching": the till drawer (a clack and a rattle of coins), then the bell ringing out.

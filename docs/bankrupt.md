@@ -96,3 +96,5 @@ The trade pop-up and the pulsing spaces only appear once everything before them 
 - **Cha-ching** (`play('cash')`, synthesized in `lib/sound.ts`): plays for every payment of the cash show (`useCashFx`): rent, salary, buying, selling, cards, jail fee, trades, Rainbow Road, buildings (also with reduced motion, which skips the show but not the sound). A building bought or sold (`build` event, `amount`: cost, negative when sold) or a sold space is a short `quick` show that never holds the game up.
 
 - **Moves are shown one at a time** (`BankruptGame.tsx`): a state that arrives while the last move is still being played out (a computer answers fast) waits in a queue and is shown when the walk, card and payments are done, so a token never stops short or lets the next player hop first. Three or more waiting: only the latest is kept.
+
+- **Jail**: the cell door sound (`play('jail')`) plays when a token has been sent to jail and has arrived there (never for just passing the Jail space). When the player cannot pay the fee there is nothing to ask: no Pay / Pass, the turn just ends (`jailChoice` in `game.ts`).

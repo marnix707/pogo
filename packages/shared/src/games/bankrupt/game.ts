@@ -185,6 +185,10 @@ function pay(
   if (to) to.cash += amount;
 }
 
+/** Pay the fee or sit it out: only a question when there is the money for the fee, else the turn just ends. */
+const jailChoice = (s: BankruptState, p: BankruptPlayer) =>
+  p.cash >= s.board.jailFee ? 'jailAsk' : 'after';
+
 function sendToJail(s: BankruptState, p: BankruptPlayer) {
   p.pos = tileIndex(s.board, s.board.tiles.find((t) => t.kind === 'jail')!.id);
   p.jail = s.board.jailTurns;
@@ -276,7 +280,7 @@ function land(s: BankruptState, p: BankruptPlayer, rng: Rng, depth = 0) {
   } else if (tile.kind === 'jail') {
     // The Jail space itself puts you in jail: pay now or sit three turns out.
     sendToJail(s, p);
-    s.phase = 'jailAsk';
+    s.phase = jailChoice(s, p); // (nothing to ask when the fee cannot be paid)
   } else if (tile.kind === 'auction') startTrade(s, p);
   else if (tile.kind === 'card' && s.board.cards.length > 0 && depth < 3) {
     const card = s.board.cards[rng.int(s.board.cards.length)]!;
@@ -315,7 +319,7 @@ function land(s: BankruptState, p: BankruptPlayer, rng: Rng, depth = 0) {
       else give(p, null, -total);
     } else if (e.type === 'jail') {
       sendToJail(s, p);
-      s.phase = 'jailAsk';
+      s.phase = jailChoice(s, p);
     } else if (e.type === 'moveTo') {
       const target = tileIndex(s.board, e.tile);
       if (target >= 0 && target !== p.pos) {

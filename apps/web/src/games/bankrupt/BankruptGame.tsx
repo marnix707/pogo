@@ -189,6 +189,13 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
     setState(queue[0]!);
     setQueue((q) => q.slice(1));
   }, [queue, fresh, settled, paying]);
+  // The cell door shuts once the token has arrived in jail (when it is sent there, not when it passes by).
+  const jailSounded = useRef(state.seq);
+  useEffect(() => {
+    if (animating || jailSounded.current === state.seq) return;
+    jailSounded.current = state.seq;
+    if (state.events.some((e) => e.k === 'jail')) play('jail');
+  }, [animating, state]);
   // The board shows the position as it was before this move until the move has been played out (no spoilers:
   // who owns the space the token is walking to, what got built, who is in jail ...).
   const [seen, setSeen] = useState(state);

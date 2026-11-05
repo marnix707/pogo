@@ -92,3 +92,27 @@ it('a player sent to jail by a card who passes sits out three turns and never ro
   expect(s.players[s.turn]!.id).toBe(first);
   expect(game.validateMove(s, first, { type: 'roll' }).ok).toBe(true);
 });
+
+it('with too little money for the fee there is nothing to ask: the turn just ends', () => {
+  const q: number[] = [];
+  const rng: Rng = { int: (n) => (n === 6 ? q.shift()! - 1 : 0) };
+  let s = game.createInitialState(
+    [
+      { id: 'a', nickname: 'A', avatar: 'x' },
+      { id: 'b', nickname: 'B', avatar: 'x' },
+    ],
+    { target: 0, turns: 0, auctionOnDecline: false, rainbowRoad: false },
+    rng,
+  );
+  const first = s.players[0]!.id;
+  const second = s.players[1]!.id;
+  s = {
+    ...s,
+    players: s.players.map((p) => (p.id === first ? { ...p, pos: 12, cash: 10 } : p)),
+  };
+  q.push(2);
+  s = game.applyMove(s, first, { type: 'roll' }, rng);
+  expect(s.players.find((p) => p.id === first)!.jail).toBe(3);
+  expect(s.phase).toBe('roll');
+  expect(s.players[s.turn]!.id).toBe(second);
+});
