@@ -330,3 +330,48 @@ export function TimerDrain({
     />
   );
 }
+
+/**
+ * The "i" button that opens a tooltip, in the pixel style: a square with stepped (notched) corners and an "i"
+ * drawn from pixels, never a round circle. 11 x 11 art pixels at 2x.
+ */
+export function InfoButton({
+  expanded,
+  onClick,
+  testId,
+  label = 'What does this do?',
+}: {
+  expanded: boolean;
+  onClick: () => void;
+  testId?: string;
+  label?: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-expanded={expanded}
+      data-testid={testId}
+      onClick={onClick}
+      className="-m-[5px] flex shrink-0 items-center justify-center p-[5px] text-neon active:translate-y-px"
+    >
+      <svg
+        viewBox="0 0 11 11"
+        width={22}
+        height={22}
+        shapeRendering="crispEdges"
+        aria-hidden
+        style={{ imageRendering: 'pixelated' }}
+      >
+        {/* the notched square: filled a little, with a one pixel edge and no corner pixels */}
+        <path d="M2 1h7v1h1v7h-1v1h-7v-1h-1v-7h1z" fill="currentColor" fillOpacity={expanded ? 0.4 : 0.18} />
+        <path
+          d="M2 0h7v1h-7zM2 10h7v1h-7zM0 2h1v7h-1zM10 2h1v7h-1zM1 1h1v1h-1zM9 1h1v1h-1zM1 9h1v1h-1zM9 9h1v1h-1z"
+          fill="currentColor"
+        />
+        {/* the i: dot, stem and its feet */}
+        <path d="M5 2h1v1h-1zM4 4h2v1h-2zM5 5h1v3h-1zM4 8h3v1h-3z" fill="currentColor" />
+      </svg>
+    </button>
+  );
+}

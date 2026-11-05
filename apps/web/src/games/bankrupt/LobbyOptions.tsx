@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { bankrupt } from '@pogo/shared';
 import type { LobbyOptionsProps } from '../types';
+import { InfoButton } from '../../components/ui';
 import { money } from './Board';
 
 const { TARGETS, TURN_LIMITS } = bankrupt;
@@ -95,16 +96,7 @@ function Toggle({
     <div className="relative flex min-h-12 items-center justify-between gap-3 font-semibold">
       <span className="flex items-center gap-2">
         {label}
-        <button
-          type="button"
-          aria-label="What does this do?"
-          aria-expanded={open}
-          data-testid={`bk-${id}-info`}
-          onClick={() => setOpen((t) => !t)}
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-edge/50 text-xs font-bold text-neon"
-        >
-          i
-        </button>
+        <InfoButton expanded={open} onClick={() => setOpen((t) => !t)} testId={`bk-${id}-info`} />
       </span>
       <button
         type="button"
