@@ -535,6 +535,21 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
     if (line) lines.push(line);
     return lines;
   };
+  // The spaces I can build on right now (a whole colour, not fully built, enough cash, before I roll).
+  const upgradable = new Set<string>(
+    myTurn && state.phase === 'roll' && !animating && !state.auction && !state.trade
+      ? state.board.tiles
+          .filter(
+            (t): t is bankrupt.PropertyTile =>
+              t.kind === 'property' &&
+              ui.owned[t.id]?.owner === me &&
+              (ui.owned[t.id]?.level ?? 0) < 3 &&
+              bankrupt.ownsSet(ui, me, t) &&
+              (mePlayer?.cash ?? 0) >= t.buildCost,
+          )
+          .map((t) => t.id)
+      : [],
+  );
   const canRoll = myTurn && state.phase === 'roll';
   const rollMessage = finished
     ? 'Game over'
@@ -654,6 +669,7 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
               picked={pick}
               overlay={popupNode}
               clear={tradeOn || auctionOn || swapping || rainbowing}
+            upgradable={upgradable}
               onPulse={(id) => setPick(id === pick ? null : id)}
             >
               {/* one die, bigger, its colour shows the value; the message sits under it */}

@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import type { ReactNode } from 'react';
 import { bankrupt } from '@pogo/shared';
 import { chevronsPath, tileChevronsAt } from './chevrons';
+import { art } from './art';
 import { gridPos } from './grid';
 import { FROG_OFFSETS } from './frog';
 import { FrogToken } from './FrogToken';
@@ -39,6 +40,7 @@ export function Board({
   picked,
   overlay,
   clear = false,
+  upgradable,
   children,
 }: {
   state: bankrupt.BankruptState;
@@ -53,6 +55,8 @@ export function Board({
   overlay?: ReactNode;
   /** The hall and the middle (die, note) shrink away, e.g. while a trade fills the middle. */
   clear?: boolean;
+  /** Spaces the player can build on right now: a little green arrow hops above their rent. */
+  upgradable?: Set<string>;
   children: ReactNode;
 }) {
   const n = state.board.tiles.length;
@@ -64,7 +68,6 @@ export function Board({
     const { row, col } = gridPos(i, n);
     return { x: col * TILE_PITCH, y: row * TILE_PITCH };
   };
-  void dim;
   return (
     <div
       ref={box}
@@ -160,6 +163,28 @@ export function Board({
                     />
                   )}
                 </svg>
+              )}
+              {upgradable?.has(tile.id) && tile.kind === 'property' && (
+                // beside the rent: right of it on the left half of the board, left of it on the right half
+                <img
+                  src={art('upgrade-ready')}
+                  alt=""
+                  data-testid={`bk-upgrade-${tile.id}`}
+                  className="bk-float pointer-events-none absolute block"
+                  style={(() => {
+                    const w = measure(`$${bankrupt.rentOf(state, tile)}`).width;
+                    const start = x + 4 + Math.floor((25 - w) / 2);
+                    const onLeftHalf = gridPos(i, n).col < dim / 2;
+                    const ix = onLeftHalf ? Math.min(start + w + 2, x + 33 - 9) : Math.max(start - 11, x);
+                    return {
+                      left: pct(ix),
+                      top: pct(y + 1),
+                      width: pct(9),
+                      imageRendering: 'pixelated' as const,
+                      ['--art' as string]: `${s}px`,
+                    };
+                  })()}
+                />
               )}
             </span>
           );
