@@ -103,6 +103,7 @@ const centre = (el: Element | null) => {
   return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
 };
 const tileEl = (id: string) => document.querySelector(`[data-testid="bk-tile-${id}"]`);
+const hallEl = () => document.querySelector('[data-testid="bk-hall"]');
 const tagEl = (id: string) => document.querySelector(`[data-testid="bk-player-${id}"]`);
 
 /** A number pops up on the space (like the damage in Pet Match): it grows, tips over and drops away. */
@@ -264,13 +265,21 @@ export function useCashFx(
       for (const t of transfers) {
         if (stopped) return;
         const tile = centre(tileEl(t.tile));
-        const payer = t.from ? centre(tagEl(t.from)) : tile;
-        const receiver = t.to ? centre(tagEl(t.to)) : tile;
-        const splitTo = t.split ? (t.split.to ? centre(tagEl(t.split.to)) : tile) : null;
+        // The bank is the town hall in the middle of the board: money to or from the bank goes there.
+        const bank = centre(hallEl()) ?? tile;
+        const payer = t.from ? centre(tagEl(t.from)) : bank;
+        const receiver = t.to ? centre(tagEl(t.to)) : bank;
+        const splitTo = t.split ? (t.split.to ? centre(tagEl(t.split.to)) : bank) : null;
+        const viaBank = t.from === null || t.to === null;
+        const bump = () =>
+          hallEl()?.animate(
+            [{ scale: '1' }, { scale: '1.2' }, { scale: '1' }],
+            { duration: 650, easing: 'ease-in-out' },
+          );
         if (!tile || !payer || !receiver || (t.split && !splitTo)) continue;
         const text = t.label ?? `${t.from ? '-' : '+'}$${t.amount.toLocaleString('en-US')}`;
         play('cash'); // every payment, whoever pays whom
-        void pop(tile, text, t.from ? '#ff6b57' : '#7ee08c');
+        void pop(viaBank && bank ? bank : tile, text, t.from ? '#ff6b57' : '#7ee08c');
         if (t.from) void count(t.from, -t.amount, t.quick ? 450 : 650);
         await sleep(t.quick ? 120 : 420);
         if (stopped) return;
@@ -284,9 +293,12 @@ export function useCashFx(
           ? Math.min(n - 1, Math.max(1, Math.round((n * t.split.amount) / t.amount)))
           : 0;
         for (let k = 0; k < mine; k++) targets[Math.floor(((k + 0.5) * n) / mine)] = splitTo!;
-        const flight = fly(t.from ? payer : tile, targets);
+        // (the town hall swells a little when money leaves it, or when the first notes arrive in it)
+        if (t.from === null) bump();
+        const flight = fly(payer, targets);
         await sleep(flight.firstArrives);
         if (stopped) return;
+        if (t.to === null) bump();
         if (t.to || t.split) {
           play('score');
           const own = t.amount - (t.split?.amount ?? 0);

@@ -203,9 +203,16 @@ export function Board({
           <img
             src={cityArt('city-hall')}
             alt=""
+            data-testid="bk-hall"
             draggable={false}
             className={`absolute ${clear ? 'bk-away' : 'transition-[opacity,transform] duration-300'}`}
-            style={{ left: pct(102), top: pct(36), width: pct(52), imageRendering: 'pixelated' }}
+            style={{
+              left: pct(102),
+              top: pct(36),
+              width: pct(52),
+              imageRendering: 'pixelated',
+              transformOrigin: '50% 100%',
+            }}
           />
           <div className={`absolute inset-0 ${clear ? 'bk-away' : ''}`}>{children}</div>
         </div>

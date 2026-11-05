@@ -98,6 +98,7 @@ function useWalking(state: State) {
     }
     if (!rolled) return;
     setRolling(true);
+    play('roll'); // the dice rattle, as in Yatzy (for every roll, whoever rolls)
     clearTimeout(rollTimer.current);
     rollTimer.current = setTimeout(() => setRolling(false), bankrupt.ROLL_MS);
   }, [state]);
@@ -614,7 +615,11 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
           {/* the board's hard navy drop shadow, like every card and button has */}
           <div
             className="absolute bg-[#101628]"
-            style={{ left: A(18), top: A(355), width: A(253), height: A(4) }}
+            style={{ left: A(18), top: A(355), width: A(259), height: A(4) }}
+          />
+          <div
+            className="absolute bg-[#101628]"
+            style={{ left: A(273), top: A(100), width: A(4), height: A(255) }}
           />
           <div className="absolute" style={{ left: A(16), top: A(98), width: A(257) }}>
             <Board
@@ -630,7 +635,7 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
               {/* one die, bigger, its colour shows the value; the message sits under it */}
               <div
                 className="absolute"
-                style={{ left: bp(114), top: bp(94), width: bp(29) }}
+                style={{ left: bp(99), top: bp(90), width: bp(58) }}
                 data-testid="bk-dice"
               >
                 {(state.dice ?? 0) > 0 || rolling ? (
@@ -646,7 +651,7 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
               </div>
               <div
                 className="absolute flex w-full justify-center"
-                style={{ top: bp(132) }}
+                style={{ top: bp(158) }}
                 data-testid="bk-note"
                 role="status"
               >
@@ -671,7 +676,7 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
             disabled={!canRoll || busy || rolling || animating}
             onClick={() => void send({ type: 'roll' })}
             className="absolute block active:translate-y-px disabled:active:translate-y-0"
-            style={{ left: A(16), top: A(403), width: A(257), height: A(25) }}
+            style={{ left: A(16), top: A(403), width: A(257), height: A(50) }}
           >
             <img
               src={screenArt(canRoll ? 'buttons/roll-the-dice' : 'buttons/roll-the-dice-disabled')}
@@ -692,7 +697,7 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
                   ? 'border-[#101628] bg-[#101628] text-[#fdcf51]'
                   : 'border-[#101628] bg-[#fdcf51] text-[#101628]'
               }`}
-              style={{ left: A(16 + 257 - 25), top: A(403 + 2), width: A(21), height: A(19) }}
+              style={{ left: A(16 + 257 - 33), top: A(403 + 5), width: A(27), height: A(38) }}
             >
               <LockIcon open={!autoRoll} className="h-[70%] w-[70%]" />
             </button>

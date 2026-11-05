@@ -9,9 +9,9 @@ const files = import.meta.glob('../../assets/sprites/bankrupt/screen/**/*.svg', 
 export const screenArt = (name: string): string =>
   files[`../../assets/sprites/bankrupt/screen/${name}.svg`] ?? '';
 
-/** The screen is 290 x 436 art pixels; everything on it sits on that grid. */
+/** The screen is 290 x 461 art pixels; everything on it sits on that grid. */
 export const SCREEN_W = 290;
-export const SCREEN_H = 436;
+export const SCREEN_H = 461;
 export const CARD_W = 84;
 export const CARD_GAP = 3;
 
