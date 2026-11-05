@@ -1,6 +1,5 @@
 import { bankrupt } from '@pogo/shared';
 import { Button } from '../../components/ui';
-import { play } from '../../lib/sound';
 import { money } from './Board';
 import { PropertyCard } from './PropertyCard';
 
@@ -45,10 +44,7 @@ export function BuyOverlay({
               enabled: canBuy && !busy,
               testId: 'bk-buy',
               label: `Buy ${tile.name} for ${money(tile.price)}`,
-              onClick: () => {
-                      play('cash');
-                      void send({ type: 'buy' });
-                    },
+              onClick: () => void send({ type: 'buy' }),
             },
           ]}
         />

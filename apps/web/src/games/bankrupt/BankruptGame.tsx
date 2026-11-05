@@ -156,7 +156,19 @@ function useWalking(state: State) {
 
 export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const game = room.game!;
-  const state = game.view as State;
+  // Moves are played out one after another: when the next one arrives while the last is still being shown (a
+  // computer answers fast), it waits in a queue, so no token stops short and nobody hops before the walk is done.
+  const latest = game.view as State;
+  const [state, setState] = useState(latest);
+  const [queue, setQueue] = useState<State[]>([]);
+  const lastSeq = useRef(latest.seq);
+  useEffect(() => {
+    if (latest.seq === lastSeq.current) return;
+    lastSeq.current = latest.seq;
+    // (a new game, or far behind after a reconnect: no point in replaying every move)
+    if (latest.seq < state.seq) setState(latest);
+    else setQueue((q) => (q.length >= 3 ? [latest] : [...q, latest]));
+  }, [latest]); // eslint-disable-line react-hooks/exhaustive-deps
   const players = state.players;
   const mePlayer = players.find((p) => p.id === me);
   const mover = players[state.turn]!;
@@ -171,7 +183,12 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const [doneSeq, setDoneSeq] = useState(state.seq);
   useEffect(() => setDoneSeq(state.seq), [state.seq]);
   const fresh = doneSeq !== state.seq;
-  const animating = fresh || !settled || paying;
+  const animating = fresh || !settled || paying || queue.length > 0;
+  useEffect(() => {
+    if (queue.length === 0 || fresh || !settled || paying) return;
+    setState(queue[0]!);
+    setQueue((q) => q.slice(1));
+  }, [queue, fresh, settled, paying]);
   // The board shows the position as it was before this move until the move has been played out (no spoilers:
   // who owns the space the token is walking to, what got built, who is in jail ...).
   const [seen, setSeen] = useState(state);

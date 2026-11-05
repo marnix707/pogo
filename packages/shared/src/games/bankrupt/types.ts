@@ -89,7 +89,8 @@ export type BankruptEvent =
   | { k: 'jail'; by: PlayerId }
   /** A jailed player's turn is skipped; `left` turns remain. */
   | { k: 'jailSkip'; by: PlayerId; left: number }
-  | { k: 'free'; by: PlayerId }
+  /** Out of jail; `fee` when the player paid to get out. */
+  | { k: 'free'; by: PlayerId; fee?: number }
   | { k: 'salary'; by: PlayerId; amount: number }
   /** A building was bought (`amount` > 0, what it cost) or sold (`amount` < 0, what came back). */
   | { k: 'build'; by: PlayerId; tile: string; level: number; amount: number }

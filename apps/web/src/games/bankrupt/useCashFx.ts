@@ -58,6 +58,15 @@ function transfersOf(s: State): Transfer[] {
           ? { from: e.by, to: null, tile: e.tile, amount: e.amount, quick: true }
           : { from: null, to: e.by, tile: e.tile, amount: -e.amount, quick: true },
       );
+    else if (e.k === 'sold')
+      out.push({ from: null, to: e.by, tile: e.tile, amount: e.amount, quick: true });
+    else if (e.k === 'free' && e.fee)
+      out.push({
+        from: e.by,
+        to: null,
+        tile: s.board.tiles.find((t) => t.kind === 'jail')!.id,
+        amount: e.fee,
+      });
     else if (e.k === 'buy') out.push({ from: e.by, to: null, tile: e.tile, amount: e.price });
     else if (e.k === 'auction' && e.winner)
       out.push({ from: e.winner, to: null, tile: e.tile, amount: e.amount });
@@ -203,7 +212,10 @@ export function useCashFx(
     const before = prevCash.current;
     prevCash.current = Object.fromEntries(state.players.map((p) => [p.id, p.cash]));
     stop.current?.();
-    const transfers = reduced() ? [] : transfersOf(state);
+    const all = transfersOf(state);
+    // (reduced motion: no show, but the money still makes its sound)
+    if (reduced() && all.length > 0) play('cash');
+    const transfers = reduced() ? [] : all;
     job.current = transfers.length > 0 ? transfers : null;
     setPlaying(transfers.some((t) => !t.quick));
     const involved = new Set(transfers.flatMap((t) => [t.from, t.to, t.split?.to]).filter(Boolean) as string[]);
@@ -248,6 +260,7 @@ export function useCashFx(
         const splitTo = t.split ? (t.split.to ? centre(tagEl(t.split.to)) : tile) : null;
         if (!tile || !payer || !receiver || (t.split && !splitTo)) continue;
         const text = t.label ?? `${t.from ? '-' : '+'}$${t.amount.toLocaleString('en-US')}`;
+        play('cash'); // every payment, whoever pays whom
         void pop(tile, text, t.from ? '#ff6b57' : '#7ee08c');
         if (t.from) void count(t.from, -t.amount, t.quick ? 450 : 650);
         await sleep(t.quick ? 120 : 420);

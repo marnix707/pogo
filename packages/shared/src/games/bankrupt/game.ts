@@ -512,7 +512,7 @@ function applyMove(
     case 'payJail':
       pay(s, me, null, s.board.jailFee);
       me.jail = 0;
-      s.events.push({ k: 'free', by: me.id });
+      s.events.push({ k: 'free', by: me.id, fee: s.board.jailFee });
       advanceTurn(s);
       break;
     case 'wait':
