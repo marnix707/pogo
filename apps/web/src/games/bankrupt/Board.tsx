@@ -83,6 +83,33 @@ export function Board({
           className="absolute inset-0 h-full w-full"
           style={{ imageRendering: 'pixelated' }}
         />
+        {/* a subtle one-pixel line round the playing field: just outside the board (in the margin, so it takes no
+            width) and just inside, round the middle */}
+        <div
+          aria-hidden
+          data-testid="bk-board-outline"
+          className="pointer-events-none absolute"
+          style={{
+            left: -s,
+            top: -s,
+            width: BOARD_PX * s + 2 * s,
+            height: BOARD_PX * s + 2 * s,
+            border: `${s}px solid rgba(16, 22, 40, 0.4)`,
+            boxSizing: 'border-box',
+          }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute"
+          style={{
+            left: INNER[0] * s,
+            top: INNER[1] * s,
+            width: INNER[2] * s,
+            height: INNER[3] * s,
+            border: `${s}px solid rgba(16, 22, 40, 0.3)`,
+            boxSizing: 'border-box',
+          }}
+        />
         {/* owned spaces: the artist's owned tile (the owner's colour in the band, no frame) with the rent on it, and buildings */}
         {state.board.tiles.map((tile, i) => {
           const holding = state.owned[tile.id];

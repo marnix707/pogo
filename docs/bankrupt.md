@@ -124,3 +124,4 @@ The trade pop-up and the pulsing spaces only appear once everything before them 
 - Not done: the artist's "players" button (no matching feature), a jailed frog behind bars, the dev tag on names (names are pixel text now).
 - The die makes the same rattle as Yatzy's dice (`play('roll')`) at the start of every roll, whoever rolls.
 - **The bank is the town hall**: every payment to or from the bank (buying, card fees and gifts, salary, selling, trade bonus, Rainbow Road, jail fee, buildings) flies to or from the town hall in the middle of the board, the number pops up on it, and it swells by 20 % and shrinks back (`bk-hall`, `useCashFx`).
+- A subtle 1 art px line (navy, 40 % / 30 %) runs round the playing field, just outside the board (in the margin: it takes no width) and just inside round the middle (`Board.tsx`).
