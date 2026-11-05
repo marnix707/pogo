@@ -22,6 +22,8 @@ export interface BankruptOptions {
 
 export interface BankruptPlayer {
   id: PlayerId;
+  /** Index into `PLAYER_COLOURS`: the order the players joined the room (the host first), whatever the seat order. */
+  colour: number;
   cash: number;
   /** Index of the space the token stands on. */
   pos: number;

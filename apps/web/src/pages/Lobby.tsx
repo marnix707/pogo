@@ -214,6 +214,10 @@ export function Lobby({
     !addRobo;
   const secondsToStart = useCountdown(room.startsAt, room.serverTime);
   const ui = getGameUi(room.gameId);
+  // The crew list: the host on top, then the others in the order they joined (games may colour by this order).
+  const crew = [...room.members].sort(
+    (a, b) => Number(b.id === room.hostId) - Number(a.id === room.hostId),
+  );
   const limits = getGame(room.gameId);
   // Same naming as the server's makeBots: the first free names from the list.
   const taken = new Set(room.members.map((m) => m.nickname.toLowerCase()));
@@ -501,7 +505,7 @@ export function Lobby({
                 Crew
               </SectionLabel>
               <ul className="flex flex-col gap-2">
-                {room.members.map((m) => (
+                {crew.map((m, crewIndex) => (
                   <li
                     key={m.id}
                     data-testid={`member-${m.nickname}`}
@@ -530,6 +534,7 @@ export function Lobby({
                         </span>
                       </div>
                     </div>
+                    {ui?.crewBadge?.(crewIndex)}
                     {isHost && m.id !== me && (
                       <button
                         onClick={() => void api.kick(m.id)}
@@ -560,6 +565,7 @@ export function Lobby({
                       <div className="truncate font-bold">{name}</div>
                       <div className="label text-[10px] text-muted">Computer</div>
                     </div>
+                    {ui?.crewBadge?.(crew.length + i)}
                     {/* The host sends the last computer home again (the stepper in Settings does the same). */}
                     {isHost && i === botSeats.length - 1 && (
                       <button

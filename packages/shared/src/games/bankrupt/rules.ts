@@ -82,3 +82,7 @@ export function rainbowRoad(
   const [a, b] = Object.values(owners);
   return a !== b ? { tiles: street, owners } : null;
 }
+
+/** Who gets which colour, by the order they joined (the room host is always red, the second one blue ...). */
+export const PLAYER_COLOURS = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'] as const;
+export type PlayerColour = (typeof PLAYER_COLOURS)[number];

@@ -38,7 +38,7 @@ import type {
 
 /** Milliseconds the screen needs to show the dice and one step of a token. */
 export const ROLL_MS = 900;
-export const STEP_MS = 280;
+export const STEP_MS = 360;
 /** The smallest bid, and the step bots bid in. */
 export const MIN_BID = 10;
 /** Seconds to bid in an auction before everybody who has not bid steps out. */
@@ -115,6 +115,7 @@ function createInitialState(
     options,
     players: order.map((p, i) => ({
       id: p.id,
+      colour: players.findIndex((q) => q.id === p.id),
       cash: board.startCash + i * board.startCashStep,
       pos: 0,
       jail: 0,

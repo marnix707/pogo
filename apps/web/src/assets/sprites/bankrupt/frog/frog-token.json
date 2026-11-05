@@ -1,0 +1,104 @@
+{
+ "size": [
+  19,
+  19
+ ],
+ "anchor": "centre of the 19x19 canvas = centre of the frog; place it on the tile centre (tile x+16, y+16)",
+ "frames": [
+  "sit",
+  "blink",
+  "crouch",
+  "leap"
+ ],
+ "directions": [
+  "up",
+  "right",
+  "down",
+  "left"
+ ],
+ "direction_by_side": {
+  "left column (spaces 0-6)": "up",
+  "top row (7-13)": "right",
+  "right column (14-20)": "down",
+  "bottom row (21-27)": "left"
+ },
+ "idle": "sit; swap to blink for 120ms every 2-4 s (random)",
+ "hop": {
+  "frames": [
+   [
+    "crouch",
+    70
+   ],
+   [
+    "leap",
+    160
+   ],
+   [
+    "crouch",
+    60
+   ],
+   [
+    "sit",
+    40
+   ]
+  ],
+  "lift_px": [
+   0,
+   2,
+   5,
+   7,
+   7,
+   5,
+   2,
+   0
+  ],
+  "move_during": "leap",
+  "pitch_px": 32,
+  "between_hops_ms": 30
+ },
+ "shadow": {
+  "files": [
+   "shadow-big.svg",
+   "shadow-small.svg"
+  ],
+  "opacity": 0.35,
+  "use": "draw on the ground at the frog position (no lift); use small while lift >= 4"
+ },
+ "multiple_on_one_tile": {
+  "offsets_from_tile_centre": [
+   [
+    -7,
+    -6
+   ],
+   [
+    7,
+    -6
+   ],
+   [
+    -7,
+    6
+   ],
+   [
+    7,
+    6
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    -9
+   ]
+  ],
+  "note": "up to 6 frogs; draw in this order, later ones on top"
+ },
+ "colours_planned": [
+  "green",
+  "yellow",
+  "blue",
+  "red",
+  "purple",
+  "orange"
+ ]
+}

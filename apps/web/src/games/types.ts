@@ -58,6 +58,8 @@ export interface GameUi {
   resultsDelayMs?: (room: RoomView) => number;
   /** Optional custom headline for the results panel (default: "<winner> wins!"). */
   resultsTitle?: (room: RoomView, me: string) => string | undefined;
+  /** A small picture next to each player in the lobby's crew list, by their place in the list (host first, then the rest, then computers). */
+  crewBadge?: (index: number) => ReactNode;
   /** Optional text (e.g. emoji of the active rules) shown next to the game's name in the top bar. */
   titleExtra?: (room: RoomView) => string | undefined;
 }

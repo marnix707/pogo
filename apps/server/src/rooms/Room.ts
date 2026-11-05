@@ -591,8 +591,10 @@ export class Room {
     // Computer players take the last seats; drop any left over from a previous game first.
     this.members = this.members.filter((m) => !m.bot && !m.left);
     this.members.push(...this.makeBots());
+    // (the host always sits first: games may give colours by this order)
     const players = this.members
       .filter((m) => !m.spectator)
+      .sort((a, b) => Number(b.user.id === this.hostId) - Number(a.user.id === this.hostId))
       .map((m) => ({
         id: m.user.id,
         nickname: displayName(m.user),

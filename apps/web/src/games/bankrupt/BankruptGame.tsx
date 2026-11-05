@@ -5,7 +5,8 @@ import { Avatar, Button } from '../../components/ui';
 import { PlayerName } from '../../components/PlayerName';
 import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
-import { Board, money, seatColour } from './Board';
+import { Board, money, playerColour } from './Board';
+import { frogUrl } from './frog';
 import { BuyOverlay } from './BuyOverlay';
 import { LuckCard } from './LuckCard';
 import { LockIcon } from '../../components/icons';
@@ -16,7 +17,6 @@ import { TradePanel, TradeSwap, pulsingTiles } from './TradePanel';
 import { TileSheet } from './TileSheet';
 import { useCashFx } from './useCashFx';
 import { dieUrl } from './art';
-import { cityArt } from './cityArt';
 
 type State = bankrupt.BankruptState;
 
@@ -309,7 +309,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       ? ` · round ${state.round}/${state.options.turns}`
       : ` · round ${state.round}`;
 
-  const tag = (latestP: State['players'][number], seat: number) => {
+  const tag = (latestP: State['players'][number], _seat: number) => {
     // (what is shown follows the board: jail / bankrupt only show once the move is played out)
     const p = ui.players.find((q) => q.id === latestP.id) ?? latestP;
     const cash = cashShown[p.id] ?? p.cash;
@@ -328,7 +328,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       >
         <div className="flex items-center gap-1">
           <img
-            src={cityArt(`token-${seatColour(seat)}`)}
+            src={frogUrl(playerColour(p), 'down', 'sit')}
             alt=""
             className="h-6 w-auto"
             style={{ imageRendering: 'pixelated' }}

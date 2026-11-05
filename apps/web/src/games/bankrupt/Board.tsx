@@ -3,8 +3,9 @@ import type { ReactNode } from 'react';
 import { bankrupt } from '@pogo/shared';
 import { chevronsPath, tileChevronsAt } from './chevrons';
 import { gridPos } from './grid';
+import { FROG_OFFSETS } from './frog';
+import { FrogToken } from './FrogToken';
 import { BOARD_PX, INNER, TILE_PITCH, TILE_PX, cityArt, slug } from './cityArt';
-import { STEP_MS } from './timing';
 import { useArtScale } from './useArtScale';
 import { measure, pixelTextSVG, priceOnTileSVG, rentOnTileSVG } from './pixel-text/pixelText';
 import layout from '../../assets/sprites/bankrupt/city/card-layout.json';
@@ -12,9 +13,9 @@ import layout from '../../assets/sprites/bankrupt/city/card-layout.json';
 const SPECIAL_DARK = (layout.groups as Record<string, string[]>).special![2]!;
 export const money = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString('en-US')}`;
 
-/** Token / owner-frame colour per seat (the kit has green, yellow, blue and red; purple and orange are recoloured). */
-export const SEAT_COLOURS = ['green', 'yellow', 'blue', 'red', 'purple', 'orange'] as const;
-export const seatColour = (seat: number) => SEAT_COLOURS[seat % SEAT_COLOURS.length]!;
+/** The colour of a player: by the order they joined the room (host red, second blue ...), whatever the seat. */
+export const playerColour = (p: { colour: number }) =>
+  bankrupt.PLAYER_COLOURS[p.colour % bankrupt.PLAYER_COLOURS.length]!;
 export const SEAT_HEX: Record<string, string> = {
   green: '#56a786',
   yellow: '#fda200',
@@ -92,7 +93,7 @@ export function Board({
           return (
             <span key={tile.id}>
               <img
-                src={cityArt(`${file}-${seatColour(seat)}`)}
+                src={cityArt(`${file}-${playerColour(state.players[seat]!)}`)}
                 alt=""
                 data-testid={`bk-owner-${tile.id}`}
                 className="pointer-events-none absolute"
@@ -235,44 +236,32 @@ export function Board({
             {overlay}
           </div>
         )}
-        {/* the tokens glide from space to space (and hop on every step) */}
+        {/* the frogs hop from space to space */}
         <div className="pointer-events-none absolute inset-0">
-          {state.players.map((p, seat) => {
+          {state.players.map((p) => {
             if (p.bankrupt) return null;
             const pos = shown[p.id] ?? p.pos;
             const { x, y } = at(pos);
             const mates = state.players.filter(
               (q) => !q.bankrupt && (shown[q.id] ?? q.pos) === pos,
             );
-            const k = mates.findIndex((q) => q.id === p.id);
-            // Tokens that share a space stand side by side (closer, and staggered, when there are many).
-            const step = mates.length > 3 ? 4 : mates.length > 1 ? 8 : 0;
-            const spread = (k - (mates.length - 1) / 2) * step;
-            const stagger = mates.length > 2 ? (k % 2 === 0 ? -2 : 0) : 0;
+            // Alone a frog sits in the middle of the space; with company each has a place by colour.
+            const [ox, oy] = mates.length > 1 ? FROG_OFFSETS[p.colour % 6]! : [0, 0];
             return (
-              <span
+              <FrogToken
                 key={p.id}
-                data-testid={`bk-token-${p.id}`}
-                data-at={pos}
-                className="absolute"
-                style={{
-                  left: pct(x + TILE_PX / 2 + spread),
-                  // (the feet stand near the bottom of the space: the price band at the top stays readable)
-                  top: pct(y + 31 + stagger),
-                  width: pct(14.4),
-                  transform: 'translate(-50%, -100%)',
-                  // The token is in the air for most of the step: it travels while it hops, then lands.
-                  transition: `left ${Math.round(STEP_MS * 0.8)}ms ease-in-out, top ${Math.round(STEP_MS * 0.8)}ms ease-in-out`,
+                testId={`bk-token-${p.id}`}
+                colour={playerColour(p)}
+                pos={pos}
+                n={n}
+                at={(i) => {
+                  const g = at(i);
+                  return { x: g.x + 16, y: g.y + 16 };
                 }}
-              >
-                <img
-                  key={pos}
-                  src={cityArt(`token-${seatColour(seat)}`)}
-                  alt=""
-                  className="bk-hop block w-full"
-                  style={{ imageRendering: 'pixelated', animationDuration: `${STEP_MS}ms` }}
-                />
-              </span>
+                left={pct(x + 16 + ox)}
+                top={pct(y + 16 + oy)}
+                width={pct(19)}
+              />
             );
           })}
         </div>
