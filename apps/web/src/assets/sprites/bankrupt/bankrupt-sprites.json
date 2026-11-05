@@ -1,5 +1,5 @@
 {
- "note": "Bankrupt! art: every sprite is a whole-number-scaled pixel SVG (image-rendering: pixelated). Tokens sit centred on their square; buildings and icons are centred in their tile.",
+ "note": "Bankrupt art: every sprite is a whole-number-scaled pixel SVG (image-rendering: pixelated). Tokens sit centred on their square; buildings and icons are centred in their tile.",
  "sprites": {
   "icon-start": {
    "w": 16,

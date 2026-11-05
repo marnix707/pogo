@@ -15,7 +15,7 @@ it('landing on the Jail space puts you in jail: asked at once, then three skippe
       { id: 'a', nickname: 'A', avatar: 'x' },
       { id: 'b', nickname: 'B', avatar: 'x' },
     ],
-    { target: 0, turns: 0, auctionOnDecline: false },
+    { target: 0, turns: 0, auctionOnDecline: false, rainbowRoad: false },
     rng,
   );
   const first = s.players[0]!.id;
@@ -55,7 +55,7 @@ it('a player sent to jail by a card who passes sits out three turns and never ro
       { id: 'a', nickname: 'A', avatar: 'x' },
       { id: 'b', nickname: 'B', avatar: 'x' },
     ],
-    { target: 0, turns: 0, auctionOnDecline: false },
+    { target: 0, turns: 0, auctionOnDecline: false, rainbowRoad: false },
     rng,
   );
   const first = s.players[0]!.id;

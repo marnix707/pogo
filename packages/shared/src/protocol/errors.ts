@@ -4,7 +4,7 @@
  * behind it, e.g. "Room not found (ROOM-101)".
  *
  * Areas: NET (requests, limits), SYS (server problems), MAIL (sending email), ACC (accounts and
- * sign-in), ADM (admin panel), ROOM (rooms, lobby, ready), GAME (any game), YAT (Yatzy), KAR (Karma), LAST (Last Card), SEA (Sea Battle), MATE (Pet Match), BANK (Bankrupt!).
+ * sign-in), ADM (admin panel), ROOM (rooms, lobby, ready), GAME (any game), YAT (Yatzy), KAR (Karma), LAST (Last Card), SEA (Sea Battle), MATE (Pet Match), BANK (Bankrupt).
  * Codes are `AREA-NNN`; 1xx = the player did something that is not allowed, 5xx = our side broke.
  *
  * To add an error: add a line to KNOWN_ERRORS (exact message, or a regex for messages with a game
@@ -216,7 +216,8 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'BANK-129', message: 'Pick one of your spaces without buildings' },
   { code: 'BANK-130', message: 'That player made no offer' },
   { code: 'BANK-131', message: 'Finish the trade first' },
-  { code: 'BANK-125', message: /^Bankrupt! needs \d+-\d+ players$/ },
+  { code: 'BANK-132', message: 'There is no Rainbow Road here' },
+  { code: 'BANK-125', message: /^Bankrupt needs \d+-\d+ players$/ },
 ];
 
 /** The code for an error message, or SYS-000 when the message is not in the catalogue. */

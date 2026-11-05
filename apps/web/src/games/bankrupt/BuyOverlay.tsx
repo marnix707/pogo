@@ -1,4 +1,5 @@
-import type { bankrupt } from '@pogo/shared';
+import { bankrupt } from '@pogo/shared';
+import { Button } from '../../components/ui';
 import { money } from './Board';
 import { PropertyCard } from './PropertyCard';
 
@@ -18,6 +19,8 @@ export function BuyOverlay({
 }) {
   const cash = state.players.find((p) => p.id === me)?.cash ?? 0;
   const canBuy = cash >= tile.price;
+  // Rainbow Road replaces Buy when two other players each own a space of this street.
+  const rainbow = bankrupt.rainbowRoad(state, me) !== null;
   return (
     <div
       className="bk-pop flex h-full w-full flex-col items-center gap-[1%] bg-[#101628]/70 p-[1.5%]"
@@ -32,7 +35,10 @@ export function BuyOverlay({
           rent={tile.rent[0]!}
           closeLabel="Cancel"
           onClose={() => void send({ type: 'decline' })}
-          actions={[
+          actions={
+            rainbow
+              ? []
+              : [
             {
               kind: 'buy',
               enabled: canBuy && !busy,
@@ -43,11 +49,24 @@ export function BuyOverlay({
           ]}
         />
       </div>
+      {rainbow && (
+        <Button
+          variant="gold"
+          className="shrink-0 !min-h-[6.5cqw] !text-[2.6cqw]"
+          data-testid="bk-rainbow-btn"
+          disabled={busy}
+          onClick={() => void send({ type: 'rainbow' })}
+        >
+          Rainbow Road
+        </Button>
+      )}
       <p
         className="label shrink-0 text-center text-[2.1cqw] leading-tight text-white"
         data-testid="bk-buy-note"
       >
-        {!canBuy
+        {rainbow
+          ? 'Sell the whole street to the bank, or tap X to pass.'
+          : !canBuy
           ? `You need ${money(tile.price - cash)} more. Tap X to pass.`
           : state.options.auctionOnDecline
             ? 'Tap X to put it up for auction.'

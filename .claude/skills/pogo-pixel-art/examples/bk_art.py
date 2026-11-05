@@ -325,18 +325,18 @@ def wordmark(text):
         for x in range(W):
             if g[y][x] is None and (g[y - 1][x] is not None or (y >= 2 and g[y - 2][x] is not None)): g[y][x] = INK
     return g
-wm = wordmark('BANKRUPT!')
+wm = wordmark('BANKRUPT')
 house, shop, hotel = (trim(SAVE[n]) for n in ('build-house', 'build-shop', 'build-hotel'))
 coin = trim(SAVE['token-yellow'])
 W = max(len(wm[0]), 60) + 4; Hh = 44
 g = [[None] * W for _ in range(Hh)]
-row = [house, coin, hotel, shop]; gap = 4
-tw = sum(len(t[0]) for t in row) + gap * (len(row) - 1); x = (W - tw) // 2
-for t in row:
-    paste(g, t, x, 2 + (14 - len(t)) // 1 - 2 if len(t) < 14 else 2); x += len(t[0]) + gap
+row = [house, coin, hotel, shop]; gaps = [4, 5, 4]  # (an even width, so the even-width wordmark sits dead centre)
+tw = sum(len(t[0]) for t in row) + sum(gaps); x = (W - tw) // 2
+for i, t in enumerate(row):
+    paste(g, t, x, 2 + (14 - len(t)) // 1 - 2 if len(t) < 14 else 2); x += len(t[0]) + (gaps[i] if i < len(gaps) else 0)
 paste(g, wm, (W - len(wm[0])) // 2, 22)
 logo = trim(g)
-write_svg(logo, os.path.join(OUT, '..', 'brand', 'logos', 'bankrupt.svg') if os.path.isdir(os.path.join(OUT, '..', 'brand', 'logos')) else os.path.join(OUT, 'logo.svg'), 'BANKRUPT!', px=8)
+write_svg(logo, os.path.join(OUT, '..', 'brand', 'logos', 'bankrupt.svg') if os.path.isdir(os.path.join(OUT, '..', 'brand', 'logos')) else os.path.join(OUT, 'logo.svg'), 'BANKRUPT', px=8)
 
 json.dump({'note': 'Bankrupt! art: every sprite is a whole-number-scaled pixel SVG (image-rendering: pixelated). Tokens sit centred on their square; buildings and icons are centred in their tile.',
            'sprites': {k: {'w': len(v[0]), 'h': len(v)} for k, v in SAVE.items()}}, open(os.path.join(OUT, 'bankrupt-sprites.json'), 'w'), indent=1)

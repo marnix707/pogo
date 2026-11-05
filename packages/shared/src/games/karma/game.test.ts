@@ -809,9 +809,9 @@ describe('computer swapping (autoMove in the swap phase)', () => {
 });
 
 describe('computer players', () => {
-  it('Karma can be played against the computer; Yatzy is not offered (its auto-play is too basic)', () => {
+  it('Karma and Yatzy can be played against the computer', () => {
     expect(game.supportsBots).toBe(true);
-    expect(getGame('yatzy')?.supportsBots).toBeUndefined();
+    expect(getGame('yatzy')?.supportsBots).toBe(true);
   });
 });
 

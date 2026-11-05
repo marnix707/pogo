@@ -7,7 +7,7 @@ import { BankruptOptionsPicker } from './LobbyOptions';
 
 export const bankruptUi: GameUi = {
   id: 'bankrupt',
-  name: 'Bankrupt!',
+  name: 'Bankrupt',
   emoji: '🏦',
   logo: logoUrl,
   tagline: 'Buy the city, build, and bankrupt your friends.',

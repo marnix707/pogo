@@ -1511,7 +1511,7 @@ html.results-open .safe-top-scrim {
   }
 }
 
-/* Bankrupt!: a token hops on every step it walks, and the die tumbles while it rolls. */
+/* Bankrupt: a token hops on every step it walks, and the die tumbles while it rolls. */
 .bk-hop {
   animation: bk-hop 280ms cubic-bezier(0.3, 0, 0.4, 1) both;
   transform-origin: 50% 100%;
@@ -1564,7 +1564,7 @@ html.results-open .safe-top-scrim {
   }
 }
 
-/* Bankrupt!: the buy card pops up. */
+/* Bankrupt: the buy card pops up. */
 .bk-pop {
   animation: bk-pop 260ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
@@ -1584,7 +1584,7 @@ html.results-open .safe-top-scrim {
   }
 }
 
-/* Bankrupt!: the property card turns over. */
+/* Bankrupt: the property card turns over. */
 .bk-flip {
   transition: transform 520ms cubic-bezier(0.4, 0.1, 0.2, 1);
 }
@@ -1594,7 +1594,7 @@ html.results-open .safe-top-scrim {
   }
 }
 
-/* Bankrupt!: a space that may be picked for a trade pulses. */
+/* Bankrupt: a space that may be picked for a trade pulses. */
 .bk-pulse {
   box-shadow:
     inset 0 0 0 2px #fdcf51,
@@ -1620,7 +1620,7 @@ html.results-open .safe-top-scrim {
   }
 }
 
-/* Bankrupt!: a luck card slides in from above, then slides away again. */
+/* Bankrupt: a luck card slides in from above, then slides away again. */
 .bk-card-in {
   animation: bk-card-in 450ms cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
 }
@@ -1653,7 +1653,7 @@ html.results-open .safe-top-scrim {
   }
 }
 
-/* Bankrupt!: the space chosen for a trade (steady, bright) until it is confirmed. */
+/* Bankrupt: the space chosen for a trade (steady, bright) until it is confirmed. */
 .bk-picked {
   box-shadow:
     inset 0 0 0 3px #7ee08c,
@@ -1661,7 +1661,7 @@ html.results-open .safe-top-scrim {
   background: rgb(126 224 140 / 0.35);
 }
 
-/* Bankrupt!: the two traded cards swap places in an arc. */
+/* Bankrupt: the two traded cards swap places in an arc. */
 .bk-swap {
   animation: bk-swap 1.3s cubic-bezier(0.45, 0, 0.35, 1) 0.45s both;
 }
@@ -1676,7 +1676,7 @@ html.results-open .safe-top-scrim {
     transform: translate(var(--dx), 0) scale(1);
   }
 }
-/* Bankrupt!: the hall and the die shrink away while a trade fills the middle. */
+/* Bankrupt: the hall and the die shrink away while a trade fills the middle. */
 .bk-away {
   transition:
     opacity 350ms ease-in,
@@ -1691,4 +1691,209 @@ html.results-open .safe-top-scrim {
   .bk-away {
     transition: none;
   }
+}
+
+/* Bankrupt: Rainbow Road. */
+.bk-rainbow-wipe {
+  animation: bk-rainbow-wipe 900ms steps(12, end) both;
+}
+@keyframes bk-rainbow-wipe {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+.bk-rainbow-title {
+  animation: bk-rainbow-title 500ms cubic-bezier(0.34, 1.56, 0.64, 1) 700ms both;
+}
+@keyframes bk-rainbow-title {
+  from {
+    opacity: 0;
+    transform: scale(0.3) rotate(-8deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+.bk-rainbow-card {
+  animation: bk-rainbow-card 1.6s ease-in-out both;
+}
+@keyframes bk-rainbow-card {
+  0% {
+    opacity: 0;
+    transform: translateY(30%) scale(0.7);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(0) scale(1.1);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(-3deg);
+    filter: none;
+  }
+  80% {
+    transform: translateY(0) scale(1) rotate(3deg);
+    filter: brightness(1.5);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(0.95);
+    filter: grayscale(0.7) brightness(0.8);
+  }
+}
+.bk-rainbow-spark {
+  opacity: 0;
+  animation: bk-rainbow-spark 900ms ease-out both;
+}
+@keyframes bk-rainbow-spark {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.4);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-1cqw) scale(1.4);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-5cqw) scale(0.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bk-rainbow-wipe,
+  .bk-rainbow-title,
+  .bk-rainbow-card,
+  .bk-rainbow-spark {
+    animation: none;
+  }
+  .bk-rainbow-spark {
+    opacity: 0;
+  }
+}
+
+/* The settings screen: an old console menu (dark screen, cream pixel text, a bar of blocks per volume). */
+.retro-menu {
+  background: #101628;
+  color: #f7f1e4;
+  border: 2px solid #f7f1e4;
+  outline: 2px solid #101628;
+  box-shadow: 0 0 0 4px #f7f1e4;
+  margin: 6px;
+  padding: 14px 10px 14px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 16px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.retro-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  width: 100%;
+  text-align: left;
+}
+.retro-action {
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.retro-label {
+  white-space: nowrap;
+}
+.retro-dots {
+  flex: 1 1 0;
+  min-width: 6px;
+  align-self: flex-end;
+  margin-bottom: 9px;
+  border-bottom: 2px dotted #796e9e;
+}
+.retro-action .retro-label {
+  flex: 1;
+  white-space: normal;
+}
+.retro-marker {
+  width: 0;
+  height: 0;
+  flex: none;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 8px solid #fdcf51;
+}
+.retro-arrow {
+  flex: none;
+  width: 28px;
+  height: 34px;
+  background: none;
+  border: 0;
+  padding: 0;
+  position: relative;
+  cursor: pointer;
+}
+.retro-arrow::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+}
+.retro-arrow-left::after {
+  border-right: 8px solid #f7f1e4;
+}
+.retro-arrow-right::after {
+  border-left: 8px solid #f7f1e4;
+}
+.retro-arrow:active::after {
+  filter: brightness(0.6);
+}
+.retro-arrow-gap {
+  flex: none;
+  width: 28px;
+}
+.retro-slot {
+  flex: none;
+  width: 124px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.retro-value {
+  color: #fdcf51;
+}
+.retro-bar {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  width: 100%;
+  height: 20px;
+  padding: 3px;
+  border: 2px solid #f7f1e4;
+  background: #101628;
+}
+.retro-bar i {
+  flex: 1;
+  background: #2a3552;
+}
+.retro-bar i.on {
+  background: #fdcf51;
+}
+.retro-range {
+  position: absolute;
+  inset: -6px -2px;
+  width: calc(100% + 4px);
+  height: calc(100% + 12px);
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
 }

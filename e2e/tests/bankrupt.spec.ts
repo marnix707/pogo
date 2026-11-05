@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { newPlayer, openLobbySettings } from './karma-helpers';
 
-test('Bankrupt!: play a few rounds against the computer', async ({ browser }) => {
+test('Bankrupt: play a few rounds against the computer', async ({ browser }) => {
   test.setTimeout(330_000);
   const { page } = await newPlayer(browser, 'Banker', 'fox');
   await page.setViewportSize({ width: 390, height: 844 });

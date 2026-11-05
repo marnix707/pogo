@@ -55,7 +55,10 @@ function transfersOf(s: State): Transfer[] {
       out.push({ from: e.winner, to: null, tile: e.tile, amount: e.amount });
     else if (e.k === 'pay')
       out.push({ from: e.from, to: e.to, tile: s.board.cardTile, amount: rest ?? e.amount });
-    else if (e.k === 'trade') {
+    else if (e.k === 'rainbow') {
+      // The street is sold: the bank pays each owner for their space.
+      for (const p of e.payouts) out.push({ from: null, to: p.player, tile: p.tile, amount: p.amount });
+    } else if (e.k === 'trade') {
       // The bank pays both players a bonus.
       // (both at once: the notes divide between the two, like a salary that is paid on)
       out.push({

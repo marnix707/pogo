@@ -2,7 +2,7 @@ import { Sheet } from '../../components/ui';
 
 export function BankruptRules({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
-    <Sheet open={open} onClose={onClose} title="How to play Bankrupt!">
+    <Sheet open={open} onClose={onClose} title="How to play Bankrupt">
       <ul className="flex max-h-[60dvh] flex-col gap-3 overflow-y-auto pr-1 text-sm leading-relaxed">
         <li>
           <b className="text-neon">Goal:</b> reach the net worth the host picked (or be the richest

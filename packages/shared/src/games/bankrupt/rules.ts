@@ -58,3 +58,27 @@ export function rentOf(s: BankruptState, tile: OwnableTile): number {
 /** How many spaces the token moves from `from` to `to` going forward. */
 export const stepsBetween = (board: BoardConfig, from: number, to: number) =>
   (to - from + board.tiles.length) % board.tiles.length;
+
+/**
+ * Rainbow Road: the mover stands on a free space of a street of exactly three, and the other two spaces belong
+ * to two different players (neither of them the mover). Returns the three spaces and who owns the other two.
+ */
+export function rainbowRoad(
+  s: BankruptState,
+  playerId: PlayerId,
+): { tiles: PropertyTile[]; owners: Record<string, PlayerId> } | null {
+  if (!s.options.rainbowRoad || s.phase !== 'buy') return null;
+  const here = s.board.tiles[playerOf(s, playerId)?.pos ?? -1];
+  if (!here || here.kind !== 'property' || s.owned[here.id]) return null;
+  const street = groupOf(s.board, here);
+  if (street.length !== 3) return null;
+  const owners: Record<string, PlayerId> = {};
+  for (const t of street) {
+    if (t.id === here.id) continue;
+    const o = s.owned[t.id]?.owner;
+    if (!o || o === playerId) return null;
+    owners[t.id] = o;
+  }
+  const [a, b] = Object.values(owners);
+  return a !== b ? { tiles: street, owners } : null;
+}

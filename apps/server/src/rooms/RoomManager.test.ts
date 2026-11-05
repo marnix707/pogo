@@ -197,7 +197,8 @@ describe('a persistent lobby: the host switches the game and everybody stays', (
     must(manager.join(b, code));
     must(manager.setReady(b.id, true));
     const room = must(manager.setGame(a.id, 'yatzy'));
-    expect(room).toMatchObject({ code, gameId: 'yatzy', hostId: a.id, bots: 0 });
+    // (computers are kept: Yatzy takes them too)
+    expect(room).toMatchObject({ code, gameId: 'yatzy', hostId: a.id, bots: 1 });
     expect(room.members.map((m) => m.id).sort()).toEqual([a.id, b.id]);
     expect(room.members.every((m) => !m.ready)).toBe(true); // everybody has to be ready again
     // The other player sees the same room with the new game and can switch back later.
@@ -677,7 +678,8 @@ describe('with a real game', () => {
     expect(state().dice).toHaveLength(5); // auto-rolled, turn not over yet
     expect(lastRoom(b.id)?.game?.currentPlayers).toEqual([a.id]);
 
-    vi.advanceTimersByTime(STEP);
+    // (it keeps the most common face and rolls on, up to three rolls, then scores)
+    vi.advanceTimersByTime(STEP * 3);
     expect(Object.keys(state().players[0]!.scorecard)).toHaveLength(1); // auto-scored
     expect(lastRoom(b.id)?.game?.currentPlayers).toEqual([b.id]);
   });
@@ -1010,7 +1012,8 @@ describe('computer players', () => {
       ok: false,
       error: 'Race cannot be played against the computer',
     });
-    expect(manager.create(a, { gameId: 'yatzy', bots: 1 }).ok).toBe(false);
+    expect(manager.create(a, { gameId: 'yatzy', bots: 1 }).ok).toBe(true);
+    expect(manager.create(a, { gameId: 'yatzy', bots: 6 }).ok).toBe(false); // 1 + 6 > 6 seats
     expect(manager.create(a, { gameId: 'karma', bots: 5 }).ok).toBe(false); // 1 + 5 > 5 seats
     expect(manager.create(a, { gameId: 'karma', bots: 4, autoStart: true }).ok).toBe(true);
   });

@@ -16,6 +16,8 @@ export interface BankruptOptions {
   turns: number;
   /** A space somebody does not buy goes to auction (on), or just stays free (off). */
   auctionOnDecline: boolean;
+  /** Rainbow Road: three players each own one space of a three-space street and you land on the free third. */
+  rainbowRoad: boolean;
 }
 
 export interface BankruptPlayer {
@@ -95,6 +97,13 @@ export type BankruptEvent =
   /** A trade went through: `by` gave `give`, `with` gave `take`, both got `bonus` from the bank. */
   | { k: 'trade'; by: PlayerId; with: PlayerId; give: string; take: string; bonus: number }
   | { k: 'tradeEnd'; by: PlayerId }
+  /** Rainbow Road: the street `tiles` was sold back to the bank; each owner got `amount` for their space. */
+  | {
+      k: 'rainbow';
+      by: PlayerId;
+      tiles: string[];
+      payouts: { player: PlayerId; tile: string; amount: number }[]
+    }
   | { k: 'bankrupt'; by: PlayerId };
 
 export interface BankruptState {
@@ -143,7 +152,9 @@ export type BankruptMove =
   /** Trade: the mover takes the offer of `from`. */
   | { type: 'tradeAccept'; from: PlayerId }
   /** Trade: the mover cancels (before or after the offers). */
-  | { type: 'tradeCancel' };
+  | { type: 'tradeCancel' }
+  /** Rainbow Road: sell the whole street back to the bank (instead of buying the space you landed on). */
+  | { type: 'rainbow' };
 
 /** Everything is public in this game, so the view is the state. */
 export type BankruptView = BankruptState;

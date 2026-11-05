@@ -11,7 +11,7 @@ const people = [
   { id: 'b', nickname: 'B', avatar: 'cat' },
   { id: 'c', nickname: 'C', avatar: 'owl' },
 ];
-const OPTIONS: BankruptOptions = { target: 0, turns: 0, auctionOnDecline: true };
+const OPTIONS: BankruptOptions = { target: 0, turns: 0, auctionOnDecline: true, rainbowRoad: false };
 
 const start = (n = 2, options = OPTIONS): BankruptState =>
   game.createInitialState(people.slice(0, n), options, createSeededRng(7));
@@ -32,7 +32,7 @@ const cash = (s: BankruptState, id: string) => s.players.find((p) => p.id === id
 const idx = (id: string) => tileIndex(DEFAULT_BOARD, id);
 const other = (s: BankruptState) => s.players.find((p) => p.id !== mover(s).id)!.id;
 
-describe('Bankrupt! board and set-up', () => {
+describe('Bankrupt board and set-up', () => {
   it('ships a valid 28-space board and rejects broken ones', () => {
     expect(DEFAULT_BOARD.tiles).toHaveLength(28);
     expect(DEFAULT_BOARD.tiles[0]?.kind).toBe('start');
@@ -91,6 +91,7 @@ describe('Bankrupt! board and set-up', () => {
       target: 5000,
       turns: 0,
       auctionOnDecline: true,
+      rainbowRoad: false,
     });
     expect(game.optionsSchema.safeParse({ auctionOnDecline: 'no' }).success).toBe(false);
     expect(game.optionsSchema.safeParse({ target: 0, turns: 0 }).success).toBe(true);
@@ -263,7 +264,7 @@ describe('jail', () => {
   });
 
   it('staying means three skipped turns and nobody is asked again', () => {
-    const { s: s0, a } = jailed({ ...OPTIONS, auctionOnDecline: false });
+    const { s: s0, a } = jailed({ ...OPTIONS, auctionOnDecline: false, rainbowRoad: false });
     const b = other(s0);
     let s = play(s0, a, { type: 'wait' });
     expect(mover(s).id).toBe(b);
@@ -383,7 +384,7 @@ describe('auctions', () => {
   });
 
   it('with the setting off, not buying just leaves the space free', () => {
-    let s = start(2, { ...OPTIONS, auctionOnDecline: false });
+    let s = start(2, { ...OPTIONS, auctionOnDecline: false, rainbowRoad: false });
     const a = mover(s).id;
     const b = other(s);
     s = play(s, a, { type: 'roll' }, dice(3));
@@ -536,6 +537,45 @@ describe('trade: passing while the mover is still choosing', () => {
     s = play(s, a, { type: 'tradePick', tile: 'rio' });
     expect(s.trade?.stage).toBe('offers');
     expect(s.trade?.offers[b]).toBeNull();
+  });
+});
+
+describe('Rainbow Road', () => {
+  const road = (on = true) => {
+    let s = start(3, { ...OPTIONS, rainbowRoad: on });
+    const [a, b, c] = s.players.map((p) => p.id) as [string, string, string];
+    const first = mover(s).id;
+    const [x, y] = [a, b, c].filter((id) => id !== first) as [string, string];
+    s = own(own(s, 'cairo', x), 'bangkok', y);
+    s = patch(s, first, { pos: idx('madrid') - 3 });
+    return { s, first, x, y };
+  };
+  it('offers the road, and selling pays the two owners the sell price', () => {
+    const { s, first, x, y } = road();
+    const landed = play(s, first, { type: 'roll' }, dice(3));
+    expect(landed.phase).toBe('buy');
+    expect(game.validateMove(landed, first, { type: 'rainbow' }).ok).toBe(true);
+    const before = [cash(landed, x), cash(landed, y), cash(landed, first)];
+    const done = play(landed, first, { type: 'rainbow' });
+    const sell = (id: string) => (tileById(DEFAULT_BOARD, id) as { sell: number }).sell;
+    expect(cash(done, x)).toBe(before[0]! + sell('cairo'));
+    expect(cash(done, y)).toBe(before[1]! + sell('bangkok'));
+    expect(cash(done, first)).toBe(before[2]);
+    expect(done.owned['cairo']).toBeUndefined();
+    expect(done.owned['bangkok']).toBeUndefined();
+    expect(done.events.some((e) => e.k === 'rainbow')).toBe(true);
+    expect(done.phase).not.toBe('buy');
+  });
+  it('is not offered when the option is off', () => {
+    const { s, first } = road(false);
+    const landed = play(s, first, { type: 'roll' }, dice(3));
+    expect(game.validateMove(landed, first, { type: 'rainbow' }).ok).toBe(false);
+  });
+  it('needs two different owners', () => {
+    const { s, first, x } = road();
+    const same = own(s, 'bangkok', x);
+    const landed = play(same, first, { type: 'roll' }, dice(3));
+    expect(game.validateMove(landed, first, { type: 'rainbow' }).ok).toBe(false);
   });
 });
 

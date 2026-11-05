@@ -390,16 +390,12 @@ describe('playing against the computer over sockets', () => {
     await me.until((r) => seats(r)?.phase === 'play');
   });
 
-  it('rejects computers for games without them, and normal Yatzy rooms still work', async () => {
+  it('Yatzy can be played against the computer', async () => {
     const { token } = await signup('Nobot');
     const me = await login(token);
     const res = await call((ack) =>
       me.client.emit('room:create', { gameId: 'yatzy', bots: 1, autoStart: true }, ack),
     );
-    expect(res).toMatchObject({ ok: false, error: 'Yatzy cannot be played against the computer' });
-    const solo = await call<RoomView>((ack) =>
-      me.client.emit('room:create', { gameId: 'yatzy' }, ack),
-    );
-    expect(solo.ok).toBe(true);
+    expect(res.ok).toBe(true);
   });
 });

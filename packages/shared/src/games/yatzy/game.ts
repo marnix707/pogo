@@ -7,7 +7,7 @@ import type {
   MoveValidation,
 } from '../../game/types';
 import type { Rng } from '../../game/rng';
-import { earnsYatzyBonus, getAllowedCategories, getScore, getTotals } from './scoring';
+import { earnsYatzyBonus, getAllowedCategories, getScore, getTotals, isYatzy } from './scoring';
 import { CATEGORIES, DICE_COUNT, MAX_ROLLS, ROUNDS } from './types';
 import type { Category, YatzyMove, YatzyOptions, YatzyPlayerState, YatzyState } from './types';
 
@@ -218,6 +218,18 @@ function autoMove(state: YatzyState, playerId: string, _rng: Rng): AutoMove<Yatz
     return { move: { type: 'roll', held: noHolds() }, endsTurn: false };
   }
   const scorecard = player.scorecard;
+  // Rolls left and not a Yatzy yet: keep the most common face (the higher one on a tie) and roll the rest again.
+  if (desk.rollsLeft > 0 && !isYatzy(desk.dice)) {
+    const counts = new Map<number, number>();
+    for (const d of desk.dice) counts.set(d, (counts.get(d) ?? 0) + 1);
+    let keep = desk.dice[0]!;
+    for (const [face, n] of counts)
+      if (n > counts.get(keep)! || (n === counts.get(keep) && face > keep)) keep = face;
+    return {
+      move: { type: 'roll', held: desk.dice.map((d) => d === keep) },
+      endsTurn: false,
+    };
+  }
   const allowed = getAllowedCategories(desk.dice, scorecard);
   let best = allowed[0] as Category;
   let bestScore = -1;
@@ -252,4 +264,6 @@ export const yatzyGame: GameDefinition<YatzyState, YatzyMove, YatzyOptions> = {
   isGameOver: (state) => state.finished,
   getResults,
   autoMove,
+  // Computers keep the most common face and roll on, then take the best open box.
+  supportsBots: true,
 };

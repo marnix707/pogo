@@ -9,6 +9,7 @@ import { Board, money, seatColour } from './Board';
 import { BuyOverlay } from './BuyOverlay';
 import { LuckCard } from './LuckCard';
 import { EndBanner } from './EndBanner';
+import { RainbowRoad } from './RainbowRoad';
 import { TradePanel, TradeSwap, pulsingTiles } from './TradePanel';
 import { TileSheet } from './TileSheet';
 import { useCashFx } from './useCashFx';
@@ -231,7 +232,8 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const here = state.board.tiles[mover.pos]!;
   const owedBuy = state.phase === 'buy' && myTurn && bankrupt.isOwnable(here) ? here : null;
   // Cannot pay for it: no card, just "Not enough money" and the game goes on at once (it is passed for me).
-  const broke = !!owedBuy && (mePlayer?.cash ?? 0) < owedBuy.price;
+  const broke =
+    !!owedBuy && (mePlayer?.cash ?? 0) < owedBuy.price && !bankrupt.rainbowRoad(state, me);
   const [shortMsg, setShortMsg] = useState<string | null>(null);
   useEffect(() => {
     // (Nothing to say any more: the note goes away with the situation, it can never get stuck.)
@@ -333,11 +335,14 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   // Everything that pops up lives inside the middle of the board (never over a space).
   // A trade has just gone through: its cards swap places while the bonus is paid (the owners change after).
   const swapping = animating && !state.trade && state.events.some((e) => e.k === 'trade');
+  const rainbowing = animating && state.events.some((e) => e.k === 'rainbow');
   const popupNode =
     finished && !animating ? (
       <EndBanner state={state} name={name} />
     ) : swapping ? (
       <TradeSwap state={state} name={name} />
+    ) : rainbowing ? (
+      <RainbowRoad state={state} name={name} />
     ) : card && card.phase !== 'wait' ? (
       <LuckCard
         kind={card.ev.kind}
@@ -403,7 +408,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         pulse={pulse}
         picked={pick}
         overlay={popupNode}
-        clear={tradeOn || swapping}
+        clear={tradeOn || swapping || rainbowing}
         onPulse={(id) => setPick(id === pick ? null : id)}
       >
         <div className="flex h-[23cqw] items-center" data-testid="bk-dice">

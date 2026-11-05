@@ -18,6 +18,7 @@ import {
   mover,
   netWorth,
   ownsSet,
+  rainbowRoad,
   playerOf,
   rentOf,
   stepsBetween,
@@ -66,6 +67,7 @@ const optionsSchema: z.ZodType<BankruptOptions, z.ZodTypeDef, unknown> = z
       .refine((n) => (TURN_LIMITS as readonly number[]).includes(n))
       .default(0),
     auctionOnDecline: z.boolean().default(true),
+    rainbowRoad: z.boolean().default(false),
   })
   .strict();
 
@@ -87,6 +89,7 @@ export const bankruptMoveSchema: z.ZodType<BankruptMove, z.ZodTypeDef, unknown> 
     z.object({ type: z.literal('tradePass') }),
     z.object({ type: z.literal('tradeAccept'), from: z.string().min(1).max(64) }),
     z.object({ type: z.literal('tradeCancel') }),
+    z.object({ type: z.literal('rainbow') }),
   ]);
 
 const OK: MoveValidation = { ok: true };
@@ -98,7 +101,7 @@ function createInitialState(
   rng: Rng,
 ): BankruptState {
   if (players.length < MIN_PLAYERS || players.length > MAX_PLAYERS)
-    throw new Error(`Bankrupt! needs ${MIN_PLAYERS}-${MAX_PLAYERS} players`);
+    throw new Error(`Bankrupt needs ${MIN_PLAYERS}-${MAX_PLAYERS} players`);
   const board = DEFAULT_BOARD;
   // Seat order is random; the later you sit, the more you start with.
   const order = [...players];
@@ -452,6 +455,8 @@ function validateMove(
     }
     case 'decline':
       return state.phase === 'buy' ? OK : err('You cannot do that right now');
+    case 'rainbow':
+      return rainbowRoad(state, playerId) ? OK : err('There is no Rainbow Road here');
     case 'build': {
       if (!free) return err('You cannot do that right now');
       const t = tileById(state.board, move.tile);
@@ -550,6 +555,20 @@ function applyMove(
       h.level -= 1;
       me.cash += buildingRefund(t);
       s.events.push({ k: 'build', by: me.id, tile: t.id, level: h.level });
+      break;
+    }
+    case 'rainbow': {
+      // The street is sold back to the bank: each owner is paid their space's sell price.
+      const road = rainbowRoad(state, me.id)!;
+      const payouts = Object.entries(road.owners).map(([tile, player]) => {
+        const t = ownable(s, tile)!;
+        const amount = t.sell + (t.kind === 'property' ? s.owned[tile]!.level * buildingRefund(t) : 0);
+        playerOf(s, player)!.cash += amount;
+        delete s.owned[tile];
+        return { player, tile, amount };
+      });
+      s.events.push({ k: 'rainbow', by: me.id, tiles: road.tiles.map((t) => t.id), payouts });
+      s.phase = afterLanding(s);
       break;
     }
     case 'sellProperty': {
@@ -739,11 +758,11 @@ export const bankruptGame: GameDefinition<
   BankruptView
 > = {
   id: 'bankrupt',
-  name: 'Bankrupt!',
+  name: 'Bankrupt',
   minPlayers: MIN_PLAYERS,
   maxPlayers: MAX_PLAYERS,
   optionsSchema,
-  defaultOptions: { target: 5000, turns: 0, auctionOnDecline: true },
+  defaultOptions: { target: 5000, turns: 0, auctionOnDecline: true, rainbowRoad: false },
   moveSchema: bankruptMoveSchema,
   // Building and selling must not buy anybody more time.
   isFreeMove: (move) =>

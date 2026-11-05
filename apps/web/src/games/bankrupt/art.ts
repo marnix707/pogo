@@ -16,7 +16,7 @@ const sprites = load(
     import: 'default',
   }) as Urls,
 );
-/** A Bankrupt! sprite by file name (`icon-jail`, `build-house`, `token-red`, `landmark` ...). */
+/** A Bankrupt sprite by file name (`icon-jail`, `build-house`, `token-red`, `landmark` ...). */
 export const art = (name: string): string => sprites[name] ?? '';
 export const dieUrl = (face: number): string => cityArt(`die-${face}`);
 

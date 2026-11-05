@@ -1,4 +1,4 @@
-# Bankrupt! (id `bankrupt`)
+# Bankrupt (id `bankrupt`)
 
 A Monopoly-style property game for 2-6 players (`MAX_PLAYERS` in `packages/shared/src/games/bankrupt/types.ts`; 8 is a one-line change). Logic in `packages/shared/src/games/bankrupt`, UI in `apps/web/src/games/bankrupt`, art in `apps/web/src/assets/sprites/bankrupt` (made by `.claude/skills/pogo-pixel-art/examples/bk_art.py`).
 
@@ -86,3 +86,9 @@ The trade pop-up and the pulsing spaces only appear once everything before them 
 - **Offers**: the others see the mover's miniature, the swap arrow and their own pick (tap a glowing space, Confirm) or pass; the mover sees their own card and one box per player: the miniature of what was confirmed, an X for a pass, dots while choosing.
 - **Choose**: "Pick your trade": the mover's card, the arrow, an empty spot, and under it all offers (X for passes). Tapping an offer flies it to the spot; **Pass** (`bk-trade-none`) or **Trade** (`bk-trade-take`).
 - **Done**: `TradeSwap` swaps the two cards in an arc while the $100 bonus notes go to both players at once (`useCashFx`: one transfer with a `split`); the board's owners change when that is over.
+
+## Rainbow Road (lobby switch `rainbowRoad`, default off)
+
+- When on (`BankruptOptions.rainbowRoad`, the "Rainbow Road" switch next to the auction one in the lobby), a mover who lands on a **free property of a street of exactly three** whose other two spaces belong to **two different players (neither is the mover)** gets a **Rainbow Road** button on the buy card instead of Buy (the X still passes / auctions). `rainbowRoad(state, id)` in `rules.ts` decides; it needs 3 players alive by definition.
+- The move `{type:'rainbow'}` sells the two owned spaces back to the bank: each owner gets the space's sell price (`rainbow` event with `payouts`), the landed space stays free, the mover gets nothing (change in `applyMove` if the mover should be paid too). Error BANK-132.
+- UI: `RainbowRoad.tsx` (seven-band rainbow wipes over the middle, the three cards sparkle, "Rainbow Road!"); the payouts go through the normal cash animation (`useCashFx`). The "not enough money" auto-pass does not apply while the road is on offer. Computers never use it.
