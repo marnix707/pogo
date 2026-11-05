@@ -65,7 +65,12 @@ export function Board({
   };
   void dim;
   return (
-    <div ref={box} className="-mx-3 w-[calc(100%+1.5rem)]" data-testid="bk-board">
+    <div
+      ref={box}
+      // The whole screen wide (up to the app's column), centred on the column whatever the padding around it.
+      className="relative left-1/2 w-[min(100vw,32rem)] -translate-x-1/2"
+      data-testid="bk-board"
+    >
       <div
         className="relative mx-auto [container-type:inline-size]"
         style={{ width: BOARD_PX * s, height: BOARD_PX * s }}

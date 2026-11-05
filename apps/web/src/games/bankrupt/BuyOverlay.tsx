@@ -1,5 +1,4 @@
 import { bankrupt } from '@pogo/shared';
-import { Button } from '../../components/ui';
 import { money } from './Board';
 import { PropertyCard } from './PropertyCard';
 
@@ -35,31 +34,25 @@ export function BuyOverlay({
           rent={tile.rent[0]!}
           closeLabel="Cancel"
           onClose={() => void send({ type: 'decline' })}
-          actions={
+          actions={[
             rainbow
-              ? []
-              : [
-            {
-              kind: 'buy',
-              enabled: canBuy && !busy,
-              testId: 'bk-buy',
-              label: `Buy ${tile.name} for ${money(tile.price)}`,
-              onClick: () => void send({ type: 'buy' }),
-            },
+              ? {
+                  kind: 'rainbow',
+                  enabled: !busy,
+                  testId: 'bk-rainbow-btn',
+                  label: 'Rainbow Road: sell the whole street to the bank',
+                  onClick: () => void send({ type: 'rainbow' }),
+                }
+              : {
+                  kind: 'buy',
+                  enabled: canBuy && !busy,
+                  testId: 'bk-buy',
+                  label: `Buy ${tile.name} for ${money(tile.price)}`,
+                  onClick: () => void send({ type: 'buy' }),
+                },
           ]}
         />
       </div>
-      {rainbow && (
-        <Button
-          variant="gold"
-          className="shrink-0 !min-h-[6.5cqw] !text-[2.6cqw]"
-          data-testid="bk-rainbow-btn"
-          disabled={busy}
-          onClick={() => void send({ type: 'rainbow' })}
-        >
-          Rainbow Road
-        </Button>
-      )}
       <p
         className="label shrink-0 text-center text-[2.1cqw] leading-tight text-white"
         data-testid="bk-buy-note"

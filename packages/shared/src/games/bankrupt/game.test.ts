@@ -28,6 +28,7 @@ const own = (s: BankruptState, tile: string, owner: string, level = 0): Bankrupt
   ...s,
   owned: { ...s.owned, [tile]: { owner, level } },
 });
+const turn = (s: BankruptState) => game.getCurrentPlayers(s)[0]!;
 const cash = (s: BankruptState, id: string) => s.players.find((p) => p.id === id)!.cash;
 const idx = (id: string) => tileIndex(DEFAULT_BOARD, id);
 const other = (s: BankruptState) => s.players.find((p) => p.id !== mover(s).id)!.id;
@@ -290,22 +291,31 @@ describe('jail', () => {
 });
 
 describe('auctions', () => {
-  it('a declined space goes to the highest bidder', () => {
+  it('a declined space goes to the highest bidder, one player bids at a time', () => {
     let s = start(3);
     const a = mover(s).id;
     s = play(s, a, { type: 'roll' }, dice(3)); // bangkok 130
     s = play(s, a, { type: 'decline' });
     expect(s.phase).toBe('auction');
-    const [x, y] = s.players.filter((p) => p.id !== a).map((p) => p.id) as [string, string];
-    expect(game.getCurrentPlayers(s).sort()).toEqual([a, x, y].sort());
-    s = play(s, x, { type: 'bid', amount: 100 });
-    expect(game.validateMove(s, x, { type: 'bid', amount: 80 })).toMatchObject({ ok: false });
-    expect(game.getCurrentPlayers(s)).not.toContain(x);
-    s = play(s, y, { type: 'bid', amount: 110 });
+    // Only one player is up, in seat order after the mover (the mover is last).
+    expect(game.getCurrentPlayers(s)).toHaveLength(1);
+    const first = turn(s);
+    expect(first).not.toBe(a);
+    const second = s.players.map((p) => p.id).find((id) => id !== a && id !== first)!;
+    expect(game.validateMove(s, second, { type: 'bid', amount: 100 })).toMatchObject({
+      ok: false,
+      error: 'Not your turn',
+    });
+    s = play(s, first, { type: 'bid', amount: 100 });
+    expect(s.auction!.bids[first]).toBe(100);
+    expect(game.validateMove(s, second, { type: 'bid', amount: 80 })).toMatchObject({ ok: false });
+    expect(turn(s)).toBe(second);
+    s = play(s, second, { type: 'bid', amount: 110 });
+    expect(turn(s)).toBe(a); // (the first bidder is not up: they were topped, and may bid again later)
     s = play(s, a, { type: 'passBid' });
-    s = play(s, x, { type: 'passBid' });
-    expect(s.owned['bangkok']).toEqual({ owner: y, level: 0 });
-    expect(cash(s, y)).toBe(1100 - 110);
+    s = play(s, first, { type: 'passBid' });
+    expect(s.owned['bangkok']).toEqual({ owner: second, level: 0 });
+    expect(cash(s, second)).toBe(1100 - 110);
     expect(s.phase).toBe('roll');
     expect(mover(s).id).not.toBe(a);
   });
@@ -317,24 +327,24 @@ describe('auctions', () => {
     s = patch(s, y, { cash: 100 });
     s = play(s, a, { type: 'roll' }, dice(3));
     s = play(s, a, { type: 'decline' });
-    expect(game.getCurrentPlayers(s)).toContain(y);
+    if (turn(s) === y) s = play(s, y, { type: 'passBid' });
     s = play(s, x, { type: 'bid', amount: 100 }); // y has exactly 100: cannot raise
     expect(s.auction!.passed).toContain(y);
-    expect(game.getCurrentPlayers(s)).not.toContain(y);
     expect(game.getCurrentPlayers(s)).toEqual([a]);
   });
 
-  it('an auction has its own 15 second clock and the clock steps everybody out', () => {
+  it('an auction has its own 15 second clock, and when it runs out the one who is up steps out', () => {
     let s = start(3);
     const a = mover(s).id;
     expect(game.phaseClockMs!(s)).toBeNull();
     s = play(s, a, { type: 'roll' }, dice(3));
     s = play(s, a, { type: 'decline' });
     expect(game.phaseClockMs!(s)).toBe(15_000);
-    const [x] = s.players.filter((p) => p.id !== a).map((p) => p.id) as [string];
+    const x = turn(s);
     s = play(s, x, { type: 'bid', amount: 100 });
-    // The time is up: everybody who has not bid passes.
-    for (const id of game.getCurrentPlayers(s)) {
+    // The time is up for each in turn: they pass.
+    while (s.auction) {
+      const id = turn(s);
       const t = game.timeoutMove!(s, id, createSeededRng(1));
       expect(t.move).toEqual({ type: 'passBid' });
       s = play(s, id, t.move);
@@ -350,6 +360,7 @@ describe('auctions', () => {
     s = play(s, a, { type: 'roll' }, dice(3)); // Bangkok, $130: opens at $95
     s = play(s, a, { type: 'decline' });
     expect(s.auction!.min).toBe(95);
+    expect(turn(s)).toBe(b);
     expect(game.validateMove(s, b, { type: 'bid', amount: 90 })).toMatchObject({
       ok: false,
       error: 'The opening bid is too low',
@@ -570,6 +581,33 @@ describe('Rainbow Road', () => {
     const { s, first } = road(false);
     const landed = play(s, first, { type: 'roll' }, dice(3));
     expect(game.validateMove(landed, first, { type: 'rainbow' }).ok).toBe(false);
+  });
+  it('counts as a Rainbow Road when an auction winner completes the street', () => {
+    const four = [...people, { id: 'd', nickname: 'D', avatar: 'bear' }];
+    let s = game.createInitialState(
+      four,
+      { ...OPTIONS, rainbowRoad: true },
+      createSeededRng(7),
+    );
+    const mv = mover(s).id;
+    const [x, y, z] = s.players.map((p) => p.id).filter((id) => id !== mv) as [string, string, string];
+    s = own(own(s, 'cairo', x), 'bangkok', y);
+    s = patch(s, mv, { pos: idx('madrid') - 3 });
+    s = play(s, mv, { type: 'roll' }, dice(3));
+    expect(game.validateMove(s, mv, { type: 'rainbow' }).ok).toBe(true);
+    s = play(s, mv, { type: 'decline' }); // not taken: it goes to auction
+    expect(s.phase).toBe('auction');
+    const before = cash(s, z);
+    const bid = s.auction!.min;
+    while (s.auction) {
+      const id = turn(s);
+      s = play(s, id, id === z && !s.auction.high ? { type: 'bid', amount: bid } : { type: 'passBid' });
+    }
+    expect(s.events.some((e) => e.k === 'rainbow')).toBe(true);
+    expect(s.owned['madrid']).toBeUndefined();
+    expect(s.owned['cairo']).toBeUndefined();
+    const sell = (id: string) => (tileById(DEFAULT_BOARD, id) as { sell: number }).sell;
+    expect(cash(s, z)).toBe(before - bid + sell('madrid'));
   });
   it('needs two different owners', () => {
     const { s, first, x } = road();

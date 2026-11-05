@@ -8,12 +8,12 @@ import { play } from '../../lib/sound';
 import { Board, money, seatColour } from './Board';
 import { BuyOverlay } from './BuyOverlay';
 import { LuckCard } from './LuckCard';
+import { AuctionPanel } from './AuctionPanel';
 import { EndBanner } from './EndBanner';
 import { RainbowRoad } from './RainbowRoad';
 import { TradePanel, TradeSwap, pulsingTiles } from './TradePanel';
 import { TileSheet } from './TileSheet';
 import { useCashFx } from './useCashFx';
-import { useCountdown } from '../../lib/useCountdown';
 import { dieUrl } from './art';
 import { cityArt } from './cityArt';
 
@@ -216,6 +216,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const finished = state.phase === 'over';
   // (the trade starts only when everything before it has been played out: walk, card, payments)
   const tradeOn = !!state.trade && !animating;
+  const auctionOn = !!state.auction && !animating;
   const pulse = tradeOn ? pulsingTiles(state, me) : new Set<string>();
   // The space chosen for a trade, waiting for the confirmation (nothing is sent by a tap on the board).
   const [pick, setPick] = useState<string | null>(null);
@@ -387,6 +388,16 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         name={name}
         onClose={() => setTileOpen(null)}
       />
+    ) : auctionOn ? (
+      <AuctionPanel
+        state={state}
+        me={me}
+        name={name}
+        send={send}
+        busy={busy}
+        deadline={game.deadline}
+        serverTime={room.serverTime}
+      />
     ) : tradeOn ? (
       <TradePanel
         state={state}
@@ -411,7 +422,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
 
   return (
     <div
-      className="flex h-full flex-col gap-1 overflow-y-auto px-3 pb-3"
+      className="flex h-full flex-col gap-1 overflow-y-auto overflow-x-hidden px-3 pb-3"
       data-testid="bankrupt-game"
       data-phase={state.phase}
       data-seq={state.seq}
@@ -432,7 +443,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         pulse={pulse}
         picked={pick}
         overlay={popupNode}
-        clear={tradeOn || swapping || rainbowing}
+        clear={tradeOn || auctionOn || swapping || rainbowing}
         onPulse={(id) => setPick(id === pick ? null : id)}
       >
         <div className="flex h-[23cqw] items-center" data-testid="bk-dice">
@@ -472,7 +483,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
 
       {/* What I can do right now. */}
       <div
-        className={`hud calm flex flex-col gap-2 p-3 ${state.trade ? 'hidden' : ''}`}
+        className={`hud calm flex flex-col gap-2 p-3 ${state.trade || state.auction ? 'hidden' : ''}`}
         data-testid="bk-actions"
       >
         {room.spectating || !canAct ? (
@@ -492,16 +503,6 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           <p className="label text-center text-onbg/80" data-testid="bk-animating">
             …
           </p>
-        ) : state.auction ? (
-          <AuctionPanel
-            state={state}
-            me={me}
-            name={name}
-            send={send}
-            busy={busy}
-            deadline={game.deadline}
-            serverTime={room.serverTime}
-          />
         ) : !myTurn ? (
           <p className="label text-center text-onbg/80" data-testid="bk-wait">
             Waiting for {name(mover.id)}…
@@ -554,99 +555,6 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           </p>
         )}
       </div>
-    </div>
-  );
-}
-
-/** The auction in the action area: the space, the highest bid and quick bids. */
-function AuctionPanel({
-  state,
-  me,
-  name,
-  send,
-  busy,
-  deadline,
-  serverTime,
-}: {
-  state: State;
-  me: string;
-  name: (id: string) => string;
-  send: (m: bankrupt.BankruptMove) => Promise<void>;
-  busy: boolean;
-  deadline: number | null;
-  serverTime: number;
-}) {
-  const a = state.auction!;
-  const tile = state.board.tiles.find((t) => t.id === a.tile);
-  const price = tile && bankrupt.isOwnable(tile) ? tile.price : 100;
-  const cash = state.players.find((p) => p.id === me)?.cash ?? 0;
-  const step = Math.max(bankrupt.MIN_BID, Math.round((price * 0.1) / 5) * 5);
-  const base = a.high?.amount ?? a.min - step;
-  const leading = a.high?.player === me;
-  const passed = a.passed.includes(me);
-  const left = useCountdown(deadline, serverTime);
-  // Out of the bidding (stepped out, or not enough money to top the highest bid): the prices are greyed out.
-  const out = passed || (!leading && cash <= Math.max(a.min - 1, a.high?.amount ?? 0));
-  return (
-    <div className="flex flex-col gap-2" data-testid="bk-auction">
-      <p className="label text-center">
-        Auction:{' '}
-        <b
-          className={tile?.kind === 'property' ? '' : 'text-neon'}
-          style={tile?.kind === 'property' ? { color: tile.color } : undefined}
-          data-testid="bk-auction-name"
-        >
-          {tile?.name}
-        </b>
-        {left !== null && (
-          <span
-            className={`ml-2 tabular-nums ${left <= 5 ? 'text-[#ff8f73]' : 'text-onbg/80'}`}
-            data-testid="bk-auction-timer"
-          >
-            {left}s
-          </span>
-        )}
-      </p>
-      <p className="text-center text-sm" data-testid="bk-high-bid">
-        {a.high
-          ? `Highest bid ${money(a.high.amount)} by ${name(a.high.player)}`
-          : `No bids yet · opens at ${money(a.min)}`}
-      </p>
-      <>
-        {leading ? (
-          <p className="label text-center text-[#7ee08c]">You have the highest bid</p>
-        ) : out ? (
-          <p className="label text-center text-onbg/80" data-testid="bk-stepped-out">
-            {passed ? 'You stepped out' : 'You cannot top that bid: you step out'}
-          </p>
-        ) : null}
-        <div className="grid grid-cols-3 gap-2">
-          {[1, 2, 5].map((k) => {
-            const amount = base + k * step;
-            const off = busy || leading || out || amount > cash;
-            return (
-              <Button
-                key={k}
-                variant="gold"
-                data-testid={`bk-bid-${k}`}
-                className={`!px-1 ${off ? 'grayscale' : ''}`}
-                disabled={off}
-                onClick={() => void send({ type: 'bid', amount })}
-              >
-                {money(amount)}
-              </Button>
-            );
-          })}
-        </div>
-        <Button
-          variant="secondary"
-          data-testid="bk-pass"
-          disabled={busy || leading || passed}
-          onClick={() => void send({ type: 'passBid' })}
-        >
-          Pass
-        </Button>
-      </>
     </div>
   );
 }

@@ -98,3 +98,11 @@ The trade pop-up and the pulsing spaces only appear once everything before them 
 - **Moves are shown one at a time** (`BankruptGame.tsx`): a state that arrives while the last move is still being played out (a computer answers fast) waits in a queue and is shown when the walk, card and payments are done, so a token never stops short or lets the next player hop first. Three or more waiting: only the latest is kept.
 
 - **Jail**: the cell door sound (`play('jail')`) plays when a token has been sent to jail and has arrived there (never for just passing the Jail space). When the player cannot pay the fee there is nothing to ask: no Pay / Pass, the turn just ends (`jailChoice` in `game.ts`).
+
+## Auction, turn based (in the middle of the board)
+
+- `Auction` has `turn` (whose turn it is) and `bids` (each player's highest bid). One player is up at a time, in seat order after the one who passed (the mover is last); only they may `bid` or `passBid` ("Not your turn" otherwise). A bid or a pass moves the turn to the next player who may still bid (the leader never gets the turn; someone who cannot afford to top the highest bid steps out by themselves). The 15 s clock (`phaseClockMs`) restarts with every move and when it runs out the player who is up steps out (`timeoutMove`).
+- UI: `AuctionPanel.tsx` fills the middle of the board (hall and die shrink away, nothing under the board): the leader highlighted in gold on top with their amount, the other players under them with their bid, "PASSED" (greyed) or "bidding…" for the one who is up, the three quick bids (`bk-bid-1|2|5`) and Pass (`bk-pass`), enabled only on your turn.
+- **Rainbow Road by auction**: when a space is not taken as a Rainbow Road, goes to auction and the winner ends up as the third different owner of the street, the street is sold anyway (all three owners are paid the sell price, the winner included).
+- The Rainbow Road button is part of the card art (`button-rainbow.svg`, made with `.claude/skills/pogo-pixel-art/examples/bk_rainbow_button.py`).
+- The board is as wide as the screen (up to the app column) and centred on it (`Board.tsx`), and the game screen never scrolls sideways.

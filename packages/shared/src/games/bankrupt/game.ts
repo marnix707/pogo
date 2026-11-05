@@ -17,6 +17,7 @@ import {
   holdingsOf,
   mover,
   netWorth,
+  groupOf,
   ownsSet,
   rainbowRoad,
   playerOf,
@@ -141,7 +142,9 @@ function draft(s: BankruptState): BankruptState {
     ...s,
     players: s.players.map((p) => ({ ...p })),
     owned: Object.fromEntries(Object.entries(s.owned).map(([k, v]) => [k, { ...v }])),
-    auction: s.auction ? { ...s.auction, passed: [...s.auction.passed] } : null,
+    auction: s.auction
+      ? { ...s.auction, passed: [...s.auction.passed], bids: { ...s.auction.bids } }
+      : null,
     trade: s.trade ? { ...s.trade, offers: { ...s.trade.offers } } : null,
     events: [],
     seq: s.seq + 1,
@@ -332,19 +335,54 @@ function land(s: BankruptState, p: BankruptPlayer, rng: Rng, depth = 0) {
 }
 
 /** The auction is settled when only the highest bidder is left (or nobody bid and everybody stepped out). */
-function resolveAuction(s: BankruptState) {
+/** Rainbow Road: every owned space of the street goes back to the bank, each owner is paid its sell price. */
+function sellStreet(s: BankruptState, by: PlayerId, street: PropertyTile[]) {
+  const payouts = street
+    .filter((t) => s.owned[t.id])
+    .map((t) => {
+      const owner = s.owned[t.id]!.owner;
+      const amount = t.sell + s.owned[t.id]!.level * buildingRefund(t);
+      playerOf(s, owner)!.cash += amount;
+      delete s.owned[t.id];
+      return { player: owner, tile: t.id, amount };
+    });
+  s.events.push({ k: 'rainbow', by, tiles: street.map((t) => t.id), payouts });
+}
+
+/** `from`: who just acted (or the mover who put the space up); the turn goes on to the next bidder after them. */
+function resolveAuction(s: BankruptState, from: PlayerId) {
   const a = s.auction;
   if (!a) return;
   // Somebody who has no more money than the highest bid cannot raise it: they step out by themselves.
   const floor = Math.max(a.min - 1, a.high?.amount ?? 0);
   for (const p of bidders(s)) if (p.id !== a.high?.player && p.cash <= floor) a.passed.push(p.id);
   const open = bidders(s).filter((p) => p.id !== a.high?.player);
-  if (open.length > 0) return;
+  if (open.length > 0) {
+    // The next one in seat order after `from` who may still bid.
+    const n = s.players.length;
+    const start = s.players.findIndex((p) => p.id === from);
+    for (let i = 1; i <= n; i++) {
+      const p = s.players[(start + i) % n]!;
+      if (open.some((o) => o.id === p.id)) {
+        a.turn = p.id;
+        return;
+      }
+    }
+    return;
+  }
   if (a.high) {
     const winner = playerOf(s, a.high.player)!;
     pay(s, winner, null, a.high.amount);
     s.owned[a.tile] = { owner: winner.id, level: 0 };
     s.events.push({ k: 'auction', tile: a.tile, winner: winner.id, amount: a.high.amount });
+    // Not taken as a Rainbow Road by the mover, but the winner completes the street: it counts as one.
+    const t = tileById(s.board, a.tile);
+    if (s.options.rainbowRoad && t?.kind === 'property') {
+      const street = groupOf(s.board, t);
+      const owners = street.map((x) => s.owned[x.id]?.owner);
+      if (street.length === 3 && owners.every(Boolean) && new Set(owners).size === 3)
+        sellStreet(s, winner.id, street);
+    }
   } else s.events.push({ k: 'auction', tile: a.tile, winner: null, amount: 0 });
   s.auction = null;
   s.phase = afterLanding(s);
@@ -400,7 +438,7 @@ function validateMove(
   if (move.type === 'bid' || move.type === 'passBid') {
     const a = state.auction;
     if (!a) return err('There is no auction');
-    if (a.passed.includes(playerId)) return err('Not your turn');
+    if (a.passed.includes(playerId) || a.turn !== playerId) return err('Not your turn');
     if (move.type === 'passBid')
       return a.high?.player === playerId ? err('You already have the highest bid') : OK;
     if (a.high?.player === playerId) return err('You already have the highest bid');
@@ -539,9 +577,9 @@ function applyMove(
         const rivals = alivePlayers(s).filter((p) => p.id !== me.id && p.cash >= min);
         // Only a player who chose not to buy puts it up for auction: one who cannot afford it just passes.
         if (s.options.auctionOnDecline && me.cash >= t.price && rivals.length > 0) {
-          s.auction = { tile: t.id, min, high: null, passed: [] };
+          s.auction = { tile: t.id, min, high: null, passed: [], turn: me.id, bids: {} };
           s.phase = 'auction';
-          resolveAuction(s);
+          resolveAuction(s, me.id);
         } else s.phase = afterLanding(s); // not sold: it stays free
       }
       break;
@@ -569,15 +607,7 @@ function applyMove(
     }
     case 'rainbow': {
       // The street is sold back to the bank: each owner is paid their space's sell price.
-      const road = rainbowRoad(state, me.id)!;
-      const payouts = Object.entries(road.owners).map(([tile, player]) => {
-        const t = ownable(s, tile)!;
-        const amount = t.sell + (t.kind === 'property' ? s.owned[tile]!.level * buildingRefund(t) : 0);
-        playerOf(s, player)!.cash += amount;
-        delete s.owned[tile];
-        return { player, tile, amount };
-      });
-      s.events.push({ k: 'rainbow', by: me.id, tiles: road.tiles.map((t) => t.id), payouts });
+      sellStreet(s, me.id, rainbowRoad(state, me.id)!.tiles);
       s.phase = afterLanding(s);
       break;
     }
@@ -592,11 +622,12 @@ function applyMove(
     }
     case 'bid':
       s.auction!.high = { player: me.id, amount: move.amount };
-      resolveAuction(s);
+      s.auction!.bids[me.id] = move.amount;
+      resolveAuction(s, me.id);
       break;
     case 'passBid':
       s.auction!.passed.push(me.id);
-      resolveAuction(s);
+      resolveAuction(s, me.id);
       break;
     case 'tradePick': {
       const t = s.trade!;
@@ -664,9 +695,7 @@ function getPlayerView(state: BankruptState): BankruptView {
 function getCurrentPlayers(state: BankruptState): PlayerId[] {
   if (state.phase === 'over') return [];
   if (state.phase === 'auction' && state.auction)
-    return bidders(state)
-      .filter((p) => p.id !== state.auction!.high?.player)
-      .map((p) => p.id);
+    return [state.auction.turn];
   const t = state.trade;
   if (t) {
     if (t.stage === 'offers')
@@ -786,8 +815,8 @@ export const bankruptGame: GameDefinition<
   getResults,
   autoMove,
   supportsBots: true,
-  // An auction runs on its own 15 second clock (it starts again with every bid); when it runs out,
-  // everybody who has not bid steps out.
+  // An auction runs on its own 15 second clock for whoever's turn it is to bid (it starts again with every
+  // move); when it runs out, that player steps out.
   phaseClockMs: (state) =>
     state.trade
       ? TRADE_SEC * 1000

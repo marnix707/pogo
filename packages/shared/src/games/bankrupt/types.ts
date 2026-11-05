@@ -45,6 +45,10 @@ export interface Auction {
   high: { player: PlayerId; amount: number } | null;
   /** Players who stepped out. */
   passed: PlayerId[];
+  /** Whose turn it is to bid or step out (one at a time, in seat order, the mover last). */
+  turn: PlayerId;
+  /** The highest amount each player has bid so far. */
+  bids: Record<PlayerId, number>;
 }
 
 /**

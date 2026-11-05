@@ -45,7 +45,7 @@ export const headerKey = (tile: bankrupt.OwnableTile) =>
 
 export interface CardAction {
   /** The kit button to draw. */
-  kind: 'buy' | 'sell' | 'upgrade';
+  kind: 'buy' | 'sell' | 'upgrade' | 'rainbow';
   enabled: boolean;
   onClick: () => void;
   testId: string;
