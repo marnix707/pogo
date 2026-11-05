@@ -91,7 +91,8 @@ export type BankruptEvent =
   | { k: 'jailSkip'; by: PlayerId; left: number }
   | { k: 'free'; by: PlayerId }
   | { k: 'salary'; by: PlayerId; amount: number }
-  | { k: 'build'; by: PlayerId; tile: string; level: number }
+  /** A building was bought (`amount` > 0, what it cost) or sold (`amount` < 0, what came back). */
+  | { k: 'build'; by: PlayerId; tile: string; level: number; amount: number }
   | { k: 'sold'; by: PlayerId; tile: string; amount: number }
   | { k: 'auction'; tile: string; winner: PlayerId | null; amount: number }
   /** A trade went through: `by` gave `give`, `with` gave `take`, both got `bonus` from the bank. */

@@ -1,4 +1,5 @@
 import { bankrupt } from '@pogo/shared';
+import { play } from '../../lib/sound';
 import { money } from './Board';
 import { PropertyCard } from './PropertyCard';
 import { ICON_OF_TILE, art } from './art';
@@ -72,7 +73,10 @@ export function TileSheet({
                 testId: 'bk-build',
                 label: `Upgrade ${tile.name} for ${tile.kind === 'property' ? money(tile.buildCost) : '-'}`,
                 tag: tile.kind === 'property' ? tile.buildCost : undefined,
-                onClick: () => void send({ type: 'build', tile: tile.id }),
+                onClick: () => {
+                  play('cash'); // (at the tap: the money flies as soon as the server answers)
+                  void send({ type: 'build', tile: tile.id });
+                },
               },
             ]}
           />

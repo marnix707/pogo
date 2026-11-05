@@ -15,6 +15,8 @@ interface Transfer {
   split?: { to: string | null; amount: number };
   /** The number that pops up instead of the amount. */
   label?: string;
+  /** A building bought or sold: a short show that never holds the game up. */
+  quick?: boolean;
 }
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -50,6 +52,12 @@ function transfersOf(s: State): Transfer[] {
     if (e.k === 'rent') out.push({ from: e.by, to: e.to, tile: e.tile, amount: rest ?? e.amount });
     else if (e.k === 'salary')
       out.push({ from: null, to: e.by, tile: start, amount: e.amount, ...(sp ? { split: sp } : {}) });
+    else if (e.k === 'build')
+      out.push(
+        e.amount > 0
+          ? { from: e.by, to: null, tile: e.tile, amount: e.amount, quick: true }
+          : { from: null, to: e.by, tile: e.tile, amount: -e.amount, quick: true },
+      );
     else if (e.k === 'buy') out.push({ from: e.by, to: null, tile: e.tile, amount: e.price });
     else if (e.k === 'auction' && e.winner)
       out.push({ from: e.winner, to: null, tile: e.tile, amount: e.amount });
@@ -197,7 +205,7 @@ export function useCashFx(
     stop.current?.();
     const transfers = reduced() ? [] : transfersOf(state);
     job.current = transfers.length > 0 ? transfers : null;
-    setPlaying(transfers.length > 0);
+    setPlaying(transfers.some((t) => !t.quick));
     const involved = new Set(transfers.flatMap((t) => [t.from, t.to, t.split?.to]).filter(Boolean) as string[]);
     // Everybody not in a payment shows the new cash at once; the others wait for the show.
     // (from the cash before this move, not from what is on screen: a show that was cut short by
@@ -241,8 +249,8 @@ export function useCashFx(
         if (!tile || !payer || !receiver || (t.split && !splitTo)) continue;
         const text = t.label ?? `${t.from ? '-' : '+'}$${t.amount.toLocaleString('en-US')}`;
         void pop(tile, text, t.from ? '#ff6b57' : '#7ee08c');
-        if (t.from) void count(t.from, -t.amount, 650);
-        await sleep(420);
+        if (t.from) void count(t.from, -t.amount, t.quick ? 450 : 650);
+        await sleep(t.quick ? 120 : 420);
         if (stopped) return;
         // With a split, a share of the notes (the size of the payment) flies on to the one paid, spread
         // between the others so they all leave the space together.

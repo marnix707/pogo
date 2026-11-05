@@ -546,7 +546,7 @@ function applyMove(
       const h = s.owned[t.id]!;
       pay(s, me, null, t.buildCost);
       h.level += 1;
-      s.events.push({ k: 'build', by: me.id, tile: t.id, level: h.level });
+      s.events.push({ k: 'build', by: me.id, tile: t.id, level: h.level, amount: t.buildCost });
       break;
     }
     case 'sellBuilding': {
@@ -554,7 +554,13 @@ function applyMove(
       const h = s.owned[t.id]!;
       h.level -= 1;
       me.cash += buildingRefund(t);
-      s.events.push({ k: 'build', by: me.id, tile: t.id, level: h.level });
+      s.events.push({
+        k: 'build',
+        by: me.id,
+        tile: t.id,
+        level: h.level,
+        amount: -buildingRefund(t),
+      });
       break;
     }
     case 'rainbow': {
