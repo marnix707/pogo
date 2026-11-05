@@ -53,6 +53,7 @@ export function TileSheet({
           <PropertyCard
             tile={tile}
             level={level}
+            groupSize={tile.kind === 'property' ? bankrupt.groupOf(state.board, tile).length : 3}
             rent={rent}
             onClose={onClose}
             actions={[

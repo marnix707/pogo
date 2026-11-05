@@ -556,6 +556,24 @@ describe('trade: passing while the mover is still choosing', () => {
   });
 });
 
+describe('rent grows with the spaces of one colour you own', () => {
+  it('1 x the base rent for one, 2 x for two, 3 x for three', () => {
+    let s = start(2);
+    const a = mover(s).id;
+    const base = (tileById(DEFAULT_BOARD, 'madrid') as { rent: number[] }).rent[0]!;
+    s = own(s, 'madrid', a);
+    expect(rentOf(s, tileById(DEFAULT_BOARD, 'madrid') as never)).toBe(base);
+    s = own(s, 'cairo', a);
+    expect(rentOf(s, tileById(DEFAULT_BOARD, 'madrid') as never)).toBe(base * 2);
+    expect(rentOf(s, tileById(DEFAULT_BOARD, 'cairo') as never)).toBe(base * 2);
+    s = own(s, 'bangkok', a);
+    expect(rentOf(s, tileById(DEFAULT_BOARD, 'madrid') as never)).toBe(base * 3);
+    // (somebody else's space of that colour does not count)
+    s = own(s, 'bangkok', other(s));
+    expect(rentOf(s, tileById(DEFAULT_BOARD, 'madrid') as never)).toBe(base * 2);
+  });
+});
+
 describe('Rainbow Road', () => {
   const road = (on = true) => {
     let s = start(3, { ...OPTIONS, rainbowRoad: on });

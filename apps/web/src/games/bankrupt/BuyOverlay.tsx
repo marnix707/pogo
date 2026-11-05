@@ -31,6 +31,7 @@ export function BuyOverlay({
         <PropertyCard
           tile={tile}
           level={0}
+          groupSize={tile.kind === 'property' ? bankrupt.groupOf(state.board, tile).length : 3}
           rent={tile.rent[0]!}
           closeLabel="Cancel"
           onClose={() => void send({ type: 'decline' })}

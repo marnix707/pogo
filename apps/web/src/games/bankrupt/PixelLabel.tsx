@@ -18,26 +18,29 @@ export function PixelText({
   parts,
   s,
   navy = false,
+  k = 1,
   testId,
 }: {
   parts: Part[];
   s: number;
   navy?: boolean;
+  /** Whole-number text scale (2 = every art pixel of the font is 2 x 2). */
+  k?: number;
   testId?: string;
 }) {
-  const w = width(parts);
+  const w = width(parts) * k;
   const W = navy ? w + 10 : w;
-  const H = navy ? 11 : 5;
+  const H = navy ? 11 : 5 * k;
   const ox = navy ? 5 : 0;
   const oy = navy ? 3 : 0;
   let x = ox;
   const paths = parts.map((p, i) => {
-    if (i) x += p.gap ?? 0;
+    if (i) x += (p.gap ?? 0) * k;
     const text = pixelSafe(p.text);
-    const d = pixelTextRects(text, x, oy)
-      .map(([a, b, rw]) => `M${a} ${b}h${rw}v1h-${rw}z`)
+    const d = pixelTextRects(text, 0, 0)
+      .map(([a, b, rw]) => `M${x + a * k} ${oy + b * k}h${rw * k}v${k}h-${rw * k}z`)
       .join('');
-    x += measure(text).width;
+    x += measure(text).width * k;
     return <path key={i} d={d} fill={p.colour} />;
   });
   return (
@@ -46,7 +49,8 @@ export function PixelText({
       width={W * s}
       height={H * s}
       shapeRendering="crispEdges"
-      style={{ display: 'block' }}
+      // (the "$" is 7 rows tall in a 5 row font: it must be allowed to stick out)
+      style={{ display: 'block', overflow: 'visible' }}
       role="img"
       aria-label={parts.map((p) => p.text).join('')}
       data-testid={testId}

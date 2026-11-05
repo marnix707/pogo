@@ -91,6 +91,7 @@ export function PropertyCard({
   actions,
   onClose,
   closeLabel = 'Close',
+  groupSize = 3,
 }: {
   tile: bankrupt.OwnableTile;
   /** Buildings on it (0-3), for the rent table on the back. */
@@ -100,6 +101,8 @@ export function PropertyCard({
   actions: CardAction[];
   onClose: () => void;
   closeLabel?: string;
+  /** Spaces in this colour (the back lists the rent for owning 1, 2 ... of them). */
+  groupSize?: number;
 }) {
   const box = useRef<HTMLDivElement>(null);
   // The card fits the box it is put in (the middle of the board): never bigger than that.
@@ -166,8 +169,11 @@ export function PropertyCard({
   const rows: { icon: string | null; label: string; value: number }[] =
     tile.kind === 'property'
       ? [
-          { icon: null, label: 'EMPTY', value: tile.rent[0]! },
-          { icon: null, label: 'FULL SET', value: tile.rent[0]! * 2 },
+          ...Array.from({ length: groupSize }, (_, i) => ({
+            icon: null,
+            label: `${i + 1} OWNED`,
+            value: tile.rent[0]! * (i + 1),
+          })),
           { icon: 'up1', label: 'LEVEL 1', value: tile.rent[1]! },
           { icon: 'up2', label: 'LEVEL 2', value: tile.rent[2]! },
           { icon: 'up3', label: 'LEVEL 3', value: tile.rent[3]! },
@@ -177,14 +183,14 @@ export function PropertyCard({
           label: `${i + 1} OF ${tile.rent.length}`,
           value: r,
         }));
-  const rowH = rows.length > 4 ? 24 : 28;
+  const rowH = rows.length > 5 ? 20 : rows.length > 4 ? 24 : 28;
   const current = tile.kind === 'property' ? level + 1 : -1;
   const back = face(
     <>
       <path d={text('RENT', CARD_W / 2, 37)} fill={LABEL} />
       {rows.map((r, i) => {
         const y = 50 + i * rowH;
-        const on = tile.kind === 'property' ? (level === 0 ? i === 0 : i === level + 1) : false;
+        const on = tile.kind === 'property' && level > 0 ? i === groupSize - 1 + level : false;
         return (
           <g key={r.label}>
             {on && (

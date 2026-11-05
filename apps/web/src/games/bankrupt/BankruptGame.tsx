@@ -17,7 +17,7 @@ import { useCashFx } from './useCashFx';
 import { PixelText, labelWidth } from './PixelLabel';
 import type { Part } from './PixelLabel';
 import { measure, pixelSafe } from './pixel-text/pixelText';
-import { CARD_W, SCREEN_H, SCREEN_W, rowXs, screenArt } from './screenArt';
+import { CARD_H, CARD_W, SCREEN_H, SCREEN_W, rowXs, screenArt } from './screenArt';
 import { useStageScale } from './useStage';
 
 type State = bankrupt.BankruptState;
@@ -322,6 +322,7 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
     const worth = p.bankrupt ? 0 : bankrupt.netWorth(ui, p.id) - p.cash + cash;
     const isMover = p.id === mover.id && !finished;
     const colour = playerColour(p);
+    const sizeOf = (text: string) => (measure(pixelSafe(text)).width * 2 <= 50 ? 2 : 1);
     const fit = (text: string, maxW: number) => {
       let t = text.toUpperCase();
       while (t.length > 1 && measure(pixelSafe(t)).width > maxW) t = t.slice(0, -1);
@@ -333,10 +334,10 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
         data-testid={`bk-player-${p.id}`}
         data-turn={isMover}
         className={`absolute ${p.bankrupt ? 'opacity-40 grayscale' : ''}`}
-        style={{ left: A(left), top: A(top), width: A(CARD_W), height: A(32) }}
+        style={{ left: A(left), top: A(top), width: A(CARD_W), height: A(CARD_H) }}
       >
         <img
-          src={screenArt(`players/card-${colour}${isMover ? '-current' : ''}`)}
+          src={screenArt(`players/card-big-${colour}${isMover ? '-current' : ''}`)}
           alt=""
           className="absolute inset-0 block h-full w-full"
           style={{ imageRendering: 'pixelated' }}
@@ -354,7 +355,7 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
             }}
           />
         )}
-        <div className="absolute" style={{ left: A(5), top: A(4), width: A(22), height: A(22) }}>
+        <div className="absolute" style={{ left: A(5), top: A(6), width: A(32), height: A(32) }}>
           <Avatar
             avatar={nickOf(p.id)?.avatar ?? 'fox'}
             size="fluid"
@@ -365,38 +366,44 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
           src={screenArt(`players/frog-badge-${colour}`)}
           alt=""
           className="absolute block"
-          style={{ left: A(19), top: A(17), width: A(8), imageRendering: 'pixelated' }}
+          style={{ left: A(28), top: A(29), width: A(8), imageRendering: 'pixelated' }}
         />
-        <div className="absolute" style={{ left: A(31), top: A(4) }}>
+        <div className="absolute" style={{ left: A(41), top: A(6) }}>
           <PixelText
             s={s}
-            parts={[{ text: fit(name(p.id) + (p.id === me ? '' : ''), 50), colour: '#ffffff' }]}
+            parts={[{ text: fit(name(p.id), 50), colour: '#ffffff' }]}
           />
         </div>
-        <div className="absolute" style={{ left: A(31), top: A(12) }}>
+        {/* the numbers twice as big when they fit */}
+        <div className="absolute" style={{ left: A(41), top: A(16) }}>
           <PixelText
             s={s}
+            k={sizeOf(money(cash))}
             parts={[{ text: money(cash), colour: cash < 0 ? '#ff8f73' : '#f7f1e4' }]}
           />
         </div>
         <div
           className="absolute"
-          style={{ left: A(31), top: A(20) }}
+          style={{ left: A(41), top: A(30) }}
           data-testid={`bk-networth-${p.id}`}
         >
-          <PixelText s={s} parts={[{ text: money(worth), colour: '#74cca8' }]} />
+          <PixelText
+            s={s}
+            k={sizeOf(money(worth))}
+            parts={[{ text: money(worth), colour: '#74cca8' }]}
+          />
         </div>
         {/* (tap the numbers for what they mean) */}
         <button
           type="button"
           className="absolute"
-          style={{ left: A(31), top: A(11), width: A(50), height: A(16) }}
+          style={{ left: A(41), top: A(15), width: A(50), height: A(30) }}
           data-testid={`bk-cash-${p.id}`}
           aria-label={`${name(p.id)}: ${money(cash)}, net worth ${money(worth)}`}
           onClick={() => setTip(tip === `cash-${p.id}` ? null : `cash-${p.id}`)}
         />
         {(p.jail > 0 || p.bankrupt) && (
-          <div className="absolute" style={{ right: A(3), top: A(4) }}>
+          <div className="absolute" style={{ right: A(3), top: A(6) }}>
             <PixelText
               s={s}
               parts={[
@@ -506,6 +513,28 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
       </p>
     ) : null;
 
+  // The log under the die: what happened in the last three moves (written once a move has been played out).
+  const [log, setLog] = useState<string[]>([]);
+  const loggedSeq = useRef(-1);
+  useEffect(() => {
+    if (animating || loggedSeq.current === state.seq) return;
+    loggedSeq.current = state.seq;
+    if (note) setLog((l) => [note, ...l].slice(0, 3));
+  }, [animating, state.seq, note]);
+  // A sentence in lines that fit `maxW` art pixels (breaks at spaces).
+  const wrap = (text: string, maxW: number): string[] => {
+    const lines: string[] = [];
+    let line = '';
+    for (const word of text.toUpperCase().split(' ')) {
+      const next = line ? `${line} ${word}` : word;
+      if (line && measure(pixelSafe(next)).width > maxW) {
+        lines.push(line);
+        line = word;
+      } else line = next;
+    }
+    if (line) lines.push(line);
+    return lines;
+  };
   const canRoll = myTurn && state.phase === 'roll';
   const rollMessage = finished
     ? 'Game over'
@@ -515,11 +544,6 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
         : myTurn
           ? 'Your turn'
           : `${name(mover.id)} to play`);
-  const fitText = (text: string, maxW: number) => {
-    let t = text.toUpperCase();
-    while (t.length > 1 && measure(pixelSafe(t)).width + 10 > maxW) t = t.slice(0, -1);
-    return t.length < text.length ? t.slice(0, -2) + '..' : t;
-  };
   const bp = (v: number) => `${(v / 257) * 100}%`;
   const top = rowXs(topSeats.length);
   const bottom = rowXs(bottomSeats.length);
@@ -615,13 +639,13 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
           {/* the board's hard navy drop shadow, like every card and button has */}
           <div
             className="absolute bg-[#101628]"
-            style={{ left: A(18), top: A(355), width: A(259), height: A(4) }}
+            style={{ left: A(18), top: A(371), width: A(259), height: A(4) }}
           />
           <div
             className="absolute bg-[#101628]"
-            style={{ left: A(273), top: A(100), width: A(4), height: A(255) }}
+            style={{ left: A(273), top: A(116), width: A(4), height: A(255) }}
           />
-          <div className="absolute" style={{ left: A(16), top: A(98), width: A(257) }}>
+          <div className="absolute" style={{ left: A(16), top: A(114), width: A(257) }}>
             <Board
               state={ui}
               shown={shown}
@@ -649,23 +673,30 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
                   />
                 ) : null}
               </div>
+              {/* the last three things that happened, newest on top and brightest, wrapped to fit */}
               <div
-                className="absolute flex w-full justify-center"
-                style={{ top: bp(158) }}
+                className="absolute flex w-full flex-col items-center"
+                style={{ top: bp(156), gap: A(2) }}
                 data-testid="bk-note"
                 role="status"
               >
-                <PixelText
-                  s={s}
-                  navy
-                  parts={[{ text: fitText(rollMessage, 190), colour: '#f7f1e4' }]}
-                />
+                {(log.length ? log : [rollMessage]).map((text, i) => (
+                  <div
+                    key={`${i}-${text}`}
+                    className="flex flex-col items-center"
+                    style={{ opacity: 1 - i * 0.1, gap: A(2) }}
+                  >
+                    {wrap(text, 176).map((line, j) => (
+                      <PixelText key={j} s={s} parts={[{ text: line, colour: '#f7f1e4' }]} />
+                    ))}
+                  </div>
+                ))}
               </div>
             </Board>
           </div>
 
           <div data-testid="bk-seats-bottom">
-            {bottomSeats.map((i, k) => tag(players[i]!, bottom[k]!, 366))}
+            {bottomSeats.map((i, k) => tag(players[i]!, bottom[k]!, 382))}
           </div>
 
           {/* the Roll button (pixel art), with the padlock for rolling automatically inside it */}
@@ -676,14 +707,13 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
             disabled={!canRoll || busy || rolling || animating}
             onClick={() => void send({ type: 'roll' })}
             className="absolute block active:translate-y-px disabled:active:translate-y-0"
-            style={{ left: A(16), top: A(403), width: A(257), height: A(50) }}
+            style={{ left: A(16), top: A(419), width: A(257), height: A(60) }}
           >
             <img
-              src={screenArt(canRoll ? 'buttons/roll-the-dice' : 'buttons/roll-the-dice-disabled')}
+              src={screenArt(canRoll ? 'buttons/roll-the-dice-big' : 'buttons/roll-the-dice-disabled-big')}
               alt=""
-              className="block w-full"
-              // (an SVG keeps its own proportions inside the box, so it is stretched twice as tall by a transform)
-              style={{ imageRendering: 'pixelated', transform: 'scaleY(2)', transformOrigin: 'top' }}
+              className="block h-full w-full"
+              style={{ imageRendering: 'pixelated' }}
             />
           </button>
           {canAct && (
@@ -698,7 +728,7 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
                   ? 'border-[#101628] bg-[#101628] text-[#fdcf51]'
                   : 'border-[#101628] bg-[#fdcf51] text-[#101628]'
               }`}
-              style={{ left: A(16 + 257 - 33), top: A(403 + 5), width: A(27), height: A(38) }}
+              style={{ left: A(16 + 257 - 33), top: A(419 + 11), width: A(27), height: A(38) }}
             >
               <LockIcon open={!autoRoll} className="h-[70%] w-[70%]" />
             </button>
