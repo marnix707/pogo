@@ -12,6 +12,8 @@ export interface ScoreFxView {
   category: Category;
   /** The new box (and what it adds to the totals) is not shown yet. */
   holdCell: boolean;
+  /** The totals (and the bonus rows) keep their old values until the count-up starts. */
+  holdTotals: boolean;
   /** The extra-Yatzy bonuses the player had before this score (the totals are held back with the box). */
   bonusesBefore: number;
   /** While the total counts up to its new value; null otherwise. */
@@ -97,7 +99,8 @@ export function useScoreFx(state: yatzy.YatzyState): {
   };
   useEffect(() => stop, []);
 
-  useEffect(() => {
+  // (a layout effect: the held box and totals are in place before the new state is ever painted)
+  useLayoutEffect(() => {
     const before = prev.current;
     prev.current = state;
     if (before === state || reduced()) return;
@@ -136,6 +139,7 @@ export function useScoreFx(state: yatzy.YatzyState): {
       playerId: p.id,
       category,
       holdCell: true,
+      holdTotals: true,
       bonusesBefore: old.yatzyBonuses,
       totalShown: null,
       pulseKey: 0,
@@ -224,7 +228,9 @@ export function useScoreFx(state: yatzy.YatzyState): {
           lastTick = now;
         }
         lastShown = shown;
-        setView((v) => (v ? { ...v, holdCell: false, totalShown: shown, pulseKey: 1 } : v));
+        setView((v) =>
+          v ? { ...v, holdCell: false, holdTotals: false, totalShown: shown, pulseKey: 1 } : v,
+        );
         if (k < 1) raf.current = requestAnimationFrame(step);
         else play('score');
       };

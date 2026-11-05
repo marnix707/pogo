@@ -47,7 +47,8 @@ export function Scorecard({
   const held = (id: string) => (fx?.holdCell && fx.playerId === id ? fx : null);
   const totals = new Map(
     state.players.map((p) => {
-      const h = held(p.id);
+      // (the totals wait for the count-up, longer than the box does)
+      const h = fx?.holdTotals && fx.playerId === p.id ? fx : null;
       if (!h) return [p.id, yatzy.getTotals(p.scorecard, p.yatzyBonuses)] as const;
       const card = { ...p.scorecard };
       delete card[h.category];
