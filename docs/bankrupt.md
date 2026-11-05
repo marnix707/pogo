@@ -106,3 +106,5 @@ The trade pop-up and the pulsing spaces only appear once everything before them 
 - **Rainbow Road by auction**: when a space is not taken as a Rainbow Road, goes to auction and the winner ends up as the third different owner of the street, the street is sold anyway (all three owners are paid the sell price, the winner included).
 - The Rainbow Road button is part of the card art (`button-rainbow.svg`, made with `.claude/skills/pogo-pixel-art/examples/bk_rainbow_button.py`).
 - The board is as wide as the screen (up to the app column) and centred on it (`Board.tsx`), and the game screen never scrolls sideways.
+
+- **Auto roll** (`bk-roll-lock`, the padlock next to the Roll button, also next to "Waiting for …" so it can be unlocked on somebody else's turn; like the lobby's Ready lock): while locked, my turn rolls by itself (0.5 s after the last move has been played out), turn after turn, and stops by itself whenever a choice is needed (buy / Rainbow Road, jail question, auction, trade), because those are not the roll phase. Local to the screen, off when a game starts.

@@ -8,6 +8,7 @@ import { play } from '../../lib/sound';
 import { Board, money, seatColour } from './Board';
 import { BuyOverlay } from './BuyOverlay';
 import { LuckCard } from './LuckCard';
+import { LockIcon } from '../../components/icons';
 import { AuctionPanel } from './AuctionPanel';
 import { EndBanner } from './EndBanner';
 import { RainbowRoad } from './RainbowRoad';
@@ -237,6 +238,30 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       setBusy(false);
     }
   };
+
+  // The lock next to Roll: rolls for me, turn after turn, until something needs a choice (a space to buy, the
+  // jail question, an auction, a trade ...: none of those is the roll phase, so it simply waits).
+  const [autoRoll, setAutoRoll] = useState(false);
+  useEffect(() => {
+    if (!autoRoll || !myTurn || state.phase !== 'roll' || animating || busy || rolling) return;
+    const t = setTimeout(() => void send({ type: 'roll' }), 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRoll, myTurn, state.phase, state.seq, animating, busy, rolling]);
+  const lockButton = (
+    <button
+      type="button"
+      data-testid="bk-roll-lock"
+      aria-pressed={autoRoll}
+      aria-label={autoRoll ? 'Stop rolling automatically' : 'Roll automatically'}
+      onClick={() => setAutoRoll((v) => !v)}
+      className={`flex min-h-12 w-14 shrink-0 items-center justify-center rounded-[8px] border-2 ring-2 ring-line ${
+        autoRoll ? 'border-neon bg-neon text-accentink' : 'border-neon/70 bg-panel2 text-neon'
+      }`}
+    >
+      <LockIcon open={!autoRoll} className="h-6 w-6" />
+    </button>
+  );
 
   const note = useMemo(
     () =>
@@ -504,9 +529,12 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
             …
           </p>
         ) : !myTurn ? (
-          <p className="label text-center text-onbg/80" data-testid="bk-wait">
-            Waiting for {name(mover.id)}…
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="label flex-1 text-center text-onbg/80" data-testid="bk-wait">
+              Waiting for {name(mover.id)}…
+            </p>
+            {lockButton}
+          </div>
         ) : state.phase === 'buy' && owedBuy ? (
           <p className="label text-center text-onbg/80" data-testid="bk-buy-hint">
             {broke ? 'Not enough money' : settled ? '' : 'Walking…'}
@@ -537,14 +565,18 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
             </div>
           </div>
         ) : state.phase === 'roll' ? (
-          <Button
-            variant="gold"
-            data-testid="bk-roll"
-            disabled={busy || rolling || animating}
-            onClick={() => void send({ type: 'roll' })}
-          >
-            Roll the dice
-          </Button>
+          <div className="flex items-stretch gap-2">
+            <Button
+              variant="gold"
+              className="flex-1"
+              data-testid="bk-roll"
+              disabled={busy || rolling || animating}
+              onClick={() => void send({ type: 'roll' })}
+            >
+              {autoRoll ? 'Rolling automatically…' : 'Roll the dice'}
+            </Button>
+            {lockButton}
+          </div>
         ) : (
           <p className="label text-center text-onbg/80">…</p>
         )}
