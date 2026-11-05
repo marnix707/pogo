@@ -117,7 +117,7 @@ export function DisplayModeNote() {
     <div
       data-testid="display-mode"
       data-standalone={standalone}
-      className={`flex items-center gap-2 py-2 text-sm ${standalone ? 'text-neon' : 'text-muted'}`}
+      className={`flex items-center gap-2 py-2 text-[9px] ${standalone ? 'text-neon' : 'text-muted'}`}
     >
       <span className={`h-2 w-2 rounded-full ${standalone ? 'bg-neon' : 'bg-muted/60'}`} />
       <span className="flex-1">

@@ -30,8 +30,19 @@ export function SettingsSheet({
   const [sel, setSel] = useState('music');
   const step = (v: number, d: number) => Math.max(0, Math.min(100, Math.round((v + d) / 10) * 10));
   return (
-    <Sheet open={open} onClose={onClose} title="Settings" from="top" dim={false} titleClass="mt-3">
+    <Sheet open={open} onClose={onClose} title="Settings" from="top" dim={false} headerClass="mt-3">
       <div className="retro-menu mt-3" data-testid="settings-menu">
+        {isDev && (
+          <Action
+            id="admin"
+            sel={sel}
+            setSel={setSel}
+            onClick={openAdminPanel}
+            testId="settings-admin"
+          >
+            Admin panel
+          </Action>
+        )}
         {roomCode && (
           <Row id="room" sel={sel} setSel={setSel} label="Room" testId="settings-room-code">
             <span className="retro-value">{roomCode}</span>
@@ -79,36 +90,44 @@ export function SettingsSheet({
           step={step}
           valueTestId="crt-value"
         />
+        {/* a blank line under CRT */}
+        <div aria-hidden className="retro-row" />
         {onLeave && (
           <Action id="leave" sel={sel} setSel={setSel} onClick={onLeave} testId="settings-leave">
             Leave lobby
           </Action>
         )}
-        {isDev && (
+        <div className="flex">
           <Action
-            id="admin"
+            id="default"
             sel={sel}
             setSel={setSel}
-            onClick={openAdminPanel}
-            testId="settings-admin"
+            onClick={() => updateSettings({ sound: 100, music: 50, vibration: true, crt: 20 })}
+            testId="settings-default"
           >
-            Admin panel
+            Default
           </Action>
-        )}
-        <Action id="switch" sel={sel} setSel={setSel} onClick={onSignOut}>
-          Not {nickname}? Switch player
-        </Action>
+          <Action
+            id="exit"
+            sel={sel}
+            setSel={setSel}
+            onClick={onClose}
+            testId="settings-exit"
+            className="justify-end text-right"
+          >
+            Exit
+          </Action>
+        </div>
+        {/* centred at the bottom, a little smaller */}
         <Action
-          id="default"
+          id="switch"
           sel={sel}
           setSel={setSel}
-          onClick={() => updateSettings({ sound: 100, music: 50, vibration: true, crt: 20 })}
-          testId="settings-default"
+          onClick={onSignOut}
+          className="justify-center text-center !text-[11px]"
+          plain
         >
-          Default
-        </Action>
-        <Action id="exit" sel={sel} setSel={setSel} onClick={onClose} testId="settings-exit">
-          Exit
+          Not {nickname}? Switch player
         </Action>
       </div>
       <div className="mt-3 flex flex-col gap-2">
@@ -234,6 +253,8 @@ function Action({
   setSel,
   onClick,
   testId,
+  className = '',
+  plain = false,
   children,
 }: {
   id: string;
@@ -241,18 +262,21 @@ function Action({
   setSel: (id: string) => void;
   onClick: () => void;
   testId?: string;
+  className?: string;
+  /** No arrow in front (a centred line). */
+  plain?: boolean;
   children: ReactNode;
 }) {
   return (
     <button
       type="button"
-      className="retro-row retro-action"
+      className={`retro-row retro-action ${className}`}
       data-testid={testId}
       onPointerDown={() => setSel(id)}
       onClick={onClick}
     >
-      <Marker on={sel === id} />
-      <span className="retro-label">{children}</span>
+      {!plain && <Marker on={sel === id} />}
+      <span className={`retro-label ${plain ? 'text-center' : ''}`}>{children}</span>
     </button>
   );
 }

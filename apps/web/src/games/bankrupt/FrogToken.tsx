@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { HOP, frogUrl, shadowUrl, sideDir } from './frog';
+import { HOP, frogUrl, jailChainsUrl, shadowUrl, sideDir } from './frog';
 import type { FrogDir, FrogFrame } from './frog';
 
 const reduced = () =>
@@ -19,6 +19,7 @@ export function FrogToken({
   top,
   width,
   testId,
+  jailed = false,
 }: {
   colour: string;
   pos: number;
@@ -30,6 +31,8 @@ export function FrogToken({
   top: string;
   width: string;
   testId: string;
+  /** In jail: chained up with a padlock. */
+  jailed?: boolean;
 }) {
   const [frame, setFrame] = useState<FrogFrame>('sit');
   const [dir, setDir] = useState<FrogDir>(() => sideDir(pos, n));
@@ -120,6 +123,15 @@ export function FrogToken({
         className="absolute inset-0 block h-full w-full"
         style={{ imageRendering: 'pixelated' }}
       />
+      {jailed && (
+        <img
+          src={jailChainsUrl}
+          alt=""
+          data-testid={`${testId}-chains`}
+          className="absolute inset-0 block h-full w-full"
+          style={{ imageRendering: 'pixelated' }}
+        />
+      )}
     </span>
   );
 }

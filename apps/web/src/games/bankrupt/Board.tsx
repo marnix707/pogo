@@ -298,6 +298,7 @@ export function Board({
               <FrogToken
                 key={p.id}
                 testId={`bk-token-${p.id}`}
+                jailed={p.jail > 0}
                 colour={playerColour(p)}
                 pos={pos}
                 n={n}

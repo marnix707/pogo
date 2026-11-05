@@ -98,6 +98,7 @@ export function Sheet({
   full = false,
   from = 'bottom',
   titleClass = '',
+  headerClass = '',
   dim = true,
   bare = false,
 }: {
@@ -111,6 +112,8 @@ export function Sheet({
   from?: 'bottom' | 'top';
   /** Extra classes for the title (e.g. to nudge it into line with the content below). */
   titleClass?: string;
+  /** Extra classes for the whole title row (title and close button move together). */
+  headerClass?: string;
   /** Dim the page behind it (an undimmed sheet still closes on a tap outside it). */
   dim?: boolean;
   /** No title row: the content brings its own header (and close button); the title stays as the aria label. */
@@ -200,7 +203,7 @@ export function Sheet({
       >
         {!top && grabber}
         {!bare && (
-          <div className="mb-4 flex items-center justify-between">
+          <div className={`mb-4 flex items-center justify-between ${headerClass}`}>
             <h2 className={`text-lg font-bold uppercase tracking-[0.16em] ${titleClass}`}>
               {title}
             </h2>

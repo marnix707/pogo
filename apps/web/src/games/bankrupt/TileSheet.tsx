@@ -1,6 +1,8 @@
 import { bankrupt } from '@pogo/shared';
 import { money } from './Board';
 import { PropertyCard } from './PropertyCard';
+import { play } from '../../lib/sound';
+import { useCloseAnim } from './useCloseAnim';
 import { ICON_OF_TILE, art } from './art';
 
 /**
@@ -14,7 +16,7 @@ export function TileSheet({
   canAct,
   send,
   name,
-  onClose,
+  onClose: onCloseNow,
 }: {
   state: bankrupt.BankruptState;
   me: string;
@@ -24,6 +26,12 @@ export function TileSheet({
   name: (id: string) => string;
   onClose: () => void;
 }) {
+  // (closes with the same little animation as the buy card)
+  const { closing, run } = useCloseAnim();
+  const onClose = () => {
+    play('tap');
+    run(onCloseNow);
+  };
   const tile = tileId ? state.board.tiles.find((t) => t.id === tileId) : undefined;
   const holding = tile ? state.owned[tile.id] : undefined;
   const mine = holding?.owner === me;
@@ -43,7 +51,7 @@ export function TileSheet({
       cash >= tile.buildCost;
     return (
       <div
-        className="bk-pop flex h-full w-full flex-col items-center gap-[1%] bg-[#101628]/70 p-[1.5%]"
+        className={`${closing ? 'bk-pop-out' : 'bk-pop'} flex h-full w-full flex-col items-center gap-[1%] bg-[#101628]/70 p-[1.5%]`}
         data-testid="bk-tile-sheet"
         role="dialog"
         aria-label={tile.name}
@@ -64,7 +72,7 @@ export function TileSheet({
                 label: `Sell ${tile.name} for ${money(sellFor)}`,
                 onClick: () => {
                   void send({ type: 'sellProperty', tile: tile.id });
-                  onClose();
+                  onCloseNow(); // (the cash sound plays for the sale)
                 },
               },
               // (Harbor, Railway, Airport and Electricity cannot be built on: no Upgrade button, Sell is centred)
@@ -109,7 +117,7 @@ export function TileSheet({
   if (!tile) return null;
   return (
     <div
-      className="bk-pop flex h-full w-full flex-col items-center justify-center gap-[3%] bg-[#101628]/80 p-[3%] text-center"
+      className={`${closing ? 'bk-pop-out' : 'bk-pop'} flex h-full w-full flex-col items-center justify-center gap-[3%] bg-[#101628]/80 p-[3%] text-center`}
       data-testid="bk-tile-sheet"
       role="dialog"
       aria-label={tile.name}

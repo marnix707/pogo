@@ -1,5 +1,6 @@
 import shadowBig from '../../assets/sprites/bankrupt/frog/shadow-big.svg';
 import shadowSmall from '../../assets/sprites/bankrupt/frog/shadow-small.svg';
+import jailChains from '../../assets/sprites/bankrupt/frog/jail-chains.svg';
 
 export type FrogDir = 'up' | 'right' | 'down' | 'left';
 export type FrogFrame = 'sit' | 'blink' | 'crouch' | 'leap';
@@ -13,6 +14,8 @@ const files = import.meta.glob('../../assets/sprites/bankrupt/frog/*/*/*.svg', {
 /** The frog of a colour (`red`, `blue` ...) in one frame and facing one way: 19 x 19 art pixels, centred. */
 export const frogUrl = (colour: string, dir: FrogDir, frame: FrogFrame): string =>
   files[`../../assets/sprites/bankrupt/frog/${colour}/${dir}/${frame}.svg`] ?? '';
+/** The chains and padlock drawn over a frog that sits in jail (19 x 19, same box as the frog). */
+export const jailChainsUrl = jailChains;
 export const shadowUrl = (small: boolean) => (small ? shadowSmall : shadowBig);
 
 /** Which way a frog faces on a space of the board (the side it stands on: the walk goes round clockwise). */

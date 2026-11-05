@@ -17,7 +17,7 @@ import { useCashFx } from './useCashFx';
 import { PixelText, labelWidth } from './PixelLabel';
 import type { Part } from './PixelLabel';
 import { measure, pixelSafe } from './pixel-text/pixelText';
-import { CARD_H, CARD_W, SCREEN_H, SCREEN_W, rowXs, screenArt } from './screenArt';
+import { CARD_H, CARD_W, SCREEN_W, rowXs, screenArt } from './screenArt';
 import { useStageScale } from './useStage';
 
 type State = bankrupt.BankruptState;
@@ -51,6 +51,45 @@ function describe(s: State, name: (id: string) => string): string {
     else if (e.k === 'bankrupt') parts.push(`${name(e.by)} is bankrupt!`);
   }
   return parts.join(' · ');
+}
+
+/**
+ * What a move did, split for the log: who made it and what happened, without repeating that name (a name only
+ * appears where somebody else is meant). Several moves of one turn are joined under the one name.
+ */
+function turnParts(
+  s: State,
+  name: (id: string) => string,
+): { actor: string; who: string; parts: string[] } | null {
+  const tile = (id: string) => s.board.tiles.find((t) => t.id === id)?.name ?? id;
+  const first = s.events.find((e) => 'by' in e || 'winner' in e);
+  const actor = first ? ('by' in first ? first.by : (first as { winner: string | null }).winner) : null;
+  if (!actor) return null;
+  const nm = (id: string) => (id === actor ? '' : `${name(id)} `);
+  const parts: string[] = [];
+  for (const e of s.events) {
+    if (e.k === 'roll') parts.push(`${nm(e.by)}rolled ${e.dice}`);
+    else if (e.k === 'salary') parts.push(`${nm(e.by)}passed Start: +${money(e.amount)}`);
+    else if (e.k === 'rent') parts.push(`${nm(e.by)}paid ${name(e.to)} ${money(e.amount)} rent`);
+    else if (e.k === 'buy') parts.push(`${nm(e.by)}bought ${tile(e.tile)}`);
+    else if (e.k === 'card') parts.push(e.text);
+    else if (e.k === 'jail') parts.push(`${nm(e.by)}went to jail`);
+    else if (e.k === 'free') parts.push(`${nm(e.by)}is out of jail`);
+    else if (e.k === 'jailSkip') parts.push(`${nm(e.by)}sits out in jail (${e.left} to go)`);
+    else if (e.k === 'build') parts.push(`${nm(e.by)}built on ${tile(e.tile)}`);
+    else if (e.k === 'sold') parts.push(`${nm(e.by)}sold ${tile(e.tile)}`);
+    else if (e.k === 'auction')
+      parts.push(
+        e.winner
+          ? `${nm(e.winner)}won ${tile(e.tile)} for ${money(e.amount)}`
+          : `${tile(e.tile)} was not sold`,
+      );
+    else if (e.k === 'trade')
+      parts.push(`traded ${tile(e.give)} with ${name(e.with)} for ${tile(e.take)}: +${money(e.bonus)} each`);
+    else if (e.k === 'tradeEnd') parts.push('did not trade');
+    else if (e.k === 'bankrupt') parts.push(`${nm(e.by)}is bankrupt!`);
+  }
+  return parts.length ? { actor, who: name(actor), parts: parts.map((x) => x.trim()) } : null;
 }
 
 type CardEvent = Extract<bankrupt.BankruptEvent, { k: 'card' }>;
@@ -158,7 +197,18 @@ function useWalking(state: State) {
   return { shown, rolling, settled: walked && !cardBusy, card, cardBusy };
 }
 
-export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
+/** Moves that make their own sound (the cash sound when the money moves). */
+const NO_TAP = new Set<bankrupt.BankruptMove['type']>([
+  'buy',
+  'build',
+  'sellProperty',
+  'sellBuilding',
+  'payJail',
+  'rainbow',
+  'tradeAccept',
+]);
+
+export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const game = room.game!;
   // Moves are played out one after another: when the next one arrives while the last is still being shown (a
   // computer answers fast), it waits in a queue, so no token stops short and nobody hops before the walk is done.
@@ -235,6 +285,8 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
     if (busy) return;
     setBusy(true);
     haptic('tap');
+    // The click sound for everything that has no sound of its own (money moves make the cash sound).
+    if (!NO_TAP.has(move.type)) play('tap');
     try {
       await sendMove(move);
     } finally {
@@ -309,7 +361,7 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
 
   // The screen is 290 x 432 art pixels at a whole number of device pixels each: positions are in art pixels.
   const root = useRef<HTMLDivElement>(null);
-  const s = useStageScale(root);
+  const { s, h: hArt, w } = useStageScale(root);
   const A = (n: number) => n * s;
   const jailOn = myTurn && state.phase === 'jailAsk' && !animating;
 
@@ -444,9 +496,6 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
   const others = around.slice(1);
   const topSeats = others.slice(0, 3);
   const extras = others.slice(3).reverse();
-  // (me in the middle of the bottom row when there are two more)
-  const bottomSeats =
-    extras.length === 2 ? [extras[0]!, around[0]!, extras[1]!] : [around[0]!, ...extras];
 
   // Everything that pops up lives inside the middle of the board (never over a space).
   // A trade has just gone through: its cards swap places while the bonus is paid (the owners change after).
@@ -513,14 +562,21 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
       </p>
     ) : null;
 
-  // The log under the die: what happened in the last three moves (written once a move has been played out).
-  const [log, setLog] = useState<string[]>([]);
+  // The log under the die: the last three turns, each under one name (the moves of one turn are joined), written
+  // once a move has been played out.
+  const [log, setLog] = useState<{ actor: string; who: string; parts: string[] }[]>([]);
   const loggedSeq = useRef(-1);
   useEffect(() => {
     if (animating || loggedSeq.current === state.seq) return;
     loggedSeq.current = state.seq;
-    if (note) setLog((l) => [note, ...l].slice(0, 3));
-  }, [animating, state.seq, note]);
+    const t = turnParts(state, name);
+    if (!t) return;
+    setLog((l) =>
+      l[0]?.actor === t.actor
+        ? [{ ...l[0], parts: [...l[0].parts, ...t.parts] }, ...l.slice(1)]
+        : [t, ...l].slice(0, 3),
+    );
+  }, [animating, state.seq]); // eslint-disable-line react-hooks/exhaustive-deps
   // A sentence in lines that fit `maxW` art pixels (breaks at spaces).
   const wrap = (text: string, maxW: number): string[] => {
     const lines: string[] = [];
@@ -561,31 +617,23 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
           : `${name(mover.id)} to play`);
   const bp = (v: number) => `${(v / 257) * 100}%`;
   const top = rowXs(topSeats.length);
-  const bottom = rowXs(bottomSeats.length);
-  const barButton = (
-    x: number,
-    art: string,
-    label: string,
-    onClick?: () => void,
-    testId?: string,
-  ) =>
-    onClick ? (
-      <button
-        type="button"
-        aria-label={label}
-        data-testid={testId}
-        onClick={onClick}
-        className="absolute block active:translate-y-px"
-        style={{ left: A(x), top: A(18), width: A(18), height: A(20) }}
-      >
-        <img
-          src={screenArt(`top-bar/${art}`)}
-          alt=""
-          className="block h-full w-full"
-          style={{ imageRendering: 'pixelated' }}
-        />
-      </button>
-    ) : null;
+  const extraXs = rowXs(extras.length);
+  // The board keeps its proportions and is as wide as the screen allows (1.5 % less for rounded corners, its
+  // drop shadow included), whatever the phone: it is not on the whole-pixel grid. The screen stretches to the
+  // phone's height: the board sits in the middle of it, my card and the Roll button share one row in the bottom
+  // fifth, and the extra opponents (5 or 6 players) stand above that row.
+  const totalPx = Math.floor(w * 0.985);
+  const boardPx = Math.floor(totalPx / (1 + 4 / 257));
+  const bs = boardPx / 257; // css px per board art pixel
+  const boardArt = boardPx / s; // the board's size in screen art pixels
+  const H = Math.max(Math.ceil(boardArt + (extras.length ? 236 : 152)), hArt);
+  const boardTop = H / 2 - boardArt / 2; // art px
+  const rowY = Math.round(
+    Math.max(
+      boardTop + boardArt + (extras.length ? 54 : 12),
+      H * 0.8 + (H * 0.2 - CARD_H) / 2,
+    ),
+  );
   const goalW = labelWidth(goalParts);
   const status = room.spectating
     ? 'Watching the game'
@@ -612,65 +660,53 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
       data-seq={state.seq}
     >
       <div className="relative">
-        {/* the dark strip at the top (the phone's status bar), the whole width */}
-        <div
-          className="absolute inset-x-0 top-0 bg-[#101628]"
-          style={{ height: `calc(env(safe-area-inset-top) + ${A(14)}px)` }}
-        />
-        <div style={{ height: 'env(safe-area-inset-top)' }} />
-        <div className="relative mx-auto" style={{ width: A(SCREEN_W), height: A(SCREEN_H) }}>
-          {/* the top bar */}
-          {barButton(6, 'button-back', 'Leave game', chrome?.onLeave, 'leave-game')}
-          <img
-            src={screenArt('top-bar/logo-bankrupt')}
-            alt="Bankrupt"
-            className="absolute block"
-            style={{ left: A(30), top: A(18), width: A(68), imageRendering: 'pixelated' }}
-          />
-          {barButton(216, 'button-help', 'Rules', chrome?.onRules, 'rules-button')}
-          {barButton(238, 'button-chat', 'Chat', chrome?.onChat, 'chat-open')}
-          {barButton(260, 'button-settings', 'Settings', chrome?.onSettings, 'settings-button')}
-          {!!chrome?.unread && (
-            <span
-              aria-hidden
-              className="absolute block bg-[#ff6b57]"
-              style={{ left: A(252), top: A(18), width: A(4), height: A(4) }}
-            />
-          )}
-
+        <div className="relative mx-auto" style={{ width: A(SCREEN_W), height: A(H) }}>
           {/* the goal and the round */}
           <div
             className="absolute"
-            style={{ left: A(Math.floor(145 - goalW / 2)), top: A(42) }}
+            style={{ left: A(Math.floor(145 - goalW / 2)), top: A(6) }}
             data-testid="bk-goal"
           >
             <PixelText s={s} navy parts={goalParts} />
           </div>
 
           <div data-testid="bk-seats-top">
-            {topSeats.map((i, k) => tag(players[i]!, top[k]!, 58))}
+            {topSeats.map((i, k) => tag(players[i]!, top[k]!, 22))}
           </div>
 
-          {/* the board's hard navy drop shadow, like every card and button has */}
+          {/* the board and its hard navy drop shadow */}
           <div
-            className="absolute bg-[#101628]"
-            style={{ left: A(18), top: A(371), width: A(259), height: A(4) }}
-          />
-          <div
-            className="absolute bg-[#101628]"
-            style={{ left: A(273), top: A(116), width: A(4), height: A(255) }}
-          />
-          <div className="absolute" style={{ left: A(16), top: A(114), width: A(257) }}>
+            className="absolute"
+            style={{
+              left: (A(SCREEN_W) - totalPx) / 2,
+              top: A(boardTop),
+              width: boardPx,
+            }}
+          >
+            <div
+              className="absolute bg-[#101628]"
+              style={{ left: 2 * bs, top: boardPx, width: 259 * bs, height: 4 * bs }}
+            />
+            <div
+              className="absolute bg-[#101628]"
+              style={{ left: boardPx, top: 2 * bs, width: 4 * bs, height: 255 * bs }}
+            />
             <Board
               state={ui}
               shown={shown}
-              onTile={setTileOpen}
+              onTile={(id) => {
+                play('tap');
+                setTileOpen(id);
+              }}
               pulse={pulse}
               picked={pick}
               overlay={popupNode}
               clear={tradeOn || auctionOn || swapping || rainbowing}
             upgradable={upgradable}
-              onPulse={(id) => setPick(id === pick ? null : id)}
+              onPulse={(id) => {
+                play('tap');
+                setPick(id === pick ? null : id);
+              }}
             >
               {/* one die, bigger, its colour shows the value; the message sits under it */}
               <div
@@ -696,7 +732,7 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
                 data-testid="bk-note"
                 role="status"
               >
-                {(log.length ? log : [rollMessage]).map((text, i) => (
+                {(log.length ? log.map((e) => `${e.who}: ${e.parts.join(' · ')}`) : [rollMessage]).map((text, i) => (
                   <div
                     key={`${i}-${text}`}
                     className="flex flex-col items-center"
@@ -712,7 +748,8 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
           </div>
 
           <div data-testid="bk-seats-bottom">
-            {bottomSeats.map((i, k) => tag(players[i]!, bottom[k]!, 382))}
+            {extras.map((i, k) => tag(players[i]!, extraXs[k]!, rowY - CARD_H - 3))}
+            {tag(players[around[0]!]!, 3, rowY)}
           </div>
 
           {/* the Roll button (pixel art), with the padlock for rolling automatically inside it */}
@@ -723,10 +760,10 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
             disabled={!canRoll || busy || rolling || animating}
             onClick={() => void send({ type: 'roll' })}
             className="absolute block active:translate-y-px disabled:active:translate-y-0"
-            style={{ left: A(16), top: A(419), width: A(257), height: A(60) }}
+            style={{ left: A(100), top: A(rowY), width: A(187), height: A(CARD_H) }}
           >
             <img
-              src={screenArt(canRoll ? 'buttons/roll-the-dice-big' : 'buttons/roll-the-dice-disabled-big')}
+              src={screenArt(canRoll ? 'buttons/roll-the-dice-sm' : 'buttons/roll-the-dice-disabled-sm')}
               alt=""
               className="block h-full w-full"
               style={{ imageRendering: 'pixelated' }}
@@ -738,41 +775,47 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
               data-testid="bk-roll-lock"
               aria-pressed={autoRoll}
               aria-label={autoRoll ? 'Stop rolling automatically' : 'Roll automatically'}
-              onClick={() => setAutoRoll((v) => !v)}
+              onClick={() => {
+              play('tap');
+              setAutoRoll((v) => !v);
+            }}
               className={`absolute flex items-center justify-center border-2 ${
                 autoRoll
                   ? 'border-[#101628] bg-[#101628] text-[#fdcf51]'
                   : 'border-[#101628] bg-[#fdcf51] text-[#101628]'
               }`}
-              style={{ left: A(16 + 257 - 33), top: A(419 + 11), width: A(27), height: A(38) }}
+              style={{ left: A(100 + 187 - 31), top: A(rowY + 7), width: A(27), height: A(34) }}
             >
               <LockIcon open={!autoRoll} className="h-[70%] w-[70%]" />
             </button>
           )}
+          {/* what is going on, under my row */}
+          <div
+            className="absolute flex w-full flex-col items-center gap-1"
+            style={{ top: A(rowY + CARD_H + 6) }}
+            data-testid="bk-actions"
+          >
+            {status && (
+              <span data-testid="bk-wait">
+                <PixelText s={s} navy parts={[{ text: status, colour: '#f7f1e4' }]} />
+              </span>
+            )}
+            {mePlayer && mePlayer.cash < 0 && !mePlayer.bankrupt && (
+              <span data-testid="bk-warning">
+                <PixelText
+                  s={s}
+                  navy
+                  parts={[
+                    {
+                      text: `In debt: below ${money(state.board.bankruptBelow)} you are bankrupt`,
+                      colour: '#ff8f73',
+                    },
+                  ]}
+                />
+              </span>
+            )}
+          </div>
         </div>
-      </div>
-
-      {/* what is going on, under the screen */}
-      <div className="flex flex-col items-center gap-1 px-3 pb-3 pt-2" data-testid="bk-actions">
-        {status && (
-          <span data-testid="bk-wait">
-            <PixelText s={s} navy parts={[{ text: status, colour: '#f7f1e4' }]} />
-          </span>
-        )}
-        {mePlayer && mePlayer.cash < 0 && !mePlayer.bankrupt && (
-          <span data-testid="bk-warning">
-            <PixelText
-              s={s}
-              navy
-              parts={[
-                {
-                  text: `In debt: below ${money(state.board.bankruptBelow)} you are bankrupt`,
-                  colour: '#ff8f73',
-                },
-              ]}
-            />
-          </span>
-        )}
       </div>
     </div>
   );

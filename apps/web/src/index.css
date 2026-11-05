@@ -1916,3 +1916,23 @@ html.results-open .safe-top-scrim {
     animation: none;
   }
 }
+
+/* Bankrupt: a pop-up closes by shrinking and fading (the way it opened, backwards). */
+.bk-pop-out {
+  animation: bk-pop-out 200ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+@keyframes bk-pop-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.6) translateY(20px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bk-pop-out {
+    animation: none;
+  }
+}

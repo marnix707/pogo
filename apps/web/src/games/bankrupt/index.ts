@@ -14,8 +14,6 @@ export const bankruptUi: GameUi = {
   logo: logoUrl,
   tagline: 'Buy the city, build, and bankrupt your friends.',
   Component: BankruptGame,
-  // The screen draws its own top bar (back, logo, rules, chat, settings) in the artist's pixel art.
-  ownHeader: true,
   LobbyOptions: BankruptOptionsPicker,
   Rules: ({ open, onClose }) => createElement(BankruptRules, { open, onClose }),
   // The walk and payments of the last move play, then a banner says why it ended, then the results.
