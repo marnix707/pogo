@@ -11,7 +11,12 @@ const people = [
   { id: 'b', nickname: 'B', avatar: 'cat' },
   { id: 'c', nickname: 'C', avatar: 'owl' },
 ];
-const OPTIONS: BankruptOptions = { target: 0, turns: 0, auctionOnDecline: true, rainbowRoad: false };
+const OPTIONS: BankruptOptions = {
+  target: 0,
+  turns: 0,
+  auctionOnDecline: true,
+  rainbowRoad: false,
+};
 
 const start = (n = 2, options = OPTIONS): BankruptState =>
   game.createInitialState(people.slice(0, n), options, createSeededRng(7));
@@ -584,13 +589,13 @@ describe('Rainbow Road', () => {
   });
   it('counts as a Rainbow Road when an auction winner completes the street', () => {
     const four = [...people, { id: 'd', nickname: 'D', avatar: 'bear' }];
-    let s = game.createInitialState(
-      four,
-      { ...OPTIONS, rainbowRoad: true },
-      createSeededRng(7),
-    );
+    let s = game.createInitialState(four, { ...OPTIONS, rainbowRoad: true }, createSeededRng(7));
     const mv = mover(s).id;
-    const [x, y, z] = s.players.map((p) => p.id).filter((id) => id !== mv) as [string, string, string];
+    const [x, y, z] = s.players.map((p) => p.id).filter((id) => id !== mv) as [
+      string,
+      string,
+      string,
+    ];
     s = own(own(s, 'cairo', x), 'bangkok', y);
     s = patch(s, mv, { pos: idx('madrid') - 3 });
     s = play(s, mv, { type: 'roll' }, dice(3));
@@ -601,7 +606,11 @@ describe('Rainbow Road', () => {
     const bid = s.auction!.min;
     while (s.auction) {
       const id = turn(s);
-      s = play(s, id, id === z && !s.auction.high ? { type: 'bid', amount: bid } : { type: 'passBid' });
+      s = play(
+        s,
+        id,
+        id === z && !s.auction.high ? { type: 'bid', amount: bid } : { type: 'passBid' },
+      );
     }
     expect(s.events.some((e) => e.k === 'rainbow')).toBe(true);
     expect(s.owned['madrid']).toBeUndefined();

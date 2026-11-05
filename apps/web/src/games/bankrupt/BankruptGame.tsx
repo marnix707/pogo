@@ -2,11 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { bankrupt } from '@pogo/shared';
 import type { GameUiProps } from '../types';
 import { Avatar, Button } from '../../components/ui';
-import { PlayerName } from '../../components/PlayerName';
 import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
 import { Board, money, playerColour } from './Board';
-import { frogUrl } from './frog';
 import { BuyOverlay } from './BuyOverlay';
 import { LuckCard } from './LuckCard';
 import { LockIcon } from '../../components/icons';
@@ -16,7 +14,11 @@ import { RainbowRoad } from './RainbowRoad';
 import { TradePanel, TradeSwap, pulsingTiles } from './TradePanel';
 import { TileSheet } from './TileSheet';
 import { useCashFx } from './useCashFx';
-import { dieUrl } from './art';
+import { PixelText, labelWidth } from './PixelLabel';
+import type { Part } from './PixelLabel';
+import { measure, pixelSafe } from './pixel-text/pixelText';
+import { CARD_W, SCREEN_H, SCREEN_W, rowXs, screenArt } from './screenArt';
+import { useStageScale } from './useStage';
 
 type State = bankrupt.BankruptState;
 
@@ -155,7 +157,7 @@ function useWalking(state: State) {
   return { shown, rolling, settled: walked && !cardBusy, card, cardBusy };
 }
 
-export function BankruptGame({ room, me, sendMove }: GameUiProps) {
+export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
   const game = room.game!;
   // Moves are played out one after another: when the next one arrives while the last is still being shown (a
   // computer answers fast), it waits in a queue, so no token stops short and nobody hops before the walk is done.
@@ -208,7 +210,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const [face, setFace] = useState(1);
   useEffect(() => {
     if (!rolling) return;
-    const t = setInterval(() => setFace(1 + Math.floor(Math.random() * 6)), 90);
+    const t = setInterval(() => setFace(1 + Math.floor(Math.random() * 6)), 60);
     return () => clearInterval(t);
   }, [rolling]);
   const [tileOpen, setTileOpen] = useState<string | null>(null);
@@ -248,20 +250,6 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRoll, myTurn, state.phase, state.seq, animating, busy, rolling]);
-  const lockButton = (
-    <button
-      type="button"
-      data-testid="bk-roll-lock"
-      aria-pressed={autoRoll}
-      aria-label={autoRoll ? 'Stop rolling automatically' : 'Roll automatically'}
-      onClick={() => setAutoRoll((v) => !v)}
-      className={`flex min-h-12 w-14 shrink-0 items-center justify-center rounded-[8px] border-2 ring-2 ring-line ${
-        autoRoll ? 'border-neon bg-neon text-accentink' : 'border-neon/70 bg-panel2 text-neon'
-      }`}
-    >
-      <LockIcon open={!autoRoll} className="h-6 w-6" />
-    </button>
-  );
 
   const note = useMemo(
     () =>
@@ -300,16 +288,31 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [broke, settled, fresh, owedBuy?.id]);
-  const goal =
-    state.options.target > 0
-      ? `${money(state.options.target)} net worth to win`
-      : 'Richest player wins';
-  const limit =
-    state.options.turns > 0
-      ? ` · round ${state.round}/${state.options.turns}`
-      : ` · round ${state.round}`;
+  const goalParts: Part[] = [
+    {
+      text:
+        state.options.target > 0
+          ? `${money(state.options.target)} net worth to win`
+          : 'Richest player wins',
+      colour: '#74cca8',
+    },
+    {
+      text:
+        state.options.turns > 0
+          ? ` · round ${state.round}/${state.options.turns}`
+          : ` · round ${state.round}`,
+      colour: '#f7f1e4',
+      gap: 2,
+    },
+  ];
 
-  const tag = (latestP: State['players'][number], _seat: number) => {
+  // The screen is 290 x 432 art pixels at a whole number of device pixels each: positions are in art pixels.
+  const root = useRef<HTMLDivElement>(null);
+  const s = useStageScale(root);
+  const A = (n: number) => n * s;
+  const jailOn = myTurn && state.phase === 'jailAsk' && !animating;
+
+  const tag = (latestP: State['players'][number], left: number, top: number) => {
     // (what is shown follows the board: jail / bankrupt only show once the move is played out)
     const p = ui.players.find((q) => q.id === latestP.id) ?? latestP;
     const cash = cashShown[p.id] ?? p.cash;
@@ -317,44 +320,96 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
     // (spaces and buildings as the board shows them; the cash as it counts)
     const worth = p.bankrupt ? 0 : bankrupt.netWorth(ui, p.id) - p.cash + cash;
     const isMover = p.id === mover.id && !finished;
+    const colour = playerColour(p);
+    const fit = (text: string, maxW: number) => {
+      let t = text.toUpperCase();
+      while (t.length > 1 && measure(pixelSafe(t)).width > maxW) t = t.slice(0, -1);
+      return t;
+    };
     return (
       <div
         key={p.id}
         data-testid={`bk-player-${p.id}`}
         data-turn={isMover}
-        className={`relative flex w-[calc(33.333%-0.17rem)] min-w-0 shrink-0 flex-col items-center gap-0.5 rounded-md px-1 py-1 ${
-          isMover ? 'bg-neon/25 ring-2 ring-neon' : ''
-        } ${p.bankrupt ? 'opacity-40 grayscale' : ''}`}
+        className={`absolute ${p.bankrupt ? 'opacity-40 grayscale' : ''}`}
+        style={{ left: A(left), top: A(top), width: A(CARD_W), height: A(32) }}
       >
-        <div className="flex items-center gap-1">
+        <img
+          src={screenArt(`players/card-${colour}${isMover ? '-current' : ''}`)}
+          alt=""
+          className="absolute inset-0 block h-full w-full"
+          style={{ imageRendering: 'pixelated' }}
+        />
+        {isMover && (
           <img
-            src={frogUrl(playerColour(p), 'down', 'sit')}
+            src={screenArt('players/turn-marker')}
             alt=""
-            className="h-6 w-auto"
-            style={{ imageRendering: 'pixelated' }}
+            className="absolute block"
+            style={{
+              left: A(Math.floor((CARD_W - 5) / 2)),
+              top: A(-5),
+              width: A(5),
+              imageRendering: 'pixelated',
+            }}
           />
-          <Avatar avatar={nickOf(p.id)?.avatar ?? 'fox'} size="sm" />
+        )}
+        <div className="absolute" style={{ left: A(5), top: A(4), width: A(22), height: A(22) }}>
+          <Avatar
+            avatar={nickOf(p.id)?.avatar ?? 'fox'}
+            size="fluid"
+            className="h-full w-full !border !ring-0"
+          />
         </div>
-        <span className="max-w-full truncate text-xs font-bold text-onbg">
-          <PlayerName name={name(p.id)} id={p.id} me={me} />
-        </span>
+        <img
+          src={screenArt(`players/frog-badge-${colour}`)}
+          alt=""
+          className="absolute block"
+          style={{ left: A(19), top: A(17), width: A(8), imageRendering: 'pixelated' }}
+        />
+        <div className="absolute" style={{ left: A(31), top: A(4) }}>
+          <PixelText
+            s={s}
+            parts={[{ text: fit(name(p.id) + (p.id === me ? '' : ''), 50), colour: '#ffffff' }]}
+          />
+        </div>
+        <div className="absolute" style={{ left: A(31), top: A(12) }}>
+          <PixelText
+            s={s}
+            parts={[{ text: money(cash), colour: cash < 0 ? '#ff8f73' : '#f7f1e4' }]}
+          />
+        </div>
+        <div
+          className="absolute"
+          style={{ left: A(31), top: A(20) }}
+          data-testid={`bk-networth-${p.id}`}
+        >
+          <PixelText s={s} parts={[{ text: money(worth), colour: '#74cca8' }]} />
+        </div>
+        {/* (tap the numbers for what they mean) */}
         <button
           type="button"
-          className="text-sm font-bold tabular-nums"
+          className="absolute"
+          style={{ left: A(31), top: A(11), width: A(50), height: A(16) }}
           data-testid={`bk-cash-${p.id}`}
+          aria-label={`${name(p.id)}: ${money(cash)}, net worth ${money(worth)}`}
           onClick={() => setTip(tip === `cash-${p.id}` ? null : `cash-${p.id}`)}
-        >
-          <span className={cash < 0 ? 'text-[#ff8f73]' : 'text-onbg'}>{money(cash)}</span>{' '}
-          <span className="text-[#7ee08c]" data-testid={`bk-networth-${p.id}`}>
-            ({money(worth)})
-          </span>
-        </button>
-        {p.jail > 0 && <span className="label text-[9px] text-onbg/80">in jail · {p.jail}</span>}
-        {p.bankrupt && <span className="label text-[9px] text-[#ff8f73]">bankrupt</span>}
+        />
+        {(p.jail > 0 || p.bankrupt) && (
+          <div className="absolute" style={{ right: A(3), top: A(4) }}>
+            <PixelText
+              s={s}
+              parts={[
+                p.bankrupt
+                  ? { text: 'OUT', colour: '#ff8f73' }
+                  : { text: `JAIL ${p.jail}`, colour: '#f7f1e4' },
+              ]}
+            />
+          </div>
+        )}
         {tip === `cash-${p.id}` && (
           <span
             role="status"
-            className="absolute top-full z-20 mt-1 w-48 rounded-md border-2 border-edge/40 bg-panel2 px-2 py-1.5 text-left text-xs font-normal normal-case text-ink shadow-lg"
+            className="absolute left-0 top-full z-20 mt-1 w-48 rounded-md border-2 border-edge/40 bg-panel2 px-2 py-1.5 text-left text-xs font-normal normal-case text-ink shadow-lg"
           >
             {p.cash < 0 ? (
               <>
@@ -380,7 +435,10 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const around = players.map((_, i) => (meIdx + i) % players.length);
   const others = around.slice(1);
   const topSeats = others.slice(0, 3);
-  const bottomSeats = [around[0]!, ...others.slice(3).reverse()];
+  const extras = others.slice(3).reverse();
+  // (me in the middle of the bottom row when there are two more)
+  const bottomSeats =
+    extras.length === 2 ? [extras[0]!, around[0]!, extras[1]!] : [around[0]!, ...extras];
 
   // Everything that pops up lives inside the middle of the board (never over a space).
   // A trade has just gone through: its cards swap places while the bonus is paid (the owners change after).
@@ -401,6 +459,8 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         whoName={name(card.ev.by)}
         phase={card.phase === 'in' ? 'in' : 'out'}
       />
+    ) : jailOn ? (
+      <JailPanel state={state} busy={busy} send={send} cash={mePlayer?.cash ?? 0} />
     ) : owedBuy && settled && !fresh && !paying && !broke ? (
       <BuyOverlay state={state} me={me} tile={owedBuy} busy={busy} send={send} />
     ) : tileOpen ? (
@@ -445,147 +505,267 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       </p>
     ) : null;
 
+  const canRoll = myTurn && state.phase === 'roll';
+  const rollMessage = finished
+    ? 'Game over'
+    : note ||
+      (room.spectating
+        ? `${name(mover.id)} to play`
+        : myTurn
+          ? 'Your turn'
+          : `${name(mover.id)} to play`);
+  const fitText = (text: string, maxW: number) => {
+    let t = text.toUpperCase();
+    while (t.length > 1 && measure(pixelSafe(t)).width + 10 > maxW) t = t.slice(0, -1);
+    return t.length < text.length ? t.slice(0, -2) + '..' : t;
+  };
+  const bp = (v: number) => `${(v / 257) * 100}%`;
+  const top = rowXs(topSeats.length);
+  const bottom = rowXs(bottomSeats.length);
+  const barButton = (
+    x: number,
+    art: string,
+    label: string,
+    onClick?: () => void,
+    testId?: string,
+  ) =>
+    onClick ? (
+      <button
+        type="button"
+        aria-label={label}
+        data-testid={testId}
+        onClick={onClick}
+        className="absolute block active:translate-y-px"
+        style={{ left: A(x), top: A(18), width: A(18), height: A(20) }}
+      >
+        <img
+          src={screenArt(`top-bar/${art}`)}
+          alt=""
+          className="block h-full w-full"
+          style={{ imageRendering: 'pixelated' }}
+        />
+      </button>
+    ) : null;
+  const goalW = labelWidth(goalParts);
+  const status = room.spectating
+    ? 'Watching the game'
+    : mePlayer?.bankrupt
+      ? 'You are out of the game'
+      : !canAct
+        ? ''
+        : !myTurn
+          ? `Waiting for ${name(mover.id)}`
+          : '';
+
   return (
     <div
-      className="flex h-full flex-col gap-1 overflow-y-auto overflow-x-hidden px-3 pb-3"
+      ref={root}
+      className="h-full overflow-y-auto overflow-x-hidden"
+      style={{
+        backgroundColor: '#20325a',
+        backgroundImage: `url(${screenArt('background/bg-pattern-18x18')})`,
+        backgroundSize: `${A(18)}px ${A(18)}px`,
+        imageRendering: 'pixelated',
+      }}
       data-testid="bankrupt-game"
       data-phase={state.phase}
       data-seq={state.seq}
     >
-      <p className="label text-center text-onbg" data-testid="bk-goal">
-        <span className="text-[#7ee08c]">{goal.split(' ')[0]}</span>{' '}
-        {goal.split(' ').slice(1).join(' ')}
-        <span className="text-onbg/70">{limit}</span>
-      </p>
-      <div className="flex justify-center gap-1" data-testid="bk-seats-top">
-        {topSeats.map((i) => tag(players[i]!, i))}
-      </div>
+      <div className="relative">
+        {/* the dark strip at the top (the phone's status bar), the whole width */}
+        <div
+          className="absolute inset-x-0 top-0 bg-[#101628]"
+          style={{ height: `calc(env(safe-area-inset-top) + ${A(14)}px)` }}
+        />
+        <div style={{ height: 'env(safe-area-inset-top)' }} />
+        <div className="relative mx-auto" style={{ width: A(SCREEN_W), height: A(SCREEN_H) }}>
+          {/* the top bar */}
+          {barButton(6, 'button-back', 'Leave game', chrome?.onLeave, 'leave-game')}
+          <img
+            src={screenArt('top-bar/logo-bankrupt')}
+            alt="Bankrupt"
+            className="absolute block"
+            style={{ left: A(30), top: A(18), width: A(68), imageRendering: 'pixelated' }}
+          />
+          {barButton(216, 'button-help', 'Rules', chrome?.onRules, 'rules-button')}
+          {barButton(238, 'button-chat', 'Chat', chrome?.onChat, 'chat-open')}
+          {barButton(260, 'button-settings', 'Settings', chrome?.onSettings, 'settings-button')}
+          {!!chrome?.unread && (
+            <span
+              aria-hidden
+              className="absolute block bg-[#ff6b57]"
+              style={{ left: A(252), top: A(18), width: A(4), height: A(4) }}
+            />
+          )}
 
-      <Board
-        state={ui}
-        shown={shown}
-        onTile={setTileOpen}
-        pulse={pulse}
-        picked={pick}
-        overlay={popupNode}
-        clear={tradeOn || auctionOn || swapping || rainbowing}
-        onPulse={(id) => setPick(id === pick ? null : id)}
-      >
-        <div className="flex h-[23cqw] items-center" data-testid="bk-dice">
-          {(state.dice ?? 0) > 0 || rolling ? (
+          {/* the goal and the round */}
+          <div
+            className="absolute"
+            style={{ left: A(Math.floor(145 - goalW / 2)), top: A(42) }}
+            data-testid="bk-goal"
+          >
+            <PixelText s={s} navy parts={goalParts} />
+          </div>
+
+          <div data-testid="bk-seats-top">
+            {topSeats.map((i, k) => tag(players[i]!, top[k]!, 58))}
+          </div>
+
+          {/* the board's hard navy drop shadow, like every card and button has */}
+          <div
+            className="absolute bg-[#101628]"
+            style={{ left: A(18), top: A(355), width: A(253), height: A(4) }}
+          />
+          <div className="absolute" style={{ left: A(16), top: A(98), width: A(257) }}>
+            <Board
+              state={ui}
+              shown={shown}
+              onTile={setTileOpen}
+              pulse={pulse}
+              picked={pick}
+              overlay={popupNode}
+              clear={tradeOn || auctionOn || swapping || rainbowing}
+              onPulse={(id) => setPick(id === pick ? null : id)}
+            >
+              {/* one die, bigger, its colour shows the value; the message sits under it */}
+              <div
+                className="absolute"
+                style={{ left: bp(114), top: bp(94), width: bp(29) }}
+                data-testid="bk-dice"
+              >
+                {(state.dice ?? 0) > 0 || rolling ? (
+                  <img
+                    src={screenArt(`dice/die-${rolling ? face : state.dice}`)}
+                    alt={rolling ? 'rolling' : `die ${state.dice}`}
+                    data-testid="bk-die"
+                    data-value={rolling ? 0 : state.dice}
+                    className="block w-full"
+                    style={{ imageRendering: 'pixelated' }}
+                  />
+                ) : null}
+              </div>
+              <div
+                className="absolute flex w-full justify-center"
+                style={{ top: bp(132) }}
+                data-testid="bk-note"
+                role="status"
+              >
+                <PixelText
+                  s={s}
+                  navy
+                  parts={[{ text: fitText(rollMessage, 190), colour: '#f7f1e4' }]}
+                />
+              </div>
+            </Board>
+          </div>
+
+          <div data-testid="bk-seats-bottom">
+            {bottomSeats.map((i, k) => tag(players[i]!, bottom[k]!, 366))}
+          </div>
+
+          {/* the Roll button (pixel art), with the padlock for rolling automatically inside it */}
+          <button
+            type="button"
+            data-testid="bk-roll"
+            aria-label="Roll the dice"
+            disabled={!canRoll || busy || rolling || animating}
+            onClick={() => void send({ type: 'roll' })}
+            className="absolute block active:translate-y-px disabled:active:translate-y-0"
+            style={{ left: A(16), top: A(403), width: A(257), height: A(25) }}
+          >
             <img
-              src={dieUrl(rolling ? face : state.dice!)}
-              alt={rolling ? 'rolling' : `die ${state.dice}`}
-              data-testid="bk-die"
-              data-value={rolling ? 0 : state.dice}
-              className={`h-[23cqw] w-[23cqw] ${rolling ? 'bk-tumble' : ''}`}
+              src={screenArt(canRoll ? 'buttons/roll-the-dice' : 'buttons/roll-the-dice-disabled')}
+              alt=""
+              className="block h-full w-full"
               style={{ imageRendering: 'pixelated' }}
             />
-          ) : null}
+          </button>
+          {canAct && (
+            <button
+              type="button"
+              data-testid="bk-roll-lock"
+              aria-pressed={autoRoll}
+              aria-label={autoRoll ? 'Stop rolling automatically' : 'Roll automatically'}
+              onClick={() => setAutoRoll((v) => !v)}
+              className={`absolute flex items-center justify-center border-2 ${
+                autoRoll
+                  ? 'border-[#101628] bg-[#101628] text-[#fdcf51]'
+                  : 'border-[#101628] bg-[#fdcf51] text-[#101628]'
+              }`}
+              style={{ left: A(16 + 257 - 25), top: A(403 + 2), width: A(21), height: A(19) }}
+            >
+              <LockIcon open={!autoRoll} className="h-[70%] w-[70%]" />
+            </button>
+          )}
         </div>
-        <p
-          className="line-clamp-3 max-w-full px-1 text-center text-[2.4cqw] font-bold leading-none text-[#f7f1e4] [text-shadow:0_1px_0_#101628]"
-          data-testid="bk-note"
-          role="status"
-        >
-          {finished
-            ? 'Game over'
-            : note ||
-              (room.spectating
-                ? `${name(mover.id)} to play`
-                : myTurn
-                  ? 'Your turn'
-                  : `${name(mover.id)} to play`)}
-        </p>
-      </Board>
-
-      <div
-        className={`flex gap-1 ${bottomSeats.length === 1 ? 'justify-center' : 'justify-start'}`}
-        data-testid="bk-seats-bottom"
-      >
-        {bottomSeats.map((i) => tag(players[i]!, i))}
       </div>
 
-      {/* What I can do right now. */}
-      <div
-        className={`hud calm flex flex-col gap-2 p-3 ${state.trade || state.auction ? 'hidden' : ''}`}
-        data-testid="bk-actions"
-      >
-        {room.spectating || !canAct ? (
-          <p className="label text-center text-onbg/80">
-            {room.spectating
-              ? 'Watching the game'
-              : mePlayer?.bankrupt
-                ? 'You are out of the game'
-                : ''}
-          </p>
-        ) : tradeOn ? (
-          <p className="label text-center text-onbg/80" data-testid="bk-trade-hint">
-            Trade: see the middle of the board
-          </p>
-        ) : animating && (state.auction || state.phase === 'jailAsk') ? (
-          // (the auction and the jail question wait until the walk, the card and the payments are played out)
-          <p className="label text-center text-onbg/80" data-testid="bk-animating">
-            …
-          </p>
-        ) : !myTurn ? (
-          <div className="flex items-center gap-2">
-            <p className="label flex-1 text-center text-onbg/80" data-testid="bk-wait">
-              Waiting for {name(mover.id)}…
-            </p>
-            {lockButton}
-          </div>
-        ) : state.phase === 'buy' && owedBuy ? (
-          <p className="label text-center text-onbg/80" data-testid="bk-buy-hint">
-            {broke ? 'Not enough money' : settled ? '' : 'Walking…'}
-          </p>
-        ) : state.phase === 'jailAsk' ? (
-          <div className="flex flex-col gap-2" data-testid="bk-jail-ask">
-            <p className="label text-center">
-              You are in jail! Pay {money(state.board.jailFee)} to get out now, or stay{' '}
-              {state.board.jailTurns} turns.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="gold"
-                data-testid="bk-pay-jail"
-                disabled={busy || animating || mePlayer!.cash < state.board.jailFee}
-                onClick={() => void send({ type: 'payJail' })}
-              >
-                Pay {money(state.board.jailFee)}
-              </Button>
-              <Button
-                variant="secondary"
-                data-testid="bk-wait-jail"
-                disabled={busy || animating}
-                onClick={() => void send({ type: 'wait' })}
-              >
-                Pass
-              </Button>
-            </div>
-          </div>
-        ) : state.phase === 'roll' ? (
-          <div className="flex items-stretch gap-2">
-            <Button
-              variant="gold"
-              className="flex-1"
-              data-testid="bk-roll"
-              disabled={busy || rolling || animating}
-              onClick={() => void send({ type: 'roll' })}
-            >
-              {autoRoll ? 'Rolling automatically…' : 'Roll the dice'}
-            </Button>
-            {lockButton}
-          </div>
-        ) : (
-          <p className="label text-center text-onbg/80">…</p>
+      {/* what is going on, under the screen */}
+      <div className="flex flex-col items-center gap-1 px-3 pb-3 pt-2" data-testid="bk-actions">
+        {status && (
+          <span data-testid="bk-wait">
+            <PixelText s={s} navy parts={[{ text: status, colour: '#f7f1e4' }]} />
+          </span>
         )}
         {mePlayer && mePlayer.cash < 0 && !mePlayer.bankrupt && (
-          <p className="label text-center text-[10px] text-[#ff8f73]" data-testid="bk-warning">
-            You are in debt. Below {money(state.board.bankruptBelow)} you are bankrupt: tap a space
-            to sell.
-          </p>
+          <span data-testid="bk-warning">
+            <PixelText
+              s={s}
+              navy
+              parts={[
+                {
+                  text: `In debt: below ${money(state.board.bankruptBelow)} you are bankrupt`,
+                  colour: '#ff8f73',
+                },
+              ]}
+            />
+          </span>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** You are in jail: pay the fee or sit it out (only asked when the fee can be paid). */
+function JailPanel({
+  state,
+  busy,
+  send,
+  cash,
+}: {
+  state: State;
+  busy: boolean;
+  send: (m: bankrupt.BankruptMove) => Promise<void>;
+  cash: number;
+}) {
+  return (
+    <div
+      className="bk-pop flex h-full w-full flex-col items-center justify-center gap-[3cqw] bg-[#101628] p-[4cqw] text-white"
+      data-testid="bk-jail-ask"
+      role="dialog"
+      aria-label="Jail"
+    >
+      <p className="label text-[5cqw] font-black uppercase leading-none text-neon">In jail!</p>
+      <p className="label text-center text-[2.6cqw] leading-tight">
+        Pay {money(state.board.jailFee)} to get out now, or stay {state.board.jailTurns} turns.
+      </p>
+      <div className="grid w-full grid-cols-2 gap-[2cqw]">
+        <Button
+          variant="gold"
+          data-testid="bk-pay-jail"
+          disabled={busy || cash < state.board.jailFee}
+          onClick={() => void send({ type: 'payJail' })}
+        >
+          Pay {money(state.board.jailFee)}
+        </Button>
+        <Button
+          variant="secondary"
+          data-testid="bk-wait-jail"
+          disabled={busy}
+          onClick={() => void send({ type: 'wait' })}
+        >
+          Pass
+        </Button>
       </div>
     </div>
   );

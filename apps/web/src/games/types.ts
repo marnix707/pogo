@@ -15,6 +15,8 @@ export interface GameChrome {
   onLeave: () => void;
   onChat: () => void;
   onSettings: () => void;
+  /** Open the game's rules sheet (only when the game has one). */
+  onRules?: () => void;
   unread: number;
 }
 

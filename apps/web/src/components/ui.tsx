@@ -364,7 +364,11 @@ export function InfoButton({
         style={{ imageRendering: 'pixelated' }}
       >
         {/* the notched square: filled a little, with a one pixel edge and no corner pixels */}
-        <path d="M2 1h7v1h1v7h-1v1h-7v-1h-1v-7h1z" fill="currentColor" fillOpacity={expanded ? 0.4 : 0.18} />
+        <path
+          d="M2 1h7v1h1v7h-1v1h-7v-1h-1v-7h1z"
+          fill="currentColor"
+          fillOpacity={expanded ? 0.4 : 0.18}
+        />
         <path
           d="M2 0h7v1h-7zM2 10h7v1h-7zM0 2h1v7h-1zM10 2h1v7h-1zM1 1h1v1h-1zM9 1h1v1h-1zM1 9h1v1h-1zM9 9h1v1h-1z"
           fill="currentColor"

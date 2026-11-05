@@ -263,7 +263,12 @@ function TradeBody({
                 disabled: busy || iPassed,
                 onClick: () => void send({ type: 'tradePass' }),
               }}
-              right={{ label: 'Confirm', testId: 'bk-trade-confirm', disabled: true, onClick: () => {} }}
+              right={{
+                label: 'Confirm',
+                testId: 'bk-trade-confirm',
+                disabled: true,
+                onClick: () => {},
+              }}
             />
           ) : undefined
         }
@@ -290,12 +295,20 @@ function TradeBody({
           actions={
             <Actions
               left={cancel}
-              right={{ label: 'Confirm', testId: 'bk-trade-confirm', disabled: true, onClick: () => {} }}
+              right={{
+                label: 'Confirm',
+                testId: 'bk-trade-confirm',
+                disabled: true,
+                onClick: () => {},
+              }}
             />
           }
         >
           <Slot state={state} tile={t.give} w={17} caption="Your offer" />
-          <div className="flex flex-wrap items-start justify-center gap-[2cqw]" data-testid="bk-trade-status">
+          <div
+            className="flex flex-wrap items-start justify-center gap-[2cqw]"
+            data-testid="bk-trade-status"
+          >
             {traders.map((p) => (
               <Slot
                 key={p.id}
@@ -399,7 +412,10 @@ function TradeBody({
             testId="bk-trade-spot"
           />
         </div>
-        <div className="flex flex-wrap items-start justify-center gap-[2cqw]" data-testid="bk-trade-offers">
+        <div
+          className="flex flex-wrap items-start justify-center gap-[2cqw]"
+          data-testid="bk-trade-offers"
+        >
           {offers.map(([id, tile]) =>
             tile ? (
               <button
@@ -455,13 +471,7 @@ export function TradePanel(props: Parameters<typeof TradeBody>[0]) {
 }
 
 /** The trade went through: the two cards swap places (the owners change on the board right after). */
-export function TradeSwap({
-  state,
-  name,
-}: {
-  state: State;
-  name: (id: string) => string;
-}) {
+export function TradeSwap({ state, name }: { state: State; name: (id: string) => string }) {
   const e = state.events.find((x) => x.k === 'trade');
   if (!e || e.k !== 'trade') return null;
   const card = (id: string, who: string, dx: number, dy: number) => {

@@ -69,7 +69,7 @@ export function Board({
     <div
       ref={box}
       // The whole screen wide (up to the app's column), centred on the column whatever the padding around it.
-      className="relative left-1/2 w-[min(100vw,32rem)] -translate-x-1/2"
+      className="relative w-full"
       data-testid="bk-board"
     >
       <div
@@ -198,28 +198,16 @@ export function Board({
             />
           );
         })}
-        {/* the middle */}
-        <div
-          className="pointer-events-none absolute flex flex-col items-center justify-center gap-[2%]"
-          style={{
-            left: pct(INNER[0]),
-            top: pct(INNER[1]),
-            width: pct(INNER[2]),
-            height: pct(INNER[3]),
-          }}
-        >
+        {/* the middle: the town hall, and whatever the game puts there (the die, the roll message) in board art px */}
+        <div className="pointer-events-none absolute inset-0">
           <img
             src={cityArt('city-hall')}
             alt=""
             draggable={false}
-            className={clear ? 'bk-away' : 'transition-[opacity,transform] duration-300'}
-            style={{ width: pct(86), imageRendering: 'pixelated' }}
+            className={`absolute ${clear ? 'bk-away' : 'transition-[opacity,transform] duration-300'}`}
+            style={{ left: pct(102), top: pct(36), width: pct(52), imageRendering: 'pixelated' }}
           />
-          <div
-            className={`flex flex-col items-center gap-[2%] ${clear ? 'bk-away' : ''}`}
-          >
-            {children}
-          </div>
+          <div className={`absolute inset-0 ${clear ? 'bk-away' : ''}`}>{children}</div>
         </div>
         {/* pop-ups live inside the middle of the board */}
         {overlay && (

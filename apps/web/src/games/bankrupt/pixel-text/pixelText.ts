@@ -53,6 +53,18 @@ export const FONTS: Record<FontName, Font> = {
       '8': ['XXX', 'X.X', 'XXX', 'X.X', 'XXX'],
       '9': ['XXX', 'X.X', 'XXX', '..X', 'XXX'],
       '-': ['...', '...', 'XXX', '...', '...'],
+      // (added for the screen's labels)
+      '.': ['.', '.', '.', '.', 'X'],
+      ',': ['.', '.', '.', 'X', 'X'],
+      '·': ['.', '.', 'X', '.', '.'],
+      '!': ['X', 'X', 'X', '.', 'X'],
+      ':': ['.', 'X', '.', 'X', '.'],
+      '/': ['..X', '..X', '.X.', 'X..', 'X..'],
+      '+': ['...', '.X.', 'XXX', '.X.', '...'],
+      '%': ['X.X', '..X', '.X.', 'X..', 'X.X'],
+      '(': ['.X', 'X.', 'X.', 'X.', '.X'],
+      ')': ['X.', '.X', '.X', '.X', 'X.'],
+      "'": ['X', 'X', '.', '.', '.'],
     },
     rows: 5,
     gap: 1,
@@ -214,4 +226,9 @@ export function priceOnTileSVG(price: number, tileX: number, tileY: number) {
     CREAM,
     'font5',
   );
+}
+
+/** A text the font can draw: capitals, and anything it has no glyph for becomes a "?" (names are free text). */
+export function pixelSafe(text: string, font: FontName = 'font5'): string {
+  return [...text.toUpperCase()].map((ch) => (FONTS[font].glyphs[ch] ? ch : '?')).join('');
 }

@@ -85,7 +85,13 @@ export function SettingsSheet({
           </Action>
         )}
         {isDev && (
-          <Action id="admin" sel={sel} setSel={setSel} onClick={openAdminPanel} testId="settings-admin">
+          <Action
+            id="admin"
+            sel={sel}
+            setSel={setSel}
+            onClick={openAdminPanel}
+            testId="settings-admin"
+          >
             Admin panel
           </Action>
         )}
@@ -190,7 +196,13 @@ function BarRow({
   step: (value: number, delta: number) => number;
 }) {
   return (
-    <Row id={id} sel={sel} setSel={setSel} label={label} arrows={(d) => onChange(step(value, d * 10))}>
+    <Row
+      id={id}
+      sel={sel}
+      setSel={setSel}
+      label={label}
+      arrows={(d) => onChange(step(value, d * 10))}
+    >
       <span className="retro-bar">
         {Array.from({ length: 10 }, (_, i) => (
           <i key={i} className={value > i * 10 ? 'on' : ''} />

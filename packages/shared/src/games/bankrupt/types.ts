@@ -110,7 +110,7 @@ export type BankruptEvent =
       k: 'rainbow';
       by: PlayerId;
       tiles: string[];
-      payouts: { player: PlayerId; tile: string; amount: number }[]
+      payouts: { player: PlayerId; tile: string; amount: number }[];
     }
   | { k: 'bankrupt'; by: PlayerId };
 

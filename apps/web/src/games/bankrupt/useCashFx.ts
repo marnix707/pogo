@@ -51,7 +51,13 @@ function transfersOf(s: State): Transfer[] {
     const rest = left.get(i);
     if (e.k === 'rent') out.push({ from: e.by, to: e.to, tile: e.tile, amount: rest ?? e.amount });
     else if (e.k === 'salary')
-      out.push({ from: null, to: e.by, tile: start, amount: e.amount, ...(sp ? { split: sp } : {}) });
+      out.push({
+        from: null,
+        to: e.by,
+        tile: start,
+        amount: e.amount,
+        ...(sp ? { split: sp } : {}),
+      });
     else if (e.k === 'build')
       out.push(
         e.amount > 0
@@ -74,7 +80,8 @@ function transfersOf(s: State): Transfer[] {
       out.push({ from: e.from, to: e.to, tile: s.board.cardTile, amount: rest ?? e.amount });
     else if (e.k === 'rainbow') {
       // The street is sold: the bank pays each owner for their space.
-      for (const p of e.payouts) out.push({ from: null, to: p.player, tile: p.tile, amount: p.amount });
+      for (const p of e.payouts)
+        out.push({ from: null, to: p.player, tile: p.tile, amount: p.amount });
     } else if (e.k === 'trade') {
       // The bank pays both players a bonus.
       // (both at once: the notes divide between the two, like a salary that is paid on)
@@ -218,7 +225,9 @@ export function useCashFx(
     const transfers = reduced() ? [] : all;
     job.current = transfers.length > 0 ? transfers : null;
     setPlaying(transfers.some((t) => !t.quick));
-    const involved = new Set(transfers.flatMap((t) => [t.from, t.to, t.split?.to]).filter(Boolean) as string[]);
+    const involved = new Set(
+      transfers.flatMap((t) => [t.from, t.to, t.split?.to]).filter(Boolean) as string[],
+    );
     // Everybody not in a payment shows the new cash at once; the others wait for the show.
     // (from the cash before this move, not from what is on screen: a show that was cut short by
     // this move has just snapped to the new cash, which would count from the wrong number)

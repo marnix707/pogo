@@ -695,8 +695,7 @@ function getPlayerView(state: BankruptState): BankruptView {
 
 function getCurrentPlayers(state: BankruptState): PlayerId[] {
   if (state.phase === 'over') return [];
-  if (state.phase === 'auction' && state.auction)
-    return [state.auction.turn];
+  if (state.phase === 'auction' && state.auction) return [state.auction.turn];
   const t = state.trade;
   if (t) {
     if (t.stage === 'offers')

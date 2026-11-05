@@ -1,0 +1,151 @@
+{
+ "screen": {
+  "w": 290,
+  "h": 436,
+  "unit": "art px",
+  "scale": "whole number of DEVICE px per art px (4 on a 3x phone = 387pt wide); centre the screen"
+ },
+ "background": {
+  "colour": "#20325a",
+  "pattern": "background/bg-pattern-18x18.svg repeated from (0,0)",
+  "status_bar": {
+   "y": 0,
+   "h": 14,
+   "colour": "#101628"
+  }
+ },
+ "top_bar": {
+  "back": [
+   6,
+   18
+  ],
+  "logo": [
+   30,
+   18
+  ],
+  "players": [
+   194,
+   18
+  ],
+  "help": [
+   216,
+   18
+  ],
+  "chat": [
+   238,
+   18
+  ],
+  "settings": [
+   260,
+   18
+  ],
+  "button_size": [
+   18,
+   18
+  ]
+ },
+ "goal_label": {
+  "y": 42,
+  "h": 11,
+  "centre_x": 145,
+  "padding_x": 5,
+  "text_y": 45,
+  "parts": [
+   {
+    "text": "RICHEST PLAYER WINS",
+    "colour": "#74cca8"
+   },
+   {
+    "text": " \u00b7 ROUND <n>",
+    "colour": "#f7f1e4",
+    "gap_before": 2
+   }
+  ]
+ },
+ "player_cards": {
+  "size": [
+   84,
+   30
+  ],
+  "gap": 3,
+  "top_row_y": 58,
+  "bottom_row_y": 366,
+  "row_x": "x = floor((290 - (n*84 + (n-1)*3)) / 2), then +87 for each next card (rows are always centred)",
+  "rows": "top row: up to 3 opponents. bottom row: YOU in the middle, plus up to 2 more opponents left/right (max 6 players)",
+  "inside_card": {
+   "avatar": [
+    5,
+    4,
+    22,
+    22
+   ],
+   "frog_badge": [
+    19,
+    17
+   ],
+   "name": {
+    "x": 31,
+    "y": 4,
+    "colour": "#ffffff"
+   },
+   "cash": {
+    "x": 31,
+    "y": 12,
+    "colour": "#f7f1e4"
+   },
+   "net_worth": {
+    "x": 31,
+    "y": 20,
+    "colour": "#74cca8"
+   }
+  },
+  "current_player": "use card-<colour>-current.svg (yellow inner border) + players/turn-marker.svg centred 5px above the card"
+ },
+ "board": {
+  "x": 16,
+  "y": 98,
+  "size": 257,
+  "build": "see board_background_svg.zip, city_owned_svg.zip (rent boxes) and frog_token_svg.zip (tokens)",
+  "drop_shadow": {
+   "colour": "#101628",
+   "x": 18,
+   "y": 355,
+   "w": 253,
+   "h": 4
+  }
+ },
+ "board_centre": {
+  "town_hall": {
+   "board_x": 102,
+   "board_y": 36
+  },
+  "die": {
+   "board_x": 114,
+   "board_y": 94,
+   "size": [
+    29,
+    29
+   ],
+   "files": "dice/die-<1..6>.svg",
+   "roll_animation": "swap faces at random every 60ms for ~600ms, then show the result"
+  },
+  "roll_message": {
+   "board_y": 132,
+   "h": 11,
+   "centred": true,
+   "text_y_offset": 3,
+   "colour": "#f7f1e4",
+   "example": "SCOTT ROLLED 2"
+  }
+ },
+ "roll_button": {
+  "x": 16,
+  "y": 403,
+  "files": [
+   "buttons/roll-the-dice.svg",
+   "buttons/roll-the-dice-disabled.svg"
+  ]
+ },
+ "text": "ALL text with pixelText.ts (font5), never a system font. Centre: x = boxX + floor((boxW - measure(text).width)/2).",
+ "label_rule": "navy labels: rectangle h=11, fill #101628, corners cut by 1px, width = text width + 10, text at +5,+3"
+}

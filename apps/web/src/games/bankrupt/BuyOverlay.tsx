@@ -60,10 +60,10 @@ export function BuyOverlay({
         {rainbow
           ? 'Sell the whole street to the bank, or tap X to pass.'
           : !canBuy
-          ? `You need ${money(tile.price - cash)} more. Tap X to pass.`
-          : state.options.auctionOnDecline
-            ? 'Tap X to put it up for auction.'
-            : 'Tap X to leave it.'}
+            ? `You need ${money(tile.price - cash)} more. Tap X to pass.`
+            : state.options.auctionOnDecline
+              ? 'Tap X to put it up for auction.'
+              : 'Tap X to leave it.'}
       </p>
     </div>
   );

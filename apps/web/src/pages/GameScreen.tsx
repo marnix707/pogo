@@ -386,6 +386,7 @@ export function GameScreen({
             onLeave: () => (finished || watching ? void api.leave() : setConfirmLeave(true)),
             onChat: () => setChatOpen(true),
             onSettings,
+            onRules: ui.Rules ? () => setRulesOpen(true) : undefined,
             unread,
           }}
         />
