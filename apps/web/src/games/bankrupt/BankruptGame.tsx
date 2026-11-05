@@ -118,7 +118,13 @@ function useWalking(state: State) {
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   // The police car fetches a frog that a card sent to jail from the top row (instead of letting it hop there).
   const [police, setPolice] = useState<PoliceView | null>(null);
-  const plan = useRef<{ id: string; from: number; colour: string; jailIdx: number } | null>(null);
+  const plan = useRef<{
+    id: string;
+    from: number;
+    colour: string;
+    jailIdx: number;
+    trigger: 'roll' | 'card';
+  } | null>(null);
   const target = (p: State['players'][number]) => hold?.[p.id] ?? p.pos;
 
   // A new move: the die tumbles first, then the tokens walk.
@@ -149,17 +155,40 @@ function useWalking(state: State) {
               from: stop,
               colour: bankrupt.PLAYER_COLOURS[jailed.colour % bankrupt.PLAYER_COLOURS.length]!,
               jailIdx: state.board.tiles.findIndex((t) => t.kind === 'jail'),
+              trigger: 'card',
             }
           : null;
     } else {
-      setHold(null);
       setCard(null);
+      // A roll that lands on the Jail space: the frog does not hop there, the police car comes to fetch it from
+      // where it stands (one die: it always starts on the top row).
+      const jailIdx = state.board.tiles.findIndex((t) => t.kind === 'jail');
+      const jailEv = state.events.find((e) => e.k === 'jail');
+      const jailer = jailEv && jailEv.k === 'jail' ? state.players.find((p) => p.id === jailEv.by) : undefined;
+      const mv = state.events
+        .filter((e) => e.k === 'move' && jailer && e.by === jailer.id)
+        .at(-1) as { from: number; to: number } | undefined;
+      if (!reduced() && rolled && jailer && mv && mv.to === jailIdx && mv.from >= 7 && mv.from < jailIdx) {
+        plan.current = {
+          id: jailer.id,
+          from: mv.from,
+          colour: bankrupt.PLAYER_COLOURS[jailer.colour % bankrupt.PLAYER_COLOURS.length]!,
+          jailIdx,
+          trigger: 'roll',
+        };
+        setHold({ [jailer.id]: mv.from });
+      } else setHold(null);
     }
     if (!rolled) return;
     setRolling(true);
     play('roll'); // the dice rattle, as in Yatzy (for every roll, whoever rolls)
     clearTimeout(rollTimer.current);
-    rollTimer.current = setTimeout(() => setRolling(false), bankrupt.ROLL_MS);
+    rollTimer.current = setTimeout(() => {
+      setRolling(false);
+      // the die has settled: the police car sets off
+      if (plan.current?.trigger === 'roll') runPolice(plan.current);
+    }, bankrupt.ROLL_MS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
   // (The timer must outlive the next state push, so it is only cleared when the screen goes away.)
   useEffect(
@@ -207,7 +236,7 @@ function useWalking(state: State) {
         () => {
           // Gone: now the card does what it says (walk on, walk to jail, the payments).
           setCard(null);
-          if (plan.current) runPolice(plan.current);
+          if (plan.current?.trigger === 'card') runPolice(plan.current);
           else setHold(null);
         },
         slide + show + slide,
