@@ -681,8 +681,9 @@ export function BankruptGame({ room, me, sendMove, chrome }: GameUiProps) {
             <img
               src={screenArt(canRoll ? 'buttons/roll-the-dice' : 'buttons/roll-the-dice-disabled')}
               alt=""
-              className="block h-full w-full"
-              style={{ imageRendering: 'pixelated' }}
+              className="block w-full"
+              // (an SVG keeps its own proportions inside the box, so it is stretched twice as tall by a transform)
+              style={{ imageRendering: 'pixelated', transform: 'scaleY(2)', transformOrigin: 'top' }}
             />
           </button>
           {canAct && (
