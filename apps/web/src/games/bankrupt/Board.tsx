@@ -6,6 +6,8 @@ import { art } from './art';
 import { gridPos } from './grid';
 import { FROG_OFFSETS } from './frog';
 import { FrogToken } from './FrogToken';
+import { carUrl, jailWithUrl } from './police';
+import type { PoliceView } from './police';
 import { BOARD_PX, INNER, TILE_PITCH, TILE_PX, cityArt, slug } from './cityArt';
 import { useArtScale } from './useArtScale';
 import { measure, pixelTextSVG, priceOnTileSVG, rentOnTileSVG } from './pixel-text/pixelText';
@@ -41,6 +43,7 @@ export function Board({
   overlay,
   clear = false,
   upgradable,
+  police,
   children,
 }: {
   state: bankrupt.BankruptState;
@@ -57,6 +60,8 @@ export function Board({
   clear?: boolean;
   /** Spaces the player can build on right now: a little green arrow hops above their rent. */
   upgradable?: Set<string>;
+  /** The police car fetching a frog to jail (a card sent it): drives along the top row. */
+  police?: PoliceView | null;
   children: ReactNode;
 }) {
   const n = state.board.tiles.length;
@@ -286,7 +291,7 @@ export function Board({
         {/* the frogs hop from space to space */}
         <div className="pointer-events-none absolute inset-0">
           {state.players.map((p) => {
-            if (p.bankrupt) return null;
+            if (p.bankrupt || (police?.hideFrog && police.id === p.id)) return null;
             const pos = shown[p.id] ?? p.pos;
             const { x, y } = at(pos);
             const mates = state.players.filter(
@@ -313,6 +318,36 @@ export function Board({
             );
           })}
         </div>
+        {/* the police car (fast version of the artist's sequence): clipped to the board */}
+        {police && (
+          <div className="pointer-events-none absolute inset-0 overflow-hidden" data-testid="bk-police">
+            {police.delivered && (
+              <img
+                src={jailWithUrl(police.colour)}
+                alt=""
+                className="absolute block"
+                style={{
+                  left: pct(7 * 32),
+                  top: pct(0),
+                  width: pct(33),
+                  imageRendering: 'pixelated',
+                }}
+              />
+            )}
+            <img
+              src={carUrl(police)}
+              alt=""
+              className="absolute block"
+              style={{
+                left: pct(police.x - (police.dir === 'up' ? 14.5 : 20.5)),
+                top: pct(16 - (police.dir === 'up' ? 20.5 : 14.5) + (police.bump ? 1 : 0)),
+                width: pct(police.dir === 'up' ? 29 : 41),
+                imageRendering: 'pixelated',
+                transition: `left ${police.ms}ms ease-in-out`,
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

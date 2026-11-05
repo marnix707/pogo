@@ -3,6 +3,7 @@ import { getSettings, subscribeSettings } from './settings';
 export type SoundName =
   | 'tap'
   | 'cash'
+  | 'siren'
   | 'jail'
   | 'roll'
   | 'score'
@@ -328,6 +329,13 @@ export function play(name: SoundName) {
       tone(c, 233, 0.02, 1, 'triangle', 0.12);
       noise(c, 0.55, 0.06, 0.4, 1800);
       tone(c, 180, 0.55, 0.12, 'square', 0.1);
+      break;
+    case 'siren':
+      // The police car: the slow wail (not the fast two-tone), low in volume: up and down twice, 1.2 s each.
+      sweep(c, 'triangle', 700, 1000, 0, 0.6, 0.035);
+      sweep(c, 'triangle', 1000, 700, 0.6, 0.6, 0.035);
+      sweep(c, 'triangle', 700, 1000, 1.2, 0.6, 0.035);
+      sweep(c, 'triangle', 1000, 700, 1.8, 0.6, 0.035);
       break;
     case 'cash':
       // "Cha-ching": the till drawer (a clack and a rattle of coins), then the bell ringing out.

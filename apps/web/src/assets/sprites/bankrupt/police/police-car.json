@@ -1,0 +1,53 @@
+{
+ "car_canvas": [
+  41,
+  29
+ ],
+ "anchor": "centre of the canvas = centre of the car body; drive along the top-row centre line (board y = 16)",
+ "cage_centre_offset_from_car_centre": {
+  "facing_right": [
+   -6,
+   0
+  ],
+  "facing_left": [
+   6,
+   0
+  ]
+ },
+ "siren": "alternate siren-a / siren-b every 120ms while the car is on duty",
+ "timing": {
+  "siren_toggle_ms": 120,
+  "drive_ms_per_px": 3.2,
+  "drive_min_ms": 450,
+  "ease": "easeInOutQuad",
+  "park_offset_px": 28,
+  "uturn_frames": [
+   [
+    "left",
+    90
+   ],
+   [
+    "turn-up",
+    90
+   ],
+   [
+    "right",
+    90
+   ]
+  ],
+  "hop_into_cage": "one frog hop (330ms) from the tile centre to the cage: car centre - 8px; at landing swap car to <colour>-siren-*",
+  "cage_bump_ms": 120,
+  "at_jail_pause_ms": 250,
+  "leave_ms": 450
+ },
+ "sequence": [
+  "1. Car appears on the Jail tile (top-right corner), facing left, siren on.",
+  "2. Drive left to (frog tile centre + 28px). Show speed-lines behind it while moving.",
+  "3. U-turn in place: left -> turn-up -> right (90ms each) with a dust puff.",
+  "4. Frog hops right into the cage (car centre - 6px). On landing: car frame = <colour>-siren-*, 1px bump down for 120ms.",
+  "5. Drive right to the Jail tile centre, frog visible in the cage.",
+  "6. Pause 250ms, swap the Jail tile to jail/jail-with-<colour>.svg and the car to empty-siren-*.",
+  "7. Car drives right off the board (clip drawing to the board) and disappears; siren stops."
+ ],
+ "only_top_row": "Jail is reached from \"?\" or the top row, so the car only drives horizontally along the top row."
+}

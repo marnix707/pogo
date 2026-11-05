@@ -19,6 +19,9 @@ import type { Part } from './PixelLabel';
 import { measure, pixelSafe } from './pixel-text/pixelText';
 import { CARD_H, CARD_W, SCREEN_W, rowXs, screenArt } from './screenArt';
 import { useStageScale } from './useStage';
+import { POLICE } from './police';
+import type { PoliceView } from './police';
+import { gridPos } from './grid';
 
 type State = bankrupt.BankruptState;
 
@@ -113,6 +116,9 @@ function useWalking(state: State) {
   const [card, setCard] = useState<{ ev: CardEvent; phase: 'wait' | 'in' | 'out' } | null>(null);
   const [hold, setHold] = useState<Record<string, number> | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  // The police car fetches a frog that a card sent to jail from the top row (instead of letting it hop there).
+  const [police, setPolice] = useState<PoliceView | null>(null);
+  const plan = useRef<{ id: string; from: number; colour: string; jailIdx: number } | null>(null);
   const target = (p: State['players'][number]) => hold?.[p.id] ?? p.pos;
 
   // A new move: the die tumbles first, then the tokens walk.
@@ -121,6 +127,8 @@ function useWalking(state: State) {
     seenSeq.current = state.seq;
     timers.current.forEach(clearTimeout);
     timers.current = [];
+    plan.current = null;
+    setPolice(null);
     const rolled = state.events.some((e) => e.k === 'roll');
     const cardAt = state.events.findIndex((e) => e.k === 'card');
     if (cardAt >= 0) {
@@ -131,6 +139,18 @@ function useWalking(state: State) {
         setHold({ [ev.by]: stop });
         setCard({ ev, phase: 'wait' });
       }
+      const jailEv = state.events.find((e) => e.k === 'jail');
+      const jailed = jailEv && jailEv.k === 'jail' ? state.players.find((p) => p.id === jailEv.by) : undefined;
+      // (the car only drives along the top row: from the "?" corner or a space next to it)
+      plan.current =
+        !reduced() && jailed && jailed.id === ev.by && stop !== undefined && stop >= 7 && stop <= 13
+          ? {
+              id: jailed.id,
+              from: stop,
+              colour: bankrupt.PLAYER_COLOURS[jailed.colour % bankrupt.PLAYER_COLOURS.length]!,
+              jailIdx: state.board.tiles.findIndex((t) => t.kind === 'jail'),
+            }
+          : null;
     } else {
       setHold(null);
       setCard(null);
@@ -186,15 +206,57 @@ function useWalking(state: State) {
       setTimeout(
         () => {
           // Gone: now the card does what it says (walk on, walk to jail, the payments).
-          setHold(null);
           setCard(null);
+          if (plan.current) runPolice(plan.current);
+          else setHold(null);
         },
         slide + show + slide,
       ),
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card, walked]);
+  // The sequence, fast: the car comes out of the Jail space, drives to the frog, turns round, takes it, drives back,
+  // delivers it behind the bars and leaves. (Times in ms from the start.)
+  const runPolice = (job: { id: string; from: number; colour: string; jailIdx: number }) => {
+    const n2 = state.board.tiles.length;
+    const xOf = (i: number) => gridPos(i, n2).col * 32 + 16;
+    const jx = xOf(job.jailIdx);
+    const fx = xOf(job.from) + POLICE.parkOffset;
+    const drive = Math.max(POLICE.minDriveMs, Math.abs(jx - fx) * POLICE.msPerPx);
+    const base = { id: job.id, colour: job.colour, siren: 'a' as const, carrying: false, hideFrog: false, delivered: false, bump: false };
+    const at = (ms: number, fn: () => void) => timers.current.push(setTimeout(fn, ms));
+    const set = (patch: Partial<PoliceView>) => setPolice((v) => (v ? { ...v, ...patch } : v));
+    setPolice({ ...base, x: jx, ms: 0, dir: 'left' });
+    play('siren');
+    let t = 40;
+    at(t, () => set({ x: fx, ms: drive }));
+    t += drive;
+    at(t, () => set({ dir: 'up', ms: 0 }));
+    at((t += POLICE.uturnFrameMs), () => set({ dir: 'right' }));
+    at((t += POLICE.uturnFrameMs), () => set({ carrying: true, hideFrog: true, bump: true }));
+    at((t += POLICE.bumpMs), () => set({ bump: false, x: jx, ms: drive }));
+    t += drive + POLICE.pauseMs;
+    at(t, () => {
+      // delivered: the frog is behind the bars (its token waits in the cage until the car has left)
+      setShown((cur) => ({ ...cur, [job.id]: job.jailIdx }));
+      setHold(null);
+      set({ delivered: true, carrying: false });
+    });
+    at((t += POLICE.pauseMs), () => set({ x: 257 + 30, ms: POLICE.leaveMs }));
+    at((t += POLICE.leaveMs), () => setPolice(null));
+  };
+  // The siren lights flash.
+  const sirenOn = police !== null;
+  useEffect(() => {
+    if (!sirenOn) return;
+    const i = setInterval(
+      () => setPolice((v) => (v ? { ...v, siren: v.siren === 'a' ? 'b' : 'a' } : v)),
+      POLICE.sirenMs,
+    );
+    return () => clearInterval(i);
+  }, [sirenOn]);
   const cardBusy = card !== null;
-  return { shown, rolling, settled: walked && !cardBusy, card, cardBusy };
+  return { shown, rolling, settled: walked && !cardBusy && !police, card, cardBusy, police };
 }
 
 /** Moves that make their own sound (the cash sound when the money moves). */
@@ -228,7 +290,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const mover = players[state.turn]!;
   const nickOf = (id: string) => room.members.find((m) => m.id === id);
   const name = (id: string) => nickOf(id)?.nickname ?? 'Player';
-  const { shown, rolling, settled, card, cardBusy } = useWalking(state);
+  const { shown, rolling, settled, card, cardBusy, police } = useWalking(state);
   const { shown: cashShown, playing: paying } = useCashFx(state, settled);
   void cardBusy;
   // Nobody acts while the last player's token is still walking, the die tumbles or a payment is on show.
@@ -703,6 +765,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
               overlay={popupNode}
               clear={tradeOn || auctionOn || swapping || rainbowing}
             upgradable={upgradable}
+            police={police}
               onPulse={(id) => {
                 play('tap');
                 setPick(id === pick ? null : id);
