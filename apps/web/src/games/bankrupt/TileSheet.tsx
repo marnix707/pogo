@@ -66,14 +66,19 @@ export function TileSheet({
                   onClose();
                 },
               },
-              {
-                kind: 'upgrade',
-                enabled: canUpgrade,
-                testId: 'bk-build',
-                label: `Upgrade ${tile.name} for ${tile.kind === 'property' ? money(tile.buildCost) : '-'}`,
-                tag: tile.kind === 'property' ? tile.buildCost : undefined,
-                onClick: () => void send({ type: 'build', tile: tile.id }),
-              },
+              // (Harbor, Railway, Airport and Electricity cannot be built on: no Upgrade button, Sell is centred)
+              ...(tile.kind === 'property'
+                ? [
+                    {
+                      kind: 'upgrade' as const,
+                      enabled: canUpgrade,
+                      testId: 'bk-build',
+                      label: `Upgrade ${tile.name} for ${money(tile.buildCost)}`,
+                      tag: tile.buildCost,
+                      onClick: () => void send({ type: 'build', tile: tile.id }),
+                    },
+                  ]
+                : []),
             ]}
           />
         </div>
