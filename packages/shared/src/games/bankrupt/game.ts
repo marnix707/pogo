@@ -404,7 +404,9 @@ function validateMove(
   }
   if (move.type === 'tradeOffer' || move.type === 'tradePass') {
     const t = state.trade;
-    if (!t || t.stage !== 'offers') return err('There is no trade to answer');
+    // (a player may pass already while the mover is still choosing: they do not want to trade)
+    if (!t || (t.stage !== 'offers' && !(move.type === 'tradePass' && t.stage === 'pick')))
+      return err('There is no trade to answer');
     if (playerId === t.by) return err('Not your turn');
     if (playerId in t.offers) return err('You have already answered');
     if (move.type === 'tradePass') return OK;
@@ -578,10 +580,15 @@ function applyMove(
       s.trade!.offers[me.id] = move.tile;
       offersDone(s);
       break;
-    case 'tradePass':
-      s.trade!.offers[me.id] = null;
-      offersDone(s);
+    case 'tradePass': {
+      const t = s.trade!;
+      t.offers[me.id] = null;
+      // Still choosing, and nobody else wants to trade either: nothing left to trade.
+      if (t.stage === 'pick') {
+        if (traders(s, t.by).every((p) => p.id in t.offers)) endTrade(s);
+      } else offersDone(s);
       break;
+    }
     case 'tradeAccept': {
       const t = s.trade!;
       const other = playerOf(s, move.from)!;

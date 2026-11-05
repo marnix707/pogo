@@ -514,6 +514,31 @@ describe('the trade on the Auction corner', () => {
   });
 });
 
+describe('trade: passing while the mover is still choosing', () => {
+  it('the trade is cancelled when every other player passes before the pick', () => {
+    let s = start();
+    const a = mover(s).id;
+    const b = other(s);
+    s = own(own(s, 'rio', a), 'cairo', b);
+    s = { ...s, phase: 'trade', trade: { by: a, stage: 'pick', give: null, offers: {} } };
+    expect(game.validateMove(s, b, { type: 'tradePass' })).toMatchObject({ ok: true });
+    s = play(s, b, { type: 'tradePass' });
+    expect(s.trade).toBeNull();
+  });
+  it('an early pass stays a pass when the mover picks', () => {
+    let s = start(3);
+    const a = mover(s).id;
+    const [b, c] = s.players.map((p) => p.id).filter((id) => id !== a) as [string, string];
+    s = own(own(own(s, 'rio', a), 'cairo', b), 'madrid', c);
+    s = { ...s, phase: 'trade', trade: { by: a, stage: 'pick', give: null, offers: {} } };
+    s = play(s, b, { type: 'tradePass' });
+    expect(s.trade?.stage).toBe('pick');
+    s = play(s, a, { type: 'tradePick', tile: 'rio' });
+    expect(s.trade?.stage).toBe('offers');
+    expect(s.trade?.offers[b]).toBeNull();
+  });
+});
+
 describe('bankruptcy and winning', () => {
   it('cash can go to -500, below that a player is out and their spaces go back to the bank', () => {
     let s = start(3);
@@ -535,6 +560,20 @@ describe('bankruptcy and winning', () => {
     t = play(t, first, { type: 'roll' }, dice(3));
     expect(t.players.find((p) => p.id === first)!.bankrupt).toBe(false);
     expect(t.players.find((p) => p.id === first)!.cash).toBe(-480);
+  });
+
+  it('a six that bankrupts the mover does not give them another roll', () => {
+    let s = start(3);
+    const [a, b, c] = s.players.map((p) => p.id) as [string, string, string];
+    s = own(own(own(s, 'madrid', c), 'cairo', c), 'bangkok', c);
+    s = patch(s, a, { pos: idx('madrid') - 6, cash: -480 });
+    s = { ...s, turn: 0 };
+    s = play(s, a, { type: 'roll' }, dice(6));
+    expect(s.players.find((p) => p.id === a)!.bankrupt).toBe(true);
+    expect(mover(s).id).not.toBe(a);
+    expect(s.phase).toBe('roll');
+    expect(s.sixes).toBe(0);
+    void b;
   });
 
   it('the last player standing wins', () => {

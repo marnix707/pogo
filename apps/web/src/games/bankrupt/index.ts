@@ -14,5 +14,7 @@ export const bankruptUi: GameUi = {
   Component: BankruptGame,
   LobbyOptions: BankruptOptionsPicker,
   Rules: ({ open, onClose }) => createElement(BankruptRules, { open, onClose }),
+  // The walk and payments of the last move play, then a banner says why it ended, then the results.
+  resultsDelayMs: () => 6500,
   scoreText: (score) => `$${score.toLocaleString('en-US')}`,
 };

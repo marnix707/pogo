@@ -1660,3 +1660,35 @@ html.results-open .safe-top-scrim {
     0 0 0 1px #101628;
   background: rgb(126 224 140 / 0.35);
 }
+
+/* Bankrupt!: the two traded cards swap places in an arc. */
+.bk-swap {
+  animation: bk-swap 1.3s cubic-bezier(0.45, 0, 0.35, 1) 0.45s both;
+}
+@keyframes bk-swap {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(calc(var(--dx) / 2), var(--dy)) scale(1.18);
+  }
+  100% {
+    transform: translate(var(--dx), 0) scale(1);
+  }
+}
+/* Bankrupt!: the hall and the die shrink away while a trade fills the middle. */
+.bk-away {
+  transition:
+    opacity 350ms ease-in,
+    transform 350ms ease-in;
+  opacity: 0;
+  transform: scale(0.4);
+}
+@media (prefers-reduced-motion: reduce) {
+  .bk-swap {
+    animation: none;
+  }
+  .bk-away {
+    transition: none;
+  }
+}

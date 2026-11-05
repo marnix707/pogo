@@ -8,7 +8,8 @@ import { play } from '../../lib/sound';
 import { Board, money, seatColour } from './Board';
 import { BuyOverlay } from './BuyOverlay';
 import { LuckCard } from './LuckCard';
-import { TradePanel, pulsingTiles } from './TradePanel';
+import { EndBanner } from './EndBanner';
+import { TradePanel, TradeSwap, pulsingTiles } from './TradePanel';
 import { TileSheet } from './TileSheet';
 import { useCashFx } from './useCashFx';
 import { useCountdown } from '../../lib/useCountdown';
@@ -330,8 +331,14 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const bottomSeats = [around[0]!, ...others.slice(3).reverse()];
 
   // Everything that pops up lives inside the middle of the board (never over a space).
+  // A trade has just gone through: its cards swap places while the bonus is paid (the owners change after).
+  const swapping = animating && !state.trade && state.events.some((e) => e.k === 'trade');
   const popupNode =
-    card && card.phase !== 'wait' ? (
+    finished && !animating ? (
+      <EndBanner state={state} name={name} />
+    ) : swapping ? (
+      <TradeSwap state={state} name={name} />
+    ) : card && card.phase !== 'wait' ? (
       <LuckCard
         kind={card.ev.kind}
         textLine={card.ev.text}
@@ -360,7 +367,6 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         busy={busy}
         deadline={game.deadline}
         serverTime={room.serverTime}
-        open={setTileOpen}
         pick={pick}
         onClearPick={() => setPick(null)}
       />
@@ -397,6 +403,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         pulse={pulse}
         picked={pick}
         overlay={popupNode}
+        clear={tradeOn || swapping}
         onPulse={(id) => setPick(id === pick ? null : id)}
       >
         <div className="flex h-[23cqw] items-center" data-testid="bk-dice">
@@ -435,7 +442,10 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       </div>
 
       {/* What I can do right now. */}
-      <div className="hud calm flex flex-col gap-2 p-3" data-testid="bk-actions">
+      <div
+        className={`hud calm flex flex-col gap-2 p-3 ${state.trade ? 'hidden' : ''}`}
+        data-testid="bk-actions"
+      >
         {room.spectating || !canAct ? (
           <p className="label text-center text-onbg/80">
             {room.spectating
@@ -447,6 +457,11 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         ) : tradeOn ? (
           <p className="label text-center text-onbg/80" data-testid="bk-trade-hint">
             Trade: see the middle of the board
+          </p>
+        ) : animating && (state.auction || state.phase === 'jailAsk') ? (
+          // (the auction and the jail question wait until the walk, the card and the payments are played out)
+          <p className="label text-center text-onbg/80" data-testid="bk-animating">
+            …
           </p>
         ) : state.auction ? (
           <AuctionPanel

@@ -10,6 +10,11 @@ interface Transfer {
   to: string | null;
   tile: string;
   amount: number;
+  /** Start salary that is paid on at once (you passed Start, then landed on a rent / fee): this part of the
+   * notes flies on to `split.to` (null = the bank), the rest to `to`. */
+  split?: { to: string | null; amount: number };
+  /** The number that pops up instead of the amount. */
+  label?: string;
 }
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -20,20 +25,49 @@ const reduced = () =>
 function transfersOf(s: State): Transfer[] {
   const out: Transfer[] = [];
   const start = s.board.tiles[0]!.id;
-  for (const e of s.events) {
-    if (e.k === 'rent') out.push({ from: e.by, to: e.to, tile: e.tile, amount: e.amount });
-    else if (e.k === 'salary') out.push({ from: null, to: e.by, tile: start, amount: e.amount });
+  const ev = s.events;
+  // You passed Start and then landed on a rent / fee: the salary notes divide between the one you pay and
+  // your own cash, so the payment is not played on its own (only what the salary does not cover is).
+  const split = new Map<number, { to: string | null; amount: number }>();
+  const left = new Map<number, number>();
+  ev.forEach((e, i) => {
+    if (e.k !== 'salary' || e.amount <= 0) return;
+    for (let j = i + 1; j < ev.length; j++) {
+      const f = ev[j]!;
+      if (left.has(j)) continue;
+      if (f.k !== 'rent' && f.k !== 'pay') continue;
+      const by = f.k === 'rent' ? f.by : f.from;
+      if (by !== e.by || f.amount <= 0) continue;
+      const x = Math.min(e.amount, f.amount);
+      split.set(i, { to: f.to, amount: x });
+      left.set(j, f.amount - x);
+      break;
+    }
+  });
+  ev.forEach((e, i) => {
+    const sp = split.get(i);
+    const rest = left.get(i);
+    if (e.k === 'rent') out.push({ from: e.by, to: e.to, tile: e.tile, amount: rest ?? e.amount });
+    else if (e.k === 'salary')
+      out.push({ from: null, to: e.by, tile: start, amount: e.amount, ...(sp ? { split: sp } : {}) });
     else if (e.k === 'buy') out.push({ from: e.by, to: null, tile: e.tile, amount: e.price });
     else if (e.k === 'auction' && e.winner)
       out.push({ from: e.winner, to: null, tile: e.tile, amount: e.amount });
     else if (e.k === 'pay')
-      out.push({ from: e.from, to: e.to, tile: s.board.cardTile, amount: e.amount });
+      out.push({ from: e.from, to: e.to, tile: s.board.cardTile, amount: rest ?? e.amount });
     else if (e.k === 'trade') {
       // The bank pays both players a bonus.
-      out.push({ from: null, to: e.by, tile: e.give, amount: e.bonus });
-      out.push({ from: null, to: e.with, tile: e.take, amount: e.bonus });
+      // (both at once: the notes divide between the two, like a salary that is paid on)
+      out.push({
+        from: null,
+        to: e.by,
+        tile: e.give,
+        amount: e.bonus * 2,
+        split: { to: e.with, amount: e.bonus },
+        label: '+$' + e.bonus.toLocaleString('en-US'),
+      });
     }
-  }
+  });
   return out.filter((t) => t.amount > 0);
 }
 
@@ -75,11 +109,12 @@ async function pop(at: { x: number; y: number }, text: string, colour: string) {
 }
 
 /** Banknotes fly from one point to another in an arc; resolves when the first one has arrived. */
-function fly(from: { x: number; y: number }, to: { x: number; y: number }, amount: number) {
-  const n = Math.max(2, Math.min(6, Math.ceil(amount / 40)));
+function fly(from: { x: number; y: number }, targets: { x: number; y: number }[]) {
+  const n = targets.length;
   const ms = 700;
   const done: Promise<unknown>[] = [];
   for (let i = 0; i < n; i++) {
+    const to = targets[i]!;
     const img = document.createElement('img');
     img.src = art('cash');
     Object.assign(img.style, {
@@ -143,6 +178,8 @@ export function useCashFx(
   const stop = useRef<() => void>();
   const latest = useRef(state);
   latest.current = state;
+  // The cash of every player in the state before this move: where a payment's count starts from.
+  const prevCash = useRef<Record<string, number>>(values.current);
 
   const snap = () => {
     setShown(Object.fromEntries(latest.current.players.map((p) => [p.id, p.cash])));
@@ -152,15 +189,19 @@ export function useCashFx(
   useEffect(() => {
     if (seenSeq.current === state.seq) return;
     seenSeq.current = state.seq;
+    const before = prevCash.current;
+    prevCash.current = Object.fromEntries(state.players.map((p) => [p.id, p.cash]));
     stop.current?.();
     const transfers = reduced() ? [] : transfersOf(state);
     job.current = transfers.length > 0 ? transfers : null;
     setPlaying(transfers.length > 0);
-    const involved = new Set(transfers.flatMap((t) => [t.from, t.to]).filter(Boolean) as string[]);
+    const involved = new Set(transfers.flatMap((t) => [t.from, t.to, t.split?.to]).filter(Boolean) as string[]);
     // Everybody not in a payment shows the new cash at once; the others wait for the show.
-    setShown((cur) =>
+    // (from the cash before this move, not from what is on screen: a show that was cut short by
+    // this move has just snapped to the new cash, which would count from the wrong number)
+    setShown(
       Object.fromEntries(
-        state.players.map((p) => [p.id, involved.has(p.id) ? (cur[p.id] ?? p.cash) : p.cash]),
+        state.players.map((p) => [p.id, involved.has(p.id) ? (before[p.id] ?? p.cash) : p.cash]),
       ),
     );
   }, [state]);
@@ -193,18 +234,33 @@ export function useCashFx(
         const tile = centre(tileEl(t.tile));
         const payer = t.from ? centre(tagEl(t.from)) : tile;
         const receiver = t.to ? centre(tagEl(t.to)) : tile;
-        if (!tile || !payer || !receiver) continue;
-        const text = `${t.from ? '-' : '+'}$${t.amount.toLocaleString('en-US')}`;
+        const splitTo = t.split ? (t.split.to ? centre(tagEl(t.split.to)) : tile) : null;
+        if (!tile || !payer || !receiver || (t.split && !splitTo)) continue;
+        const text = t.label ?? `${t.from ? '-' : '+'}$${t.amount.toLocaleString('en-US')}`;
         void pop(tile, text, t.from ? '#ff6b57' : '#7ee08c');
         if (t.from) void count(t.from, -t.amount, 650);
         await sleep(420);
         if (stopped) return;
-        const flight = fly(t.from ? payer : tile, t.to ? receiver : tile, t.amount);
+        // With a split, a share of the notes (the size of the payment) flies on to the one paid, spread
+        // between the others so they all leave the space together.
+        const n = t.split
+          ? Math.max(4, Math.min(8, Math.ceil(t.amount / 30)))
+          : Math.max(2, Math.min(6, Math.ceil(t.amount / 40)));
+        const targets = Array.from({ length: n }, () => receiver);
+        const mine = t.split
+          ? Math.min(n - 1, Math.max(1, Math.round((n * t.split.amount) / t.amount)))
+          : 0;
+        for (let k = 0; k < mine; k++) targets[Math.floor(((k + 0.5) * n) / mine)] = splitTo!;
+        const flight = fly(t.from ? payer : tile, targets);
         await sleep(flight.firstArrives);
         if (stopped) return;
-        if (t.to) {
+        if (t.to || t.split) {
           play('score');
-          await count(t.to, t.amount, 550);
+          const own = t.amount - (t.split?.amount ?? 0);
+          await Promise.all([
+            t.to && own > 0 ? count(t.to, own, 550) : undefined,
+            t.split?.to ? count(t.split.to, t.split.amount, 550) : undefined,
+          ]);
         }
         await flight.all;
       }

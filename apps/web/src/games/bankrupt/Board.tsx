@@ -37,6 +37,7 @@ export function Board({
   onPulse,
   picked,
   overlay,
+  clear = false,
   children,
 }: {
   state: bankrupt.BankruptState;
@@ -49,6 +50,8 @@ export function Board({
   picked: string | null;
   /** A pop-up (a card ...): drawn inside the middle of the board only, so it never covers a space. */
   overlay?: ReactNode;
+  /** The hall and the middle (die, note) shrink away, e.g. while a trade fills the middle. */
+  clear?: boolean;
   children: ReactNode;
 }) {
   const n = state.board.tiles.length;
@@ -203,9 +206,14 @@ export function Board({
             src={cityArt('city-hall')}
             alt=""
             draggable={false}
+            className={clear ? 'bk-away' : 'transition-[opacity,transform] duration-300'}
             style={{ width: pct(86), imageRendering: 'pixelated' }}
           />
-          {children}
+          <div
+            className={`flex flex-col items-center gap-[2%] ${clear ? 'bk-away' : ''}`}
+          >
+            {children}
+          </div>
         </div>
         {/* pop-ups live inside the middle of the board */}
         {overlay && (
