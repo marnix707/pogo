@@ -174,9 +174,9 @@ export function PropertyCard({
             label: `${i + 1} OWNED`,
             value: tile.rent[0]! * (i + 1),
           })),
-          { icon: 'up1', label: 'LEVEL 1', value: tile.rent[1]! },
-          { icon: 'up2', label: 'LEVEL 2', value: tile.rent[2]! },
-          { icon: 'up3', label: 'LEVEL 3', value: tile.rent[3]! },
+          { icon: 'up1', label: 'LEVEL 1', value: tile.rent[0]! * groupSize + tile.rent[1]! },
+          { icon: 'up2', label: 'LEVEL 2', value: tile.rent[0]! * groupSize + tile.rent[2]! },
+          { icon: 'up3', label: 'LEVEL 3', value: tile.rent[0]! * groupSize + tile.rent[3]! },
         ]
       : tile.rent.map((r, i) => ({
           icon: null,

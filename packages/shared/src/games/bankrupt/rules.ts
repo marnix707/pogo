@@ -48,10 +48,11 @@ export function rentOf(s: BankruptState, tile: OwnableTile): number {
   const holding = s.owned[tile.id];
   if (!holding) return 0;
   if (tile.kind === 'property') {
-    if (holding.level > 0) return tile.rent[Math.min(3, holding.level)] ?? 0;
     // The more spaces of one colour the owner has, the more each of them asks: 1 x, 2 x, 3 x the base rent.
     const owned = groupOf(s.board, tile).filter((t) => s.owned[t.id]?.owner === holding.owner).length;
-    return tile.rent[0] * Math.max(1, owned);
+    const base = tile.rent[0] * Math.max(1, owned);
+    // A building adds its amount on top of that (the table lists the extra, not the whole rent).
+    return base + (holding.level > 0 ? (tile.rent[Math.min(3, holding.level)] ?? 0) : 0);
   }
   const n = holdingsOf(s, holding.owner).filter((t) => t.kind === 'transport').length;
   return tile.rent[Math.min(n, tile.rent.length) - 1] ?? 0;

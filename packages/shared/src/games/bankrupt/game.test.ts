@@ -200,7 +200,8 @@ describe('buildings, selling and net worth', () => {
     s = play(s, a, { type: 'build', tile: 'rio' });
     expect(s.owned['rio']!.level).toBe(1);
     expect(cash(s, a)).toBe(950);
-    expect(rentOf(s, tileById(s.board, 'rio') as never)).toBe(30);
+    // (two owned: 2 x 10, plus the building's 30)
+    expect(rentOf(s, tileById(s.board, 'rio') as never)).toBe(50);
     // 950 cash + sell 80 + 80 + one building (half of 50)
     expect(netWorth(s, a)).toBe(950 + 80 + 80 + 25);
     s = play(s, a, { type: 'sellBuilding', tile: 'rio' });
