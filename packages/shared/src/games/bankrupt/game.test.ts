@@ -750,3 +750,24 @@ describe('computer players', () => {
     }
   });
 });
+
+describe('the repair bill card', () => {
+  it('never bankrupts you: it only takes what the debt limit allows', () => {
+    const board = {
+      ...DEFAULT_BOARD,
+      cards: [
+        {
+          text: 'Repair bill: pay $40 for every building you own',
+          effect: { type: 'perBuilding' as const, amount: -40 },
+        },
+      ],
+    };
+    let s: BankruptState = { ...start(), board };
+    const a = mover(s).id;
+    s = own(own(s, 'rio', a, 3), 'delhi', a, 2); // 5 buildings = $200
+    s = patch(s, a, { cash: -450, pos: idx('cards') - 3 });
+    s = play(s, a, { type: 'roll' }, dice(3, 1));
+    expect(s.players.find((p) => p.id === a)!.bankrupt).toBe(false);
+    expect(cash(s, a)).toBe(DEFAULT_BOARD.bankruptBelow);
+  });
+});

@@ -39,14 +39,16 @@ export function carUrl(v: Pick<PoliceView, 'dir' | 'siren' | 'carrying' | 'colou
 }
 export const jailWithUrl = (colour: string) => url(`jail/jail-with-${colour}`);
 
-/** A fast version of the artist's sequence (the pack's timings are about 2.5 times slower). */
+/** A fast version of the artist's sequence (the pack's timings are about 2.5 times slower), played at 80 % of that
+ * speed: every time below is the fast one divided by 0.8. */
+const SLOWER = 1 / 0.8;
 export const POLICE = {
-  sirenMs: 110,
-  msPerPx: 1.3,
-  minDriveMs: 220,
+  sirenMs: Math.round(110 * SLOWER),
+  msPerPx: 1.3 * SLOWER,
+  minDriveMs: Math.round(220 * SLOWER),
   parkOffset: 28,
-  uturnFrameMs: 45,
-  bumpMs: 80,
-  pauseMs: 120,
-  leaveMs: 240,
+  uturnFrameMs: Math.round(45 * SLOWER),
+  bumpMs: Math.round(80 * SLOWER),
+  pauseMs: Math.round(120 * SLOWER),
+  leaveMs: Math.round(240 * SLOWER),
 };

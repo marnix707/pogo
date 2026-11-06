@@ -320,7 +320,8 @@ function land(s: BankruptState, p: BankruptPlayer, rng: Rng, depth = 0) {
     } else if (e.type === 'perBuilding') {
       const total = buildingsOf(s, p.id) * e.amount;
       if (total >= 0) give(null, p, total);
-      else give(p, null, -total);
+      // (the repair bill can never bankrupt you: it only takes what the debt limit still allows)
+      else give(p, null, Math.min(-total, Math.max(0, p.cash - s.board.bankruptBelow)));
     } else if (e.type === 'jail') {
       sendToJail(s, p);
       s.phase = jailChoice(s, p);
