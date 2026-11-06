@@ -14,6 +14,7 @@ export function TileSheet({
   me,
   tileId,
   canAct,
+  canBuild,
   send,
   name,
   onClose: onCloseNow,
@@ -22,6 +23,8 @@ export function TileSheet({
   me: string;
   tileId: string | null;
   canAct: boolean;
+  /** Building is allowed right now (my roll phase, nothing playing out): else Upgrade is greyed. */
+  canBuild: boolean;
   send: (m: bankrupt.BankruptMove) => Promise<void>;
   name: (id: string) => string;
   onClose: () => void;
@@ -45,6 +48,7 @@ export function TileSheet({
     const canUpgrade =
       mine &&
       canAct &&
+      canBuild &&
       tile.kind === 'property' &&
       level < 3 &&
       bankrupt.ownsSet(state, me, tile) &&

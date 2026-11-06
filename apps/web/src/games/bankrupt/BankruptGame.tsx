@@ -66,7 +66,11 @@ function turnParts(
 ): { actor: string; who: string; parts: string[] } | null {
   const tile = (id: string) => s.board.tiles.find((t) => t.id === id)?.name ?? id;
   const first = s.events.find((e) => 'by' in e || 'winner' in e);
-  const actor = first ? ('by' in first ? first.by : (first as { winner: string | null }).winner) : null;
+  const actor = first
+    ? 'by' in first
+      ? first.by
+      : (first as { winner: string | null }).winner
+    : null;
   if (!actor) return null;
   const nm = (id: string) => (id === actor ? '' : `${name(id)} `);
   const parts: string[] = [];
@@ -88,7 +92,9 @@ function turnParts(
           : `${tile(e.tile)} was not sold`,
       );
     else if (e.k === 'trade')
-      parts.push(`traded ${tile(e.give)} with ${name(e.with)} for ${tile(e.take)}: +${money(e.bonus)} each`);
+      parts.push(
+        `traded ${tile(e.give)} with ${name(e.with)} for ${tile(e.take)}: +${money(e.bonus)} each`,
+      );
     else if (e.k === 'tradeEnd') parts.push('did not trade');
     else if (e.k === 'bankrupt') parts.push(`${nm(e.by)}is bankrupt!`);
   }
@@ -146,7 +152,8 @@ function useWalking(state: State) {
         setCard({ ev, phase: 'wait' });
       }
       const jailEv = state.events.find((e) => e.k === 'jail');
-      const jailed = jailEv && jailEv.k === 'jail' ? state.players.find((p) => p.id === jailEv.by) : undefined;
+      const jailed =
+        jailEv && jailEv.k === 'jail' ? state.players.find((p) => p.id === jailEv.by) : undefined;
       // (the car only drives along the top row: from the "?" corner or a space next to it)
       plan.current =
         !reduced() && jailed && jailed.id === ev.by && stop !== undefined && stop >= 7 && stop <= 13
@@ -164,11 +171,20 @@ function useWalking(state: State) {
       // where it stands (one die: it always starts on the top row).
       const jailIdx = state.board.tiles.findIndex((t) => t.kind === 'jail');
       const jailEv = state.events.find((e) => e.k === 'jail');
-      const jailer = jailEv && jailEv.k === 'jail' ? state.players.find((p) => p.id === jailEv.by) : undefined;
+      const jailer =
+        jailEv && jailEv.k === 'jail' ? state.players.find((p) => p.id === jailEv.by) : undefined;
       const mv = state.events
         .filter((e) => e.k === 'move' && jailer && e.by === jailer.id)
         .at(-1) as { from: number; to: number } | undefined;
-      if (!reduced() && rolled && jailer && mv && mv.to === jailIdx && mv.from >= 7 && mv.from < jailIdx) {
+      if (
+        !reduced() &&
+        rolled &&
+        jailer &&
+        mv &&
+        mv.to === jailIdx &&
+        mv.from >= 7 &&
+        mv.from < jailIdx
+      ) {
         plan.current = {
           id: jailer.id,
           from: mv.from,
@@ -252,7 +268,15 @@ function useWalking(state: State) {
     const jx = xOf(job.jailIdx);
     const fx = xOf(job.from) + POLICE.parkOffset;
     const drive = Math.max(POLICE.minDriveMs, Math.abs(jx - fx) * POLICE.msPerPx);
-    const base = { id: job.id, colour: job.colour, siren: 'a' as const, carrying: false, hideFrog: false, delivered: false, bump: false };
+    const base = {
+      id: job.id,
+      colour: job.colour,
+      siren: 'a' as const,
+      carrying: false,
+      hideFrog: false,
+      delivered: false,
+      bump: false,
+    };
     const at = (ms: number, fn: () => void) => timers.current.push(setTimeout(fn, ms));
     const set = (patch: Partial<PoliceView>) => setPolice((v) => (v ? { ...v, ...patch } : v));
     setPolice({ ...base, x: jx, ms: 0, dir: 'left' });
@@ -515,10 +539,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           style={{ left: A(28), top: A(29), width: A(8), imageRendering: 'pixelated' }}
         />
         <div className="absolute" style={{ left: A(41), top: A(6) }}>
-          <PixelText
-            s={s}
-            parts={[{ text: fit(name(p.id), 50), colour: '#ffffff' }]}
-          />
+          <PixelText s={s} parts={[{ text: fit(name(p.id), 50), colour: '#ffffff' }]} />
         </div>
         {/* the numbers twice as big when they fit */}
         <div className="absolute" style={{ left: A(41), top: A(16) }}>
@@ -620,6 +641,9 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         me={me}
         tileId={tileOpen}
         canAct={myTurn && !state.auction && !state.trade && state.phase !== 'buy'}
+        canBuild={
+          myTurn && state.phase === 'roll' && !animating && !busy && !state.auction && !state.trade
+        }
         send={send}
         name={name}
         onClose={() => setTileOpen(null)}
@@ -725,10 +749,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const H = Math.max(Math.ceil(boardArt + (extras.length ? 236 : 152)), hArt);
   const boardTop = H / 2 - boardArt / 2; // art px
   const rowY = Math.round(
-    Math.max(
-      boardTop + boardArt + (extras.length ? 54 : 12),
-      H * 0.8 + (H * 0.2 - CARD_H) / 2,
-    ),
+    Math.max(boardTop + boardArt + (extras.length ? 54 : 12), H * 0.8 + (H * 0.2 - CARD_H) / 2),
   );
   const goalW = labelWidth(goalParts);
   const status = room.spectating
@@ -798,8 +819,8 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
               picked={pick}
               overlay={popupNode}
               clear={tradeOn || auctionOn || swapping || rainbowing}
-            upgradable={upgradable}
-            police={police}
+              upgradable={upgradable}
+              police={police}
               onPulse={(id) => {
                 play('tap');
                 setPick(id === pick ? null : id);
@@ -829,7 +850,10 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
                 data-testid="bk-note"
                 role="status"
               >
-                {(log.length ? log.map((e) => `${e.who}: ${e.parts.join(' · ')}`) : [rollMessage]).map((text, i) => (
+                {(log.length
+                  ? log.map((e) => `${e.who}: ${e.parts.join(' · ')}`)
+                  : [rollMessage]
+                ).map((text, i) => (
                   <div
                     key={`${i}-${text}`}
                     className="flex flex-col items-center"
@@ -855,12 +879,17 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
             data-testid="bk-roll"
             aria-label="Roll the dice"
             disabled={!rollReady}
-            onClick={() => void send({ type: 'roll' })}
+            onClick={() => {
+              setTileOpen(null); // an open space card closes when I roll
+              void send({ type: 'roll' });
+            }}
             className="absolute block active:translate-y-px disabled:active:translate-y-0"
             style={{ left: A(100), top: A(rowY), width: A(187), height: A(CARD_H) }}
           >
             <img
-              src={screenArt(rollReady ? 'buttons/roll-the-dice-sm' : 'buttons/roll-the-dice-disabled-sm')}
+              src={screenArt(
+                rollReady ? 'buttons/roll-the-dice-sm' : 'buttons/roll-the-dice-disabled-sm',
+              )}
               alt=""
               className="block h-full w-full"
               style={{ imageRendering: 'pixelated' }}
@@ -873,9 +902,9 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
               aria-pressed={autoRoll}
               aria-label={autoRoll ? 'Stop rolling automatically' : 'Roll automatically'}
               onClick={() => {
-              play('tap');
-              setAutoRoll((v) => !v);
-            }}
+                play('tap');
+                setAutoRoll((v) => !v);
+              }}
               className={`absolute flex items-center justify-center border-2 ${
                 autoRoll
                   ? 'border-[#101628] bg-[#101628] text-[#fdcf51]'
