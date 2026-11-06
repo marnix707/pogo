@@ -75,3 +75,7 @@
 - The lobby's info / invite / top bar order: **my picture, friends** on the left, Pogo the frog in the middle, then (right) **leaderboard and settings**; the picture, the tiles and Invite are all 3rem (`h-12`).
 
 - **Leaderboard / Match history tabs** glide: a blue pill slides from one tab to the other and the two panes (side by side in a 200 % wide strip) slide past each other, 380 ms with an iOS-style curve (`cubic-bezier(.32,.72,0,1)`), no motion with reduced motion. The history is fetched when its tab is first opened and stays loaded (`LeaderboardSheet.tsx`).
+
+## Game list order (Play screen)
+
+The games are listed A to Z by name (`gameUis` in `games/registry.ts`). The small sort icon (lines getting shorter, `sort-games`) in the "Games" heading switches the list to **sort mode**: every card wiggles (`.sort-wiggle`), has a grip of dots on the right and the whole card can be dragged (`components/SortableList.tsx`, pointer events: the held card follows the finger, the others slide aside with CSS transitions, it glides into its slot on release, the page scrolls along near the screen edge). Tap the icon (now "Done") to leave it; "A to Z" puts the default order back. The order is a per-browser convenience in `localStorage` key `pogo.gameOrder` (`lib/gameOrder.ts`, `useGameOrder`); games never placed come after the placed ones, A to Z. The same order is used by the "Open games" filter chips. In a lobby the current game is not listed and keeps its place among the others.

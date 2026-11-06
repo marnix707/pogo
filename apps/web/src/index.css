@@ -1936,3 +1936,22 @@ html.results-open .safe-top-scrim {
     animation: none;
   }
 }
+
+/* Sort mode of the game list: every row wiggles a little, so it is clear they can all be moved. */
+@keyframes sort-wiggle {
+  0%,
+  100% {
+    transform: rotate(-0.35deg);
+  }
+  50% {
+    transform: rotate(0.35deg);
+  }
+}
+.sort-wiggle {
+  animation: sort-wiggle 0.5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sort-wiggle {
+    animation: none;
+  }
+}

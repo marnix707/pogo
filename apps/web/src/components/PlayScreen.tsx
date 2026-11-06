@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { PublicRoomSummary } from '@pogo/shared';
-import { gameUis, getGameUi } from '../games/registry';
+import { getGameUi } from '../games/registry';
+import { useGameOrder } from '../lib/gameOrder';
+import { SortableList } from './SortableList';
 import type { GameUi } from '../games/types';
 import type { RoomApi } from '../lib/api';
 import { GameCard } from './GameCard';
@@ -145,6 +147,8 @@ export function PlayScreen({
   onReturn?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const { games: gameUis, setOrder, reset, custom } = useGameOrder();
+  const [sorting, setSorting] = useState(false);
   const [filter, setFilter] = useState<string>('all');
   const [note, setNote] = useState<{ id: string; n: number } | null>(null);
 
@@ -170,46 +174,102 @@ export function PlayScreen({
       {showJoin && <JoinBar api={api} />}
 
       <section aria-label="Games">
-        <SectionLabel>Games</SectionLabel>
-        <div className="flex flex-col gap-3">
-          {/* In a lobby the current game is already the card at the top: it is not listed again. */}
-          {gameUis
-            .filter((g) => g.id !== currentId)
-            .map((g) => {
-              // More people in the lobby than the game seats: greyed out, and tapping says why.
-              const tooBig = !!tooBigFor?.(g.id);
-              return (
-                <div key={g.id} className="relative">
-                  <GameCard
-                    ui={g}
-                    data-testid={`${gameIdPrefix}-${g.id}`}
-                    disabled={blocked}
-                    dim={tooBig}
-                    className={g.id === currentId ? 'ring-2 ring-neon' : ''}
-                    onClick={() => {
-                      if (tooBig) {
-                        setNote({ id: g.id, n: Date.now() });
-                        return;
-                      }
-                      const el = document.querySelector(`[data-testid="${gameIdPrefix}-${g.id}"]`);
-                      void run(onPick(g, el));
-                    }}
-                  />
-                  {note?.id === g.id && (
-                    <span
-                      key={note.n}
-                      role="status"
-                      data-testid="party-too-big"
-                      onAnimationEnd={() => setNote(null)}
-                      className="float-note pointer-events-none absolute inset-0 z-10 flex items-center justify-center text-center text-xl font-bold text-white [text-shadow:0_2px_0_#101628,0_0_8px_#101628]"
-                    >
-                      Party size too big!
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-        </div>
+        <SectionLabel
+          right={
+            <button
+              type="button"
+              data-testid="sort-games"
+              aria-pressed={sorting}
+              aria-label={sorting ? 'Done sorting the games' : 'Sort the games'}
+              onClick={() => setSorting((v) => !v)}
+              className={`flex h-8 min-w-8 items-center justify-center gap-1.5 rounded-md border-2 px-1.5 active:translate-y-px ${
+                sorting ? 'border-accent bg-accent text-accentink' : 'border-onbg/40 text-onbg'
+              }`}
+            >
+              <svg
+                viewBox="0 0 11 9"
+                width={17}
+                height={14}
+                shapeRendering="crispEdges"
+                aria-hidden
+              >
+                <rect x="0" y="0" width="11" height="2" fill="currentColor" />
+                <rect x="2" y="3.5" width="7" height="2" fill="currentColor" />
+                <rect x="4" y="7" width="3" height="2" fill="currentColor" />
+              </svg>
+              {sorting && <span className="label text-[10px]">Done</span>}
+            </button>
+          }
+        >
+          Games
+        </SectionLabel>
+        {sorting && (
+          <p
+            data-testid="sort-hint"
+            className="label mb-3 flex items-center justify-between gap-3 text-[10px] text-onbg/80"
+          >
+            <span>Drag a game up or down to put the games in your own order.</span>
+            {custom && (
+              <button type="button" onClick={reset} className="shrink-0 underline">
+                A to Z
+              </button>
+            )}
+          </p>
+        )}
+        {sorting ? (
+          <SortableList
+            items={gameUis.filter((g) => g.id !== currentId)}
+            onReorder={(shownIds) => {
+              // (the lobby's own game is not listed: it keeps its place among the others)
+              const all = gameUis.map((g) => g.id);
+              const queue = [...shownIds];
+              setOrder(all.map((id) => (id === currentId ? id : queue.shift()!)));
+            }}
+            render={(id) => <GameCard ui={gameUis.find((g) => g.id === id)!} className="!pr-12" />}
+          />
+        ) : (
+          <div className="flex flex-col gap-3">
+            {/* In a lobby the current game is already the card at the top: it is not listed again. */}
+            {gameUis
+              .filter((g) => g.id !== currentId)
+              .map((g) => {
+                // More people in the lobby than the game seats: greyed out, and tapping says why.
+                const tooBig = !!tooBigFor?.(g.id);
+                return (
+                  <div key={g.id} className="relative">
+                    <GameCard
+                      ui={g}
+                      data-testid={`${gameIdPrefix}-${g.id}`}
+                      disabled={blocked}
+                      dim={tooBig}
+                      className={g.id === currentId ? 'ring-2 ring-neon' : ''}
+                      onClick={() => {
+                        if (tooBig) {
+                          setNote({ id: g.id, n: Date.now() });
+                          return;
+                        }
+                        const el = document.querySelector(
+                          `[data-testid="${gameIdPrefix}-${g.id}"]`,
+                        );
+                        void run(onPick(g, el));
+                      }}
+                    />
+                    {note?.id === g.id && (
+                      <span
+                        key={note.n}
+                        role="status"
+                        data-testid="party-too-big"
+                        onAnimationEnd={() => setNote(null)}
+                        className="float-note pointer-events-none absolute inset-0 z-10 flex items-center justify-center text-center text-xl font-bold text-white [text-shadow:0_2px_0_#101628,0_0_8px_#101628]"
+                      >
+                        Party size too big!
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+        )}
       </section>
       <section aria-label="Open games">
         <SectionLabel
