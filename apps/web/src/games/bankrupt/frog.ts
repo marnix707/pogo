@@ -15,9 +15,10 @@ export const frogUrl = (colour: string, dir: FrogDir, frame: FrogFrame): string 
   files[`../../assets/sprites/bankrupt/frog/${colour}/${dir}/${frame}.svg`] ?? '';
 /** The chains and padlock drawn over a frog that sits in jail (19 x 19, same box as the frog). */
 export const jailChainsUrl = jailChains;
-/** The soft ground shadow: 25 x 9 art px, 3 px wider than the frog on both sides, its top on the frog's row 12. */
+/** The soft ground shadow: 25 x 9 art px, shifted to the bottom right of the frog, its top on the frog's row 13. */
 export const shadowUrl = shadowGround;
-export const SHADOW_BOX = { w: 25, h: 9, x: -3, y: 12 };
+// (light comes from the top left, like the board's own drop shadow: the shadow falls to the bottom RIGHT)
+export const SHADOW_BOX = { w: 25, h: 9, x: -1, y: 13 };
 /** How much smaller / fainter the shadow is when the frog is at the top of the hop (1 = at the highest lift). */
 export const SHADOW_APEX = { scale: 0.68, opacity: 0.6 };
 

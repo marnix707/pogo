@@ -44,6 +44,8 @@ CLAUDE.md is kept short on purpose (it is loaded in every session). Feature deta
 
 ## Rules that bite (short; the files above have the why)
 
+- **Shadows always fall to the bottom RIGHT** (light from the top left), in every game and screen: the Bankrupt board's drop shadow, the frogs' ground shadow, cards, panels. Never centre a shadow or put it bottom left.
+
 - **Games are plug-ins**: pure logic in `packages/shared/src/games/<id>` (+ registry), UI in `apps/web/src/games/<id>` (+ registry); the core server / room code has no game-specific code. **Every new game starts with the turn timer Off** (no environment setting; the host picks one in the lobby), uses `useTimeWarning` if it has a clock, and needs a logo in `assets/sprites/brand/logos/`.
 - **Every server error text needs a code** in `packages/shared/src/protocol/errors.ts` (one message, one code; `errors.test.ts` fails otherwise).
 - **Tests with cards or sheets**: e2e runs with reduced motion (Karma tutorial / animations are off there); tap overlapped hand cards on their left strip; wait for `getByRole('dialog')` count 0 between sheets. Accounts / admin / friends e2e need the server on `MAIL_MODE=log` (the dev mailbox).
