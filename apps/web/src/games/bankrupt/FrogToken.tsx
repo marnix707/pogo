@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { HOP, frogUrl, jailChainsUrl, shadowUrl, sideDir } from './frog';
+import { HOP, SHADOW_APEX, SHADOW_BOX, frogUrl, jailChainsUrl, shadowUrl, sideDir } from './frog';
 import type { FrogDir, FrogFrame } from './frog';
 
 const reduced = () =>
@@ -36,10 +36,10 @@ export function FrogToken({
 }) {
   const [frame, setFrame] = useState<FrogFrame>('sit');
   const [dir, setDir] = useState<FrogDir>(() => sideDir(pos, n));
-  const [small, setSmall] = useState(false);
   const prev = useRef(pos);
   const hopping = useRef(false);
   const body = useRef<HTMLImageElement>(null);
+  const shade = useRef<HTMLImageElement>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const later = (ms: number, fn: () => void) => timers.current.push(setTimeout(fn, ms));
 
@@ -58,15 +58,22 @@ export function FrogToken({
     setFrame('crouch');
     later(HOP.crouchMs, () => {
       setFrame('leap');
-      // lifted by the table of the hop, the shadow stays on the ground (the small one while he is high up)
+      // lifted by the table of the hop; the shadow stays on the ground and, in step with the lift, gets smaller
+      // and fainter towards the highest point and grows back as he comes down (one smooth curve, no switching)
       const el = body.current;
       const art = el ? el.getBoundingClientRect().width / 19 : 0;
+      const top = Math.max(...HOP.lift);
       el?.animate(
         HOP.lift.map((px) => ({ transform: `translateY(${-px * art}px)` })),
         { duration: HOP.leapMs, easing: 'linear' },
       );
-      later(HOP.leapMs * 0.25, () => setSmall(true));
-      later(HOP.leapMs * 0.75, () => setSmall(false));
+      shade.current?.animate(
+        HOP.lift.map((px) => ({
+          transform: `scale(${1 - (1 - SHADOW_APEX.scale) * (px / top)})`,
+          opacity: 1 - (1 - SHADOW_APEX.opacity) * (px / top),
+        })),
+        { duration: HOP.leapMs, easing: 'linear' },
+      );
     });
     later(HOP.crouchMs + HOP.leapMs, () => setFrame('crouch'));
     later(HOP.crouchMs + HOP.leapMs + HOP.landMs, () => setFrame('sit'));
@@ -111,10 +118,18 @@ export function FrogToken({
       }}
     >
       <img
-        src={shadowUrl(small)}
+        ref={shade}
+        src={shadowUrl}
         alt=""
-        className="absolute inset-0 block h-full w-full"
-        style={{ imageRendering: 'pixelated' }}
+        data-testid={`${testId}-shadow`}
+        className="absolute block"
+        style={{
+          imageRendering: 'pixelated',
+          left: `${(SHADOW_BOX.x / 19) * 100}%`,
+          top: `${(SHADOW_BOX.y / 19) * 100}%`,
+          width: `${(SHADOW_BOX.w / 19) * 100}%`,
+          height: `${(SHADOW_BOX.h / 19) * 100}%`,
+        }}
       />
       <img
         ref={body}

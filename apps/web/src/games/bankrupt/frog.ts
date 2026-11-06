@@ -1,5 +1,4 @@
-import shadowBig from '../../assets/sprites/bankrupt/frog/shadow-big.svg';
-import shadowSmall from '../../assets/sprites/bankrupt/frog/shadow-small.svg';
+import shadowGround from '../../assets/sprites/bankrupt/frog/shadow-ground.svg';
 import jailChains from '../../assets/sprites/bankrupt/frog/jail-chains.svg';
 
 export type FrogDir = 'up' | 'right' | 'down' | 'left';
@@ -16,7 +15,11 @@ export const frogUrl = (colour: string, dir: FrogDir, frame: FrogFrame): string 
   files[`../../assets/sprites/bankrupt/frog/${colour}/${dir}/${frame}.svg`] ?? '';
 /** The chains and padlock drawn over a frog that sits in jail (19 x 19, same box as the frog). */
 export const jailChainsUrl = jailChains;
-export const shadowUrl = (small: boolean) => (small ? shadowSmall : shadowBig);
+/** The soft ground shadow: 25 x 9 art px, 3 px wider than the frog on both sides, its top on the frog's row 12. */
+export const shadowUrl = shadowGround;
+export const SHADOW_BOX = { w: 25, h: 9, x: -3, y: 12 };
+/** How much smaller / fainter the shadow is when the frog is at the top of the hop (1 = at the highest lift). */
+export const SHADOW_APEX = { scale: 0.68, opacity: 0.6 };
 
 /** Which way a frog faces on a space of the board (the side it stands on: the walk goes round clockwise). */
 export const sideDir = (pos: number, n: number): FrogDir => {

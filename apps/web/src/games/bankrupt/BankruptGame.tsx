@@ -767,10 +767,10 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const boardPx = Math.floor(totalPx / (1 + 4 / 257));
   const bs = boardPx / 257; // css px per board art pixel
   const boardArt = boardPx / s; // the board's size in screen art pixels
-  const H = Math.max(Math.ceil(boardArt + (extras.length ? 236 : 152)), hArt);
+  const H = Math.max(Math.ceil(boardArt + (extras.length ? 248 : 164)), hArt);
   const boardTop = H / 2 - boardArt / 2; // art px
   const rowY = Math.round(
-    Math.max(boardTop + boardArt + (extras.length ? 54 : 12), H * 0.8 + (H * 0.2 - CARD_H) / 2),
+    Math.max(boardTop + boardArt + (extras.length ? 66 : 24), H * 0.8 + (H * 0.2 - CARD_H) / 2),
   );
   const goalW = labelWidth(goalParts);
   const status = room.spectating
@@ -936,10 +936,13 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
               <LockIcon open={!autoRoll} className="h-[70%] w-[70%]" />
             </button>
           )}
-          {/* what is going on, under my row */}
+          {/* whose turn it is (and the debt warning): above my row, between the board and the cards */}
           <div
-            className="absolute flex w-full flex-col items-center gap-1"
-            style={{ top: A(rowY + CARD_H + 6) }}
+            className="absolute flex w-full flex-col items-center justify-end gap-1"
+            style={{
+              top: A((extras.length ? rowY - CARD_H - 3 : rowY) - 22),
+              height: A(19),
+            }}
             data-testid="bk-actions"
           >
             {status && (
