@@ -662,6 +662,7 @@ export class Room {
         nickname: displayName(m.user),
         avatar: m.user.avatar,
         ...(choiceOf?.get(m.user.id) ? { choice: choiceOf.get(m.user.id)! } : {}),
+        ...(m.bot ? { bot: true } : {}),
       }));
     if (players.length < this.game.minPlayers) {
       this.members = this.members.filter((m) => !m.bot);

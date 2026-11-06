@@ -135,6 +135,7 @@ function createInitialState(
       pos: 0,
       jail: 0,
       bankrupt: false,
+      bot: !!p.bot,
       outAt: 0,
     })),
     owned: {},
@@ -451,11 +452,15 @@ const tradable = (s: BankruptState, id: PlayerId) =>
 
 /** The other players who have something to offer. */
 const traders = (s: BankruptState, by: PlayerId) =>
-  alivePlayers(s).filter((p) => p.id !== by && tradable(s, p.id).length > 0);
+  alivePlayers(s).filter((p) => p.id !== by && !p.bot && tradable(s, p.id).length > 0);
 
 /** The mover landed on the Auction corner: a trade starts if somebody on each side has a space to trade. */
 function startTrade(s: BankruptState, p: BankruptPlayer) {
-  if (tradable(s, p.id).length === 0 || traders(s, p.id).length === 0) return;
+  // Nothing to swap, or nobody who would (computers never trade): no pick at all, the screen says so.
+  if (p.bot || tradable(s, p.id).length === 0 || traders(s, p.id).length === 0) {
+    s.events.push({ k: 'tradeNone', by: p.id });
+    return;
+  }
   s.trade = { by: p.id, stage: 'pick', give: null, offers: {} };
   s.phase = 'trade';
 }

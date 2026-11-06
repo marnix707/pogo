@@ -14,6 +14,7 @@ import { AUCTION_WON_MS, AuctionWon } from './AuctionWon';
 import { TipBubble } from '../../components/TipBubble';
 import { toggleTip, useActiveTip } from '../../lib/tip';
 import { BailPanel } from './BailPanel';
+import { TRADE_CANCELLED_MS, TradeCancelled } from './TradeCancelled';
 import { RainbowRoad } from './RainbowRoad';
 import { TradePanel, TradeSwap, pulsingTiles } from './TradePanel';
 import { TileSheet } from './TileSheet';
@@ -59,6 +60,7 @@ function describe(s: State, name: (id: string) => string): string {
         `${name(e.by)} and ${name(e.with)} traded ${tile(e.give)} for ${tile(e.take)}: +${money(e.bonus)} each`,
       );
     else if (e.k === 'tradeEnd') parts.push(`${name(e.by)} did not trade`);
+    else if (e.k === 'tradeNone') parts.push(`${name(e.by)} has nobody to trade with`);
     else if (e.k === 'bankrupt') parts.push(`${name(e.by)} is bankrupt!`);
   }
   return parts.join(' · ');
@@ -108,6 +110,7 @@ function turnParts(
         `traded ${tile(e.give)} with ${name(e.with)} for ${tile(e.take)}: +${money(e.bonus)} each`,
       );
     else if (e.k === 'tradeEnd') parts.push('did not trade');
+    else if (e.k === 'tradeNone') parts.push('has nobody to trade with');
     else if (e.k === 'bankrupt') parts.push(`${nm(e.by)}is bankrupt!`);
   }
   return parts.length ? { actor, who: name(actor), parts: parts.map((x) => x.trim()) } : null;
@@ -356,6 +359,10 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const nickOf = (id: string) => room.members.find((m) => m.id === id);
   const name = (id: string) => nickOf(id)?.nickname ?? 'Player';
   const { shown, rolling, settled, card, cardBusy, police } = useWalking(state);
+  // The trade on the Auction corner is off (cancelled, nobody dealt, nobody to trade with): a short "no deal" show.
+  const [noDealDone, setNoDealDone] = useState(state.seq);
+  const noDealOn =
+    noDealDone !== state.seq && state.events.some((e) => e.k === 'tradeEnd' || e.k === 'tradeNone');
   // An auction has been won: the gavel show runs first (the payment and the new owner come after it).
   const [wonDone, setWonDone] = useState(state.seq);
   const winOn = wonDone !== state.seq && state.events.some((e) => e.k === 'auction' && !!e.winner);
@@ -367,17 +374,22 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const [doneSeq, setDoneSeq] = useState(state.seq);
   useEffect(() => setDoneSeq(state.seq), [state.seq]);
   const fresh = doneSeq !== state.seq;
-  const animating = fresh || !settled || paying || winOn || queue.length > 0;
+  const animating = fresh || !settled || paying || winOn || noDealOn || queue.length > 0;
   useEffect(() => {
     if (!winOn || fresh || !settled) return;
     const t = setTimeout(() => setWonDone(state.seq), reduced() ? 1200 : AUCTION_WON_MS);
     return () => clearTimeout(t);
   }, [winOn, fresh, settled, state.seq]);
   useEffect(() => {
-    if (queue.length === 0 || fresh || !settled || paying || winOn) return;
+    if (!noDealOn || fresh || !settled || paying) return;
+    const t = setTimeout(() => setNoDealDone(state.seq), reduced() ? 900 : TRADE_CANCELLED_MS);
+    return () => clearTimeout(t);
+  }, [noDealOn, fresh, settled, paying, state.seq]);
+  useEffect(() => {
+    if (queue.length === 0 || fresh || !settled || paying || winOn || noDealOn) return;
     setState(queue[0]!);
     setQueue((q) => q.slice(1));
-  }, [queue, fresh, settled, paying, winOn]);
+  }, [queue, fresh, settled, paying, winOn, noDealOn]);
   // The cell door shuts once the token has arrived in jail (when it is sent there, not when it passes by).
   const jailSounded = useRef(state.seq);
   useEffect(() => {
@@ -390,7 +402,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const [seen, setSeen] = useState(state);
   // (a move waiting in the queue does not hold the board back: once this move has been played out it shows,
   // e.g. a computer's purchase, even when its next move is already on the way)
-  const playing = fresh || !settled || paying || winOn;
+  const playing = fresh || !settled || paying || winOn || noDealOn;
   useEffect(() => {
     if (!playing) setSeen(state);
   }, [playing, state]);
@@ -645,6 +657,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const extras = others.slice(3).reverse();
 
   const winShow = winOn && settled && !fresh;
+  const noDealShow = noDealOn && settled && !fresh && !paying;
   // Where the won card flies to: towards the winner's seat (top row, me at the bottom, extra seats beside me).
   const wonEv = state.events.find((e) => e.k === 'auction' && e.winner);
   const wonAt =
@@ -667,6 +680,8 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       <EndBanner state={state} name={name} />
     ) : swapping ? (
       <TradeSwap state={state} name={name} />
+    ) : noDealShow ? (
+      <TradeCancelled state={state} name={name} />
     ) : winShow ? (
       <AuctionWon state={state} name={name} to={wonTo} />
     ) : rainbowing ? (
@@ -884,7 +899,9 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
               pulse={pulse}
               picked={pick}
               overlay={popupNode}
-              clear={tradeOn || auctionOn || bailOn || swapping || rainbowing || winShow}
+              clear={
+                tradeOn || auctionOn || bailOn || swapping || rainbowing || winShow || noDealShow
+              }
               upgradable={upgradable}
               police={police}
               onPulse={(id) => {

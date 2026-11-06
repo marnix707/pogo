@@ -32,6 +32,8 @@ export interface BankruptPlayer {
   /** Turns left in jail (0 = free). */
   jail: number;
   bankrupt: boolean;
+  /** A computer player: it never trades. */
+  bot: boolean;
   /** When the player went bankrupt (a later number = lasted longer), 0 while playing. */
   outAt: number;
 }
@@ -119,6 +121,8 @@ export type BankruptEvent =
   /** A trade went through: `by` gave `give`, `with` gave `take`, both got `bonus` from the bank. */
   | { k: 'trade'; by: PlayerId; with: PlayerId; give: string; take: string; bonus: number }
   | { k: 'tradeEnd'; by: PlayerId }
+  /** The mover stood on the Auction corner but nobody can trade (no spaces to swap, or only computers to trade with). */
+  | { k: 'tradeNone'; by: PlayerId }
   /** Rainbow Road: the street `tiles` was sold back to the bank; each owner got `amount` for their space. */
   | {
       k: 'rainbow';

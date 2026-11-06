@@ -857,3 +857,21 @@ describe('auction bid step', () => {
     expect([100, 150, 200, 300, 420, 450].map(bidStep)).toEqual([5, 5, 10, 15, 20, 20]);
   });
 });
+
+describe('the Auction corner with computers', () => {
+  it('does not even open the pick when the only possible traders are computers', () => {
+    const people2 = [
+      { id: 'h', nickname: 'H', avatar: 'fox' },
+      { id: 'r1', nickname: 'R1', avatar: 'owl', bot: true },
+    ];
+    let s = game.createInitialState(people2, OPTIONS, createSeededRng(7));
+    const h = mover(s).id;
+    const r = s.players.find((p) => p.id !== h)!.id;
+    s = own(own(s, 'rio', h), 'delhi', r);
+    s = patch(s, h, { pos: idx('auction') - 2 });
+    const landed = play(s, h, { type: 'roll' }, dice(2));
+    expect(landed.trade).toBeNull();
+    expect(landed.events.some((e) => e.k === 'tradeNone')).toBe(true);
+    expect(landed.phase).not.toBe('trade');
+  });
+});

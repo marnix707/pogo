@@ -9,6 +9,8 @@ export interface GamePlayer {
   avatar: string;
   /** The player's pick from the game's `choices` (a token colour ...), set by the room. */
   choice?: string;
+  /** A computer player (games may treat them differently, e.g. Bankrupt computers never trade). */
+  bot?: boolean;
 }
 
 export type MoveValidation = { ok: true } | { ok: false; error: string };
