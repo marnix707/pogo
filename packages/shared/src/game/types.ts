@@ -7,6 +7,8 @@ export interface GamePlayer {
   id: PlayerId;
   nickname: string;
   avatar: string;
+  /** The player's pick from the game's `choices` (a token colour ...), set by the room. */
+  choice?: string;
 }
 
 export type MoveValidation = { ok: true } | { ok: false; error: string };
@@ -41,6 +43,12 @@ export interface GameDefinition<State, Move, Options, PlayerView = State> {
   /** Validates room-level game options sent by the host. */
   optionsSchema: z.ZodType<Options, z.ZodTypeDef, unknown>;
   defaultOptions: Options;
+  /**
+   * Something every player picks for themselves in the lobby, each value for one player only (Bankrupt: the frog's
+   * colour). The host always has the first one; the others tap to change to a free one; the room hands each
+   * player's value to `createInitialState` as `GamePlayer.choice`.
+   */
+  choices?: readonly string[];
   /** Validates the wire shape of a move; rules are checked by validateMove. */
   moveSchema: z.ZodType<Move, z.ZodTypeDef, unknown>;
 

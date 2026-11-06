@@ -21,6 +21,7 @@ import {
   ownsSet,
   rainbowRoad,
   playerOf,
+  PLAYER_COLOURS,
   rentOf,
   stepsBetween,
   tileById,
@@ -125,7 +126,11 @@ function createInitialState(
     options,
     players: order.map((p, i) => ({
       id: p.id,
-      colour: players.findIndex((q) => q.id === p.id),
+      // (the colour the player picked in the lobby; else their place in the list)
+      colour:
+        PLAYER_COLOURS.indexOf(p.choice as (typeof PLAYER_COLOURS)[number]) >= 0
+          ? PLAYER_COLOURS.indexOf(p.choice as (typeof PLAYER_COLOURS)[number])
+          : players.findIndex((q) => q.id === p.id),
       cash: board.startCash + i * board.startCashStep,
       pos: 0,
       jail: 0,
@@ -891,6 +896,8 @@ export const bankruptGame: GameDefinition<
   minPlayers: MIN_PLAYERS,
   maxPlayers: MAX_PLAYERS,
   optionsSchema,
+  // Everybody picks their frog's colour in the lobby; the host is always red.
+  choices: PLAYER_COLOURS,
   defaultOptions: {
     target: 5000,
     turns: 0,

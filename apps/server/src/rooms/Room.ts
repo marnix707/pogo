@@ -101,6 +101,8 @@ interface Member {
   readyLock?: boolean;
   /** The game this member suggests for the next round (the host decides). */
   suggestion?: string | null;
+  /** A pick from the game's `choices` (a frog colour); the effective one is worked out by `choiceMap`. */
+  choice?: string | null;
   /** Watching a game in progress: chat and state, no seat; gets one when the room goes back to the lobby. */
   spectator?: boolean;
 }
@@ -485,6 +487,65 @@ export class Room {
   }
 
   /**
+   * Everybody's value of the game's `choices` as it stands: the host always has the first, then each player gets
+   * the one they picked (when it is free), then the rest get the free ones in order; `extraBots` computer players
+   * (those of the lobby, not yet seated) take what is left. Null when the game has no choices.
+   */
+  private choiceMap(extraBots = 0): { by: Map<string, string>; bots: string[] } | null {
+    const choices = this.game.choices;
+    if (!choices || choices.length === 0) return null;
+    const seated = this.members
+      .filter((m) => !m.spectator && !m.left)
+      .sort((a, b) => Number(b.user.id === this.hostId) - Number(a.user.id === this.hostId));
+    const by = new Map<string, string>();
+    const used = new Set<string>();
+    const host = seated.find((m) => m.user.id === this.hostId);
+    if (host) {
+      by.set(host.user.id, choices[0]!);
+      used.add(choices[0]!);
+    }
+    for (const m of seated) {
+      const pick = m.choice;
+      if (m !== host && pick && choices.includes(pick) && !used.has(pick)) {
+        by.set(m.user.id, pick);
+        used.add(pick);
+      }
+    }
+    const free = () => choices.find((c) => !used.has(c)) ?? choices[used.size % choices.length]!;
+    for (const m of seated) {
+      if (by.has(m.user.id)) continue;
+      const c = free();
+      by.set(m.user.id, c);
+      used.add(c);
+    }
+    const bots: string[] = [];
+    for (let i = 0; i < extraBots; i++) {
+      const c = free();
+      bots.push(c);
+      used.add(c);
+    }
+    return { by, bots };
+  }
+
+  /** Lobby: pick your value of the game's choices (a frog colour): one nobody else has; the host keeps the first. */
+  setChoice(userId: string, choice: string): Result<null> {
+    if (this.status !== 'lobby') return fail('The game has already started');
+    const member = this.findSeated(userId);
+    if (!member) return fail('You are not in this room');
+    const choices = this.game.choices;
+    if (!choices || choices.length === 0) return fail('This game has nothing to pick');
+    if (!choices.includes(choice)) return fail('That is not one of the choices');
+    if (userId === this.hostId) return fail('The host always keeps the first one');
+    const map = this.choiceMap(this.bots)!;
+    const holder = [...map.by.entries()].find(([, c]) => c === choice)?.[0];
+    if (holder && holder !== userId) return fail('Somebody else already has that one');
+    // (a computer player's colour is the left-over one: it moves on when somebody takes it)
+    member.choice = choice;
+    this.changed();
+    return ok(null);
+  }
+
+  /**
    * Lobby: suggest a game for the next round (anybody, also non-hosts who cannot change it); everybody sees
    * it next to the suggester in the crew list. `null` takes the suggestion back.
    */
@@ -592,6 +653,7 @@ export class Room {
     this.members = this.members.filter((m) => !m.bot && !m.left);
     this.members.push(...this.makeBots());
     // (the host always sits first: games may give colours by this order)
+    const choiceOf = this.choiceMap()?.by;
     const players = this.members
       .filter((m) => !m.spectator)
       .sort((a, b) => Number(b.user.id === this.hostId) - Number(a.user.id === this.hostId))
@@ -599,6 +661,7 @@ export class Room {
         id: m.user.id,
         nickname: displayName(m.user),
         avatar: m.user.avatar,
+        ...(choiceOf?.get(m.user.id) ? { choice: choiceOf.get(m.user.id)! } : {}),
       }));
     if (players.length < this.game.minPlayers) {
       this.members = this.members.filter((m) => !m.bot);
@@ -932,6 +995,7 @@ export class Room {
   // ---- output -----------------------------------------------------------------------------
 
   view(forUserId: string): RoomView {
+    const choiceView = this.choiceMap(this.status === 'lobby' ? this.bots : 0);
     const base: RoomView = {
       code: this.code,
       gameId: this.game.id,
@@ -943,6 +1007,8 @@ export class Room {
       bots: this.bots,
       ...(this.testDice ? { testDice: true } : {}),
       ...(this.game.ignoresTurnClock?.(this.options as never) ? { noClock: true } : {}),
+      choices: this.game.choices ? [...this.game.choices] : null,
+      botChoices: this.status === 'lobby' ? (this.choiceMap(this.bots)?.bots ?? []) : [],
       options: this.options,
       turnTimeSec: this.turnTime,
       status: this.status,
@@ -958,6 +1024,7 @@ export class Room {
           ready: !!m.bot || !!m.ready,
           readyLock: !m.bot && !!m.readyLock,
           suggestion: m.bot ? null : (m.suggestion ?? null),
+          choice: choiceView?.by.get(m.user.id) ?? null,
         })),
       spectators: this.members
         .filter((m) => m.spectator && !m.left)

@@ -21,6 +21,9 @@ import { GameCard } from '../components/GameCard';
 import { JoinBar, PlayScreen } from '../components/PlayScreen';
 import { Avatar, Button, Card, SectionLabel, Toggle } from '../components/ui';
 import { TileButton } from '../components/TopBar';
+import { TipBubble } from '../components/TipBubble';
+import { closeTip, useTip } from '../lib/tip';
+import type { GameUi } from '../games/types';
 import { FriendsButton } from '../friends/FriendsButton';
 import { useToast } from '../components/Toast';
 import { getGameUi } from '../games/registry';
@@ -127,6 +130,88 @@ function SuggestedGame({
     >
       {body}
     </span>
+  );
+}
+
+/**
+ * A player's badge in the crew list (the frog). On my own row (not the host's, who is always the first) it is a
+ * button: tap it and the free choices pop up; the ones somebody else has are greyed out.
+ */
+function CrewBadge({
+  ui,
+  index,
+  choice,
+  room,
+  pickable,
+  onPick,
+}: {
+  ui: GameUi | undefined;
+  index: number;
+  choice: string | null | undefined;
+  room: RoomView;
+  pickable: boolean;
+  onPick: (choice: string) => void;
+}) {
+  const tip = useTip('crew-choice');
+  const badge = ui?.crewBadge?.(index, choice);
+  if (!badge) return null;
+  if (!pickable || !room.choices || !ui?.choiceBadge || room.status !== 'lobby')
+    return <>{badge}</>;
+  const taken = new Set([
+    ...room.members.filter((x) => x.choice && x.choice !== choice).map((x) => x.choice!),
+    ...(room.botChoices ?? []),
+  ]);
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        data-testid="crew-choice-open"
+        data-tip-trigger
+        aria-label="Change colour"
+        aria-expanded={tip.open}
+        onClick={tip.toggle}
+        className="relative block rounded-md border-2 border-dashed border-neon/60 p-0.5 active:translate-y-px"
+      >
+        {badge}
+        <span
+          aria-hidden
+          className="absolute -bottom-1 -right-1 text-[10px] leading-none text-neon"
+        >
+          ▾
+        </span>
+      </button>
+      <TipBubble
+        show={tip.open}
+        testId="crew-choice-bubble"
+        className="absolute right-0 top-full z-30 mt-2 w-52"
+      >
+        <span
+          aria-hidden
+          className="absolute -top-[7px] right-4 h-3 w-3 rotate-45 border-l-2 border-t-2 border-edge/40 bg-panel2"
+        />
+        <div className="relative flex flex-wrap justify-center gap-1 rounded-lg border-2 border-edge/40 bg-panel2 p-2 shadow-lg">
+          {room.choices.map((c) => (
+            <button
+              key={c}
+              type="button"
+              data-testid={`crew-choice-${c}`}
+              disabled={taken.has(c)}
+              aria-pressed={c === choice}
+              aria-label={c}
+              onClick={() => {
+                if (c !== choice) onPick(c);
+                closeTip();
+              }}
+              className={`rounded-md border-2 p-0.5 ${
+                c === choice ? 'border-neon bg-neon/20' : 'border-transparent'
+              } ${taken.has(c) ? 'opacity-30 grayscale' : 'active:translate-y-px'}`}
+            >
+              {ui.choiceBadge!(c)}
+            </button>
+          ))}
+        </div>
+      </TipBubble>
+    </div>
   );
 }
 
@@ -534,7 +619,14 @@ export function Lobby({
                         </span>
                       </div>
                     </div>
-                    {ui?.crewBadge?.(crewIndex)}
+                    <CrewBadge
+                      ui={ui}
+                      index={crewIndex}
+                      choice={m.choice}
+                      room={room}
+                      pickable={m.id === me && m.id !== room.hostId}
+                      onPick={(c) => void api.choose(c)}
+                    />
                     {isHost && m.id !== me && (
                       <button
                         onClick={() => void api.kick(m.id)}
@@ -565,7 +657,7 @@ export function Lobby({
                       <div className="truncate font-bold">{name}</div>
                       <div className="label text-[10px] text-muted">Computer</div>
                     </div>
-                    {ui?.crewBadge?.(crew.length + i)}
+                    {ui?.crewBadge?.(crew.length + i, room.botChoices?.[i])}
                     {/* The host sends the last computer home again (the stepper in Settings does the same). */}
                     {isHost && i === botSeats.length - 1 && (
                       <button

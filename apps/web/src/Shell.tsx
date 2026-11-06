@@ -89,6 +89,7 @@ export function Shell({
       setGame: (gameId) => run(request('room:setGame', { gameId })),
       ready: (ready) => run(request('room:ready', { ready })),
       suggest: (gameId) => run(request('room:suggest', { gameId })),
+      choose: (choice) => run(request('room:choice', { choice })),
       readyLock: (locked) => run(request('room:readyLock', { locked })),
       ringBell: () => run(request('room:bell', {})),
       rematch: (toLobby) => run(request('room:rematch', { toLobby })),

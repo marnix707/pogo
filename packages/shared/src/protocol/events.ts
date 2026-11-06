@@ -12,6 +12,7 @@ import type {
   RoomSettingsInput,
   RoomSetGameInput,
   RoomReadyLockInput,
+  RoomChoiceInput,
   RoomSuggestInput,
   Visibility,
 } from './schemas';
@@ -63,6 +64,8 @@ export interface RoomMemberView {
   readyLock: boolean;
   /** The game this player suggests for the next round (null = none). */
   suggestion: string | null;
+  /** What this player has picked from the game's `choices` (a frog colour), null when the game has none. */
+  choice: string | null;
 }
 
 /** Someone watching a game that is being played (chat only; they get a seat in the next game). */
@@ -92,6 +95,10 @@ export interface RoomView {
   maxPlayers: number;
   /** Computer players that will join when the game starts. */
   bots: number;
+  /** The values the game lets every player pick from (a frog colour), null when it has none. */
+  choices: string[] | null;
+  /** What the computer players of the lobby will get (the colours nobody picked, in order). */
+  botChoices: string[];
   /** Developer test game: every roll is a Yatzy and the game is not recorded anywhere. */
   testDice?: boolean;
   /** The game's options have no turn clock (Yatzy live): the lobby's timer setting does nothing. */
@@ -164,6 +171,8 @@ export interface ClientToServerEvents {
   'room:kick': (payload: RoomKickInput, ack: Ack<null>) => void;
   'room:settings': (payload: RoomSettingsInput, ack: Ack<RoomView>) => void;
   'room:suggest': (payload: RoomSuggestInput, ack: Ack<RoomView>) => void;
+  /** Lobby: pick one of the game's choices (a frog colour) that nobody else has. */
+  'room:choice': (payload: RoomChoiceInput, ack: Ack<RoomView>) => void;
   'room:readyLock': (payload: RoomReadyLockInput, ack: Ack<RoomView>) => void;
   'room:setGame': (payload: RoomSetGameInput, ack: Ack<RoomView>) => void;
   'room:ready': (payload: RoomReadyInput, ack: Ack<RoomView>) => void;

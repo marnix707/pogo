@@ -7,6 +7,15 @@ import { frogUrl } from './frog';
 import { BankruptRules } from './BankruptRules';
 import { BankruptOptionsPicker } from './LobbyOptions';
 
+const frogBadge = (colour: string, testId: string) =>
+  createElement('img', {
+    src: frogUrl(colour, 'down', 'sit'),
+    alt: colour,
+    'data-testid': testId,
+    className: 'h-9 w-9 shrink-0',
+    style: { imageRendering: 'pixelated' },
+  });
+
 export const bankruptUi: GameUi = {
   id: 'bankrupt',
   name: 'Bankrupt',
@@ -18,14 +27,12 @@ export const bankruptUi: GameUi = {
   Rules: ({ open, onClose }) => createElement(BankruptRules, { open, onClose }),
   // The walk and payments of the last move play, then a banner says why it ended, then the results.
   resultsDelayMs: () => 6500,
-  // Everybody's frog colour is by their place in the crew list: the host red, the second blue, and so on.
-  crewBadge: (index) =>
-    createElement('img', {
-      src: frogUrl(bankrupt.PLAYER_COLOURS[index % bankrupt.PLAYER_COLOURS.length]!, 'down', 'sit'),
-      alt: '',
-      'data-testid': `crew-frog-${index}`,
-      className: 'h-9 w-9 shrink-0',
-      style: { imageRendering: 'pixelated' },
-    }),
+  // Everybody's frog colour: the one they picked in the lobby (the host is always red); else by their place.
+  crewBadge: (index, choice) =>
+    frogBadge(
+      choice ?? bankrupt.PLAYER_COLOURS[index % bankrupt.PLAYER_COLOURS.length]!,
+      `crew-frog-${index}`,
+    ),
+  choiceBadge: (choice) => frogBadge(choice, `frog-choice-${choice}`),
   scoreText: (score) => `$${score.toLocaleString('en-US')}`,
 };

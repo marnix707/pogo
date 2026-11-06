@@ -61,7 +61,9 @@ export interface GameUi {
   /** Optional custom headline for the results panel (default: "<winner> wins!"). */
   resultsTitle?: (room: RoomView, me: string) => string | undefined;
   /** A small picture next to each player in the lobby's crew list, by their place in the list (host first, then the rest, then computers). */
-  crewBadge?: (index: number) => ReactNode;
+  crewBadge?: (index: number, choice?: string | null) => ReactNode;
+  /** One of the game's `choices` as a picture (the lobby's picker: tap your badge to change it). */
+  choiceBadge?: (choice: string) => ReactNode;
   /** Optional text (e.g. emoji of the active rules) shown next to the game's name in the top bar. */
   titleExtra?: (room: RoomView) => string | undefined;
 }

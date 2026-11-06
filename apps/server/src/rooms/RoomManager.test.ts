@@ -1362,3 +1362,31 @@ describe('karma: one clock for the whole card swap', () => {
     expect(left).toBe(TURN + karma.rulesIntroMs(karma.KARMA_RULES.length - 1));
   });
 });
+
+describe('choices (Bankrupt frog colours)', () => {
+  it('the host is always red, the others pick a colour nobody has, and the game gets them', () => {
+    const { manager, lastRoom, must } = setup();
+    const room = must(manager.create(a, { gameId: 'bankrupt' }));
+    must(manager.join(b, room.code));
+    must(manager.join(c, room.code));
+    const colours = () => Object.fromEntries(lastRoom(a.id)!.members.map((m) => [m.id, m.choice]));
+    expect(lastRoom(a.id)!.choices).toEqual(['red', 'blue', 'green', 'yellow', 'purple', 'orange']);
+    expect(colours()).toEqual({ [a.id]: 'red', [b.id]: 'blue', [c.id]: 'green' });
+    must(manager.setChoice(c.id, 'yellow'));
+    expect(colours()[c.id]).toBe('yellow');
+    // taken by somebody else (b's own default), the host's red, and the host cannot change
+    expect(manager.setChoice(c.id, 'blue')).toMatchObject({ ok: false });
+    expect(manager.setChoice(c.id, 'red')).toMatchObject({ ok: false });
+    expect(manager.setChoice(a.id, 'blue')).toMatchObject({ ok: false });
+    expect(manager.setChoice(b.id, 'pink')).toMatchObject({ ok: false });
+    // the computers take what is left
+    must(manager.updateSettings(a.id, { bots: 2 }));
+    expect(lastRoom(a.id)!.botChoices).toEqual(['green', 'purple']);
+    // the game uses them
+    must(manager.start(a.id));
+    const players = (lastRoom(a.id)!.game!.view as { players: { id: string; colour: number }[] })
+      .players;
+    const colourOf = (id: string) => players.find((p) => p.id === id)!.colour;
+    expect([colourOf(a.id), colourOf(b.id), colourOf(c.id)]).toEqual([0, 1, 3]);
+  });
+});

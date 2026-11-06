@@ -17,6 +17,8 @@ export interface RoomApi {
   ready(ready: boolean): Promise<Result<unknown>>;
   /** Lobby: suggest a game for the next round (null takes it back); anybody can, the host decides. */
   suggest(gameId: string | null): Promise<Result<unknown>>;
+  /** Lobby: pick your frog colour (or whatever the game lets you pick); one nobody else has. */
+  choose(choice: string): Promise<Result<unknown>>;
   /** Lock Ready: it stays on across setting changes, game switches and games. */
   readyLock(locked: boolean): Promise<Result<unknown>>;
   /** Lobby: ring the bell, calling everybody else in the room (shakes their screen, rings). */

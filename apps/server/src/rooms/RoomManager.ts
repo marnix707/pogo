@@ -314,6 +314,13 @@ export class RoomManager {
     return result.ok ? ok(room.view(userId)) : result;
   }
 
+  setChoice(userId: string, choice: string): Result<RoomView> {
+    const room = this.roomFor(userId);
+    if (!room) return fail('You are not in a room');
+    const result = room.setChoice(userId, choice);
+    return result.ok ? ok(room.view(userId)) : result;
+  }
+
   setReadyLock(userId: string, locked: boolean): Result<RoomView> {
     const room = this.roomFor(userId);
     if (!room) return fail('You are not in a room');

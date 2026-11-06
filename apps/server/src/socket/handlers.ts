@@ -16,6 +16,7 @@ import {
   roomSettingsSchema,
   roomSetGameSchema,
   roomReadyLockSchema,
+  roomChoiceSchema,
   roomSuggestSchema,
   INTERNAL_ERROR_CODE,
   INTERNAL_ERROR_MESSAGE,
@@ -159,6 +160,7 @@ export function registerSocketHandlers({
     route('room:settings', roomSettingsSchema, (p) => manager.updateSettings(user.id, p));
     route('room:setGame', roomSetGameSchema, (p) => manager.setGame(user.id, p.gameId));
     route('room:suggest', roomSuggestSchema, (p) => manager.suggest(user.id, p.gameId));
+    route('room:choice', roomChoiceSchema, (p) => manager.setChoice(user.id, p.choice));
     route('room:readyLock', roomReadyLockSchema, (p) => manager.setReadyLock(user.id, p.locked));
     route('room:ready', roomReadySchema, (p) => manager.setReady(user.id, p.ready));
     route('room:bell', emptyPayloadSchema, () => manager.bell(user.id));
