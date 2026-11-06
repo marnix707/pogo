@@ -19,7 +19,7 @@ export function moved<T>(list: T[], from: number, to: number): T[] {
 }
 
 /**
- * A list whose rows the player drags into a new order: the held row follows the finger, the others slide out of
+ * A list whose rows the player drags into a new order by their grip (the dotted squares; a touch anywhere else scrolls the page): the held row follows the finger, the others slide out of
  * the way (CSS transitions), and on release the row glides into its slot. Every row wiggles a little and
  * carries a grip, so it is clear that all of them can be moved.
  */
@@ -150,7 +150,6 @@ export function SortableList({
       {items.map((it, i) => {
         const held = drag?.id === it.id;
         const style: React.CSSProperties = {
-          touchAction: 'none',
           transform: !drag
             ? undefined
             : held
@@ -173,26 +172,29 @@ export function SortableList({
               rows.current[it.id] = el;
             }}
             data-testid={`sort-row-${it.id}`}
-            className={`relative cursor-grab select-none ${held ? 'cursor-grabbing' : drag ? '' : 'sort-wiggle'}`}
+            className={`relative select-none ${drag ? '' : 'sort-wiggle'}`}
             style={{ ...style, animationDelay: `${(i % 3) * -0.17}s` }}
-            onPointerDown={(e) => down(e, i)}
-            onPointerMove={move}
-            onPointerUp={up}
-            onPointerCancel={up}
           >
             {render(it.id)}
-            <span
-              aria-hidden
-              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-onbg"
+            {/* the grip: only touching these squares moves the row; anywhere else the page scrolls as usual */}
+            <div
+              data-testid={`sort-grip-${it.id}`}
+              aria-label="Drag to move"
+              className={`absolute bottom-0 right-0 top-0 flex w-14 items-center justify-center text-onbg ${held ? 'cursor-grabbing' : 'cursor-grab'}`}
+              style={{ touchAction: 'none' }}
+              onPointerDown={(e) => down(e, i)}
+              onPointerMove={move}
+              onPointerUp={up}
+              onPointerCancel={up}
             >
-              <svg viewBox="0 0 6 9" width={18} height={27} shapeRendering="crispEdges">
+              <svg viewBox="0 0 6 9" width={18} height={27} shapeRendering="crispEdges" aria-hidden>
                 {[0, 3, 6].flatMap((y) =>
                   [0, 3].map((x) => (
                     <rect key={`${x}-${y}`} x={x} y={y} width="2" height="2" fill="currentColor" />
                   )),
                 )}
               </svg>
-            </span>
+            </div>
           </div>
         );
       })}

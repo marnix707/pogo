@@ -208,7 +208,7 @@ export function PlayScreen({
             data-testid="sort-hint"
             className="label mb-3 flex items-center justify-between gap-3 text-[10px] text-onbg/80"
           >
-            <span>Drag a game up or down to put the games in your own order.</span>
+            <span>Hold the dots on the right of a game and drag it to put the games in your own order.</span>
             {custom && (
               <button type="button" onClick={reset} className="shrink-0 underline">
                 A to Z
