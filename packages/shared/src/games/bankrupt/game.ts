@@ -351,6 +351,20 @@ function sellStreet(s: BankruptState, by: PlayerId, street: PropertyTile[]) {
   s.events.push({ k: 'rainbow', by, tiles: street.map((t) => t.id), payouts });
 }
 
+/**
+ * Rainbow Road, whatever way a space changed hands (bought, won at auction, traded): when the street of exactly
+ * three now has three different owners, it is sold back to the bank and every owner is paid.
+ */
+function rainbowCheck(s: BankruptState, tileId: string, by: PlayerId) {
+  if (!s.options.rainbowRoad) return;
+  const t = tileById(s.board, tileId);
+  if (t?.kind !== 'property') return;
+  const street = groupOf(s.board, t);
+  const owners = street.map((x) => s.owned[x.id]?.owner);
+  if (street.length === 3 && owners.every(Boolean) && new Set(owners).size === 3)
+    sellStreet(s, by, street);
+}
+
 /** `from`: who just acted (or the mover who put the space up); the turn goes on to the next bidder after them. */
 function resolveAuction(s: BankruptState, from: PlayerId) {
   const a = s.auction;
@@ -378,13 +392,7 @@ function resolveAuction(s: BankruptState, from: PlayerId) {
     s.owned[a.tile] = { owner: winner.id, level: 0 };
     s.events.push({ k: 'auction', tile: a.tile, winner: winner.id, amount: a.high.amount });
     // Not taken as a Rainbow Road by the mover, but the winner completes the street: it counts as one.
-    const t = tileById(s.board, a.tile);
-    if (s.options.rainbowRoad && t?.kind === 'property') {
-      const street = groupOf(s.board, t);
-      const owners = street.map((x) => s.owned[x.id]?.owner);
-      if (street.length === 3 && owners.every(Boolean) && new Set(owners).size === 3)
-        sellStreet(s, winner.id, street);
-    }
+    rainbowCheck(s, a.tile, winner.id);
   } else s.events.push({ k: 'auction', tile: a.tile, winner: null, amount: 0 });
   s.auction = null;
   s.phase = afterLanding(s);
@@ -568,6 +576,7 @@ function applyMove(
       pay(s, me, null, t.price);
       s.owned[t.id] = { owner: me.id, level: 0 };
       s.events.push({ k: 'buy', by: me.id, tile: t.id, price: t.price });
+      rainbowCheck(s, t.id, me.id);
       s.phase = afterLanding(s);
       break;
     }
@@ -668,6 +677,8 @@ function applyMove(
         take,
         bonus: s.board.tradeBonus,
       });
+      rainbowCheck(s, give, me.id);
+      rainbowCheck(s, take, me.id);
       endTrade(s, false);
       break;
     }
@@ -765,6 +776,8 @@ function autoMove(state: BankruptState, playerId: PlayerId, _rng: Rng): AutoMove
   }
 
   if (state.phase === 'buy') {
+    // (a Rainbow Road on offer: take it, the street is sold and nobody pays for the space)
+    if (rainbowRoad(state, playerId)) return done({ type: 'rainbow' });
     const t = ownable(state, state.board.tiles[me.pos]!.id)!;
     return me.cash - t.price >= 150 ? done({ type: 'buy' }) : done({ type: 'decline' });
   }

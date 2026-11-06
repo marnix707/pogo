@@ -417,6 +417,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const [autoRoll, setAutoRoll] = useState(false);
   useEffect(() => {
     if (!autoRoll || !myTurn || state.phase !== 'roll' || animating || busy || rolling) return;
+    if ((mePlayer?.cash ?? 0) < 0) return; // (in debt: the lock switches itself off, see below)
     const t = setTimeout(() => void send({ type: 'roll' }), 500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -459,6 +460,18 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [broke, settled, fresh, owedBuy?.id]);
+  // Auto roll switches itself off when I am in debt (below $0), with a warning: from here on I decide.
+  const [debtWarn, setDebtWarn] = useState(false);
+  const inDebt = !!mePlayer && !mePlayer.bankrupt && mePlayer.cash < 0;
+  useEffect(() => {
+    if (!autoRoll || !inDebt || animating) return;
+    setAutoRoll(false);
+    setDebtWarn(true);
+    play('turn');
+    const t = setTimeout(() => setDebtWarn(false), 3200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRoll, inDebt, animating]);
   const goalParts: Part[] = [
     {
       text:
@@ -677,6 +690,14 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         className="label flex h-full w-full items-center justify-center bg-[#ff6b57]/90 p-[4%] text-center text-[3.2cqw] text-white"
       >
         {shortMsg}
+      </p>
+    ) : debtWarn ? (
+      <p
+        role="alert"
+        data-testid="bk-debt-warning"
+        className="label flex h-full w-full items-center justify-center bg-[#ff6b57]/90 p-[4%] text-center text-[3.2cqw] leading-snug text-white"
+      >
+        You are below $0. Auto roll is off.
       </p>
     ) : null;
 

@@ -601,6 +601,19 @@ describe('Rainbow Road', () => {
     expect(done.events.some((e) => e.k === 'rainbow')).toBe(true);
     expect(done.phase).not.toBe('buy');
   });
+  it('computers take the road when it is offered (they do not buy the third space)', () => {
+    const { s, first } = road();
+    const landed = play(s, first, { type: 'roll' }, dice(3));
+    expect(game.autoMove!(landed, first, createSeededRng(1)).move).toEqual({ type: 'rainbow' });
+  });
+  it('a plain purchase that makes three different owners sells the street too', () => {
+    const { s, first } = road();
+    const landed = play(s, first, { type: 'roll' }, dice(3));
+    const done = play(landed, first, { type: 'buy' });
+    expect(done.events.some((e) => e.k === 'rainbow')).toBe(true);
+    expect(done.owned['madrid']).toBeUndefined();
+    expect(done.owned['cairo']).toBeUndefined();
+  });
   it('is not offered when the option is off', () => {
     const { s, first } = road(false);
     const landed = play(s, first, { type: 'roll' }, dice(3));
@@ -665,7 +678,9 @@ describe('bankruptcy and winning', () => {
     t = own(t, 'madrid', first === 'a' ? 'b' : 'a');
     t = play(t, first, { type: 'roll' }, dice(3));
     expect(t.players.find((p) => p.id === first)!.bankrupt).toBe(false);
-    expect(t.players.find((p) => p.id === first)!.cash).toBe(-460 - (tileById(DEFAULT_BOARD, 'madrid') as { rent: number[] }).rent[0]!);
+    expect(t.players.find((p) => p.id === first)!.cash).toBe(
+      -460 - (tileById(DEFAULT_BOARD, 'madrid') as { rent: number[] }).rent[0]!,
+    );
   });
 
   it('a six that bankrupts the mover does not give them another roll', () => {

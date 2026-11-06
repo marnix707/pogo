@@ -145,3 +145,6 @@ The trade pop-up and the pulsing spaces only appear once everything before them 
 - Sound: `play('siren')`: the **slow wail** (700 to 1000 Hz and back, 0.6 s a sweep, two cycles) and **quiet** (volume 0.035), not the pack's fast two-tone.
 
 - **The repair-bill luck card** (pay $ per building) never bankrupts: it only takes what the debt limit (`bankruptBelow`) still allows, so cash ends at the limit at worst.
+
+- **Rainbow Road, every way a space changes hands** (`rainbowCheck` in `game.ts`): a plain **buy**, an **auction win** and a **trade** that leave a street of exactly three with three different owners sell the street (everybody is paid the sell price). **Computers take the road** when it is offered (`autoMove` plays `rainbow` instead of buying), so a bot never ends up as the third owner without a sale.
+- **Auto roll and debt**: when my cash drops below $0 the padlock switches itself off (after the move has been played out) and the middle shows "You are below $0. Auto roll is off." for about 3 s (`bk-debt-warning`).
