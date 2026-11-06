@@ -9,6 +9,8 @@ export {
   AUCTION_MIN_PCT,
   openingBid,
   TRADE_SEC,
+  BAIL_SEC,
+  FREE_FROGGO_BAIL,
   CARD_SLIDE_MS,
   CARD_SHOW_MS,
   ROLL_MS,

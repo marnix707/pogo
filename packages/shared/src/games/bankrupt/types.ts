@@ -18,6 +18,8 @@ export interface BankruptOptions {
   auctionOnDecline: boolean;
   /** Rainbow Road: three players each own one space of a three-space street and you land on the free third. */
   rainbowRoad: boolean;
+  /** Free Froggo: the other players may pay a jailed player's bail (all of them, or nobody does). */
+  freeFroggo: boolean;
 }
 
 export interface BankruptPlayer {
@@ -32,6 +34,16 @@ export interface BankruptPlayer {
   bankrupt: boolean;
   /** When the player went bankrupt (a later number = lasted longer), 0 while playing. */
   outAt: number;
+}
+
+/** The Free Froggo vote: every other player is asked to pay the bail of `subject`, who sits in jail. */
+export interface Bail {
+  subject: PlayerId;
+  /** What each of the others pays (to the bank) if they all say yes. */
+  amount: number;
+  voters: PlayerId[];
+  /** Who has said yes so far (one no ends the vote at once). */
+  accepted: PlayerId[];
 }
 
 export interface Holding {
@@ -79,6 +91,8 @@ export type BankruptPhase =
   | 'auction'
   /** The mover stands on the Auction corner: a trade of spaces between players (see `Trade`). */
   | 'trade'
+  /** A jailed player's turn has come and the others are asked to pay the bail (see `Bail`). */
+  | 'bail'
   | 'over';
 
 export type CardKind = 'gain' | 'pay' | 'birthday' | 'party' | 'travel' | 'repair' | 'jail';
@@ -112,6 +126,10 @@ export type BankruptEvent =
       tiles: string[];
       payouts: { player: PlayerId; tile: string; amount: number }[];
     }
+  /** Free Froggo: everybody paid `amount` to the bank and `subject` is out of jail. */
+  | { k: 'bail'; subject: PlayerId; payers: PlayerId[]; amount: number }
+  /** Free Froggo: `by` refused to pay, so `subject` stays in jail. */
+  | { k: 'bailRefused'; by: PlayerId; subject: PlayerId }
   | { k: 'bankrupt'; by: PlayerId };
 
 export interface BankruptState {
@@ -132,6 +150,8 @@ export interface BankruptState {
   auction: Auction | null;
   /** The trade going on (the mover stands on the Auction corner), or null. */
   trade: Trade | null;
+  /** The Free Froggo vote going on, or null. */
+  bail: Bail | null;
   /** What the last move did, in order (the screen replays it). */
   events: BankruptEvent[];
   /** Counts moves, so the screen can tell a new event list from the last one. */
@@ -162,7 +182,11 @@ export type BankruptMove =
   /** Trade: the mover cancels (before or after the offers). */
   | { type: 'tradeCancel' }
   /** Rainbow Road: sell the whole street back to the bank (instead of buying the space you landed on). */
-  | { type: 'rainbow' };
+  | { type: 'rainbow' }
+  /** Free Froggo: pay the bail of the jailed player. */
+  | { type: 'bailPay' }
+  /** Free Froggo: refuse; the vote is off. */
+  | { type: 'bailRefuse' };
 
 /** Everything is public in this game, so the view is the state. */
 export type BankruptView = BankruptState;

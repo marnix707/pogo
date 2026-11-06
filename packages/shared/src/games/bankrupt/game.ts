@@ -51,6 +51,9 @@ export const openingBid = (price: number) =>
   Math.max(MIN_BID, ceil5((price * AUCTION_MIN_PCT) / 100));
 /** Seconds a trade on the Auction corner may take (the offers, and the choice). */
 export const TRADE_SEC = 90;
+/** Free Froggo: what each of the other players pays to bail a jailed player out, and the seconds they get to answer. */
+export const FREE_FROGGO_BAIL = 50;
+export const BAIL_SEC = 15;
 /** A luck card slides in (CARD_SLIDE_MS), stays CARD_SHOW_MS, slides away; only then does it take effect on screen. */
 export const CARD_SLIDE_MS = 450;
 export const CARD_SHOW_MS = 2000;
@@ -69,6 +72,7 @@ const optionsSchema: z.ZodType<BankruptOptions, z.ZodTypeDef, unknown> = z
       .default(0),
     auctionOnDecline: z.boolean().default(true),
     rainbowRoad: z.boolean().default(false),
+    freeFroggo: z.boolean().default(false),
   })
   .strict();
 
@@ -91,6 +95,8 @@ export const bankruptMoveSchema: z.ZodType<BankruptMove, z.ZodTypeDef, unknown> 
     z.object({ type: z.literal('tradeAccept'), from: z.string().min(1).max(64) }),
     z.object({ type: z.literal('tradeCancel') }),
     z.object({ type: z.literal('rainbow') }),
+    z.object({ type: z.literal('bailPay') }),
+    z.object({ type: z.literal('bailRefuse') }),
   ]);
 
 const OK: MoveValidation = { ok: true };
@@ -130,6 +136,7 @@ function createInitialState(
     dice: null,
     auction: null,
     trade: null,
+    bail: null,
     events: [],
     seq: 0,
     winner: null,
@@ -147,6 +154,7 @@ function draft(s: BankruptState): BankruptState {
       ? { ...s.auction, passed: [...s.auction.passed], bids: { ...s.auction.bids } }
       : null,
     trade: s.trade ? { ...s.trade, offers: { ...s.trade.offers } } : null,
+    bail: s.bail ? { ...s.bail, voters: [...s.bail.voters], accepted: [...s.bail.accepted] } : null,
     events: [],
     seq: s.seq + 1,
   };
@@ -200,27 +208,49 @@ function sendToJail(s: BankruptState, p: BankruptPlayer) {
   s.events.push({ k: 'jail', by: p.id });
 }
 
-/** After a turn-ending situation: who is next (a new round when the order wraps), or the game is over. */
-function advanceTurn(s: BankruptState) {
+/** The next seat that is still playing (a new round when the order wraps). */
+function nextSeat(s: BankruptState) {
   const n = s.players.length;
-  const step = () => {
-    const from = s.turn;
-    let i = from;
-    do i = (i + 1) % n;
-    while (s.players[i]!.bankrupt && i !== from);
-    // Passing the last seat back to the first starts a new round.
-    if (i <= from) s.round += 1;
-    s.turn = i;
+  const from = s.turn;
+  let i = from;
+  do i = (i + 1) % n;
+  while (s.players[i]!.bankrupt && i !== from);
+  // Passing the last seat back to the first starts a new round.
+  if (i <= from) s.round += 1;
+  s.turn = i;
+}
+
+/** A jailed player's turn is sat out. */
+function skipJailTurn(s: BankruptState, p: BankruptPlayer) {
+  p.jail -= 1;
+  s.events.push({ k: 'jailSkip', by: p.id, left: p.jail });
+  if (p.jail === 0) s.events.push({ k: 'free', by: p.id });
+}
+
+/** Free Froggo: ask everybody else to pay the bail, when the switch is on and all of them can afford it. */
+function startBailVote(s: BankruptState, p: BankruptPlayer): boolean {
+  if (!s.options.freeFroggo) return false;
+  const voters = alivePlayers(s).filter((x) => x.id !== p.id);
+  if (voters.length === 0 || voters.some((v) => v.cash < FREE_FROGGO_BAIL)) return false;
+  s.bail = {
+    subject: p.id,
+    amount: FREE_FROGGO_BAIL,
+    voters: voters.map((v) => v.id),
+    accepted: [],
   };
-  step();
-  // Somebody in jail sits their turn out (nothing is asked again): the next one plays.
+  s.phase = 'bail';
+  return true;
+}
+
+/** The turn is with `s.turn`: jailed players sit it out (unless the others bail them out), else it is theirs to play. */
+function settleTurn(s: BankruptState) {
+  const n = s.players.length;
   for (let guard = 0; guard < n * 4; guard++) {
     const p = s.players[s.turn]!;
     if (p.jail === 0) break;
-    p.jail -= 1;
-    s.events.push({ k: 'jailSkip', by: p.id, left: p.jail });
-    if (p.jail === 0) s.events.push({ k: 'free', by: p.id });
-    step();
+    if (startBailVote(s, p)) return; // the others decide first (see the `bailPay` / `bailRefuse` moves)
+    skipJailTurn(s, p);
+    nextSeat(s);
   }
   s.phase = 'roll';
   s.sixes = 0;
@@ -228,6 +258,12 @@ function advanceTurn(s: BankruptState) {
     s.round = s.options.turns;
     endGame(s);
   }
+}
+
+/** After a turn-ending situation: who is next (a new round when the order wraps), or the game is over. */
+function advanceTurn(s: BankruptState) {
+  nextSeat(s);
+  settleTurn(s);
 }
 
 function endGame(s: BankruptState) {
@@ -457,6 +493,13 @@ function validateMove(
     if (move.amount > me.cash) return err('Not enough money');
     return OK;
   }
+  if (move.type === 'bailPay' || move.type === 'bailRefuse') {
+    const b = state.bail;
+    if (!b) return err('There is no one to bail out');
+    if (!b.voters.includes(playerId)) return err('Not your turn');
+    if (b.accepted.includes(playerId)) return err('You have already answered');
+    return move.type === 'bailRefuse' || me.cash >= b.amount ? OK : err('Not enough money');
+  }
   if (move.type === 'tradeOffer' || move.type === 'tradePass') {
     const t = state.trade;
     // (a player may pass already while the mover is still choosing: they do not want to trade)
@@ -489,6 +532,7 @@ function validateMove(
   if (!isMover) return err('Not your turn');
   if (state.auction) return err('Finish the auction first');
   if (state.trade) return err('Finish the trade first');
+  if (state.bail) return err('Finish the vote first');
   const free = state.phase === 'roll' || state.phase === 'after';
 
   switch (move.type) {
@@ -559,6 +603,31 @@ function applyMove(
       s.sixes = die === 6 ? s.sixes + 1 : 0;
       moveBy(s, me, die);
       land(s, me, rng);
+      break;
+    }
+    case 'bailPay': {
+      const b = s.bail!;
+      b.accepted.push(me.id);
+      // Everybody said yes: each pays the bail to the bank and the frog is free, with a turn to play now.
+      if (b.voters.every((v) => b.accepted.includes(v))) {
+        for (const v of b.voters) pay(s, playerOf(s, v)!, null, b.amount);
+        playerOf(s, b.subject)!.jail = 0;
+        s.events.push({ k: 'bail', subject: b.subject, payers: b.voters, amount: b.amount });
+        s.events.push({ k: 'free', by: b.subject });
+        s.bail = null;
+        s.phase = 'roll';
+        s.sixes = 0;
+      }
+      break;
+    }
+    case 'bailRefuse': {
+      // One no and the deal is off: the jailed turn is sat out as usual.
+      const b = s.bail!;
+      s.bail = null;
+      s.events.push({ k: 'bailRefused', by: me.id, subject: b.subject });
+      skipJailTurn(s, playerOf(s, b.subject)!);
+      nextSeat(s);
+      settleTurn(s);
       break;
     }
     case 'payJail':
@@ -690,7 +759,8 @@ function applyMove(
   // Somebody may have gone out (rent, a card, a bill): their holdings are back with the bank.
   if (s.phase !== 'over') {
     for (const p of s.players) checkBankrupt(s, p);
-    if (m.bankrupt && s.phase !== 'auction' && s.phase !== 'trade') advanceTurn(s);
+    if (m.bankrupt && s.phase !== 'auction' && s.phase !== 'trade' && s.phase !== 'bail')
+      advanceTurn(s);
     else if (s.auction === null && s.phase === 'auction') s.phase = afterLanding(s);
   }
   // Every turn ends by itself once its landing is dealt with (there is no End turn button).
@@ -708,6 +778,7 @@ function getPlayerView(state: BankruptState): BankruptView {
 function getCurrentPlayers(state: BankruptState): PlayerId[] {
   if (state.phase === 'over') return [];
   if (state.phase === 'auction' && state.auction) return [state.auction.turn];
+  if (state.bail) return state.bail.voters.filter((v) => !state.bail!.accepted.includes(v));
   const t = state.trade;
   if (t) {
     if (t.stage === 'offers')
@@ -768,6 +839,9 @@ function autoMove(state: BankruptState, playerId: PlayerId, _rng: Rng): AutoMove
       : done({ type: 'passBid' }, true);
   }
 
+  // Computers always pay a bail.
+  if (state.bail) return done({ type: 'bailPay' }, true);
+
   if (state.trade) {
     const t = state.trade;
     // Computers do not trade: the mover cancels, the others pass.
@@ -815,7 +889,13 @@ export const bankruptGame: GameDefinition<
   minPlayers: MIN_PLAYERS,
   maxPlayers: MAX_PLAYERS,
   optionsSchema,
-  defaultOptions: { target: 5000, turns: 0, auctionOnDecline: true, rainbowRoad: false },
+  defaultOptions: {
+    target: 5000,
+    turns: 0,
+    auctionOnDecline: true,
+    rainbowRoad: false,
+    freeFroggo: false,
+  },
   moveSchema: bankruptMoveSchema,
   // Building and selling must not buy anybody more time.
   isFreeMove: (move) =>
@@ -832,7 +912,9 @@ export const bankruptGame: GameDefinition<
   // An auction runs on its own 15 second clock for whoever's turn it is to bid (it starts again with every
   // move); when it runs out, that player steps out.
   phaseClockMs: (state) =>
-    state.trade
+    state.bail
+      ? BAIL_SEC * 1000
+      : state.trade
       ? TRADE_SEC * 1000
       : state.phase === 'auction' && state.auction
         ? AUCTION_SEC * 1000
@@ -841,7 +923,9 @@ export const bankruptGame: GameDefinition<
   keepsClock: (before, after) =>
     !!before.trade && before.trade.stage === 'offers' && after.trade?.stage === 'offers',
   timeoutMove: (state, playerId, rng) =>
-    state.trade
+    state.bail
+      ? { move: { type: 'bailRefuse' }, endsTurn: true }
+      : state.trade
       ? state.trade.by === playerId
         ? { move: { type: 'tradeCancel' }, endsTurn: true }
         : { move: { type: 'tradePass' }, endsTurn: true }
@@ -855,6 +939,7 @@ export const bankruptGame: GameDefinition<
       if (e.k === 'roll') ms += ROLL_MS;
       if (e.k === 'move') ms += stepsBetween(state.board, e.from, e.to) * STEP_MS;
       if (e.k === 'card') ms += CARD_SHOW_MS + 2 * CARD_SLIDE_MS;
+      if (e.k === 'bail') ms += 2000;
     }
     return ms;
   },

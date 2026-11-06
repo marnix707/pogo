@@ -22,7 +22,10 @@ export function BankruptRules({ open, onClose }: { open: boolean; onClose: () =>
           space (house, shop, hotel) for much higher rent.
         </li>
         <li>
-          <b className="text-neon">Jail:</b> pay the fee to get out, or wait three turns.
+          <b className="text-neon">Jail:</b> pay the fee to get out, or wait three turns. With{' '}
+          <b>Free Froggo</b> on, everybody else is asked to pay $50 bail when a jailed frog's turn
+          comes: only if ALL say yes does everybody pay and the frog goes free. One no and nothing
+          happens.
         </li>
         <li>
           <b className="text-neon">Luck:</b> the <b>?</b> space draws a card. The <b>Auction</b>{' '}

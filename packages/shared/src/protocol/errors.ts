@@ -216,7 +216,9 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'BANK-129', message: 'Pick one of your spaces without buildings' },
   { code: 'BANK-130', message: 'That player made no offer' },
   { code: 'BANK-131', message: 'Finish the trade first' },
-  { code: 'BANK-132', message: 'There is no Rainbow Road here' },
+  { code: 'BANK-133', message: 'There is no Rainbow Road here' },
+  { code: 'BANK-134', message: 'There is no one to bail out' },
+  { code: 'BANK-135', message: 'Finish the vote first' },
   { code: 'BANK-125', message: /^Bankrupt needs \d+-\d+ players$/ },
 ];
 

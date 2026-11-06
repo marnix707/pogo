@@ -10,6 +10,7 @@ import { LuckCard } from './LuckCard';
 import { LockIcon } from '../../components/icons';
 import { AuctionPanel } from './AuctionPanel';
 import { EndBanner } from './EndBanner';
+import { BailPanel } from './BailPanel';
 import { RainbowRoad } from './RainbowRoad';
 import { TradePanel, TradeSwap, pulsingTiles } from './TradePanel';
 import { TileSheet } from './TileSheet';
@@ -38,6 +39,10 @@ function describe(s: State, name: (id: string) => string): string {
     else if (e.k === 'jail') parts.push(`${name(e.by)} went to jail`);
     else if (e.k === 'free') parts.push(`${name(e.by)} is out of jail`);
     else if (e.k === 'jailSkip') parts.push(`${name(e.by)} sits out in jail (${e.left} to go)`);
+    else if (e.k === 'bail')
+      parts.push(`Free ${name(e.subject)}! Everybody paid ${money(e.amount)} bail`);
+    else if (e.k === 'bailRefused')
+      parts.push(`${name(e.by)} would not pay ${name(e.subject)}'s bail`);
     else if (e.k === 'build') parts.push(`${name(e.by)} built on ${tile(e.tile)}`);
     else if (e.k === 'sold') parts.push(`${name(e.by)} sold ${tile(e.tile)}`);
     else if (e.k === 'auction')
@@ -83,6 +88,10 @@ function turnParts(
     else if (e.k === 'jail') parts.push(`${nm(e.by)}went to jail`);
     else if (e.k === 'free') parts.push(`${nm(e.by)}is out of jail`);
     else if (e.k === 'jailSkip') parts.push(`${nm(e.by)}sits out in jail (${e.left} to go)`);
+    else if (e.k === 'bail')
+      parts.push(`Free ${name(e.subject)}! Everybody paid ${money(e.amount)} bail`);
+    else if (e.k === 'bailRefused')
+      parts.push(`${name(e.by)} would not pay ${name(e.subject)}'s bail`);
     else if (e.k === 'build') parts.push(`${nm(e.by)}built on ${tile(e.tile)}`);
     else if (e.k === 'sold') parts.push(`${nm(e.by)}sold ${tile(e.tile)}`);
     else if (e.k === 'auction')
@@ -389,6 +398,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   // (the trade starts only when everything before it has been played out: walk, card, payments)
   const tradeOn = !!state.trade && !animating;
   const auctionOn = !!state.auction && !animating;
+  const bailOn = !!state.bail && !animating;
   const pulse = tradeOn ? pulsingTiles(state, me) : new Set<string>();
   // The space chosen for a trade, waiting for the confirmation (nothing is sent by a tap on the board).
   const [pick, setPick] = useState<string | null>(null);
@@ -661,6 +671,16 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         name={name}
         onClose={() => setTileOpen(null)}
       />
+    ) : bailOn ? (
+      <BailPanel
+        state={state}
+        me={me}
+        name={name}
+        send={send}
+        busy={busy}
+        deadline={game.deadline}
+        serverTime={room.serverTime}
+      />
     ) : auctionOn ? (
       <AuctionPanel
         state={state}
@@ -839,7 +859,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
               pulse={pulse}
               picked={pick}
               overlay={popupNode}
-              clear={tradeOn || auctionOn || swapping || rainbowing}
+              clear={tradeOn || auctionOn || bailOn || swapping || rainbowing}
               upgradable={upgradable}
               police={police}
               onPulse={(id) => {

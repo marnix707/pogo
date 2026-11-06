@@ -16,6 +16,7 @@ const OPTIONS: BankruptOptions = {
   turns: 0,
   auctionOnDecline: true,
   rainbowRoad: false,
+  freeFroggo: false,
 };
 
 const start = (n = 2, options = OPTIONS): BankruptState =>
@@ -98,6 +99,7 @@ describe('Bankrupt board and set-up', () => {
       turns: 0,
       auctionOnDecline: true,
       rainbowRoad: false,
+  freeFroggo: false,
     });
     expect(game.optionsSchema.safeParse({ auctionOnDecline: 'no' }).success).toBe(false);
     expect(game.optionsSchema.safeParse({ target: 0, turns: 0 }).success).toBe(true);
@@ -784,5 +786,68 @@ describe('the repair bill card', () => {
     s = play(s, a, { type: 'roll' }, dice(3, 1));
     expect(s.players.find((p) => p.id === a)!.bankrupt).toBe(false);
     expect(cash(s, a)).toBe(DEFAULT_BOARD.bankruptBelow);
+  });
+});
+
+describe('Free Froggo (the others pay the bail)', () => {
+  /** p0 waits in jail, p1 (jailed) is next: the vote starts. */
+  const voting = (cashOfLast?: number) => {
+    let s = start(3, { ...OPTIONS, freeFroggo: true });
+    const [p0, p1, p2] = s.players.map((p) => p.id) as [string, string, string];
+    s = patch(s, p0, { jail: 3, pos: idx('jail') });
+    s = patch(s, p1, { jail: 2, pos: idx('jail') });
+    if (cashOfLast !== undefined) s = patch(s, p2, { cash: cashOfLast });
+    s = { ...s, phase: 'jailAsk' };
+    return { s: play(s, p0, { type: 'wait' }), p0, p1, p2 };
+  };
+  it('asks everybody else when a jailed player comes up, and frees them when all pay', () => {
+    const { s, p0, p1, p2 } = voting();
+    expect(s.phase).toBe('bail');
+    expect(s.bail).toMatchObject({ subject: p1, amount: 50, voters: [p0, p2] });
+    expect(game.getCurrentPlayers(s).sort()).toEqual([p0, p2].sort());
+    let t = play(s, p0, { type: 'bailPay' });
+    expect(t.phase).toBe('bail');
+    expect(game.getCurrentPlayers(t)).toEqual([p2]);
+    t = play(t, p2, { type: 'bailPay' });
+    expect(t.phase).toBe('roll');
+    expect(mover(t).id).toBe(p1);
+    expect(t.players.find((p) => p.id === p1)!.jail).toBe(0);
+    expect(cash(t, p0)).toBe(cash(s, p0) - 50);
+    expect(cash(t, p2)).toBe(cash(s, p2) - 50);
+    expect(cash(t, p1)).toBe(cash(s, p1));
+    expect(t.events.some((e) => e.k === 'bail')).toBe(true);
+    expect(t.bail).toBeNull();
+  });
+  it('one no ends the vote: nobody pays and the jailed turn is sat out', () => {
+    const { s, p0, p1, p2 } = voting();
+    const t = play(play(s, p0, { type: 'bailPay' }), p2, { type: 'bailRefuse' });
+    expect(t.bail).toBeNull();
+    expect(cash(t, p0)).toBe(cash(s, p0));
+    expect(t.players.find((p) => p.id === p1)!.jail).toBe(1);
+    expect(mover(t).id).toBe(p2);
+    expect(t.phase).toBe('roll');
+    expect(t.events.some((e) => e.k === 'bailRefused')).toBe(true);
+  });
+  it('is not asked when somebody cannot afford the bail, or when the switch is off', () => {
+    const poor = voting(20).s;
+    expect(poor.bail).toBeNull();
+    expect(poor.players.find((p) => p.jail === 1)).toBeDefined();
+    let s = start(3);
+    const [p0, p1] = s.players.map((p) => p.id) as [string, string];
+    s = patch(patch(s, p0, { jail: 3, pos: idx('jail') }), p1, { jail: 2, pos: idx('jail') });
+    s = play({ ...s, phase: 'jailAsk' }, p0, { type: 'wait' });
+    expect(s.bail).toBeNull();
+  });
+  it('computers always pay, and a clock that runs out says no', () => {
+    const { s, p0 } = voting();
+    expect(game.autoMove!(s, p0, createSeededRng(1)).move).toEqual({ type: 'bailPay' });
+    expect(game.timeoutMove!(s, p0, createSeededRng(1)).move).toEqual({ type: 'bailRefuse' });
+    expect(game.phaseClockMs!(s)).toBe(15000);
+  });
+  it('the jailed player and a repeat answer cannot vote', () => {
+    const { s, p0, p1 } = voting();
+    expect(game.validateMove(s, p1, { type: 'bailPay' }).ok).toBe(false);
+    const t = play(s, p0, { type: 'bailPay' });
+    expect(game.validateMove(t, p0, { type: 'bailPay' }).ok).toBe(false);
   });
 });

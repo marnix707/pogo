@@ -73,6 +73,14 @@ function transfersOf(s: State): Transfer[] {
         tile: s.board.tiles.find((t) => t.kind === 'jail')!.id,
         amount: e.fee,
       });
+    else if (e.k === 'bail')
+      for (const p of e.payers)
+        out.push({
+          from: p,
+          to: null,
+          tile: s.board.tiles.find((t) => t.kind === 'jail')!.id,
+          amount: e.amount,
+        });
     else if (e.k === 'buy') out.push({ from: e.by, to: null, tile: e.tile, amount: e.price });
     else if (e.k === 'auction' && e.winner)
       out.push({ from: e.winner, to: null, tile: e.tile, amount: e.amount });
@@ -272,10 +280,10 @@ export function useCashFx(
         const splitTo = t.split ? (t.split.to ? centre(tagEl(t.split.to)) : bank) : null;
         const viaBank = t.from === null || t.to === null;
         const bump = () =>
-          hallEl()?.animate(
-            [{ scale: '1' }, { scale: '1.2' }, { scale: '1' }],
-            { duration: 650, easing: 'ease-in-out' },
-          );
+          hallEl()?.animate([{ scale: '1' }, { scale: '1.2' }, { scale: '1' }], {
+            duration: 650,
+            easing: 'ease-in-out',
+          });
         if (!tile || !payer || !receiver || (t.split && !splitTo)) continue;
         const text = t.label ?? `${t.from ? '-' : '+'}$${t.amount.toLocaleString('en-US')}`;
         play('cash'); // every payment, whoever pays whom
