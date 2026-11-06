@@ -68,3 +68,46 @@ export function PixelText({
 
 /** The width in art pixels of a navy label with this text. */
 export const labelWidth = (parts: Part[]) => width(parts) + 10;
+
+/**
+ * A pixel panel: a 1 px navy border, a light row along the top inside, and a solid navy shadow of `shadow` art px
+ * under it. `w` x `h` is the body (the shadow comes on top of that).
+ */
+export function PixelPanel({
+  s,
+  w,
+  h,
+  shadow,
+  fill,
+  light = '#fff4b4',
+}: {
+  s: number;
+  w: number;
+  h: number;
+  shadow: number;
+  fill: string;
+  light?: string;
+}) {
+  return (
+    <svg
+      aria-hidden
+      className="absolute left-0 top-0 block"
+      width={w * s}
+      height={(h + shadow) * s}
+      viewBox={`0 0 ${w} ${h + shadow}`}
+      shapeRendering="crispEdges"
+    >
+      <rect x="1" y={h} width={w - 1} height={shadow} fill="#101628" />
+      <rect x="0" y="0" width={w} height={h} fill="#101628" />
+      <rect x="1" y="1" width={w - 2} height={h - 2} fill={fill} />
+      <rect
+        x="1"
+        y="1"
+        width={w - 2}
+        height="1"
+        fill={light}
+        opacity={fill === '#101628' ? 0.18 : 1}
+      />
+    </svg>
+  );
+}

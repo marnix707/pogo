@@ -44,6 +44,11 @@ export interface GameUi {
   Rules?: ComponentType<{ open: boolean; onClose: () => void; room: RoomView }>;
   /** The game draws its own top bar (leave, chat, settings) instead of the shared title bar. */
   ownHeader?: boolean;
+  /**
+   * The shared top bar sits on a flat band of the game's own background (style of the strip behind it, which
+   * also holds the phone's safe area): the game screen paints the very same pattern below it.
+   */
+  topBand?: import('react').CSSProperties;
   /** Hide the score column in the standings (for games where the score is just the rank). */
   hideScores?: boolean;
   /** How a score reads in the standings (default: the number), e.g. "45 HP". Needs `hideScores` off. */

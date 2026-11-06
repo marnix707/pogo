@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { bankrupt } from '@pogo/shared';
 import type { GameUiProps } from '../types';
 import { Avatar, Button } from '../../components/ui';
@@ -19,7 +19,7 @@ import { RainbowRoad } from './RainbowRoad';
 import { TradePanel, TradeSwap, pulsingTiles } from './TradePanel';
 import { TileSheet } from './TileSheet';
 import { useCashFx } from './useCashFx';
-import { PixelText, labelWidth } from './PixelLabel';
+import { PixelPanel, PixelText, labelWidth } from './PixelLabel';
 import type { Part } from './PixelLabel';
 import { measure, pixelSafe } from './pixel-text/pixelText';
 import { CARD_H, CARD_W, SCREEN_W, rowXs, screenArt } from './screenArt';
@@ -526,6 +526,16 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const root = useRef<HTMLDivElement>(null);
   const { s, h: hArt, w } = useStageScale(root);
   const A = (n: number) => n * s;
+  // (the shared top bar paints the same dot pattern at the same size: it reads this)
+  useLayoutEffect(() => {
+    document.documentElement.style.setProperty('--bk-art', `${s}px`);
+  }, [s]);
+  useEffect(
+    () => () => {
+      document.documentElement.style.removeProperty('--bk-art');
+    },
+    [],
+  );
   const jailOn = myTurn && state.phase === 'jailAsk' && !animating;
 
   const tag = (latestP: State['players'][number], left: number, top: number) => {
@@ -819,19 +829,27 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const bp = (v: number) => `${(v / 257) * 100}%`;
   const top = rowXs(topSeats.length);
   const extraXs = rowXs(extras.length);
-  // The board keeps its proportions and is as wide as the screen allows (1.5 % less for rounded corners, its
+  // The board keeps its proportions and is as wide as the screen allows (1 % less for rounded corners, its
   // drop shadow included), whatever the phone: it is not on the whole-pixel grid. The screen stretches to the
   // phone's height: the board sits in the middle of it, my card and the Roll button share one row in the bottom
   // fifth, and the extra opponents (5 or 6 players) stand above that row.
-  const totalPx = Math.floor(w * 0.985);
+  const totalPx = Math.floor(w * 0.99);
   const boardPx = Math.floor(totalPx / (1 + 4 / 257));
   const bs = boardPx / 257; // css px per board art pixel
   const boardArt = boardPx / s; // the board's size in screen art pixels
-  const H = Math.max(Math.ceil(boardArt + (extras.length ? 248 : 164)), hArt);
-  const boardTop = H / 2 - boardArt / 2; // art px
+  // Above the board (from the layout): the goal label 21 art px over the opponents' cards, which stand 19 px
+  // over the board's top row. Below it: my card and the Roll button 24 px under it (66 with the extra seats).
+  const ABOVE = 92;
+  const gapBelow = extras.length ? 66 : 24;
+  const H = Math.max(Math.ceil(ABOVE + boardArt + gapBelow + CARD_H + 10), hArt);
+  const boardTop = Math.min(
+    Math.max(ABOVE, H / 2 - boardArt / 2),
+    H - boardArt - gapBelow - CARD_H - 10,
+  ); // art px
   const rowY = Math.round(
-    Math.max(boardTop + boardArt + (extras.length ? 66 : 24), H * 0.8 + (H * 0.2 - CARD_H) / 2),
+    Math.max(boardTop + boardArt + gapBelow, H * 0.8 + (H * 0.2 - CARD_H) / 2),
   );
+  const cardsY = Math.round(boardTop - 19 - 46); // the opponents' row (cards are 46 high + 2 shadow)
   const goalW = labelWidth(goalParts);
   const status = room.spectating
     ? 'Watching the game'
@@ -851,6 +869,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         backgroundColor: '#20325a',
         backgroundImage: `url(${screenArt('background/bg-pattern-18x18')})`,
         backgroundSize: `${A(18)}px ${A(18)}px`,
+        backgroundAttachment: 'fixed',
         imageRendering: 'pixelated',
       }}
       data-testid="bankrupt-game"
@@ -862,14 +881,14 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           {/* the goal and the round */}
           <div
             className="absolute"
-            style={{ left: A(Math.floor(145 - goalW / 2)), top: A(6) }}
+            style={{ left: A(Math.floor(145 - goalW / 2)), top: A(cardsY - 21) }}
             data-testid="bk-goal"
           >
             <PixelText s={s} navy parts={goalParts} />
           </div>
 
           <div data-testid="bk-seats-top">
-            {topSeats.map((i, k) => tag(players[i]!, top[k]!, 22))}
+            {topSeats.map((i, k) => tag(players[i]!, top[k]!, cardsY))}
           </div>
 
           {/* the board and its hard navy drop shadow */}
@@ -912,7 +931,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
               {/* one die, bigger, its colour shows the value; the message sits under it */}
               <div
                 className="absolute"
-                style={{ left: bp(99), top: bp(90), width: bp(58) }}
+                style={{ left: bp(136), top: bp(86), width: bp(58) }}
                 data-testid="bk-dice"
               >
                 {(state.dice ?? 0) > 0 || rolling ? (
@@ -929,7 +948,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
               {/* the last three things that happened, newest on top and brightest, wrapped to fit */}
               <div
                 className="absolute flex w-full flex-col items-center"
-                style={{ top: bp(156), gap: A(2) }}
+                style={{ top: bp(153), gap: A(2) }}
                 data-testid="bk-note"
                 role="status"
               >
@@ -953,10 +972,11 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
 
           <div data-testid="bk-seats-bottom">
             {extras.map((i, k) => tag(players[i]!, extraXs[k]!, rowY - CARD_H - 3))}
-            {tag(players[around[0]!]!, 3, rowY)}
+            {tag(players[around[0]!]!, 0, rowY)}
           </div>
 
-          {/* the Roll button (pixel art), with the padlock for rolling automatically inside it */}
+          {/* the Roll button and the padlock for rolling automatically: two yellow pixel panels (navy border, light
+              top row, solid navy shadow under them), as in the layout */}
           <button
             type="button"
             data-testid="bk-roll"
@@ -966,17 +986,16 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
               setTileOpen(null); // an open space card closes when I roll
               void send({ type: 'roll' });
             }}
-            className="absolute block active:translate-y-px disabled:active:translate-y-0"
-            style={{ left: A(100), top: A(rowY), width: A(187), height: A(CARD_H) }}
+            className={`absolute block active:translate-y-px disabled:active:translate-y-0 ${rollReady ? '' : 'opacity-60 grayscale'}`}
+            style={{ left: A(96), top: A(rowY), width: A(151), height: A(44) }}
           >
-            <img
-              src={screenArt(
-                rollReady ? 'buttons/roll-the-dice-sm' : 'buttons/roll-the-dice-disabled-sm',
-              )}
-              alt=""
-              className="block h-full w-full"
-              style={{ imageRendering: 'pixelated' }}
-            />
+            <PixelPanel s={s} w={151} h={41} shadow={3} fill="#fdcf51" />
+            <span
+              className="absolute left-0 top-0 flex items-center justify-center"
+              style={{ width: A(151), height: A(41) }}
+            >
+              <PixelText s={s} k={3} parts={[{ text: 'ROLL THE DICE', colour: '#101628' }]} />
+            </span>
           </button>
           {canAct && (
             <button
@@ -988,15 +1007,30 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
                 play('tap');
                 setAutoRoll((v) => !v);
               }}
-              className={`absolute flex items-center justify-center border-2 ${
-                autoRoll
-                  ? 'border-[#101628] bg-[#101628] text-[#fdcf51]'
-                  : 'border-[#101628] bg-[#fdcf51] text-[#101628]'
-              }`}
-              style={{ left: A(100 + 187 - 31), top: A(rowY + 7), width: A(27), height: A(34) }}
+              className="absolute block active:translate-y-px"
+              style={{ left: A(251), top: A(rowY), width: A(29), height: A(44) }}
             >
-              <LockIcon open={!autoRoll} className="h-[70%] w-[70%]" />
+              <PixelPanel s={s} w={29} h={41} shadow={3} fill={autoRoll ? '#101628' : '#fdcf51'} />
+              <span
+                className={`absolute left-0 top-0 flex items-center justify-center ${autoRoll ? 'text-[#fdcf51]' : 'text-[#101628]'}`}
+                style={{ width: A(29), height: A(41) }}
+              >
+                <LockIcon open={!autoRoll} style={{ width: A(14), height: A(14) }} />
+              </span>
             </button>
+          )}
+          {/* the turn marker: a little arrow over my card when it is my turn */}
+          {myTurn && !finished && (
+            <svg
+              aria-hidden
+              data-testid="bk-turn-marker"
+              className="absolute"
+              style={{ left: A(44), top: A(rowY - 5), width: A(5), height: A(3) }}
+              viewBox="0 0 5 3"
+              shapeRendering="crispEdges"
+            >
+              <path d="M0 0h5v1h-5zM1 1h3v1h-3zM2 2h1v1h-1z" fill="#fda200" />
+            </svg>
           )}
           {/* whose turn it is (and the debt warning): above my row, between the board and the cards */}
           <div

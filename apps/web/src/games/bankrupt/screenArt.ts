@@ -14,7 +14,7 @@ export const SCREEN_W = 290;
 export const SCREEN_H = 487;
 export const CARD_W = 94;
 export const CARD_H = 48;
-export const CARD_GAP = 3;
+export const CARD_GAP = 4;
 
 /** Left edges of a centred row of `n` player cards. */
 export const rowXs = (n: number): number[] => {

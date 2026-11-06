@@ -266,8 +266,8 @@ export function Board({
             draggable={false}
             className={`absolute ${clear ? 'bk-away' : 'transition-[opacity,transform] duration-300'}`}
             style={{
-              left: pct(102),
-              top: pct(36),
+              left: pct(68),
+              top: pct(92),
               width: pct(52),
               imageRendering: 'pixelated',
               transformOrigin: '50% 100%',

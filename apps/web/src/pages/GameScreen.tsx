@@ -313,6 +313,60 @@ export function GameScreen({
     );
   }
 
+  const topBar = !ui.ownHeader ? (
+    <TopBar
+      band={!!ui.topBand}
+      title={ui.name}
+      logo={ui.logo}
+      titleExtra={ui.titleExtra?.(room)}
+      onSettings={onSettings}
+      actions={
+        <>
+          <FriendsButton small />
+          {ui.Rules && (
+            <TileButton
+              small
+              onClick={() => setRulesOpen(true)}
+              aria-label="Rules"
+              data-testid="rules-open"
+            >
+              <span className="text-lg font-bold leading-none">?</span>
+            </TileButton>
+          )}
+          <TileButton
+            small
+            onClick={() => setChatOpen(true)}
+            aria-label={unread > 0 ? `Chat, ${unread} unread` : 'Chat'}
+            data-testid="chat-open"
+          >
+            <span className="relative">
+              <ChatIcon className="h-5 w-5" />
+              {unread > 0 && (
+                <span
+                  data-testid="chat-badge"
+                  className="absolute -right-2.5 -top-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-accentink"
+                >
+                  {unread > 9 ? '9+' : unread}
+                </span>
+              )}
+            </span>
+          </TileButton>
+        </>
+      }
+      compact
+      left={
+        <TileButton
+          small
+          onClick={() => (finished || watching ? void api.leave() : setConfirmLeave(true))}
+          aria-label="Leave game"
+          data-testid="leave-game"
+        >
+          <ArrowLeftIcon className="h-5 w-5" />
+        </TileButton>
+      }
+    />
+  ) : null;
+
   return (
     <div className="mx-auto flex h-dvh max-w-lg flex-col">
       {watching && (
@@ -324,58 +378,14 @@ export function GameScreen({
           👀 Spectating
         </div>
       )}
-      {!ui.ownHeader && (
-        <TopBar
-          title={ui.name}
-          logo={ui.logo}
-          titleExtra={ui.titleExtra?.(room)}
-          onSettings={onSettings}
-          actions={
-            <>
-              <FriendsButton small />
-              {ui.Rules && (
-                <TileButton
-                  small
-                  onClick={() => setRulesOpen(true)}
-                  aria-label="Rules"
-                  data-testid="rules-open"
-                >
-                  <span className="text-lg font-bold leading-none">?</span>
-                </TileButton>
-              )}
-              <TileButton
-                small
-                onClick={() => setChatOpen(true)}
-                aria-label={unread > 0 ? `Chat, ${unread} unread` : 'Chat'}
-                data-testid="chat-open"
-              >
-                <span className="relative">
-                  <ChatIcon className="h-5 w-5" />
-                  {unread > 0 && (
-                    <span
-                      data-testid="chat-badge"
-                      className="absolute -right-2.5 -top-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-accentink"
-                    >
-                      {unread > 9 ? '9+' : unread}
-                    </span>
-                  )}
-                </span>
-              </TileButton>
-            </>
-          }
-          compact
-          left={
-            <TileButton
-              small
-              onClick={() => (finished || watching ? void api.leave() : setConfirmLeave(true))}
-              aria-label="Leave game"
-              data-testid="leave-game"
-            >
-              <ArrowLeftIcon className="h-5 w-5" />
-            </TileButton>
-          }
-        />
-      )}
+      {topBar &&
+        (ui.topBand ? (
+          <div data-testid="top-band" className="pt-[env(safe-area-inset-top)]" style={ui.topBand}>
+            {topBar}
+          </div>
+        ) : (
+          topBar
+        ))}
       <div className="min-h-0 flex-1">
         <ui.Component
           key={game}

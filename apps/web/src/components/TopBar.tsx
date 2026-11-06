@@ -29,6 +29,7 @@ export function TopBar({
   actions,
   onSettings,
   compact = false,
+  band = false,
 }: {
   title: string;
   /** Small text right after the title (e.g. emoji). */
@@ -42,13 +43,17 @@ export function TopBar({
   onSettings: () => void;
   /** One-line header that leaves more room for the screen below (used in games). */
   compact?: boolean;
+  /** On a flat band of the game's colour (the strip behind it carries the safe area instead). */
+  band?: boolean;
 }) {
   return (
     <header
       className={`relative z-20 flex items-center gap-3 px-4 ${
-        compact
-          ? 'pb-1.5 pt-[calc(env(safe-area-inset-top)+0.5rem)]'
-          : 'pb-3 pt-[calc(env(safe-area-inset-top)+1.25rem)]'
+        band
+          ? 'bg-[#274f8f] pb-1.5 pt-2'
+          : compact
+            ? 'pb-1.5 pt-[calc(env(safe-area-inset-top)+0.5rem)]'
+            : 'pb-3 pt-[calc(env(safe-area-inset-top)+1.25rem)]'
       }`}
     >
       {left}
