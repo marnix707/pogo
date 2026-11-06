@@ -701,6 +701,8 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       : [],
   );
   const canRoll = myTurn && state.phase === 'roll';
+  // (looks and works the same: yellow only while a tap really rolls)
+  const rollReady = canRoll && !busy && !rolling && !animating;
   const rollMessage = finished
     ? 'Game over'
     : note ||
@@ -852,13 +854,13 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
             type="button"
             data-testid="bk-roll"
             aria-label="Roll the dice"
-            disabled={!canRoll || busy || rolling || animating}
+            disabled={!rollReady}
             onClick={() => void send({ type: 'roll' })}
             className="absolute block active:translate-y-px disabled:active:translate-y-0"
             style={{ left: A(100), top: A(rowY), width: A(187), height: A(CARD_H) }}
           >
             <img
-              src={screenArt(canRoll ? 'buttons/roll-the-dice-sm' : 'buttons/roll-the-dice-disabled-sm')}
+              src={screenArt(rollReady ? 'buttons/roll-the-dice-sm' : 'buttons/roll-the-dice-disabled-sm')}
               alt=""
               className="block h-full w-full"
               style={{ imageRendering: 'pixelated' }}
