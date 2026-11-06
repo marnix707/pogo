@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from 'react';
 import { bankrupt } from '@pogo/shared';
 import type { LobbyOptionsProps } from '../types';
 import { InfoButton } from '../../components/ui';
@@ -102,11 +103,26 @@ function Toggle({
   tip: string;
 }) {
   const { open, toggle } = useTip(`bk-lobby:${id}`);
+  // The bubble's arrow points at this row's (i) button, wherever the label ends.
+  const root = useRef<HTMLDivElement>(null);
+  const icon = useRef<HTMLSpanElement>(null);
+  const [arrowX, setArrowX] = useState(24);
+  useLayoutEffect(() => {
+    if (!open || !root.current || !icon.current) return;
+    const a = root.current.getBoundingClientRect();
+    const b = icon.current.getBoundingClientRect();
+    setArrowX(Math.max(10, b.left + b.width / 2 - a.left - 6));
+  }, [open, label]);
   return (
-    <div className="relative flex min-h-12 items-center justify-between gap-3 font-semibold">
+    <div
+      ref={root}
+      className="relative flex min-h-12 items-center justify-between gap-3 font-semibold"
+    >
       <span className="flex items-center gap-2">
         {label}
-        <InfoButton expanded={open} onClick={toggle} testId={`bk-${id}-info`} />
+        <span ref={icon} className="flex">
+          <InfoButton expanded={open} onClick={toggle} testId={`bk-${id}-info`} />
+        </span>
       </span>
       <button
         type="button"
@@ -137,7 +153,8 @@ function Toggle({
       >
         <span
           aria-hidden
-          className="absolute -top-[7px] left-24 h-3 w-3 rotate-45 border-l-2 border-t-2 border-edge/40 bg-panel2"
+          className="absolute -top-[7px] h-3 w-3 rotate-45 border-l-2 border-t-2 border-edge/40 bg-panel2"
+          style={{ left: arrowX }}
         />
         <div className="relative rounded-lg border-2 border-edge/40 bg-panel2 px-3 py-2 text-left text-sm font-normal text-ink shadow-lg">
           {tip}
