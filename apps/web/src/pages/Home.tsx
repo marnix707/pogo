@@ -327,6 +327,7 @@ export function Home({
             lobby={lobby}
             watchLobby={watchLobby}
             onMainScreen={back}
+            bottomBar
             // The card morphs to the top of the lobby (lib/cardMorph.ts).
             onPick={(g, el) => {
               rememberGameCard(el);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { PublicRoomSummary } from '@pogo/shared';
 import { getGameUi } from '../games/registry';
@@ -125,6 +125,7 @@ export function PlayScreen({
   gameIdPrefix = 'home-game',
   showJoin = true,
   onMainScreen,
+  bottomBar = false,
   currentRoomCode,
   onReturn,
 }: {
@@ -142,11 +143,18 @@ export function PlayScreen({
   showJoin?: boolean;
   /** A "Main screen" button all the way at the bottom: back to the home screen. */
   onMainScreen?: () => void;
+  /**
+   * Home's Play menu: the button is a fixed bar at the bottom (like the lobby's Ready bar) that says "Open games" (tap:
+   * scrolls down to them) and turns into "Main screen" once the open games are reached, also by scrolling by hand.
+   */
+  bottomBar?: boolean;
   /** The lobby I am in (it shows up in the open games list): its button says Return instead of Join. */
   currentRoomCode?: string;
   onReturn?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const openRef = useRef<HTMLElement>(null);
+  const [atOpen, setAtOpen] = useState(false);
   const { games: gameUis, setOrder, reset, custom } = useGameOrder();
   const [sorting, setSorting] = useState(false);
   const [filter, setFilter] = useState<string>('all');
@@ -154,6 +162,31 @@ export function PlayScreen({
 
   // Live-update the open games while this screen is showing.
   useEffect(() => watchLobby(), [watchLobby]);
+
+  // The bottom bar follows the scroll: once the Open games heading has climbed into the upper half of the screen
+  // (or the page cannot scroll any further) it is the Main screen button, above that the Open games button.
+  useEffect(() => {
+    if (!bottomBar) return;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const top = openRef.current?.getBoundingClientRect().top ?? Infinity;
+      const atEnd =
+        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+      setAtOpen(top < window.innerHeight * 0.5 || atEnd);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      cancelAnimationFrame(frame);
+    };
+  }, [bottomBar, lobby]);
 
   const shown = useMemo(
     () => (lobby ?? []).filter((r) => filter === 'all' || r.gameId === filter),
@@ -208,7 +241,9 @@ export function PlayScreen({
             data-testid="sort-hint"
             className="label mb-3 flex items-center justify-between gap-3 text-[10px] text-onbg/80"
           >
-            <span>Hold the dots on the right of a game and drag it to put the games in your own order.</span>
+            <span>
+              Hold the dots on the right of a game and drag it to put the games in your own order.
+            </span>
             {custom && (
               <button type="button" onClick={reset} className="shrink-0 underline">
                 A to Z
@@ -271,7 +306,7 @@ export function PlayScreen({
           </div>
         )}
       </section>
-      <section aria-label="Open games">
+      <section aria-label="Open games" ref={openRef} className="scroll-mt-20">
         <SectionLabel
           right={
             <span data-testid="open-games-count" className="text-onbg">
@@ -352,7 +387,7 @@ export function PlayScreen({
           </ul>
         </section>
       )}
-      {onMainScreen && (
+      {onMainScreen && !bottomBar && (
         <Button
           variant="secondary"
           data-testid="main-screen"
@@ -361,6 +396,79 @@ export function PlayScreen({
         >
           Main screen
         </Button>
+      )}
+      {bottomBar && onMainScreen && (
+        <>
+          {/* room for the fixed bar, so the last section can scroll clear of it */}
+          <div aria-hidden className="h-16" />
+          <div
+            className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-8"
+            style={{
+              background: 'linear-gradient(to top, rgb(var(--c-page)) 70%, rgb(var(--c-page) / 0))',
+            }}
+            data-testid="play-bar"
+            data-mode={atOpen ? 'main' : 'open'}
+          >
+            {/* Two buttons stacked: the one for the current place is shown, the other fades away. */}
+            <div className="mx-auto grid max-w-md">
+              {[
+                {
+                  key: 'open',
+                  shown: !atOpen,
+                  variant: 'primary' as const,
+                  testId: 'play-open-games',
+                  label: (
+                    <>
+                      Open games
+                      {openGames.length + playingGames.length > 0 && (
+                        <span className="ml-2 opacity-80">
+                          {openGames.length + playingGames.length}
+                        </span>
+                      )}
+                      <span aria-hidden className="ml-2">
+                        ▾
+                      </span>
+                    </>
+                  ),
+                  onClick: () => {
+                    const el = openRef.current;
+                    if (!el) return;
+                    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+                    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+                  },
+                },
+                {
+                  key: 'main',
+                  shown: atOpen,
+                  variant: 'secondary' as const,
+                  testId: 'main-screen',
+                  label: <>Main screen</>,
+                  onClick: onMainScreen,
+                },
+              ].map((b) => (
+                <Button
+                  key={b.key}
+                  variant={b.variant}
+                  data-testid={b.testId}
+                  tabIndex={b.shown ? 0 : -1}
+                  aria-hidden={!b.shown}
+                  onClick={b.onClick}
+                  className="pointer-events-auto col-start-1 row-start-1 w-full whitespace-nowrap"
+                  style={{
+                    opacity: b.shown ? 1 : 0,
+                    visibility: b.shown ? 'visible' : 'hidden',
+                    pointerEvents: b.shown ? 'auto' : 'none',
+                    transition: b.shown
+                      ? 'opacity 260ms ease, visibility 0s'
+                      : 'opacity 260ms ease, visibility 0s linear 260ms',
+                  }}
+                >
+                  {b.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </>
       )}
     </>
   );
