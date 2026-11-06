@@ -180,7 +180,9 @@ export function Board({
                     const w = measure(`$${bankrupt.rentOf(state, tile)}`).width;
                     const start = x + 4 + Math.floor((25 - w) / 2);
                     const onLeftHalf = gridPos(i, n).col < dim / 2;
-                    const ix = onLeftHalf ? Math.min(start + w + 2, x + 33 - 9) : Math.max(start - 11, x);
+                    const ix = onLeftHalf
+                      ? Math.min(start + w + 2, x + 33 - 9)
+                      : Math.max(start - 11, x);
                     return {
                       left: pct(ix),
                       top: pct(y + 1),
@@ -320,7 +322,10 @@ export function Board({
         </div>
         {/* the police car (fast version of the artist's sequence): clipped to the board */}
         {police && (
-          <div className="pointer-events-none absolute inset-0 overflow-hidden" data-testid="bk-police">
+          <div
+            className="pointer-events-none absolute inset-0 overflow-hidden"
+            data-testid="bk-police"
+          >
             {police.delivered && (
               <img
                 src={jailWithUrl(police.colour)}

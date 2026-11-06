@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createSeededRng } from '../../game/rng';
 import { createDiceRng } from '../../game/testing';
 import { boardConfigSchema, DEFAULT_BOARD } from './config';
-import { bankruptGame as game } from './game';
+import { bankruptGame as game, bidStep } from './game';
 import { mover, netWorth, rentOf, tileById, tileIndex } from './rules';
 import type { BankruptMove, BankruptOptions, BankruptState } from './types';
 
@@ -99,7 +99,7 @@ describe('Bankrupt board and set-up', () => {
       turns: 0,
       auctionOnDecline: true,
       rainbowRoad: false,
-  freeFroggo: false,
+      freeFroggo: false,
     });
     expect(game.optionsSchema.safeParse({ auctionOnDecline: 'no' }).success).toBe(false);
     expect(game.optionsSchema.safeParse({ target: 0, turns: 0 }).success).toBe(true);
@@ -849,5 +849,11 @@ describe('Free Froggo (the others pay the bail)', () => {
     expect(game.validateMove(s, p1, { type: 'bailPay' }).ok).toBe(false);
     const t = play(s, p0, { type: 'bailPay' });
     expect(game.validateMove(t, p0, { type: 'bailPay' }).ok).toBe(false);
+  });
+});
+
+describe('auction bid step', () => {
+  it('scales from $5 on the cheap spaces to $20 on the dearest', () => {
+    expect([100, 150, 200, 300, 420, 450].map(bidStep)).toEqual([5, 5, 10, 15, 20, 20]);
   });
 });

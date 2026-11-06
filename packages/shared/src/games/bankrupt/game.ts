@@ -49,6 +49,10 @@ const ceil5 = (n: number) => Math.ceil(n / 5) * 5;
 /** The lowest opening bid for a space. */
 export const openingBid = (price: number) =>
   Math.max(MIN_BID, ceil5((price * AUCTION_MIN_PCT) / 100));
+const round5 = (n: number) => Math.round(n / 5) * 5;
+/** The smallest raise in an auction (the left bid button) scales with the space's price: $5 for the cheap ones up to
+ * $20 for the dearest (about 4.5 % of the price, in steps of 5). The other buttons are 2 x and 5 x that. */
+export const bidStep = (price: number) => Math.min(20, Math.max(5, round5(price / 22.5)));
 /** Seconds a trade on the Auction corner may take (the offers, and the choice). */
 export const TRADE_SEC = 90;
 /** Free Froggo: what each of the other players pays to bail a jailed player out, and the seconds they get to answer. */
@@ -817,8 +821,6 @@ function getResults(state: BankruptState): GameResults {
   };
 }
 
-const round5 = (n: number) => Math.round(n / 5) * 5;
-
 function autoMove(state: BankruptState, playerId: PlayerId, _rng: Rng): AutoMove<BankruptMove> {
   const me = playerOf(state, playerId)!;
   const done = (move: BankruptMove, endsTurn = false): AutoMove<BankruptMove> => ({
@@ -832,7 +834,7 @@ function autoMove(state: BankruptState, playerId: PlayerId, _rng: Rng): AutoMove
       t.kind === 'property' &&
       holdingsOf(state, playerId).some((o) => o.kind === 'property' && o.group === t.group);
     const ceiling = Math.min(me.cash - 50, Math.floor(t.price * (set ? 1.3 : 1.05)));
-    const step = Math.max(MIN_BID, round5(t.price * 0.1));
+    const step = bidStep(t.price);
     const bid = state.auction.high ? state.auction.high.amount + step : state.auction.min;
     return bid <= ceiling && bid <= me.cash
       ? done({ type: 'bid', amount: bid }, true)
@@ -915,10 +917,10 @@ export const bankruptGame: GameDefinition<
     state.bail
       ? BAIL_SEC * 1000
       : state.trade
-      ? TRADE_SEC * 1000
-      : state.phase === 'auction' && state.auction
-        ? AUCTION_SEC * 1000
-        : null,
+        ? TRADE_SEC * 1000
+        : state.phase === 'auction' && state.auction
+          ? AUCTION_SEC * 1000
+          : null,
   // The trade's offers share one clock: it keeps running while the others answer.
   keepsClock: (before, after) =>
     !!before.trade && before.trade.stage === 'offers' && after.trade?.stage === 'offers',
@@ -926,12 +928,12 @@ export const bankruptGame: GameDefinition<
     state.bail
       ? { move: { type: 'bailRefuse' }, endsTurn: true }
       : state.trade
-      ? state.trade.by === playerId
-        ? { move: { type: 'tradeCancel' }, endsTurn: true }
-        : { move: { type: 'tradePass' }, endsTurn: true }
-      : state.phase === 'auction' && state.auction
-        ? { move: { type: 'passBid' }, endsTurn: true }
-        : autoMove(state, playerId, rng),
+        ? state.trade.by === playerId
+          ? { move: { type: 'tradeCancel' }, endsTurn: true }
+          : { move: { type: 'tradePass' }, endsTurn: true }
+        : state.phase === 'auction' && state.auction
+          ? { move: { type: 'passBid' }, endsTurn: true }
+          : autoMove(state, playerId, rng),
   // The die and the token's walk take a while on screen; computers wait for it.
   settleMs: (state) => {
     let ms = 0;

@@ -17,8 +17,8 @@ export function BankruptRules({ open, onClose }: { open: boolean; onClose: () =>
         <li>
           <b className="text-neon">Free space:</b> buy it, or put it up for <b>auction</b>:
           everybody can bid, the highest bid wins. <b>Rent:</b> landing on someone's space means
-          paying them. The more spaces of one colour you own, the more each one asks: 2 spaces
-          pay double, 3 pay triple. Own the whole colour and you can build up to three buildings on each
+          paying them. The more spaces of one colour you own, the more each one asks: 2 spaces pay
+          double, 3 pay triple. Own the whole colour and you can build up to three buildings on each
           space (house, shop, hotel) for much higher rent.
         </li>
         <li>

@@ -1955,3 +1955,102 @@ html.results-open .safe-top-scrim {
     animation: none;
   }
 }
+
+/* Auction won: the gavel comes down (hit at 0.42 s), the block jolts, SOLD! stamps in, the card flies to the winner. */
+@keyframes bk-gavel {
+  0% {
+    transform: rotate(-62deg);
+  }
+  15% {
+    transform: rotate(-70deg);
+  }
+  16% {
+    transform: rotate(-70deg);
+  }
+  30% {
+    transform: rotate(6deg);
+  }
+  36% {
+    transform: rotate(-10deg);
+  }
+  100% {
+    transform: rotate(-10deg);
+  }
+}
+.bk-gavel {
+  animation: bk-gavel 1.4s cubic-bezier(0.3, 0, 0.3, 1) both;
+}
+@keyframes bk-block {
+  0%,
+  28% {
+    transform: translateY(0);
+  }
+  32% {
+    transform: translateY(1.2cqw);
+  }
+  45%,
+  100% {
+    transform: translateY(0);
+  }
+}
+.bk-block {
+  animation: bk-block 1.4s ease-out both;
+}
+@keyframes bk-sold {
+  0%,
+  30% {
+    transform: scale(0.2) rotate(-12deg);
+    opacity: 0;
+  }
+  45% {
+    transform: scale(1.35) rotate(4deg);
+    opacity: 1;
+  }
+  60%,
+  100% {
+    transform: scale(1) rotate(-3deg);
+    opacity: 1;
+  }
+}
+.bk-sold {
+  animation: bk-sold 1.3s ease-out both;
+}
+@keyframes bk-sold-line {
+  0%,
+  45% {
+    transform: translateY(1cqw);
+    opacity: 0;
+  }
+  70%,
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.bk-sold-line {
+  animation: bk-sold-line 1.3s ease-out both;
+}
+@keyframes bk-win-card {
+  0%,
+  50% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  75% {
+    transform: translate(0, -1.5cqw) scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0.25);
+    opacity: 0;
+  }
+}
+.bk-win-card {
+  animation: bk-win-card 2.6s cubic-bezier(0.5, 0, 0.3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bk-sold,
+  .bk-sold-line {
+    animation: none;
+  }
+}

@@ -10,6 +10,7 @@ export {
   openingBid,
   TRADE_SEC,
   BAIL_SEC,
+  bidStep,
   FREE_FROGGO_BAIL,
   CARD_SLIDE_MS,
   CARD_SHOW_MS,

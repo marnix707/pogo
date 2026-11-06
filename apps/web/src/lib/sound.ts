@@ -5,6 +5,7 @@ export type SoundName =
   | 'cash'
   | 'siren'
   | 'jail'
+  | 'hammer'
   | 'roll'
   | 'score'
   | 'turn'
@@ -329,6 +330,15 @@ export function play(name: SoundName) {
       tone(c, 233, 0.02, 1, 'triangle', 0.12);
       noise(c, 0.55, 0.06, 0.4, 1800);
       tone(c, 180, 0.55, 0.12, 'square', 0.1);
+      break;
+    case 'hammer':
+      // The auction hammer: a hard wooden knock on the block, a short ring and a lighter knock after it.
+      noise(c, 0, 0.05, 0.55, 2400);
+      sweep(c, 'sine', 260, 70, 0, 0.16, 0.5);
+      tone(c, 540, 0, 0.14, 'triangle', 0.12);
+      tone(c, 1320, 0, 0.06, 'square', 0.04);
+      noise(c, 0.2, 0.03, 0.18, 2000);
+      sweep(c, 'sine', 200, 80, 0.2, 0.1, 0.18);
       break;
     case 'siren':
       // The police car: the slow wail (not the fast two-tone), low in volume: up and down twice, 1.2 s each.

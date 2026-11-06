@@ -31,7 +31,7 @@ export function AuctionPanel({
   const tile = state.board.tiles.find((t) => t.id === a.tile);
   const price = tile && bankrupt.isOwnable(tile) ? tile.price : 100;
   const cash = state.players.find((p) => p.id === me)?.cash ?? 0;
-  const step = Math.max(bankrupt.MIN_BID, Math.round((price * 0.1) / 5) * 5);
+  const step = bankrupt.bidStep(price);
   const base = a.high?.amount ?? a.min - step;
   const myTurn = a.turn === me;
   const left = useCountdown(deadline, serverTime);
