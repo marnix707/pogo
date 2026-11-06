@@ -1,4 +1,4 @@
-import { bankrupt } from '@pogo/shared';
+import type { bankrupt } from '@pogo/shared';
 import { Button } from '../../components/ui';
 import { useCountdown } from '../../lib/useCountdown';
 import { money } from './Board';

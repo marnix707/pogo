@@ -1,7 +1,8 @@
-import { useState } from 'react';
 import { bankrupt } from '@pogo/shared';
 import type { LobbyOptionsProps } from '../types';
 import { InfoButton } from '../../components/ui';
+import { TipBubble } from '../../components/TipBubble';
+import { useTip } from '../../lib/tip';
 import { money } from './Board';
 
 const { TARGETS, TURN_LIMITS } = bankrupt;
@@ -100,12 +101,12 @@ function Toggle({
   onChange: () => void;
   tip: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const { open, toggle } = useTip(`bk-lobby:${id}`);
   return (
     <div className="relative flex min-h-12 items-center justify-between gap-3 font-semibold">
       <span className="flex items-center gap-2">
         {label}
-        <InfoButton expanded={open} onClick={() => setOpen((t) => !t)} testId={`bk-${id}-info`} />
+        <InfoButton expanded={open} onClick={toggle} testId={`bk-${id}-info`} />
       </span>
       <button
         type="button"
@@ -129,21 +130,19 @@ function Toggle({
           />
         </span>
       </button>
-      {open && (
-        <div
-          role="status"
-          data-testid={`bk-${id}-tip`}
-          className="info-bubble absolute left-0 top-full z-30 mt-1 w-64 max-w-[80vw]"
-        >
-          <span
-            aria-hidden
-            className="absolute -top-[7px] left-24 h-3 w-3 rotate-45 border-l-2 border-t-2 border-edge/40 bg-panel2"
-          />
-          <div className="relative rounded-lg border-2 border-edge/40 bg-panel2 px-3 py-2 text-left text-sm font-normal text-ink shadow-lg">
-            {tip}
-          </div>
+      <TipBubble
+        show={open}
+        testId={`bk-${id}-tip`}
+        className="absolute left-0 top-full z-30 mt-1 w-64 max-w-[80vw]"
+      >
+        <span
+          aria-hidden
+          className="absolute -top-[7px] left-24 h-3 w-3 rotate-45 border-l-2 border-t-2 border-edge/40 bg-panel2"
+        />
+        <div className="relative rounded-lg border-2 border-edge/40 bg-panel2 px-3 py-2 text-left text-sm font-normal text-ink shadow-lg">
+          {tip}
         </div>
-      )}
+      </TipBubble>
     </div>
   );
 }

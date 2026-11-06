@@ -355,6 +355,7 @@ export function InfoButton({
       aria-label={label}
       aria-expanded={expanded}
       data-testid={testId}
+      data-tip-trigger
       onClick={onClick}
       className="-m-[5px] flex shrink-0 items-center justify-center p-[5px] text-neon active:translate-y-px"
     >

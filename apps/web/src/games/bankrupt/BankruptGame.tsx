@@ -11,6 +11,8 @@ import { LockIcon } from '../../components/icons';
 import { AuctionPanel } from './AuctionPanel';
 import { EndBanner } from './EndBanner';
 import { AUCTION_WON_MS, AuctionWon } from './AuctionWon';
+import { TipBubble } from '../../components/TipBubble';
+import { toggleTip, useActiveTip } from '../../lib/tip';
 import { BailPanel } from './BailPanel';
 import { RainbowRoad } from './RainbowRoad';
 import { TradePanel, TradeSwap, pulsingTiles } from './TradePanel';
@@ -401,8 +403,8 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
     return () => clearInterval(t);
   }, [rolling]);
   const [tileOpen, setTileOpen] = useState<string | null>(null);
+  const openTip = useActiveTip();
   const [busy, setBusy] = useState(false);
-  const [tip, setTip] = useState<string | null>(null);
   const finished = state.phase === 'over';
   // (the trade starts only when everything before it has been played out: walk, card, payments)
   const tradeOn = !!state.trade && !animating;
@@ -489,7 +491,6 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
     play('turn');
     const t = setTimeout(() => setDebtWarn(false), 3200);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRoll, inDebt, animating]);
   const goalParts: Part[] = [
     {
@@ -599,7 +600,8 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           style={{ left: A(41), top: A(15), width: A(50), height: A(30) }}
           data-testid={`bk-cash-${p.id}`}
           aria-label={`${name(p.id)}: ${money(cash)}, net worth ${money(worth)}`}
-          onClick={() => setTip(tip === `cash-${p.id}` ? null : `cash-${p.id}`)}
+          data-tip-trigger
+          onClick={() => toggleTip(`bk-cash:${p.id}`)}
         />
         {(p.jail > 0 || p.bankrupt) && (
           <div className="absolute" style={{ right: A(3), top: A(6) }}>
@@ -613,21 +615,19 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
             />
           </div>
         )}
-        {tip === `cash-${p.id}` && (
-          <span
-            role="status"
-            className="absolute left-0 top-full z-20 mt-1 w-48 rounded-md border-2 border-edge/40 bg-panel2 px-2 py-1.5 text-left text-xs font-normal normal-case text-ink shadow-lg"
-          >
-            {p.cash < 0 ? (
-              <>
-                <b className="text-[#ff8f73]">Careful:</b> below {money(state.board.bankruptBelow)}{' '}
-                you are bankrupt.{' '}
-              </>
-            ) : null}
-            <span className="text-[#7ee08c]">Green = net worth</span>: cash plus what your spaces
-            and buildings sell for.
-          </span>
-        )}
+        <TipBubble
+          show={openTip === `bk-cash:${p.id}`}
+          className="absolute left-0 top-full z-20 mt-1 w-48 rounded-md border-2 border-edge/40 bg-panel2 px-2 py-1.5 text-left text-xs font-normal normal-case text-ink shadow-lg"
+        >
+          {p.cash < 0 ? (
+            <>
+              <b className="text-[#ff8f73]">Careful:</b> below {money(state.board.bankruptBelow)}{' '}
+              you are bankrupt.{' '}
+            </>
+          ) : null}
+          <span className="text-[#7ee08c]">Green = net worth</span>: cash plus what your spaces and
+          buildings sell for.
+        </TipBubble>
       </div>
     );
   };
