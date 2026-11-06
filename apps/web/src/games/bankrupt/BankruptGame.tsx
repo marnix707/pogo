@@ -344,10 +344,13 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   // The board shows the position as it was before this move until the move has been played out (no spoilers:
   // who owns the space the token is walking to, what got built, who is in jail ...).
   const [seen, setSeen] = useState(state);
+  // (a move waiting in the queue does not hold the board back: once this move has been played out it shows,
+  // e.g. a computer's purchase, even when its next move is already on the way)
+  const playing = fresh || !settled || paying;
   useEffect(() => {
-    if (!animating) setSeen(state);
-  }, [animating, state]);
-  const ui = animating ? seen : state;
+    if (!playing) setSeen(state);
+  }, [playing, state]);
+  const ui = playing ? seen : state;
   // The die tumbles through random faces while it rolls.
   const [face, setFace] = useState(1);
   useEffect(() => {
