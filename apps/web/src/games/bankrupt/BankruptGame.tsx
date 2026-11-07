@@ -532,7 +532,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   useEffect(() => {
     const html = document.documentElement;
     html.classList.add('bk-page');
-    html.style.setProperty('--bk-pattern', `url(${screenArt('background/bg-pattern-18x18')})`);
+    html.style.setProperty('--bk-pattern', `url("${screenArt('background/bg-pattern-18x18')}")`);
     return () => {
       html.classList.remove('bk-page');
       html.style.removeProperty('--bk-pattern');
@@ -895,7 +895,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       className="h-full overflow-y-auto overflow-x-hidden"
       style={{
         backgroundColor: '#20325a',
-        backgroundImage: `url(${screenArt('background/bg-pattern-18x18')})`,
+        backgroundImage: `url("${screenArt('background/bg-pattern-18x18')}")`,
         backgroundSize: `${A(18)}px ${A(18)}px`,
         backgroundAttachment: 'fixed',
         imageRendering: 'pixelated',
@@ -988,7 +988,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           <button
             type="button"
             data-testid="bk-roll"
-            aria-label="Roll the dice"
+            aria-label="Spin the wheel"
             disabled={!rollReady}
             onClick={() => {
               setTileOpen(null); // an open space card closes when I roll
@@ -1002,7 +1002,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
               className="absolute left-0 top-0 flex items-center justify-center"
               style={{ width: A(151), height: A(42) }}
             >
-              <PixelText s={s} k={3} parts={[{ text: 'ROLL THE DICE', colour: '#101628' }]} />
+              <PixelText s={s} k={4} parts={[{ text: 'SPIN', colour: '#101628' }]} />
             </span>
           </button>
           {canAct && (

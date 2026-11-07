@@ -191,3 +191,6 @@ The screen follows the user's layout editor export (kept: the shared top bar's b
 - **Easter egg**: triple-tap a tree in the plaza (`TREES` in `Plaza.tsx`, hit radius 7 art px, taps within 0.7 s of each other) and a bird flies out of it in a random direction (55 art px/s, flapping, flipped when it flies left); one bird per 5 s (`EGG_COOLDOWN_MS`). The tree positions were read off the artist's preview, so some may be a pixel or two off.
 
 - **Auction order**: the player who passed on the space and put it up (`Auction.starter`) is asked **last** in every round (after everybody else has bid or stepped out), so when nobody else wants the space they can still take it at the opening bid instead of being left out.
+
+- **Background pattern bug (fixed)**: the pattern's `url(...)` must be **quoted** (`url("...")`): the inlined SVG contains parentheses and spaces, so an unquoted url() was dropped and the screen showed no dots. Checked in a 3x phone screenshot: single crisp `#274f8f` squares on a 6 px grid with the sparser extra dots.
+- **Spin**: the Roll button now says SPIN, and only a tap on the wheel itself spins (the rest of the field does nothing).

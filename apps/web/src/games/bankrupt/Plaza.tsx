@@ -276,9 +276,10 @@ export function Plaza({
             }
             return;
           }
-          if (tappable) onTap?.();
+          // only a tap on the wheel itself spins it: the rest of the field does nothing (no accidental rolls)
+          if (tappable && Math.hypot(x - WHEEL.cx, y - WHEEL.cy) <= WHEEL.r) onTap?.();
         }}
-        className={`pointer-events-auto block h-full w-full ${tappable ? 'cursor-pointer' : ''}`}
+        className="pointer-events-auto block h-full w-full"
         style={{ imageRendering: 'pixelated' }}
       />
       <img

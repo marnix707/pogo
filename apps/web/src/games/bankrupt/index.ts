@@ -30,7 +30,7 @@ export const bankruptUi: GameUi = {
   // The top bar sits on a flat band over the screen's own dot pattern (see `--bk-art`, set by the screen).
   topBand: {
     backgroundColor: '#20325a',
-    backgroundImage: `url(${screenArt('background/bg-pattern-18x18')})`,
+    backgroundImage: `url("${screenArt('background/bg-pattern-18x18')}")`,
     backgroundSize: 'calc(var(--bk-art, 4px) * 18) calc(var(--bk-art, 4px) * 18)',
     backgroundAttachment: 'fixed',
     imageRendering: 'pixelated',
