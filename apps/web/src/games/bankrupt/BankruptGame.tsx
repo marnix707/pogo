@@ -483,20 +483,11 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   // Cannot pay for it: no card, just "Not enough money" and the game goes on at once (it is passed for me).
   const broke =
     !!owedBuy && (mePlayer?.cash ?? 0) < owedBuy.price && !bankrupt.rainbowRoad(state, me);
-  const [shortMsg, setShortMsg] = useState<string | null>(null);
   useEffect(() => {
-    // (Nothing to say any more: the note goes away with the situation, it can never get stuck.)
-    if (!broke || !settled || fresh || !owedBuy) {
-      setShortMsg(null);
-      return;
-    }
-    setShortMsg(`Not enough money for ${owedBuy.name}`);
-    const pass = setTimeout(() => void sendMove({ type: 'decline' }), 1100);
-    const gone = setTimeout(() => setShortMsg(null), 1500);
-    return () => {
-      clearTimeout(pass);
-      clearTimeout(gone);
-    };
+    // (no pop-up for it: the price on the board is crossed out; the space is just passed for me)
+    if (!broke || !settled || fresh || !owedBuy) return;
+    const pass = setTimeout(() => void sendMove({ type: 'decline' }), 800);
+    return () => clearTimeout(pass);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [broke, settled, fresh, owedBuy?.id]);
   // Auto roll switches itself off when I am in debt (below $0), with a warning: from here on I decide.
@@ -765,14 +756,6 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         pick={pick}
         onClearPick={() => setPick(null)}
       />
-    ) : shortMsg ? (
-      <p
-        role="status"
-        data-testid="bk-not-enough"
-        className="label flex h-full w-full items-center justify-center bg-[#ff6b57]/90 p-[4%] text-center text-[3.2cqw] text-white"
-      >
-        {shortMsg}
-      </p>
     ) : debtWarn ? (
       <p
         role="alert"
@@ -824,6 +807,15 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
               bankrupt.ownsSet(ui, me, t) &&
               (mePlayer?.cash ?? 0) >= t.buildCost,
           )
+          .map((t) => t.id)
+      : [],
+  );
+  // The free spaces I cannot pay for: their price on the board is crossed out.
+  const myCash = cashShown[me] ?? mePlayer?.cash ?? 0;
+  const cantAfford = new Set<string>(
+    !room.spectating && mePlayer && !mePlayer.bankrupt && !finished
+      ? ui.board.tiles
+          .filter((t) => bankrupt.isOwnable(t) && !ui.owned[t.id] && t.price > myCash)
           .map((t) => t.id)
       : [],
   );
@@ -949,6 +941,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
                 tradeOn || auctionOn || bailOn || swapping || rainbowing || winShow || noDealShow
               }
               upgradable={upgradable}
+              cantAfford={cantAfford}
               police={police}
               onPulse={(id) => {
                 play('tap');

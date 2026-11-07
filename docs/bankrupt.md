@@ -183,3 +183,5 @@ The screen follows the user's layout editor export (kept: the shared top bar's b
 - **The luck cards are a real deck** (`BankruptState.deck`, `cardPack`, `shuffled` in `game.ts`): the pack is shuffled at the start (11 cards, 10 without the Special wheel option), cards are dealt from the top (a card cannot come twice before all the others have), and when the deck is empty it is shuffled again. The order of the cards to come is hidden from the clients (`getPlayerView`).
 
 - **Moved up** (later request): the whole stack sits 12 art px higher than the editor's layout (50 px of a 3x screenshot): goal label 21, opponents 42, board 107. **The roll messages (last three turns) are under the Roll row now**, not in the middle of the board (`bk-note`, wrapped to 270 art px).
+
+- **Prices I cannot pay**: no red "Not enough money" pop-up any more. The price of every free space that costs more than my cash is **crossed out with a red X** on the board (`cantAfford` in `Board.tsx`, `bk-cross-<id>`; it follows the cash count). Landing on one I cannot pay for is still passed for me after a moment.

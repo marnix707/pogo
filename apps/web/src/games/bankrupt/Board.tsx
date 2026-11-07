@@ -43,6 +43,7 @@ export function Board({
   overlay,
   clear = false,
   upgradable,
+  cantAfford,
   police,
   children,
 }: {
@@ -60,6 +61,8 @@ export function Board({
   clear?: boolean;
   /** Spaces the player can build on right now: a little green arrow hops above their rent. */
   upgradable?: Set<string>;
+  /** Free spaces the player cannot pay for: a red cross over the price. */
+  cantAfford?: Set<string>;
   /** The police car fetching a frog to jail (a card sent it): drives along the top row. */
   police?: PoliceView | null;
   children: ReactNode;
@@ -225,6 +228,37 @@ export function Board({
                   ),
                 }}
               />
+            </svg>
+          );
+        })}
+        {/* a red cross over the price of a free space I cannot pay for */}
+        {state.board.tiles.map((tile, i) => {
+          if (!cantAfford?.has(tile.id) || !bankrupt.isOwnable(tile)) return null;
+          const { x, y } = at(i);
+          const w = measure(`$${tile.price}`).width;
+          const x0 = Math.floor((33 - w) / 2) - 1;
+          const pts: [number, number][] = [];
+          const h = 7;
+          for (let k = 0; k <= w + 1; k++) {
+            const yy = Math.round((k / (w + 1)) * (h - 1));
+            pts.push([x0 + k, 2 + yy], [x0 + k, 2 + (h - 1 - yy)]);
+          }
+          return (
+            <svg
+              key={`x-${tile.id}`}
+              aria-hidden
+              data-testid={`bk-cross-${tile.id}`}
+              viewBox={`0 0 ${TILE_PX} ${TILE_PX}`}
+              shapeRendering="crispEdges"
+              className="pointer-events-none absolute"
+              style={{ left: pct(x), top: pct(y), width: pct(TILE_PX), height: pct(TILE_PX) }}
+            >
+              {pts.map(([px, py], k) => (
+                <rect key={`s${k}`} x={px} y={py + 1} width={1} height={1} fill="#101628" />
+              ))}
+              {pts.map(([px, py], k) => (
+                <rect key={k} x={px} y={py} width={1} height={1} fill="#ff6b57" />
+              ))}
             </svg>
           );
         })}
