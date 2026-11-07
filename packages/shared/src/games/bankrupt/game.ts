@@ -58,6 +58,8 @@ export const SPECIAL_SLICES = [
   '4',
 ] as const;
 export const WHEEL_CASH = 50;
+/** The mega jump of a frog a card sends somewhere (up off the screen and a crash landing): the screen waits this long. */
+export const MEGA_JUMP_MS = 1100;
 /** Three sixes in a row: the fourth roll is the special wheel. */
 export const SIXES_FOR_WHEEL = 3;
 export const STEP_MS = 360;
@@ -766,7 +768,15 @@ function applyMove(
         const rivals = alivePlayers(s).filter((p) => p.id !== me.id && p.cash >= min);
         // Only a player who chose not to buy puts it up for auction: one who cannot afford it just passes.
         if (s.options.auctionOnDecline && me.cash >= t.price && rivals.length > 0) {
-          s.auction = { tile: t.id, min, high: null, passed: [], turn: me.id, starter: me.id, bids: {} };
+          s.auction = {
+            tile: t.id,
+            min,
+            high: null,
+            passed: [],
+            turn: me.id,
+            starter: me.id,
+            bids: {},
+          };
           s.phase = 'auction';
           resolveAuction(s, me.id);
         } else s.phase = afterLanding(s); // not sold: it stays free

@@ -2162,3 +2162,24 @@ html.bk-page [data-testid='topo-background'] {
     animation: none;
   }
 }
+
+/* The mega jump's crash landing: little squares of dust fly out and fade. */
+@keyframes bk-dust {
+  from {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 0.95;
+  }
+  to {
+    transform: translate(calc(-50% + var(--dx)), var(--dy)) scale(0.4);
+    opacity: 0;
+  }
+}
+.bk-dust {
+  animation: bk-dust 0.42s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bk-dust {
+    animation: none;
+    opacity: 0;
+  }
+}

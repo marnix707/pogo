@@ -87,6 +87,7 @@ export function Plaza({
   onTap,
   tappable,
   onBlink,
+  hubColour = 'green',
 }: {
   /** The slices shown while it stands still (the special set when the next roll is the special wheel). */
   idleSlices: readonly string[];
@@ -95,6 +96,8 @@ export function Plaza({
   tappable: boolean;
   /** Called with true / false on the beat of the winning slice's white blink (so the landing space can blink along). */
   onBlink?: (on: boolean) => void;
+  /** The frog on the hub wears the colour of the player whose turn it is. */
+  hubColour?: string;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const wheel = useRef<Wheel | null>(null);
@@ -283,7 +286,7 @@ export function Plaza({
         style={{ imageRendering: 'pixelated' }}
       />
       <img
-        src={url('hub-pogo')}
+        src={url(`hub-${hubColour}`)}
         alt=""
         data-testid="bk-hall"
         draggable={false}

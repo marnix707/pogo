@@ -46,3 +46,12 @@ export const FROG_OFFSETS: [number, number][] = [
   [0, 0],
   [0, -9],
 ];
+
+/** The mega jump (a card sends the frog somewhere): up and off the screen, a beat unseen, a crash landing, dust. */
+export const MEGA = {
+  upMs: 380,
+  hiddenMs: 70,
+  dropMs: 230,
+  dustMs: 420,
+  totalMs: 380 + 70 + 230 + 320,
+};

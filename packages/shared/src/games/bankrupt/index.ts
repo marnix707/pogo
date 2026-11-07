@@ -18,6 +18,7 @@ export {
   WHEEL_SLICES,
   SPECIAL_SLICES,
   WHEEL_CASH,
+  MEGA_JUMP_MS,
   SIXES_FOR_WHEEL,
   STEP_MS,
 } from './game';

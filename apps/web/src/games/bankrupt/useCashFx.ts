@@ -108,7 +108,7 @@ function transfersOf(s: State): Transfer[] {
   return out.filter((t) => t.amount > 0);
 }
 
-const centre = (el: Element | null) => {
+const centreOf = (el: Element | null) => {
   const r = el?.getBoundingClientRect();
   return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
 };
@@ -146,10 +146,49 @@ async function pop(at: { x: number; y: number }, text: string, colour: string) {
   el.remove();
 }
 
-/** Banknotes fly from one point to another in an arc; resolves when the first one has arrived. */
-function fly(from: { x: number; y: number }, targets: { x: number; y: number }[]) {
+type Pt = { x: number; y: number };
+
+/**
+ * How far along its path a note is after `t` (0..1) of its flight: it starts slowly, picks up speed over the
+ * middle and only eases off a little right before it lands (a blend of an ease-in and an ease-out curve).
+ */
+export function speedRamp(t: number): number {
+  const c = Math.min(1, Math.max(0, t));
+  const slowStart = c * c;
+  const slowEnd = 1 - Math.pow(1 - c, 1.5);
+  const w = Math.pow(c, 1.3); // the later in the flight, the more the ease-out counts
+  return (1 - w) * slowStart + w * slowEnd;
+}
+
+/**
+ * A curved flight from `a` to `b` that goes over `centre` (the middle of the board): a quadratic Bezier whose
+ * curve passes through the middle (pushed a little to the side so it is a real parabola-like bow, never a straight
+ * line), `u` 0..1 along the curve.
+ */
+export function arcPoint(a: Pt, b: Pt, centre: Pt, u: number, bow = 0.16): Pt {
+  const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  // the curve is pulled half way to the middle of the board
+  const over = { x: (mid.x + centre.x) / 2, y: (mid.y + centre.y) / 2 };
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  // a bow to the side (always to the left of the direction of travel, so notes in both ways do not overlap)
+  const m = { x: over.x + (-dy / len) * len * bow, y: over.y + (dx / len) * len * bow };
+  // the control point that makes the curve pass through `m` at u = 0.5
+  const c = { x: 2 * m.x - (a.x + b.x) / 2, y: 2 * m.y - (a.y + b.y) / 2 };
+  const k = 1 - u;
+  return {
+    x: k * k * a.x + 2 * k * u * c.x + u * u * b.x,
+    y: k * k * a.y + 2 * k * u * c.y + u * u * b.y,
+  };
+}
+
+/** Banknotes fly from one point to another over the middle of the board; resolves when the first one has arrived. */
+function fly(from: Pt, targets: Pt[]) {
   const n = targets.length;
-  const ms = 700;
+  const ms = 950;
+  const board = document.querySelector('[data-testid="bk-board"]');
+  const centre = centreOf(board) ?? { x: window.innerWidth / 2, y: window.innerHeight / 2 };
   const done: Promise<unknown>[] = [];
   for (let i = 0; i < n; i++) {
     const to = targets[i]!;
@@ -166,33 +205,29 @@ function fly(from: { x: number; y: number }, targets: { x: number; y: number }[]
       opacity: '0',
     });
     document.body.appendChild(img);
-    const wobble = (i - (n - 1) / 2) * 14;
-    const midX = (from.x + to.x) / 2 + wobble;
-    const midY = Math.min(from.y, to.y) - 60 - Math.abs(wobble);
-    const a = img.animate(
-      [
-        {
-          transform: `translate(${from.x - 17}px, ${from.y - 10}px) scale(0.6) rotate(0deg)`,
-          opacity: 1,
-        },
-        {
-          transform: `translate(${midX - 17}px, ${midY}px) scale(1.2) rotate(${wobble}deg)`,
-          opacity: 1,
-          offset: 0.5,
-        },
-        {
-          transform: `translate(${to.x - 17}px, ${to.y - 10}px) scale(0.7) rotate(${-wobble}deg)`,
-          opacity: 1,
-          offset: 0.92,
-        },
-        { transform: `translate(${to.x - 17}px, ${to.y - 10}px) scale(0.3)`, opacity: 0 },
-      ],
-      { duration: ms, delay: i * 90, easing: 'cubic-bezier(0.4, 0, 0.6, 1)', fill: 'both' },
-    );
+    // (several notes fan out a little: each takes a slightly different bow)
+    const bow = 0.16 + (i - (n - 1) / 2) * 0.06;
+    const STEPS = 28;
+    const frames: Keyframe[] = [];
+    let prev = arcPoint(from, to, centre, 0, bow);
+    for (let k = 0; k <= STEPS; k++) {
+      const t = k / STEPS;
+      const p = arcPoint(from, to, centre, speedRamp(t), bow);
+      // it turns with the direction it is flying, and is biggest as it passes the middle
+      const angle = (Math.atan2(p.y - prev.y, p.x - prev.x) * 180) / Math.PI;
+      const size = 0.6 + 0.65 * Math.sin(Math.PI * Math.min(1, t * 1.05));
+      frames.push({
+        transform: `translate(${p.x - 17}px, ${p.y - 10}px) scale(${size}) rotate(${(angle * 0.25).toFixed(1)}deg)`,
+        opacity: t > 0.94 ? 1 - (t - 0.94) / 0.06 : 1,
+        offset: t,
+      });
+      prev = p;
+    }
+    const a = img.animate(frames, { duration: ms, delay: i * 90, easing: 'linear', fill: 'both' });
     done.push(a.finished.catch(() => undefined).then(() => img.remove()));
   }
   // The first note arriving is the moment the receiver's number starts to count.
-  return { firstArrives: ms * 0.9, all: Promise.all(done) };
+  return { firstArrives: ms * 0.92, all: Promise.all(done) };
 }
 
 /**
@@ -274,12 +309,12 @@ export function useCashFx(
     void (async () => {
       for (const t of transfers) {
         if (stopped) return;
-        const tile = centre(tileEl(t.tile));
+        const tile = centreOf(tileEl(t.tile));
         // The bank is the town hall in the middle of the board: money to or from the bank goes there.
-        const bank = centre(hallEl()) ?? tile;
-        const payer = t.from ? centre(tagEl(t.from)) : bank;
-        const receiver = t.to ? centre(tagEl(t.to)) : bank;
-        const splitTo = t.split ? (t.split.to ? centre(tagEl(t.split.to)) : bank) : null;
+        const bank = centreOf(hallEl()) ?? tile;
+        const payer = t.from ? centreOf(tagEl(t.from)) : bank;
+        const receiver = t.to ? centreOf(tagEl(t.to)) : bank;
+        const splitTo = t.split ? (t.split.to ? centreOf(tagEl(t.split.to)) : bank) : null;
         const viaBank = t.from === null || t.to === null;
         const bump = () =>
           hallEl()?.animate([{ scale: '1' }, { scale: '1.2' }, { scale: '1' }], {

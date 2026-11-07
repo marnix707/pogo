@@ -162,6 +162,10 @@ function useWalking(state: State) {
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   // The police car fetches a frog that a card sent to jail from the top row (instead of letting it hop there).
   const [police, setPolice] = useState<PoliceView | null>(null);
+  // The mega jump of a frog a card sent somewhere (counts up per frog); the screen waits for it.
+  const [mega, setMega] = useState<Record<string, number>>({});
+  const [megaBusy, setMegaBusy] = useState(false);
+  const megaTimer = useRef<ReturnType<typeof setTimeout>>();
   const plan = useRef<{
     id: string;
     from: number;
@@ -292,8 +296,18 @@ function useWalking(state: State) {
         () => {
           // Gone: now the card does what it says (walk on, walk to jail, the payments).
           setCard(null);
+          const dest = state.players.find((q) => q.id === card.ev.by)?.pos;
           if (plan.current?.trigger === 'card') runPolice(plan.current);
-          else setHold(null);
+          else if (card.ev.kind === 'travel' && dest !== undefined && !reduced()) {
+            // A card sends the frog somewhere: it does not walk, it MEGA jumps (up off the screen, crash landing).
+            const by = card.ev.by;
+            setHold(null);
+            setShown((cur) => ({ ...cur, [by]: dest }));
+            setMega((m) => ({ ...m, [by]: (m[by] ?? 0) + 1 }));
+            setMegaBusy(true);
+            clearTimeout(megaTimer.current);
+            megaTimer.current = setTimeout(() => setMegaBusy(false), bankrupt.MEGA_JUMP_MS);
+          } else setHold(null);
         },
         slide + show + slide,
       ),
@@ -349,7 +363,15 @@ function useWalking(state: State) {
     return () => clearInterval(i);
   }, [sirenOn]);
   const cardBusy = card !== null;
-  return { shown, rolling, settled: walked && !cardBusy && !police, card, cardBusy, police };
+  return {
+    shown,
+    rolling,
+    settled: walked && !cardBusy && !police && !megaBusy,
+    card,
+    cardBusy,
+    police,
+    mega,
+  };
 }
 
 /** Moves that make their own sound (the cash sound when the money moves). */
@@ -383,7 +405,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const mover = players[state.turn]!;
   const nickOf = (id: string) => room.members.find((m) => m.id === id);
   const name = (id: string) => nickOf(id)?.nickname ?? 'Player';
-  const { shown, rolling, settled, card, cardBusy, police } = useWalking(state);
+  const { shown, rolling, settled, card, cardBusy, police, mega } = useWalking(state);
   // The trade on the Auction corner is off (cancelled, nobody dealt, nobody to trade with): a short "no deal" show.
   const [noDealDone, setNoDealDone] = useState(state.seq);
   const noDealOn =
@@ -391,14 +413,16 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   // An auction has been won: the gavel show runs first (the payment and the new owner come after it).
   const [wonDone, setWonDone] = useState(state.seq);
   const winOn = wonDone !== state.seq && state.events.some((e) => e.k === 'auction' && !!e.winner);
-  const { shown: cashShown, playing: paying } = useCashFx(state, settled && !winOn);
+  // (`fresh`: a new move has just arrived and the hooks have not started its animations yet: nothing is ready then,
+  // so a payment of a move without any walking (the wheel's $50) cannot start before the wheel has even begun to spin)
+  const [doneSeq, setDoneSeq] = useState(state.seq);
+  useEffect(() => setDoneSeq(state.seq), [state.seq]);
+  const fresh = doneSeq !== state.seq;
+  const { shown: cashShown, playing: paying } = useCashFx(state, settled && !winOn && !fresh);
   void cardBusy;
   // Nobody acts while the last player's token is still walking, the die tumbles or a payment is on show.
   // (`fresh`: a new move has just arrived and the hooks above have not started its animations yet: there is
   // no instant in between where the buttons work.)
-  const [doneSeq, setDoneSeq] = useState(state.seq);
-  useEffect(() => setDoneSeq(state.seq), [state.seq]);
-  const fresh = doneSeq !== state.seq;
   const animating = fresh || !settled || paying || winOn || noDealOn || queue.length > 0;
   useEffect(() => {
     if (!winOn || fresh || !settled) return;
@@ -730,11 +754,20 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
         tileId={tileOpen}
         canAct={myTurn && !state.auction && !state.trade && state.phase !== 'buy'}
         canBuild={
-          myTurn && state.phase === 'roll' && !animating && !busy && !state.auction && !state.trade
+          myTurn &&
+          (state.phase === 'roll' || state.phase === 'upgrade') &&
+          !animating &&
+          !busy &&
+          !state.auction &&
+          !state.trade
         }
         send={send}
         name={name}
-        onClose={() => setTileOpen(null)}
+        onClose={() => {
+          setTileOpen(null);
+          // Waiting on my own space to upgrade it: closing the card is passing (the turn goes on).
+          if (upgrading) void send({ type: 'decline' });
+        }}
       />
     ) : bailOn ? (
       <BailPanel
@@ -835,6 +868,15 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           .map((t) => t.id)
       : [],
   );
+  // I landed on my own space that I can build on: the turn waits, its card opens and I may upgrade (or just close it).
+  const upgrading = myTurn && state.phase === 'upgrade' && !room.spectating;
+  const upgradeTile = upgrading ? (state.board.tiles[mover.pos]?.id ?? null) : null;
+  const opened = useRef(-1);
+  useEffect(() => {
+    if (!upgradeTile || animating || opened.current === state.seq) return;
+    opened.current = state.seq;
+    setTileOpen(upgradeTile);
+  }, [upgradeTile, animating, state.seq]);
   const canRoll = myTurn && state.phase === 'roll';
   // (looks and works the same: yellow only while a tap really rolls)
   const rollReady = canRoll && !busy && !rolling && !animating;
@@ -969,6 +1011,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
               cantAfford={cantAfford}
               flash={landBlink ? landTile : null}
               police={police}
+              mega={mega}
               onPulse={(id) => {
                 play('tap');
                 setPick(id === pick ? null : id);
@@ -984,6 +1027,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
                   idleSlices={idleSlices}
                   spin={spin}
                   onBlink={setLandBlink}
+                  hubColour={playerColour(mover)}
                   tappable={rollReady}
                   onTap={() => {
                     setTileOpen(null);

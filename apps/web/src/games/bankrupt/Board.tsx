@@ -45,6 +45,7 @@ export function Board({
   upgradable,
   cantAfford,
   flash,
+  mega,
   police,
   children,
 }: {
@@ -66,6 +67,8 @@ export function Board({
   cantAfford?: Set<string>;
   /** The space the frog is about to land on blinks white (in step with the wheel's winning slice). */
   flash?: string | null;
+  /** Mega jumps of frogs a card sent somewhere (counts per player). */
+  mega?: Record<string, number>;
   /** The police car fetching a frog to jail (a card sent it): drives along the top row. */
   police?: PoliceView | null;
   children: ReactNode;
@@ -343,6 +346,7 @@ export function Board({
                 key={p.id}
                 testId={`bk-token-${p.id}`}
                 jailed={p.jail > 0}
+                mega={mega?.[p.id] ?? 0}
                 colour={playerColour(p)}
                 pos={pos}
                 n={n}

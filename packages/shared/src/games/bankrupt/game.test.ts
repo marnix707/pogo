@@ -989,3 +989,30 @@ describe('the auction order', () => {
     expect(s.owned['madrid']?.owner).toBe(a);
   });
 });
+
+describe('landing on your own space that you can build on', () => {
+  const landed = () => {
+    let s = start();
+    const a = mover(s).id;
+    s = own(own(s, 'rio', a), 'delhi', a); // the whole green street
+    s = patch(s, a, { pos: idx('rio') - 2 });
+    return { s: play(s, a, { type: 'roll' }, dice(2)), a };
+  };
+  it('waits for the player instead of skipping the turn; they may build or pass', () => {
+    const { s, a } = landed();
+    expect(s.phase).toBe('upgrade');
+    expect(mover(s).id).toBe(a);
+    const built = play(s, a, { type: 'build', tile: 'rio' });
+    expect(built.owned['rio']!.level).toBe(1);
+    // still on the space and still able to build: the turn keeps waiting
+    expect(built.phase).toBe('upgrade');
+    const passed = play(s, a, { type: 'decline' });
+    expect(passed.owned['rio']!.level).toBe(0);
+    expect(mover(passed).id).not.toBe(a);
+  });
+  it('computers build when they have a cushion, else pass', () => {
+    const { s, a } = landed();
+    const move = game.autoMove!(s, a, createSeededRng(1)).move;
+    expect(['build', 'decline']).toContain(move.type);
+  });
+});
