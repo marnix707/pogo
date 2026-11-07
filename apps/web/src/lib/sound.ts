@@ -6,6 +6,7 @@ export type SoundName =
   | 'siren'
   | 'jail'
   | 'hammer'
+  | 'tick'
   | 'roll'
   | 'score'
   | 'turn'
@@ -330,6 +331,10 @@ export function play(name: SoundName) {
       tone(c, 233, 0.02, 1, 'triangle', 0.12);
       noise(c, 0.55, 0.06, 0.4, 1800);
       tone(c, 180, 0.55, 0.12, 'square', 0.1);
+      break;
+    case 'tick':
+      // The wheel's pointer flicking over a slice edge.
+      tone(c, 1400, 0, 0.035, 'square', 0.04);
       break;
     case 'hammer':
       // The auction hammer: a hard wooden knock on the block, a short ring and a lighter knock after it.

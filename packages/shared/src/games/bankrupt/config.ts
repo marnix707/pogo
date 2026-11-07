@@ -53,6 +53,8 @@ export const cardEffectSchema = z.discriminatedUnion('type', [
   /** Money for every building you own (negative = a bill). */
   z.object({ type: z.literal('perBuilding'), amount: z.number().int() }),
   z.object({ type: z.literal('jail') }),
+  /** Fortunate wheel: your next roll is a spin of the special wheel (needs the Special wheel option). */
+  z.object({ type: z.literal('wheel') }),
 ]);
 export type CardEffect = z.infer<typeof cardEffectSchema>;
 

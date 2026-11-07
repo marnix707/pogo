@@ -2116,3 +2116,18 @@ html.results-open .safe-top-scrim {
     animation: none;
   }
 }
+
+/* Bankrupt: the whole page is the screen's dot pattern, also outside the column (no felt gradient, glows or contour
+   lines). `--bk-art` (the art pixel size) and `--bk-pattern` are set by the game screen. */
+html.bk-page {
+  background-color: #20325a;
+  background-image: var(--bk-pattern);
+  background-size: calc(var(--bk-art, 4px) * 18) calc(var(--bk-art, 4px) * 18);
+  background-attachment: fixed;
+  image-rendering: pixelated;
+}
+html.bk-page body::before,
+html.bk-page body::after,
+html.bk-page [data-testid='topo-background'] {
+  display: none;
+}

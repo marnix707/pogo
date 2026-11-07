@@ -14,6 +14,8 @@ import { AUCTION_WON_MS, AuctionWon } from './AuctionWon';
 import { TipBubble } from '../../components/TipBubble';
 import { toggleTip, useActiveTip } from '../../lib/tip';
 import { BailPanel } from './BailPanel';
+import { Plaza, SPECIAL_SLICES, WHEEL_SLICES, sliceFor } from './Plaza';
+import type { Spin } from './Plaza';
 import { TRADE_CANCELLED_MS, TradeCancelled } from './TradeCancelled';
 import { RainbowRoad } from './RainbowRoad';
 import { TradePanel, TradeSwap, pulsingTiles } from './TradePanel';
@@ -30,12 +32,21 @@ import { gridPos } from './grid';
 
 type State = bankrupt.BankruptState;
 
+/** A roll in words (the special wheel can also give $50 or jail). */
+function rollText(e: Extract<bankrupt.BankruptEvent, { k: 'roll' }>): string {
+  if (!e.wheel) return `rolled ${e.dice}`;
+  if (e.dice > 0) return `spun the special wheel: ${e.dice}`;
+  return e.wheel.slice === 'JAIL'
+    ? 'spun JAIL on the special wheel'
+    : 'won $50 on the special wheel';
+}
+
 /** What the last move did, in words (the line in the middle of the board). */
 function describe(s: State, name: (id: string) => string): string {
   const tile = (id: string) => s.board.tiles.find((t) => t.id === id)?.name ?? id;
   const parts: string[] = [];
   for (const e of s.events) {
-    if (e.k === 'roll') parts.push(`${name(e.by)} rolled ${e.dice}`);
+    if (e.k === 'roll') parts.push(`${name(e.by)} ${rollText(e)}`);
     else if (e.k === 'salary') parts.push(`${name(e.by)} passed Start: +${money(e.amount)}`);
     else if (e.k === 'rent') parts.push(`${name(e.by)} paid ${name(e.to)} ${money(e.amount)} rent`);
     else if (e.k === 'buy') parts.push(`${name(e.by)} bought ${tile(e.tile)}`);
@@ -85,7 +96,7 @@ function turnParts(
   const nm = (id: string) => (id === actor ? '' : `${name(id)} `);
   const parts: string[] = [];
   for (const e of s.events) {
-    if (e.k === 'roll') parts.push(`${nm(e.by)}rolled ${e.dice}`);
+    if (e.k === 'roll') parts.push(`${nm(e.by)}${rollText(e)}`);
     else if (e.k === 'salary') parts.push(`${nm(e.by)}passed Start: +${money(e.amount)}`);
     else if (e.k === 'rent') parts.push(`${nm(e.by)}paid ${name(e.to)} ${money(e.amount)} rent`);
     else if (e.k === 'buy') parts.push(`${nm(e.by)}bought ${tile(e.tile)}`);
@@ -188,9 +199,12 @@ function useWalking(state: State) {
       const jailEv = state.events.find((e) => e.k === 'jail');
       const jailer =
         jailEv && jailEv.k === 'jail' ? state.players.find((p) => p.id === jailEv.by) : undefined;
-      const mv = state.events
-        .filter((e) => e.k === 'move' && jailer && e.by === jailer.id)
-        .at(-1) as { from: number; to: number } | undefined;
+      const wheelJail = state.events.find((e) => e.k === 'roll' && e.wheel?.slice === 'JAIL');
+      const mv = (
+        wheelJail && wheelJail.k === 'roll' && wheelJail.wheel
+          ? { from: wheelJail.wheel.from, to: jailIdx }
+          : state.events.filter((e) => e.k === 'move' && jailer && e.by === jailer.id).at(-1)
+      ) as { from: number; to: number } | undefined;
       if (
         !reduced() &&
         rolled &&
@@ -212,7 +226,6 @@ function useWalking(state: State) {
     }
     if (!rolled) return;
     setRolling(true);
-    play('roll'); // the dice rattle, as in Yatzy (for every roll, whoever rolls)
     clearTimeout(rollTimer.current);
     rollTimer.current = setTimeout(() => {
       setRolling(false);
@@ -407,13 +420,6 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
     if (!playing) setSeen(state);
   }, [playing, state]);
   const ui = playing ? seen : state;
-  // The die tumbles through random faces while it rolls.
-  const [face, setFace] = useState(1);
-  useEffect(() => {
-    if (!rolling) return;
-    const t = setInterval(() => setFace(1 + Math.floor(Math.random() * 6)), 60);
-    return () => clearInterval(t);
-  }, [rolling]);
   const [tileOpen, setTileOpen] = useState<string | null>(null);
   const openTip = useActiveTip();
   const [busy, setBusy] = useState(false);
@@ -530,12 +536,18 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   useLayoutEffect(() => {
     document.documentElement.style.setProperty('--bk-art', `${s}px`);
   }, [s]);
-  useEffect(
-    () => () => {
-      document.documentElement.style.removeProperty('--bk-art');
-    },
-    [],
-  );
+  // The whole page (also outside the column, behind the top bar and under the board) is the dot pattern: no felt
+  // gradient, glows or contour lines while this screen is open (`html.bk-page` in index.css).
+  useEffect(() => {
+    const html = document.documentElement;
+    html.classList.add('bk-page');
+    html.style.setProperty('--bk-pattern', `url(${screenArt('background/bg-pattern-18x18')})`);
+    return () => {
+      html.classList.remove('bk-page');
+      html.style.removeProperty('--bk-pattern');
+      html.style.removeProperty('--bk-art');
+    };
+  }, []);
   const jailOn = myTurn && state.phase === 'jailAsk' && !animating;
 
   const tag = (latestP: State['players'][number], left: number, top: number) => {
@@ -818,6 +830,26 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const canRoll = myTurn && state.phase === 'roll';
   // (looks and works the same: yellow only while a tap really rolls)
   const rollReady = canRoll && !busy && !rolling && !animating;
+  // The wheel: it spins onto what the last roll was (the special wheel's slice comes from the game), and while it
+  // stands still it shows the set the NEXT roll uses (the special one after three sixes or a fortunate-wheel card).
+  const rollEv = state.events.find((e) => e.k === 'roll');
+  const spin = useMemo<Spin | null>(() => {
+    if (!rollEv || rollEv.k !== 'roll') return null;
+    const slices = rollEv.wheel ? SPECIAL_SLICES : WHEEL_SLICES;
+    return {
+      key: state.seq,
+      slices,
+      idx: rollEv.wheel ? rollEv.wheel.idx : sliceFor(slices, rollEv.dice),
+      ms: bankrupt.ROLL_MS - 400,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.seq]);
+  const idleSlices =
+    state.options.specialWheel &&
+    !finished &&
+    (mover.wheel || state.sixes === bankrupt.SIXES_FOR_WHEEL)
+      ? SPECIAL_SLICES
+      : WHEEL_SLICES;
   const rollMessage = finished
     ? 'Game over'
     : note ||
@@ -837,19 +869,14 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const boardPx = Math.floor(totalPx / (1 + 4 / 257));
   const bs = boardPx / 257; // css px per board art pixel
   const boardArt = boardPx / s; // the board's size in screen art pixels
-  // Above the board (from the layout): the goal label 21 art px over the opponents' cards, which stand 19 px
-  // over the board's top row. Below it: my card and the Roll button 24 px under it (66 with the extra seats).
-  const ABOVE = 92;
+  // The layout's own positions, from the top of the screen (just under the top bar): the goal label at 33, the
+  // opponents' cards at 54 (19 px over the board), the board at 119, and my card + Roll button 24 px under the
+  // board (66 with the extra seats). Nothing is stretched or centred: what is left over below is just the pattern.
+  const boardTop = 119; // art px
   const gapBelow = extras.length ? 66 : 24;
-  const H = Math.max(Math.ceil(ABOVE + boardArt + gapBelow + CARD_H + 10), hArt);
-  const boardTop = Math.min(
-    Math.max(ABOVE, H / 2 - boardArt / 2),
-    H - boardArt - gapBelow - CARD_H - 10,
-  ); // art px
-  const rowY = Math.round(
-    Math.max(boardTop + boardArt + gapBelow, H * 0.8 + (H * 0.2 - CARD_H) / 2),
-  );
-  const cardsY = Math.round(boardTop - 19 - 46); // the opponents' row (cards are 46 high + 2 shadow)
+  const rowY = Math.round(boardTop + boardArt + gapBelow);
+  const H = Math.max(rowY + CARD_H + 12, hArt);
+  const cardsY = 54; // the opponents' row (cards are 46 high + 2 shadow)
   const goalW = labelWidth(goalParts);
   const status = room.spectating
     ? 'Watching the game'
@@ -881,7 +908,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           {/* the goal and the round */}
           <div
             className="absolute"
-            style={{ left: A(Math.floor(145 - goalW / 2)), top: A(cardsY - 21) }}
+            style={{ left: A(Math.floor(145 - goalW / 2)), top: A(33) }}
             data-testid="bk-goal"
           >
             <PixelText s={s} navy parts={goalParts} />
@@ -928,27 +955,26 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
                 setPick(id === pick ? null : id);
               }}
             >
-              {/* one die, bigger, its colour shows the value; the message sits under it */}
+              {/* the town plaza with the wheel (the wheel is the die: it spins onto what the game rolled) */}
               <div
                 className="absolute"
-                style={{ left: bp(136), top: bp(86), width: bp(58) }}
+                style={{ left: bp(32), top: bp(32), width: bp(193), height: bp(193) }}
                 data-testid="bk-dice"
               >
-                {(state.dice ?? 0) > 0 || rolling ? (
-                  <img
-                    src={screenArt(`dice/die-${rolling ? face : state.dice}`)}
-                    alt={rolling ? 'rolling' : `die ${state.dice}`}
-                    data-testid="bk-die"
-                    data-value={rolling ? 0 : state.dice}
-                    className="block w-full"
-                    style={{ imageRendering: 'pixelated' }}
-                  />
-                ) : null}
+                <Plaza
+                  idleSlices={idleSlices}
+                  spin={spin}
+                  tappable={rollReady}
+                  onTap={() => {
+                    setTileOpen(null);
+                    void send({ type: 'roll' });
+                  }}
+                />
               </div>
               {/* the last three things that happened, newest on top and brightest, wrapped to fit */}
               <div
                 className="absolute flex w-full flex-col items-center"
-                style={{ top: bp(153), gap: A(2) }}
+                style={{ top: bp(174), gap: A(2) }}
                 data-testid="bk-note"
                 role="status"
               >

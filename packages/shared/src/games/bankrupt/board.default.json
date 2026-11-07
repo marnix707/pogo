@@ -346,6 +346,12 @@
       }
     },
     {
+      "text": "Fortunate wheel! Your next roll is a spin of the special wheel",
+      "effect": {
+        "type": "wheel"
+      }
+    },
+    {
       "text": "Go to jail",
       "effect": {
         "type": "jail"

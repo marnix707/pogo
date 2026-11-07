@@ -5,6 +5,7 @@ import { boardConfigSchema, DEFAULT_BOARD } from './config';
 import { bankruptGame as game, bidStep } from './game';
 import { mover, netWorth, rentOf, tileById, tileIndex } from './rules';
 import type { BankruptMove, BankruptOptions, BankruptState } from './types';
+import * as bankrupt from './index';
 
 const people = [
   { id: 'a', nickname: 'A', avatar: 'fox' },
@@ -17,6 +18,7 @@ const OPTIONS: BankruptOptions = {
   auctionOnDecline: true,
   rainbowRoad: false,
   freeFroggo: false,
+  specialWheel: false,
 };
 
 const start = (n = 2, options = OPTIONS): BankruptState =>
@@ -100,6 +102,7 @@ describe('Bankrupt board and set-up', () => {
       auctionOnDecline: true,
       rainbowRoad: false,
       freeFroggo: false,
+      specialWheel: true,
     });
     expect(game.optionsSchema.safeParse({ auctionOnDecline: 'no' }).success).toBe(false);
     expect(game.optionsSchema.safeParse({ target: 0, turns: 0 }).success).toBe(true);
@@ -873,5 +876,50 @@ describe('the Auction corner with computers', () => {
     expect(landed.trade).toBeNull();
     expect(landed.events.some((e) => e.k === 'tradeNone')).toBe(true);
     expect(landed.phase).not.toBe('trade');
+  });
+});
+
+describe('the special wheel', () => {
+  const on: BankruptOptions = { ...OPTIONS, specialWheel: true };
+  /** The mover stands on Start; faces for the dice: a number 1-6 is a die; for the special wheel the value is the slice index. */
+  it('the 4th roll after three sixes spins the special wheel; a number moves as usual', () => {
+    let s: BankruptState = start(2, on);
+    const a = mover(s).id;
+    s = { ...s, sixes: 3 };
+    // slice 4 of the special wheel is '3'
+    const t = play(s, a, { type: 'roll' }, dice(4));
+    const ev = t.events.find((e) => e.k === 'roll');
+    expect(ev).toMatchObject({ dice: 3, wheel: { idx: 3, slice: '3' } });
+    expect(t.players.find((p) => p.id === a)!.pos).toBe(3);
+    expect(t.sixes).toBe(0);
+  });
+  it('$50 pays from the bank and the turn ends; JAIL sends the frog to jail', () => {
+    const s0 = start(2, on);
+    const a = mover(s0).id;
+    const wheelAt = (slice: string) =>
+      (bankrupt.SPECIAL_SLICES as readonly string[]).indexOf(slice) + 1; // (dice() faces are 1-based)
+    const s = { ...s0, sixes: 3 };
+    const rich = play(s, a, { type: 'roll' }, dice(wheelAt('$50')));
+    expect(cash(rich, a)).toBe(cash(s, a) + 50);
+    expect(rich.players.find((p) => p.id === a)!.pos).toBe(0);
+    expect(mover(rich).id).not.toBe(a); // (no walking, the turn is over)
+    const jailed = play(s, a, { type: 'roll' }, dice(wheelAt('JAIL')));
+    expect(jailed.players.find((p) => p.id === a)!.jail).toBeGreaterThan(0);
+    expect(jailed.events.some((e) => e.k === 'jail')).toBe(true);
+  });
+  it('a fortunate-wheel card makes the next roll the special wheel, once', () => {
+    let s: BankruptState = start(2, on);
+    const a = mover(s).id;
+    s = patch(s, a, { wheel: true });
+    const t = play(s, a, { type: 'roll' }, dice(1));
+    expect(t.events.find((e) => e.k === 'roll')).toMatchObject({ wheel: { slice: '1' } });
+    expect(t.players.find((p) => p.id === a)!.wheel).toBe(false);
+  });
+  it('does nothing when the option is off', () => {
+    let s: BankruptState = start(2, { ...on, specialWheel: false });
+    const a = mover(s).id;
+    s = { ...patch(s, a, { wheel: true }), sixes: 3 };
+    const t = play(s, a, { type: 'roll' }, dice(2));
+    expect(t.events.find((e) => e.k === 'roll')).not.toHaveProperty('wheel');
   });
 });

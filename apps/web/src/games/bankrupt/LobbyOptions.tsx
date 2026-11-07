@@ -16,8 +16,17 @@ export function BankruptOptionsPicker({ room, isHost, setOptions }: LobbyOptions
   const auctionOnDecline = options.auctionOnDecline ?? true;
   const rainbowRoad = options.rainbowRoad ?? false;
   const freeFroggo = options.freeFroggo ?? false;
+  const specialWheel = options.specialWheel ?? true;
   const set = (patch: Partial<bankrupt.BankruptOptions>) =>
-    setOptions({ target, turns, auctionOnDecline, rainbowRoad, freeFroggo, ...patch });
+    setOptions({
+      target,
+      turns,
+      auctionOnDecline,
+      rainbowRoad,
+      freeFroggo,
+      specialWheel,
+      ...patch,
+    });
   const chip = (active: boolean) =>
     `min-h-10 flex-1 rounded-md border-2 px-1 text-sm font-bold ${isHost ? '' : 'opacity-60'} ${
       active ? 'border-accent bg-accent text-accentink' : 'border-edge/40 text-muted'
@@ -73,6 +82,14 @@ export function BankruptOptionsPicker({ room, isHost, setOptions }: LobbyOptions
         isHost={isHost}
         onChange={() => set({ rainbowRoad: !rainbowRoad })}
         tip="With 3 or more players: when two other players each own one space of a three-space street and you land on the free third, you can pick Rainbow Road instead of buying. The street is sold back to the bank and its owners get the sell price."
+      />
+      <Toggle
+        label="Special wheel"
+        id="wheel"
+        on={specialWheel}
+        isHost={isHost}
+        onChange={() => set({ specialWheel: !specialWheel })}
+        tip={`The wheel is the die. Roll three 6s in a row and your 4th roll is the special wheel, which also has ${money(bankrupt.WHEEL_CASH)} and JAIL on it. A luck card can give you a fortunate wheel for your next roll too.`}
       />
       <Toggle
         label="Free Froggo"

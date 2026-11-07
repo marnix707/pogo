@@ -38,7 +38,28 @@ import type {
 } from './types';
 
 /** Milliseconds the screen needs to show the dice and one step of a token. */
-export const ROLL_MS = 900;
+/** The wheel spins about 2.6 s and flashes its slice for the rest (the screen and the computers wait this long). */
+export const ROLL_MS = 3000;
+/** The normal wheel: the die's six numbers twice round. */
+export const WHEEL_SLICES = ['1', '2', '3', '4', '5', '6', '1', '2', '3', '4', '5', '6'] as const;
+/** The special wheel: also $50 and JAIL. */
+export const SPECIAL_SLICES = [
+  '1',
+  '2',
+  '$50',
+  '3',
+  '4',
+  '5',
+  '6',
+  'JAIL',
+  '1',
+  '2',
+  '3',
+  '4',
+] as const;
+export const WHEEL_CASH = 50;
+/** Three sixes in a row: the fourth roll is the special wheel. */
+export const SIXES_FOR_WHEEL = 3;
 export const STEP_MS = 360;
 /** The smallest bid, and the step bots bid in. */
 export const MIN_BID = 10;
@@ -78,6 +99,7 @@ const optionsSchema: z.ZodType<BankruptOptions, z.ZodTypeDef, unknown> = z
     auctionOnDecline: z.boolean().default(true),
     rainbowRoad: z.boolean().default(false),
     freeFroggo: z.boolean().default(false),
+    specialWheel: z.boolean().default(true),
   })
   .strict();
 
@@ -136,6 +158,7 @@ function createInitialState(
       jail: 0,
       bankrupt: false,
       bot: !!p.bot,
+      wheel: false,
       outAt: 0,
     })),
     owned: {},
@@ -333,7 +356,9 @@ function land(s: BankruptState, p: BankruptPlayer, rng: Rng, depth = 0) {
     s.phase = jailChoice(s, p); // (nothing to ask when the fee cannot be paid)
   } else if (tile.kind === 'auction') startTrade(s, p);
   else if (tile.kind === 'card' && s.board.cards.length > 0 && depth < 3) {
-    const card = s.board.cards[rng.int(s.board.cards.length)]!;
+    // (the fortunate-wheel card is only in the pack with the Special wheel option)
+    const pack = s.board.cards.filter((c) => c.effect.type !== 'wheel' || s.options.specialWheel);
+    const card = pack[rng.int(pack.length)]!;
     const kind: CardKind =
       card.effect.type === 'cash'
         ? card.effect.amount >= 0
@@ -347,7 +372,9 @@ function land(s: BankruptState, p: BankruptPlayer, rng: Rng, depth = 0) {
               ? 'travel'
               : card.effect.type === 'perBuilding'
                 ? 'repair'
-                : 'jail';
+                : card.effect.type === 'wheel'
+                  ? 'wheel'
+                  : 'jail';
     s.events.push({ k: 'card', by: p.id, text: card.text, kind });
     const e = card.effect;
     const others = () => alivePlayers(s).filter((x) => x.id !== p.id);
@@ -368,6 +395,8 @@ function land(s: BankruptState, p: BankruptPlayer, rng: Rng, depth = 0) {
       if (total >= 0) give(null, p, total);
       // (the repair bill can never bankrupt you: it only takes what the debt limit still allows)
       else give(p, null, Math.min(-total, Math.max(0, p.cash - s.board.bankruptBelow)));
+    } else if (e.type === 'wheel') {
+      p.wheel = true; // the next roll is the special wheel
     } else if (e.type === 'jail') {
       sendToJail(s, p);
       s.phase = jailChoice(s, p);
@@ -610,10 +639,34 @@ function applyMove(
 
   switch (move.type) {
     case 'roll': {
-      // One die. A six moves you and then lets you roll again, with no penalty however often it comes.
-      const die = rng.int(6) + 1;
+      // The special wheel: after three sixes in a row, or when a fortunate-wheel card is waiting.
+      const special = s.options.specialWheel && (me.wheel || s.sixes === SIXES_FOR_WHEEL);
+      let die: number;
+      let wheel: { idx: number; slice: string; from: number } | undefined;
+      if (special) {
+        me.wheel = false;
+        const idx = rng.int(SPECIAL_SLICES.length);
+        const slice = SPECIAL_SLICES[idx]!;
+        wheel = { idx, slice, from: me.pos };
+        die = /^\d$/.test(slice) ? Number(slice) : 0;
+      } else {
+        // One die. A six moves you and then lets you roll again, with no penalty however often it comes.
+        die = rng.int(6) + 1;
+      }
       s.dice = die;
-      s.events.push({ k: 'roll', by: me.id, dice: die });
+      s.events.push({ k: 'roll', by: me.id, dice: die, ...(wheel ? { wheel } : {}) });
+      if (wheel && die === 0) {
+        // $50 from the bank, or off to jail: no walking.
+        s.sixes = 0;
+        if (wheel.slice === 'JAIL') {
+          sendToJail(s, me);
+          s.phase = jailChoice(s, me);
+        } else {
+          pay(s, null, me, WHEEL_CASH);
+          s.phase = 'after';
+        }
+        break;
+      }
       s.sixes = die === 6 ? s.sixes + 1 : 0;
       moveBy(s, me, die);
       land(s, me, rng);
@@ -909,6 +962,7 @@ export const bankruptGame: GameDefinition<
     auctionOnDecline: true,
     rainbowRoad: false,
     freeFroggo: false,
+    specialWheel: true,
   },
   moveSchema: bankruptMoveSchema,
   // Building and selling must not buy anybody more time.

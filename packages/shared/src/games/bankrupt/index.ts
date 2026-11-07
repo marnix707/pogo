@@ -15,5 +15,9 @@ export {
   CARD_SLIDE_MS,
   CARD_SHOW_MS,
   ROLL_MS,
+  WHEEL_SLICES,
+  SPECIAL_SLICES,
+  WHEEL_CASH,
+  SIXES_FOR_WHEEL,
   STEP_MS,
 } from './game';

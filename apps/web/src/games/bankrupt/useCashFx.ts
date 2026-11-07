@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { bankrupt } from '@pogo/shared';
+import { bankrupt } from '@pogo/shared';
 import { play } from '../../lib/sound';
 import { art } from './art';
 
@@ -81,6 +81,8 @@ function transfersOf(s: State): Transfer[] {
           tile: s.board.tiles.find((t) => t.kind === 'jail')!.id,
           amount: e.amount,
         });
+    else if (e.k === 'roll' && e.wheel?.slice === '$50')
+      out.push({ from: null, to: e.by, tile: s.board.cardTile, amount: bankrupt.WHEEL_CASH });
     else if (e.k === 'buy') out.push({ from: e.by, to: null, tile: e.tile, amount: e.price });
     else if (e.k === 'auction' && e.winner)
       out.push({ from: e.winner, to: null, tile: e.tile, amount: e.amount });

@@ -18,6 +18,8 @@ export interface BankruptOptions {
   auctionOnDecline: boolean;
   /** Rainbow Road: three players each own one space of a three-space street and you land on the free third. */
   rainbowRoad: boolean;
+  /** Special wheel: the 4th roll after three sixes (and a fortunate-wheel card) spins a wheel with $50 and jail on it. */
+  specialWheel: boolean;
   /** Free Froggo: the other players may pay a jailed player's bail (all of them, or nobody does). */
   freeFroggo: boolean;
 }
@@ -34,6 +36,8 @@ export interface BankruptPlayer {
   bankrupt: boolean;
   /** A computer player: it never trades. */
   bot: boolean;
+  /** A fortunate-wheel card is waiting: the next roll spins the special wheel. */
+  wheel: boolean;
   /** When the player went bankrupt (a later number = lasted longer), 0 while playing. */
   outAt: number;
 }
@@ -97,10 +101,21 @@ export type BankruptPhase =
   | 'bail'
   | 'over';
 
-export type CardKind = 'gain' | 'pay' | 'birthday' | 'party' | 'travel' | 'repair' | 'jail';
+export type CardKind =
+  'wheel' | 'gain' | 'pay' | 'birthday' | 'party' | 'travel' | 'repair' | 'jail';
 
 export type BankruptEvent =
-  | { k: 'roll'; by: PlayerId; dice: number }
+  /**
+   * A roll: `dice` is the number rolled (0 when the special wheel gave $50 or jail). `wheel` is set when the roll was
+   * the special wheel: which slice it stopped on (`idx` in `SPECIAL_SLICES`), what is on it, and where the frog
+   * stood (for the police car).
+   */
+  | {
+      k: 'roll';
+      by: PlayerId;
+      dice: number;
+      wheel?: { idx: number; slice: string; from: number };
+    }
   | { k: 'move'; by: PlayerId; from: number; to: number; passedStart: boolean }
   | { k: 'rent'; by: PlayerId; to: PlayerId; tile: string; amount: number }
   | { k: 'buy'; by: PlayerId; tile: string; price: number }

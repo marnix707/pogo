@@ -14,6 +14,7 @@ const ICON: Record<bankrupt.CardKind, string> = {
   travel: 'card-travel',
   repair: 'card-repair',
   jail: 'icon-jail',
+  wheel: 'card-gain', // (the gift icon until the artist draws a wheel one)
 };
 const TITLE: Record<bankrupt.CardKind, string> = {
   gain: 'LUCKY',
@@ -23,6 +24,7 @@ const TITLE: Record<bankrupt.CardKind, string> = {
   travel: 'TRAVEL',
   repair: 'REPAIRS',
   jail: 'BUSTED',
+  wheel: 'FORTUNE',
 };
 const SKY: Record<bankrupt.CardKind, string> = {
   gain: '#83e9f8',
@@ -32,6 +34,7 @@ const SKY: Record<bankrupt.CardKind, string> = {
   travel: '#74cca8',
   repair: '#d9b672',
   jail: '#9fb0c8',
+  wheel: '#fdcf51',
 };
 
 /** The luck card that slides in: the kit's card with a big icon and what it says. `phase` drives the slide. */

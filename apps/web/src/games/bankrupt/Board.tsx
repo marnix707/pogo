@@ -259,20 +259,6 @@ export function Board({
         })}
         {/* the middle: the town hall, and whatever the game puts there (the die, the roll message) in board art px */}
         <div className="pointer-events-none absolute inset-0">
-          <img
-            src={cityArt('city-hall')}
-            alt=""
-            data-testid="bk-hall"
-            draggable={false}
-            className={`absolute ${clear ? 'bk-away' : 'transition-[opacity,transform] duration-300'}`}
-            style={{
-              left: pct(68),
-              top: pct(92),
-              width: pct(52),
-              imageRendering: 'pixelated',
-              transformOrigin: '50% 100%',
-            }}
-          />
           <div className={`absolute inset-0 ${clear ? 'bk-away' : ''}`}>{children}</div>
         </div>
         {/* pop-ups live inside the middle of the board */}

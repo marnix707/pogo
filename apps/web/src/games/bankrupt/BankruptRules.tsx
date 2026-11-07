@@ -28,6 +28,11 @@ export function BankruptRules({ open, onClose }: { open: boolean; onClose: () =>
           happens.
         </li>
         <li>
+          <b className="text-neon">The wheel:</b> the wheel in the middle is the die. Roll three 6s
+          in a row and the 4th roll is the <b>special wheel</b> (also $50 and JAIL). A luck card can
+          give you one too.
+        </li>
+        <li>
           <b className="text-neon">Luck:</b> the <b>?</b> space draws a card. The <b>Auction</b>{' '}
           corner lets you auction one of your own spaces (you can cancel it).
         </li>
