@@ -356,6 +356,14 @@ function moveBy(s: BankruptState, p: BankruptPlayer, steps: number) {
   }
 }
 
+/** The player stands on their own space and may build on it right now. */
+function canUpgradeHere(s: BankruptState, p: BankruptPlayer): boolean {
+  const t = s.board.tiles[p.pos];
+  if (!t || t.kind !== 'property') return false;
+  const h = s.owned[t.id];
+  return !!h && h.owner === p.id && h.level < 3 && ownsSet(s, p.id, t) && p.cash >= t.buildCost;
+}
+
 /** The mover stands on a space: pay rent, draw a card, offer a free space ... */
 function land(s: BankruptState, p: BankruptPlayer, rng: Rng, depth = 0) {
   const tile = s.board.tiles[p.pos]!;
@@ -368,6 +376,9 @@ function land(s: BankruptState, p: BankruptPlayer, rng: Rng, depth = 0) {
       const owner = playerOf(s, holding.owner)!;
       pay(s, p, owner, amount);
       s.events.push({ k: 'rent', by: p.id, to: owner.id, tile: tile.id, amount });
+    } else if (s.phase === 'after' && canUpgradeHere(s, p)) {
+      // Their own space and they can build on it: the turn waits for them (the card opens; passing is fine).
+      s.phase = 'upgrade';
     }
   } else if (tile.kind === 'jail') {
     // The Jail space itself puts you in jail: pay now or sit three turns out.
@@ -601,7 +612,7 @@ function validateMove(
   if (state.auction) return err('Finish the auction first');
   if (state.trade) return err('Finish the trade first');
   if (state.bail) return err('Finish the vote first');
-  const free = state.phase === 'roll' || state.phase === 'after';
+  const free = state.phase === 'roll' || state.phase === 'after' || state.phase === 'upgrade';
 
   switch (move.type) {
     case 'roll':
@@ -618,7 +629,9 @@ function validateMove(
       return me.cash >= t.price ? OK : err('Not enough money');
     }
     case 'decline':
-      return state.phase === 'buy' ? OK : err('You cannot do that right now');
+      return state.phase === 'buy' || state.phase === 'upgrade'
+        ? OK
+        : err('You cannot do that right now');
     case 'rainbow':
       return rainbowRoad(state, playerId) ? OK : err('There is no Rainbow Road here');
     case 'build': {
@@ -742,6 +755,10 @@ function applyMove(
       break;
     }
     case 'decline':
+      if (s.phase === 'upgrade') {
+        s.phase = 'after'; // (they do not build: the turn goes on)
+        break;
+      }
       {
         const t = ownable(s, s.board.tiles[me.pos]!.id)!;
         const min = openingBid(t.price);
@@ -761,6 +778,8 @@ function applyMove(
       pay(s, me, null, t.buildCost);
       h.level += 1;
       s.events.push({ k: 'build', by: me.id, tile: t.id, level: h.level, amount: t.buildCost });
+      // Waiting on their own space: another level only while it can still be built, else the turn goes on.
+      if (s.phase === 'upgrade' && !canUpgradeHere(s, me)) s.phase = 'after';
       break;
     }
     case 'sellBuilding': {
@@ -938,6 +957,14 @@ function autoMove(state: BankruptState, playerId: PlayerId, _rng: Rng): AutoMove
     // Computers do not trade: the mover cancels, the others pass.
     if (t.by === playerId) return done({ type: 'tradeCancel' }, true);
     return done({ type: 'tradePass' }, true);
+  }
+
+  if (state.phase === 'upgrade') {
+    // Build on the space they stand on when a $300 cushion is left, else pass.
+    const t = state.board.tiles[me.pos]!;
+    return t.kind === 'property' && me.cash - t.buildCost >= 300
+      ? done({ type: 'build', tile: t.id })
+      : done({ type: 'decline' }, true);
   }
 
   if (state.phase === 'buy') {

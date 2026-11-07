@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { bankrupt } from '@pogo/shared';
 import { money } from './Board';
 import { PropertyCard } from './PropertyCard';
@@ -35,6 +36,19 @@ export function TileSheet({
     play('tap');
     run(onCloseNow);
   };
+  // A tap anywhere outside the card closes it nicely (a tap on a space opens that space's card instead).
+  const open = !!tileId;
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => {
+      const t = e.target as Element | null;
+      if (t?.closest('[data-testid="bk-tile-sheet"], [data-testid^="bk-tile-"]')) return;
+      onClose();
+    };
+    document.addEventListener('pointerdown', away);
+    return () => document.removeEventListener('pointerdown', away);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, closing]);
   const tile = tileId ? state.board.tiles.find((t) => t.id === tileId) : undefined;
   const holding = tile ? state.owned[tile.id] : undefined;
   const mine = holding?.owner === me;

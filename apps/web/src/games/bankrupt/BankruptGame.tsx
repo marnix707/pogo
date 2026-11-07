@@ -127,6 +127,18 @@ function turnParts(
   return parts.length ? { actor, who: name(actor), parts: parts.map((x) => x.trim()) } : null;
 }
 
+type LogLine = { actor: string; who: string; parts: string[] };
+/** Add what a move did to the log: under the same name when the same player goes on (a part already there, e.g. a
+ * luck card written when it slid in, is not written twice); the last three turns are kept. */
+function addToLog(l: LogLine[], t: LogLine): LogLine[] {
+  if (l[0]?.actor === t.actor) {
+    // (a long part that is in both is the same luck card: it stays once, in the order of the full list)
+    const keep = l[0].parts.filter((p) => !(p.length > 14 && t.parts.includes(p)));
+    return [{ ...l[0], parts: [...keep, ...t.parts] }, ...l.slice(1)];
+  }
+  return [t, ...l].slice(0, 3);
+}
+
 type CardEvent = Extract<bankrupt.BankruptEvent, { k: 'card' }>;
 const reduced = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -775,12 +787,16 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
     loggedSeq.current = state.seq;
     const t = turnParts(state, name);
     if (!t) return;
-    setLog((l) =>
-      l[0]?.actor === t.actor
-        ? [{ ...l[0], parts: [...l[0].parts, ...t.parts] }, ...l.slice(1)]
-        : [t, ...l].slice(0, 3),
-    );
+    setLog((l) => addToLog(l, t));
   }, [animating, state.seq]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The luck card is written to the log the moment it slides in (not only when the whole move has been played out).
+  const shownCard = card && card.phase !== 'wait' ? card.ev : null;
+  useEffect(() => {
+    if (!shownCard) return;
+    setLog((l) =>
+      addToLog(l, { actor: shownCard.by, who: name(shownCard.by), parts: [shownCard.text.trim()] }),
+    );
+  }, [shownCard]); // eslint-disable-line react-hooks/exhaustive-deps
   // A sentence in lines that fit `maxW` art pixels (breaks at spaces).
   const wrap = (text: string, maxW: number): string[] => {
     const lines: string[] = [];

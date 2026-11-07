@@ -96,6 +96,8 @@ export type BankruptPhase =
   | 'buy'
   /** The mover's landing is dealt with; the turn then ends by itself. */
   | 'after'
+  /** The mover landed on their own space that they can build on: they may upgrade it now (or just pass). */
+  | 'upgrade'
   /** The mover was just sent to jail: pay the fee now or stay (nothing else can get them out). */
   | 'jailAsk'
   | 'auction'

@@ -155,7 +155,7 @@ export function Plaza({
           ctx.beginPath();
           ctx.rect(S, S, (INSIDE - 2) * S, (INSIDE - 2) * S);
           ctx.clip();
-          ctx.globalAlpha = 0.13;
+          // (no globalAlpha: the SVG itself is already drawn at 13 % opacity; both would make it invisible)
           [30, 120].forEach((y, k) => {
             const x = (((now / 1000) * 4 + (k * span) / 2) % span) - cw;
             ctx.drawImage(ci, Math.round(x) * S, y * S, cw * S, (ci.naturalHeight / 4) * S);

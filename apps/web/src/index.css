@@ -2131,3 +2131,34 @@ html.bk-page body::after,
 html.bk-page [data-testid='topo-background'] {
   display: none;
 }
+
+/* The picture on a property card wobbles now and then: it can be tapped to turn the card over. */
+@keyframes bk-tilt {
+  0%,
+  62%,
+  100% {
+    transform: rotate(0deg);
+  }
+  68% {
+    transform: rotate(-7deg) scale(1.04);
+  }
+  76% {
+    transform: rotate(6deg) scale(1.04);
+  }
+  84% {
+    transform: rotate(-3deg);
+  }
+  92% {
+    transform: rotate(1deg);
+  }
+}
+.bk-tilt {
+  transform-box: fill-box;
+  transform-origin: 50% 60%;
+  animation: bk-tilt 3.6s ease-in-out 1.2s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bk-tilt {
+    animation: none;
+  }
+}

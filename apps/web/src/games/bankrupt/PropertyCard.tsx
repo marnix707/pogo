@@ -234,6 +234,7 @@ export function PropertyCard({
         <rect key={i} x={6 + i * 2} y={59} width={1} height={1} fill="#dcd3c0" />
       ))}
       <image
+        className="bk-tilt"
         href={cityArt(`art-${slug(tile)}`)}
         x={L.art[0]}
         y={L.art[1]}
