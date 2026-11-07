@@ -17,6 +17,35 @@ const S = 4;
 /** Where Pogo's hub sits (art px of the inside, 19 x 19). */
 export const HUB = { x: 97 - 9.5, y: 93 - 9.5, size: 19 };
 const WHEEL = { cx: 96, cy: 92, r: 46 };
+/** The trees of the plaza (art px of the inside, from the artist's picture): triple-tap one for a surprise. */
+const TREES: [number, number][] = [
+  [26, 40],
+  [35, 45],
+  [27, 55],
+  [38, 66],
+  [25, 73],
+  [67, 37],
+  [123, 37],
+  [162, 40],
+  [153, 49],
+  [164, 70],
+  [28, 124],
+  [39, 133],
+  [29, 143],
+  [44, 150],
+  [63, 153],
+  [55, 139],
+  [74, 164],
+  [125, 153],
+  [137, 141],
+  [150, 150],
+  [169, 143],
+  [155, 133],
+  [166, 124],
+  [115, 166],
+];
+const TREE_R = 7;
+const EGG_COOLDOWN_MS = 5000;
 
 const images = new Map<string, HTMLImageElement>();
 const img = (name: string) => {
@@ -75,6 +104,10 @@ export function Plaza({
   const blink = useRef(onBlink);
   blink.current = onBlink;
   const blinking = useRef(false);
+  // easter egg: a bird flies out of a tree that was tapped three times
+  const eggBirds = useRef<{ x: number; y: number; vx: number; vy: number; born: number }[]>([]);
+  const taps = useRef<{ tree: number; n: number; at: number }>({ tree: -1, n: 0, at: 0 });
+  const eggAt = useRef(0);
 
   // the wheel and its animation loop
   useEffect(() => {
@@ -152,6 +185,22 @@ export function Plaza({
         (2 * WHEEL.r + 1) * S,
       );
       draw(w.pointerFlicked(now) ? 'pointer-1' : 'pointer-0', 92, 40);
+      // the easter-egg birds (also with reduced motion: it is a tap's reward, and it is short)
+      eggBirds.current = eggBirds.current.filter(
+        (b) => b.x > -10 && b.x < INSIDE + 10 && b.y > -10 && b.y < INSIDE + 10,
+      );
+      for (const b of eggBirds.current) {
+        b.x += (b.vx * dt) / 1000;
+        b.y += (b.vy * dt) / 1000;
+        const i = img(`bird-${Math.floor((now - b.born) / 130) % 2 === 0 ? 0 : 1}`);
+        if (i.complete && i.naturalWidth) {
+          ctx.save();
+          ctx.translate(Math.round(b.x) * S, Math.round(b.y) * S);
+          if (b.vx < 0) ctx.scale(-1, 1);
+          ctx.drawImage(i, 0, 0, (i.naturalWidth / 4) * S, (i.naturalHeight / 4) * S);
+          ctx.restore();
+        }
+      }
       if (!still) {
         // birds, on top of everything
         if (now > nextBirds) {
@@ -199,7 +248,36 @@ export function Plaza({
         height={INSIDE * S}
         data-testid="bk-wheel"
         aria-label="The wheel"
-        onClick={() => tappable && onTap?.()}
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          const x = ((e.clientX - r.left) / r.width) * INSIDE;
+          const y = ((e.clientY - r.top) / r.height) * INSIDE;
+          const tree = TREES.findIndex(([tx, ty]) => Math.hypot(tx - x, ty - y) <= TREE_R);
+          if (tree >= 0) {
+            // three quick taps on the same tree: a bird flies out of it, in a random direction (5 s between birds)
+            const now = performance.now();
+            const t = taps.current;
+            t.n = t.tree === tree && now - t.at < 700 ? t.n + 1 : 1;
+            t.tree = tree;
+            t.at = now;
+            if (t.n >= 3 && now - eggAt.current >= EGG_COOLDOWN_MS) {
+              eggAt.current = now;
+              t.n = 0;
+              const a = Math.random() * Math.PI * 2;
+              const [tx, ty] = TREES[tree]!;
+              eggBirds.current.push({
+                x: tx - 2,
+                y: ty - 4,
+                vx: Math.cos(a) * 55,
+                vy: Math.sin(a) * 55,
+                born: now,
+              });
+              play('tick');
+            }
+            return;
+          }
+          if (tappable) onTap?.();
+        }}
         className={`pointer-events-auto block h-full w-full ${tappable ? 'cursor-pointer' : ''}`}
         style={{ imageRendering: 'pixelated' }}
       />
