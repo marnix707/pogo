@@ -1209,6 +1209,27 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
               </span>
             </button>
           )}
+          {/* the last three things that happened, under the Spin row: newest on top and brightest, wrapped to fit */}
+          <div
+            className="absolute flex flex-col items-center"
+            style={{ left: 0, width: A(SCREEN_W), top: A(rowY + CARD_H + 5), gap: A(2) }}
+            data-testid="bk-note"
+            role="status"
+          >
+            {(log.length ? log.map((e) => `${e.who}: ${e.parts.join(' · ')}`) : [rollMessage]).map(
+              (text, i) => (
+                <div
+                  key={`${i}-${text}`}
+                  className="flex flex-col items-center"
+                  style={{ opacity: 1 - i * 0.1, gap: A(2) }}
+                >
+                  {wrap(text, 270).map((line, j) => (
+                    <PixelText key={j} s={s} parts={[{ text: line, colour: '#f7f1e4' }]} />
+                  ))}
+                </div>
+              ),
+            )}
+          </div>
           {/* the turn marker: a little arrow over my card when it is my turn */}
           {myTurn && !finished && (
             <svg
