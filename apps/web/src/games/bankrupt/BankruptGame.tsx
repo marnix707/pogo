@@ -4,7 +4,7 @@ import type { GameUiProps } from '../types';
 import { Avatar, Button } from '../../components/ui';
 import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
-import { Board, money, playerColour } from './Board';
+import { Board, SEAT_HEX, money, playerColour } from './Board';
 import { BuyOverlay } from './BuyOverlay';
 import { LuckCard } from './LuckCard';
 import { LockIcon } from '../../components/icons';
@@ -577,7 +577,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   }, []);
   const jailOn = myTurn && state.phase === 'jailAsk' && !animating;
 
-  const tag = (latestP: State['players'][number], left: number, top: number) => {
+  const tag = (latestP: State['players'][number], left: number, top: number, small = false) => {
     // (what is shown follows the board: jail / bankrupt only show once the move is played out)
     const p = ui.players.find((q) => q.id === latestP.id) ?? latestP;
     const cash = cashShown[p.id] ?? p.cash;
@@ -592,6 +592,108 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       while (t.length > 1 && measure(pixelSafe(t)).width > maxW) t = t.slice(0, -1);
       return t;
     };
+    if (small) {
+      // Five or six players: the four on top are smaller cards (71 x 44), drawn in code, so four fit side by side.
+      return (
+        <div
+          key={p.id}
+          data-testid={`bk-player-${p.id}`}
+          data-turn={isMover}
+          className={`absolute ${p.bankrupt ? 'opacity-40 grayscale' : ''}`}
+          style={{ left: A(left), top: A(top), width: A(71), height: A(46) }}
+        >
+          <PixelPanel s={s} w={71} h={44} shadow={2} fill="#1b2338" light="#233049" />
+          <div
+            className="absolute"
+            style={{
+              left: A(1),
+              top: A(1),
+              width: A(2),
+              height: A(42),
+              background: SEAT_HEX[colour],
+            }}
+          />
+          {isMover && (
+            <div
+              className="absolute"
+              style={{
+                left: A(1),
+                top: A(1),
+                width: A(69),
+                height: A(42),
+                border: `${A(1)}px solid #fda200`,
+                boxSizing: 'border-box',
+              }}
+            />
+          )}
+          <div className="absolute" style={{ left: A(5), top: A(6), width: A(24), height: A(24) }}>
+            <Avatar
+              avatar={nickOf(p.id)?.avatar ?? 'fox'}
+              size="fluid"
+              className="h-full w-full !border !ring-0"
+            />
+          </div>
+          <img
+            src={screenArt(`players/frog-badge-${colour}`)}
+            alt=""
+            className="absolute block"
+            style={{ left: A(22), top: A(22), width: A(8), imageRendering: 'pixelated' }}
+          />
+          <div className="absolute" style={{ left: A(32), top: A(5) }}>
+            <PixelText s={s} parts={[{ text: fit(name(p.id), 36), colour: '#ffffff' }]} />
+          </div>
+          <div className="absolute" style={{ left: A(32), top: A(15) }}>
+            <PixelText
+              s={s}
+              parts={[{ text: money(cash), colour: cash < 0 ? '#ff8f73' : '#f7f1e4' }]}
+            />
+          </div>
+          <div
+            className="absolute"
+            style={{ left: A(32), top: A(25) }}
+            data-testid={`bk-networth-${p.id}`}
+          >
+            <PixelText s={s} parts={[{ text: money(worth), colour: '#74cca8' }]} />
+          </div>
+          {(p.jail > 0 || p.bankrupt) && (
+            <div className="absolute" style={{ left: A(32), top: A(35) }}>
+              <PixelText
+                s={s}
+                parts={[
+                  p.bankrupt
+                    ? { text: 'OUT', colour: '#ff8f73' }
+                    : { text: `JAIL ${p.jail}`, colour: '#f7f1e4' },
+                ]}
+              />
+            </div>
+          )}
+          {isMover && (
+            <img
+              src={screenArt('players/turn-marker')}
+              alt=""
+              className="absolute block"
+              style={{ left: A(33), top: A(-5), width: A(5), imageRendering: 'pixelated' }}
+            />
+          )}
+          <button
+            type="button"
+            className="absolute"
+            style={{ left: A(32), top: A(14), width: A(38), height: A(20) }}
+            data-testid={`bk-cash-${p.id}`}
+            aria-label={`${name(p.id)}: ${money(cash)}, net worth ${money(worth)}`}
+            data-tip-trigger
+            onClick={() => toggleTip(`bk-cash:${p.id}`)}
+          />
+          <TipBubble
+            show={openTip === `bk-cash:${p.id}`}
+            className="absolute left-0 top-full z-20 mt-1 w-48 rounded-md border-2 border-edge/40 bg-panel2 px-2 py-1.5 text-left text-xs font-normal normal-case text-ink shadow-lg"
+          >
+            <span className="text-[#7ee08c]">Green = net worth</span>: cash plus what your spaces
+            and buildings sell for.
+          </TipBubble>
+        </div>
+      );
+    }
     return (
       <div
         key={p.id}
@@ -702,8 +804,12 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   );
   const around = players.map((_, i) => (meIdx + i) % players.length);
   const others = around.slice(1);
-  const topSeats = others.slice(0, 3);
-  const extras = others.slice(3).reverse();
+  // Up to 3 opponents stand side by side on top. With 4: three on top and the fourth next to my card (the Roll
+  // button gets shorter). With 5: four (smaller cards) on top and the fifth next to my card.
+  const topCount = others.length <= 3 ? others.length : others.length === 4 ? 3 : 4;
+  const topSeats = others.slice(0, topCount);
+  const beside = others.slice(topCount); // 0 or 1: in my row, right of my card
+  const compact = topCount === 4;
 
   const winShow = winOn && settled && !fresh;
   const noDealShow = noDealOn && settled && !fresh && !paying;
@@ -918,8 +1024,8 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           ? 'Your turn'
           : `${name(mover.id)} to play`);
   const bp = (v: number) => `${(v / 257) * 100}%`;
-  const top = rowXs(topSeats.length);
-  const extraXs = rowXs(extras.length);
+  // (the compact cards are 71 wide: four of them with a gap of 2 fill the 290)
+  const top = compact ? [0, 73, 146, 219] : rowXs(topSeats.length);
   // The board keeps its proportions and is as wide as the screen allows (1 % less for rounded corners, its
   // drop shadow included), whatever the phone: it is not on the whole-pixel grid. The screen stretches to the
   // phone's height: the board sits in the middle of it, my card and the Roll button share one row in the bottom
@@ -931,11 +1037,16 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   // The layout's own positions, from the top of the screen (just under the top bar): the goal label at 33, the
   // opponents' cards at 54 (19 px over the board), the board at 119, and my card + Roll button 24 px under the
   // board (66 with the extra seats). Nothing is stretched or centred: what is left over below is just the pattern.
-  const boardTop = 107; // art px (12 higher than the editor's 119: 50 px of the screenshot at 3x)
-  const gapBelow = extras.length ? 66 : 24;
+  const boardTop = 70; // art px: goal label 6, opponents 20, board 70: the top part sits close together
+  const gapBelow = 24;
+  // my row: my card, [a player beside it,] the Spin button and the padlock (the button is shorter with a player there)
+  const BANNER_BLUE = '#274f8f';
+  const spinX = beside.length ? CARD_W + 3 + CARD_W + 3 : 96;
+  const lockX = beside.length ? 261 : 251;
+  const spinW = lockX - 4 - spinX;
   const rowY = Math.round(boardTop + boardArt + gapBelow);
   const H = Math.max(rowY + CARD_H + 70, hArt);
-  const cardsY = 42; // the opponents' row (cards are 46 high + 2 shadow)
+  const cardsY = 20; // the opponents' row (cards are 46 high + 2 shadow)
   const goalW = labelWidth(goalParts);
   const status = room.spectating
     ? 'Watching the game'
@@ -967,14 +1078,14 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           {/* the goal and the round */}
           <div
             className="absolute"
-            style={{ left: A(Math.floor(145 - goalW / 2)), top: A(21) }}
+            style={{ left: A(Math.floor(145 - goalW / 2)), top: A(6) }}
             data-testid="bk-goal"
           >
             <PixelText s={s} navy parts={goalParts} />
           </div>
 
           <div data-testid="bk-seats-top">
-            {topSeats.map((i, k) => tag(players[i]!, top[k]!, cardsY))}
+            {topSeats.map((i, k) => tag(players[i]!, top[k]!, cardsY, compact))}
           </div>
 
           {/* the board and its hard navy drop shadow */}
@@ -1039,12 +1150,12 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           </div>
 
           <div data-testid="bk-seats-bottom">
-            {extras.map((i, k) => tag(players[i]!, extraXs[k]!, rowY - CARD_H - 3))}
+            {beside.map((i) => tag(players[i]!, CARD_W + 3, rowY))}
             {tag(players[around[0]!]!, 0, rowY)}
           </div>
 
-          {/* the Roll button and the padlock for rolling automatically: two yellow pixel panels (navy border, light
-              top row, solid navy shadow under them), as in the layout */}
+          {/* the Spin button and the padlock for rolling automatically: two pixel panels in the top banner's blue (navy
+              border, light top row, solid navy shadow under them). With a player beside my card the Spin button is shorter. */}
           <button
             type="button"
             data-testid="bk-roll"
@@ -1055,14 +1166,18 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
               void send({ type: 'roll' });
             }}
             className={`absolute block active:translate-y-px disabled:active:translate-y-0 ${rollReady ? '' : 'opacity-60 grayscale'}`}
-            style={{ left: A(96), top: A(rowY + 1), width: A(151), height: A(45) }}
+            style={{ left: A(spinX), top: A(rowY + 1), width: A(spinW), height: A(45) }}
           >
-            <PixelPanel s={s} w={151} h={42} shadow={3} fill="#fdcf51" />
+            <PixelPanel s={s} w={spinW} h={42} shadow={3} fill={BANNER_BLUE} light="#3f6cb0" />
             <span
               className="absolute left-0 top-0 flex items-center justify-center"
-              style={{ width: A(151), height: A(42) }}
+              style={{ width: A(spinW), height: A(42) }}
             >
-              <PixelText s={s} k={4} parts={[{ text: 'SPIN', colour: '#101628' }]} />
+              <PixelText
+                s={s}
+                k={beside.length ? 3 : 4}
+                parts={[{ text: 'SPIN', colour: '#f7f1e4' }]}
+              />
             </span>
           </button>
           {canAct && (
@@ -1076,38 +1191,24 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
                 setAutoRoll((v) => !v);
               }}
               className="absolute block active:translate-y-px"
-              style={{ left: A(251), top: A(rowY + 1), width: A(29), height: A(45) }}
+              style={{ left: A(lockX), top: A(rowY + 1), width: A(29), height: A(45) }}
             >
-              <PixelPanel s={s} w={29} h={42} shadow={3} fill={autoRoll ? '#101628' : '#fdcf51'} />
+              <PixelPanel
+                s={s}
+                w={29}
+                h={42}
+                shadow={3}
+                fill={autoRoll ? '#101628' : BANNER_BLUE}
+                light="#3f6cb0"
+              />
               <span
-                className={`absolute left-0 top-0 flex items-center justify-center ${autoRoll ? 'text-[#fdcf51]' : 'text-[#101628]'}`}
+                className={`absolute left-0 top-0 flex items-center justify-center ${autoRoll ? 'text-[#fdcf51]' : 'text-[#f7f1e4]'}`}
                 style={{ width: A(29), height: A(42) }}
               >
                 <LockIcon open={!autoRoll} style={{ width: A(14), height: A(14) }} />
               </span>
             </button>
           )}
-          {/* the last three things that happened, under the Roll row: newest on top and brightest, wrapped to fit */}
-          <div
-            className="absolute flex flex-col items-center"
-            style={{ left: 0, width: A(SCREEN_W), top: A(rowY + CARD_H + 5), gap: A(2) }}
-            data-testid="bk-note"
-            role="status"
-          >
-            {(log.length ? log.map((e) => `${e.who}: ${e.parts.join(' · ')}`) : [rollMessage]).map(
-              (text, i) => (
-                <div
-                  key={`${i}-${text}`}
-                  className="flex flex-col items-center"
-                  style={{ opacity: 1 - i * 0.1, gap: A(2) }}
-                >
-                  {wrap(text, 270).map((line, j) => (
-                    <PixelText key={j} s={s} parts={[{ text: line, colour: '#f7f1e4' }]} />
-                  ))}
-                </div>
-              ),
-            )}
-          </div>
           {/* the turn marker: a little arrow over my card when it is my turn */}
           {myTurn && !finished && (
             <svg
@@ -1125,7 +1226,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           <div
             className="absolute flex w-full flex-col items-center justify-end gap-1"
             style={{
-              top: A((extras.length ? rowY - CARD_H - 3 : rowY) - 22),
+              top: A(rowY - 22),
               height: A(19),
             }}
             data-testid="bk-actions"

@@ -330,6 +330,57 @@ export function Board({
             {overlay}
           </div>
         )}
+        {/* a frog stands on a property: its name moves to the bottom of the space on a navy plate, where it can be read */}
+        {state.board.tiles.map((tile, i) => {
+          if (tile.kind !== 'property') return null;
+          const here = state.players.some(
+            (p) =>
+              !p.bankrupt &&
+              !(police?.hideFrog && police.id === p.id) &&
+              (shown[p.id] ?? p.pos) === i,
+          );
+          if (!here) return null;
+          const { x, y } = at(i);
+          const word = tile.name.toUpperCase();
+          const lines =
+            measure(word, 'font4').width <= 29 || !word.includes(' ')
+              ? [word]
+              : [word.slice(0, word.lastIndexOf(' ')), word.slice(word.lastIndexOf(' ') + 1)];
+          const plateH = lines.length * 6 + 2;
+          return (
+            <svg
+              key={`np-${tile.id}`}
+              aria-hidden
+              data-testid={`bk-nameplate-${tile.id}`}
+              viewBox={`0 0 ${TILE_PX} ${TILE_PX}`}
+              shapeRendering="crispEdges"
+              className="pointer-events-none absolute"
+              style={{ left: pct(x), top: pct(y), width: pct(TILE_PX), height: pct(TILE_PX) }}
+            >
+              <rect
+                x={1}
+                y={TILE_PX - 1 - plateH}
+                width={TILE_PX - 2}
+                height={plateH}
+                fill="#101628"
+              />
+              {lines.map((ln, k) => (
+                <g
+                  key={k}
+                  dangerouslySetInnerHTML={{
+                    __html: pixelTextSVG(
+                      ln,
+                      Math.floor((TILE_PX - measure(ln, 'font4').width) / 2),
+                      TILE_PX - plateH + k * 6,
+                      '#f7f1e4',
+                      'font4',
+                    ),
+                  }}
+                />
+              ))}
+            </svg>
+          );
+        })}
         {/* the frogs hop from space to space */}
         <div className="pointer-events-none absolute inset-0">
           {state.players.map((p) => {
