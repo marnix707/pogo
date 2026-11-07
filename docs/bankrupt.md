@@ -189,3 +189,5 @@ The screen follows the user's layout editor export (kept: the shared top bar's b
 - **Landing flash**: while the winning slice blinks white at the end of the spin (130 ms beat, `wheel.flashOn`), the space the frog is about to land on blinks white too, on the very same beat (`onBlink` of `Plaza` -> `landBlink` -> `Board` `flash`, `bk-flash-<id>`), and then the frog hops. A JAIL slice flashes the Jail space; $50 flashes nothing.
 
 - **Easter egg**: triple-tap a tree in the plaza (`TREES` in `Plaza.tsx`, hit radius 7 art px, taps within 0.7 s of each other) and a bird flies out of it in a random direction (55 art px/s, flapping, flipped when it flies left); one bird per 5 s (`EGG_COOLDOWN_MS`). The tree positions were read off the artist's preview, so some may be a pixel or two off.
+
+- **Auction order**: the player who passed on the space and put it up (`Auction.starter`) is asked **last** in every round (after everybody else has bid or stepped out), so when nobody else wants the space they can still take it at the opening bid instead of being left out.

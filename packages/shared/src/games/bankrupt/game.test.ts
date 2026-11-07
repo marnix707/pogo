@@ -322,9 +322,10 @@ describe('auctions', () => {
     expect(game.validateMove(s, second, { type: 'bid', amount: 80 })).toMatchObject({ ok: false });
     expect(turn(s)).toBe(second);
     s = play(s, second, { type: 'bid', amount: 110 });
-    expect(turn(s)).toBe(a); // (the first bidder is not up: they were topped, and may bid again later)
-    s = play(s, a, { type: 'passBid' });
+    expect(turn(s)).toBe(first); // (the first bidder was topped and may bid again; the starter is asked last)
     s = play(s, first, { type: 'passBid' });
+    expect(turn(s)).toBe(a);
+    s = play(s, a, { type: 'passBid' });
     expect(s.owned['bangkok']).toEqual({ owner: second, level: 0 });
     expect(cash(s, second)).toBe(1100 - 110);
     expect(s.phase).toBe('roll');
@@ -962,5 +963,29 @@ describe('the luck-card deck', () => {
     expect(got[3]).toBe(got[0]);
     // the view does not show the order of the cards to come
     expect(game.getPlayerView(s, mover(s).id).deck.every((i) => i === -1)).toBe(true);
+  });
+});
+
+describe('the auction order', () => {
+  it('the player who put the space up is asked last, so they can still take it when nobody else bids', () => {
+    let s = start(3);
+    const a = mover(s).id;
+    s = patch(s, a, { pos: idx('madrid') - 1 });
+    s = play(s, a, { type: 'roll' }, dice(1));
+    s = play(s, a, { type: 'decline' });
+    expect(s.phase).toBe('auction');
+    const seq: string[] = [];
+    while (s.phase === 'auction' && s.auction!.turn !== a) {
+      const t = s.auction!.turn;
+      seq.push(t);
+      s = play(s, t, { type: 'passBid' });
+    }
+    // both others were asked first, and now it is the starter's turn with the space still free
+    expect(seq).toHaveLength(2);
+    expect(s.phase).toBe('auction');
+    expect(s.auction!.turn).toBe(a);
+    const min = s.auction!.min;
+    s = play(s, a, { type: 'bid', amount: min });
+    expect(s.owned['madrid']?.owner).toBe(a);
   });
 });

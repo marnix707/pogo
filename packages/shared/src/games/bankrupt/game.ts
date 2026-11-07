@@ -471,12 +471,15 @@ function resolveAuction(s: BankruptState, from: PlayerId) {
   for (const p of bidders(s)) if (p.id !== a.high?.player && p.cash <= floor) a.passed.push(p.id);
   const open = bidders(s).filter((p) => p.id !== a.high?.player);
   if (open.length > 0) {
-    // The next one in seat order after `from` who may still bid.
+    // The next one in seat order after `from` who may still bid; the one who put the space up is asked last, so
+    // when nobody else wants it they can still take it (at the opening bid) instead of being left out.
+    const others = open.filter((o) => o.id !== a.starter);
+    const pool = others.length > 0 ? others : open;
     const n = s.players.length;
     const start = s.players.findIndex((p) => p.id === from);
     for (let i = 1; i <= n; i++) {
       const p = s.players[(start + i) % n]!;
-      if (open.some((o) => o.id === p.id)) {
+      if (pool.some((o) => o.id === p.id)) {
         a.turn = p.id;
         return;
       }
@@ -746,7 +749,7 @@ function applyMove(
         const rivals = alivePlayers(s).filter((p) => p.id !== me.id && p.cash >= min);
         // Only a player who chose not to buy puts it up for auction: one who cannot afford it just passes.
         if (s.options.auctionOnDecline && me.cash >= t.price && rivals.length > 0) {
-          s.auction = { tile: t.id, min, high: null, passed: [], turn: me.id, bids: {} };
+          s.auction = { tile: t.id, min, high: null, passed: [], turn: me.id, starter: me.id, bids: {} };
           s.phase = 'auction';
           resolveAuction(s, me.id);
         } else s.phase = afterLanding(s); // not sold: it stays free
