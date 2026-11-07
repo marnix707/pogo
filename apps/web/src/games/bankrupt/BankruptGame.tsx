@@ -872,11 +872,11 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   // The layout's own positions, from the top of the screen (just under the top bar): the goal label at 33, the
   // opponents' cards at 54 (19 px over the board), the board at 119, and my card + Roll button 24 px under the
   // board (66 with the extra seats). Nothing is stretched or centred: what is left over below is just the pattern.
-  const boardTop = 119; // art px
+  const boardTop = 107; // art px (12 higher than the editor's 119: 50 px of the screenshot at 3x)
   const gapBelow = extras.length ? 66 : 24;
   const rowY = Math.round(boardTop + boardArt + gapBelow);
-  const H = Math.max(rowY + CARD_H + 12, hArt);
-  const cardsY = 54; // the opponents' row (cards are 46 high + 2 shadow)
+  const H = Math.max(rowY + CARD_H + 70, hArt);
+  const cardsY = 42; // the opponents' row (cards are 46 high + 2 shadow)
   const goalW = labelWidth(goalParts);
   const status = room.spectating
     ? 'Watching the game'
@@ -908,7 +908,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           {/* the goal and the round */}
           <div
             className="absolute"
-            style={{ left: A(Math.floor(145 - goalW / 2)), top: A(33) }}
+            style={{ left: A(Math.floor(145 - goalW / 2)), top: A(21) }}
             data-testid="bk-goal"
           >
             <PixelText s={s} navy parts={goalParts} />
@@ -971,28 +971,6 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
                   }}
                 />
               </div>
-              {/* the last three things that happened, newest on top and brightest, wrapped to fit */}
-              <div
-                className="absolute flex w-full flex-col items-center"
-                style={{ top: bp(174), gap: A(2) }}
-                data-testid="bk-note"
-                role="status"
-              >
-                {(log.length
-                  ? log.map((e) => `${e.who}: ${e.parts.join(' · ')}`)
-                  : [rollMessage]
-                ).map((text, i) => (
-                  <div
-                    key={`${i}-${text}`}
-                    className="flex flex-col items-center"
-                    style={{ opacity: 1 - i * 0.1, gap: A(2) }}
-                  >
-                    {wrap(text, 176).map((line, j) => (
-                      <PixelText key={j} s={s} parts={[{ text: line, colour: '#f7f1e4' }]} />
-                    ))}
-                  </div>
-                ))}
-              </div>
             </Board>
           </div>
 
@@ -1045,6 +1023,27 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
               </span>
             </button>
           )}
+          {/* the last three things that happened, under the Roll row: newest on top and brightest, wrapped to fit */}
+          <div
+            className="absolute flex flex-col items-center"
+            style={{ left: 0, width: A(SCREEN_W), top: A(rowY + CARD_H + 5), gap: A(2) }}
+            data-testid="bk-note"
+            role="status"
+          >
+            {(log.length ? log.map((e) => `${e.who}: ${e.parts.join(' · ')}`) : [rollMessage]).map(
+              (text, i) => (
+                <div
+                  key={`${i}-${text}`}
+                  className="flex flex-col items-center"
+                  style={{ opacity: 1 - i * 0.1, gap: A(2) }}
+                >
+                  {wrap(text, 270).map((line, j) => (
+                    <PixelText key={j} s={s} parts={[{ text: line, colour: '#f7f1e4' }]} />
+                  ))}
+                </div>
+              ),
+            )}
+          </div>
           {/* the turn marker: a little arrow over my card when it is my turn */}
           {myTurn && !finished && (
             <svg
