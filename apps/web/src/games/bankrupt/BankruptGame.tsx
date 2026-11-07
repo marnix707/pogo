@@ -836,6 +836,15 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.seq]);
+  // The space the frog will land on blinks white on the very beat of the wheel's winning slice, before it hops.
+  const [landBlink, setLandBlink] = useState(false);
+  const landTile = (() => {
+    if (!rollEv || rollEv.k !== 'roll') return null;
+    if (rollEv.wheel?.slice === 'JAIL')
+      return state.board.tiles.find((t) => t.kind === 'jail')?.id ?? null;
+    const mv = state.events.find((e) => e.k === 'move' && e.by === rollEv.by);
+    return mv && mv.k === 'move' ? (state.board.tiles[mv.to]?.id ?? null) : null;
+  })();
   const idleSlices =
     state.options.specialWheel &&
     !finished &&
@@ -942,6 +951,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
               }
               upgradable={upgradable}
               cantAfford={cantAfford}
+              flash={landBlink ? landTile : null}
               police={police}
               onPulse={(id) => {
                 play('tap');
@@ -957,6 +967,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
                 <Plaza
                   idleSlices={idleSlices}
                   spin={spin}
+                  onBlink={setLandBlink}
                   tappable={rollReady}
                   onTap={() => {
                     setTileOpen(null);

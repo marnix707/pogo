@@ -47,6 +47,8 @@ export interface Wheel {
   update: (now: number) => void;
   render: (now: number) => HTMLCanvasElement;
   pointerFlicked: (now: number) => boolean;
+  /** True during the white blink of the winning slice (the same beat the landing space blinks to). */
+  flashOn: (now: number) => boolean;
 }
 
 const hex = (h: string): [number, number, number] => [
@@ -87,6 +89,7 @@ export function createWheel(radius: number, slices: readonly string[]): Wheel {
     spinning: false,
     onTick: null,
     pointerFlicked: (now) => now < flickUntil,
+    flashOn: (now) => !!flash && now <= flash.until && Math.floor(now / 130) % 2 === 0,
     spinToIndex(idx, now, durationMs, strength = 1) {
       const n = w.slices.length;
       const seg = 360 / n;

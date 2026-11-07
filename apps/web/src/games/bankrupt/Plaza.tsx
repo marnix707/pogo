@@ -57,18 +57,24 @@ export function Plaza({
   spin,
   onTap,
   tappable,
+  onBlink,
 }: {
   /** The slices shown while it stands still (the special set when the next roll is the special wheel). */
   idleSlices: readonly string[];
   spin: Spin | null;
   onTap?: () => void;
   tappable: boolean;
+  /** Called with true / false on the beat of the winning slice's white blink (so the landing space can blink along). */
+  onBlink?: (on: boolean) => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const wheel = useRef<Wheel | null>(null);
   const idle = useRef(idleSlices);
   idle.current = idleSlices;
   const spun = useRef<number | null>(null);
+  const blink = useRef(onBlink);
+  blink.current = onBlink;
+  const blinking = useRef(false);
 
   // the wheel and its animation loop
   useEffect(() => {
@@ -98,6 +104,11 @@ export function Plaza({
       last = now;
       if (!w.spinning) w.slices = idle.current;
       w.update(now);
+      const on = w.flashOn(now);
+      if (on !== blinking.current) {
+        blinking.current = on;
+        blink.current?.(on);
+      }
       ctx.clearRect(0, 0, INSIDE * S, INSIDE * S);
       draw('board-inside-plaza', 0, 0);
       draw(`fountain-${still ? 0 : Math.floor(now / 140) % 4}`, 96 - 7.5, 158 - 7.5);
@@ -164,7 +175,10 @@ export function Plaza({
       }
     };
     raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      if (blinking.current) blink.current?.(false);
+    };
   }, []);
 
   // a roll came in: spin onto its slice

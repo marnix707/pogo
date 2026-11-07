@@ -44,6 +44,7 @@ export function Board({
   clear = false,
   upgradable,
   cantAfford,
+  flash,
   police,
   children,
 }: {
@@ -63,6 +64,8 @@ export function Board({
   upgradable?: Set<string>;
   /** Free spaces the player cannot pay for: a red cross over the price. */
   cantAfford?: Set<string>;
+  /** The space the frog is about to land on blinks white (in step with the wheel's winning slice). */
+  flash?: string | null;
   /** The police car fetching a frog to jail (a card sent it): drives along the top row. */
   police?: PoliceView | null;
   children: ReactNode;
@@ -262,6 +265,20 @@ export function Board({
             </svg>
           );
         })}
+        {flash &&
+          state.board.tiles.map((tile, i) => {
+            if (tile.id !== flash) return null;
+            const { x, y } = at(i);
+            return (
+              <span
+                key={`f-${tile.id}`}
+                aria-hidden
+                data-testid={`bk-flash-${tile.id}`}
+                className="pointer-events-none absolute bg-white/70"
+                style={{ left: pct(x), top: pct(y), width: pct(TILE_PX), height: pct(TILE_PX) }}
+              />
+            );
+          })}
         {/* the spaces that may be picked pulse */}
         {state.board.tiles.map((tile, i) => {
           if (!pulse.has(tile.id)) return null;

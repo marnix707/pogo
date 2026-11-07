@@ -185,3 +185,5 @@ The screen follows the user's layout editor export (kept: the shared top bar's b
 - **Moved up** (later request): the whole stack sits 12 art px higher than the editor's layout (50 px of a 3x screenshot): goal label 21, opponents 42, board 107. **The roll messages (last three turns) are under the Roll row now**, not in the middle of the board (`bk-note`, wrapped to 270 art px).
 
 - **Prices I cannot pay**: no red "Not enough money" pop-up any more. The price of every free space that costs more than my cash is **crossed out with a red X** on the board (`cantAfford` in `Board.tsx`, `bk-cross-<id>`; it follows the cash count). Landing on one I cannot pay for is still passed for me after a moment.
+
+- **Landing flash**: while the winning slice blinks white at the end of the spin (130 ms beat, `wheel.flashOn`), the space the frog is about to land on blinks white too, on the very same beat (`onBlink` of `Plaza` -> `landBlink` -> `Board` `flash`, `bk-flash-<id>`), and then the frog hops. A JAIL slice flashes the Jail space; $50 flashes nothing.
