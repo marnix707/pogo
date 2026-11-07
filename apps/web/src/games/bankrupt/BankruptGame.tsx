@@ -1013,12 +1013,12 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
               void send({ type: 'roll' });
             }}
             className={`absolute block active:translate-y-px disabled:active:translate-y-0 ${rollReady ? '' : 'opacity-60 grayscale'}`}
-            style={{ left: A(96), top: A(rowY), width: A(151), height: A(44) }}
+            style={{ left: A(96), top: A(rowY + 1), width: A(151), height: A(45) }}
           >
-            <PixelPanel s={s} w={151} h={41} shadow={3} fill="#fdcf51" />
+            <PixelPanel s={s} w={151} h={42} shadow={3} fill="#fdcf51" />
             <span
               className="absolute left-0 top-0 flex items-center justify-center"
-              style={{ width: A(151), height: A(41) }}
+              style={{ width: A(151), height: A(42) }}
             >
               <PixelText s={s} k={3} parts={[{ text: 'ROLL THE DICE', colour: '#101628' }]} />
             </span>
@@ -1034,12 +1034,12 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
                 setAutoRoll((v) => !v);
               }}
               className="absolute block active:translate-y-px"
-              style={{ left: A(251), top: A(rowY), width: A(29), height: A(44) }}
+              style={{ left: A(251), top: A(rowY + 1), width: A(29), height: A(45) }}
             >
-              <PixelPanel s={s} w={29} h={41} shadow={3} fill={autoRoll ? '#101628' : '#fdcf51'} />
+              <PixelPanel s={s} w={29} h={42} shadow={3} fill={autoRoll ? '#101628' : '#fdcf51'} />
               <span
                 className={`absolute left-0 top-0 flex items-center justify-center ${autoRoll ? 'text-[#fdcf51]' : 'text-[#101628]'}`}
-                style={{ width: A(29), height: A(41) }}
+                style={{ width: A(29), height: A(42) }}
               >
                 <LockIcon open={!autoRoll} style={{ width: A(14), height: A(14) }} />
               </span>
