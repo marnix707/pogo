@@ -36,6 +36,8 @@ export interface BankruptPlayer {
   bankrupt: boolean;
   /** A computer player: it never trades. */
   bot: boolean;
+  /** Free Froggo has already been put to the others during this stay in jail (it is asked once per jail). */
+  bailAsked: boolean;
   /** A fortunate-wheel card is waiting: the next roll spins the special wheel. */
   wheel: boolean;
   /** When the player went bankrupt (a later number = lasted longer), 0 while playing. */

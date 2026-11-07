@@ -831,6 +831,22 @@ describe('Free Froggo (the others pay the bail)', () => {
     expect(t.phase).toBe('roll');
     expect(t.events.some((e) => e.k === 'bailRefused')).toBe(true);
   });
+  it('is asked once per stay in jail, not on every turn', () => {
+    let s = start(3, { ...OPTIONS, freeFroggo: true });
+    const [p0, p1] = s.players.map((p) => p.id) as [string, string];
+    // p1 sits in jail and has already been put to the others this stay
+    s = patch(patch(s, p0, { jail: 3, pos: idx('jail') }), p1, {
+      jail: 2,
+      pos: idx('jail'),
+      bailAsked: true,
+    });
+    const t = play({ ...s, phase: 'jailAsk' }, p0, { type: 'wait' });
+    expect(t.bail).toBeNull();
+    expect(t.players.find((p) => p.id === p1)!.jail).toBe(1);
+    // a new stay (sent to jail again) is asked again
+    const again = patch(s, p1, { bailAsked: false });
+    expect(play({ ...again, phase: 'jailAsk' }, p0, { type: 'wait' }).bail).not.toBeNull();
+  });
   it('is not asked when somebody cannot afford the bail, or when the switch is off', () => {
     const poor = voting(20).s;
     expect(poor.bail).toBeNull();

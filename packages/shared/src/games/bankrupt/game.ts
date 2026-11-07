@@ -159,6 +159,7 @@ function createInitialState(
       bankrupt: false,
       bot: !!p.bot,
       wheel: false,
+      bailAsked: false,
       outAt: 0,
     })),
     owned: {},
@@ -253,6 +254,7 @@ const jailChoice = (s: BankruptState, p: BankruptPlayer) =>
 function sendToJail(s: BankruptState, p: BankruptPlayer) {
   p.pos = tileIndex(s.board, s.board.tiles.find((t) => t.kind === 'jail')!.id);
   p.jail = s.board.jailTurns;
+  p.bailAsked = false; // (a new stay: Free Froggo may be put to the others once more)
   s.sixes = 0;
   s.events.push({ k: 'jail', by: p.id });
 }
@@ -278,9 +280,10 @@ function skipJailTurn(s: BankruptState, p: BankruptPlayer) {
 
 /** Free Froggo: ask everybody else to pay the bail, when the switch is on and all of them can afford it. */
 function startBailVote(s: BankruptState, p: BankruptPlayer): boolean {
-  if (!s.options.freeFroggo) return false;
+  if (!s.options.freeFroggo || p.bailAsked) return false; // (once per stay in jail)
   const voters = alivePlayers(s).filter((x) => x.id !== p.id);
   if (voters.length === 0 || voters.some((v) => v.cash < FREE_FROGGO_BAIL)) return false;
+  p.bailAsked = true;
   s.bail = {
     subject: p.id,
     amount: FREE_FROGGO_BAIL,
