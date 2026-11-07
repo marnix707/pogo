@@ -9,7 +9,7 @@ import type {
 } from '../../game/types';
 import type { Rng } from '../../game/rng';
 import { DEFAULT_BOARD, isOwnable } from './config';
-import type { OwnableTile, PropertyTile } from './config';
+import type { BoardConfig, OwnableTile, PropertyTile } from './config';
 import {
   alivePlayers,
   buildingRefund,
@@ -170,6 +170,7 @@ function createInitialState(
     auction: null,
     trade: null,
     bail: null,
+    deck: shuffled(cardPack(board, options).length, rng),
     events: [],
     seq: 0,
     winner: null,
@@ -177,6 +178,20 @@ function createInitialState(
 }
 
 // ---- helpers on a mutable draft -----------------------------------------------------------------
+
+/** The cards that are in the pack for these options (the fortunate-wheel card only with the Special wheel option). */
+const cardPack = (board: BoardConfig, options: BankruptOptions) =>
+  board.cards.filter((c) => c.effect.type !== 'wheel' || options.specialWheel);
+
+/** A shuffled deck of `n` cards (Fisher-Yates): the indexes 0..n-1 in random order. */
+function shuffled(n: number, rng: Rng): number[] {
+  const order = Array.from({ length: n }, (_, i) => i);
+  for (let i = n - 1; i > 0; i--) {
+    const j = rng.int(i + 1);
+    [order[i], order[j]] = [order[j]!, order[i]!];
+  }
+  return order;
+}
 
 function draft(s: BankruptState): BankruptState {
   return {
@@ -187,6 +202,7 @@ function draft(s: BankruptState): BankruptState {
       ? { ...s.auction, passed: [...s.auction.passed], bids: { ...s.auction.bids } }
       : null,
     trade: s.trade ? { ...s.trade, offers: { ...s.trade.offers } } : null,
+    deck: [...s.deck],
     bail: s.bail ? { ...s.bail, voters: [...s.bail.voters], accepted: [...s.bail.accepted] } : null,
     events: [],
     seq: s.seq + 1,
@@ -357,8 +373,11 @@ function land(s: BankruptState, p: BankruptPlayer, rng: Rng, depth = 0) {
   } else if (tile.kind === 'auction') startTrade(s, p);
   else if (tile.kind === 'card' && s.board.cards.length > 0 && depth < 3) {
     // (the fortunate-wheel card is only in the pack with the Special wheel option)
-    const pack = s.board.cards.filter((c) => c.effect.type !== 'wheel' || s.options.specialWheel);
-    const card = pack[rng.int(pack.length)]!;
+    // A real deck: dealt from the top, shuffled again when every card has been used.
+    const pack = cardPack(s.board, s.options);
+    if (s.deck.length === 0 || s.deck.some((i) => i >= pack.length))
+      s.deck = shuffled(pack.length, rng);
+    const card = pack[s.deck.shift()!]!;
     const kind: CardKind =
       card.effect.type === 'cash'
         ? card.effect.amount >= 0
@@ -839,7 +858,8 @@ function applyMove(
 // ---- views, results, computers ---------------------------------------------------------------------
 
 function getPlayerView(state: BankruptState): BankruptView {
-  return state;
+  // (everything is public, except the order of the luck cards that are still to come)
+  return { ...state, deck: state.deck.map(() => -1) };
 }
 
 function getCurrentPlayers(state: BankruptState): PlayerId[] {

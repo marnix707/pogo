@@ -923,3 +923,28 @@ describe('the special wheel', () => {
     expect(t.events.find((e) => e.k === 'roll')).not.toHaveProperty('wheel');
   });
 });
+
+describe('the luck-card deck', () => {
+  it('deals every card once before any comes again, then shuffles anew', () => {
+    const cards = [10, 20, 30].map((n) => ({
+      text: `gift ${n}`,
+      effect: { type: 'cash' as const, amount: n },
+    }));
+    let s: BankruptState = { ...start(), board: { ...DEFAULT_BOARD, cards } };
+    // a rng that rolls 1 and makes the shuffle come out as [1, 2, 0]
+    const rng = { int: (n: number) => (n === 6 ? 0 : 0) };
+    const got: number[] = [];
+    for (let k = 0; k < 4; k++) {
+      const a = mover(s).id;
+      s = patch(s, a, { pos: idx('cards') - 1 });
+      const before = cash(s, a);
+      s = game.applyMove(s, a, { type: 'roll' }, rng);
+      got.push(cash(s, a) - before);
+    }
+    // the first three draws are all three cards (once each), the 4th starts a new shuffle
+    expect([...got.slice(0, 3)].sort((x, y) => x - y)).toEqual([10, 20, 30]);
+    expect(got[3]).toBe(got[0]);
+    // the view does not show the order of the cards to come
+    expect(game.getPlayerView(s, mover(s).id).deck.every((i) => i === -1)).toBe(true);
+  });
+});

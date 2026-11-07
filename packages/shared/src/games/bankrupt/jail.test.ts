@@ -72,11 +72,12 @@ it('a player sent to jail by a card who passes sits out three turns and never ro
     },
     rng,
   );
+  s = { ...s, deck: [9] }; // (the next luck card is "Go to jail", the last of the ten)
   const first = s.players[0]!.id;
   const second = s.players[1]!.id;
   const q: number[] = [];
   const play = (id: string, move: Parameters<typeof game.applyMove>[2]) => {
-    s = game.applyMove(s, id, move, { int: (n) => (n === 6 ? q.shift()! - 1 : n === 10 ? 9 : 0) });
+    s = game.applyMove(s, id, move, { int: (n) => (n === 6 ? q.shift()! - 1 : 0) });
   };
   // first: 6 then 1 -> the luck space (index 7) -> "Go to jail"
   q.push(6, 1);

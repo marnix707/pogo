@@ -171,6 +171,11 @@ export interface BankruptState {
   trade: Trade | null;
   /** The Free Froggo vote going on, or null. */
   bail: Bail | null;
+  /**
+   * The luck-card deck: indexes into the cards of the pack (see `cardPack`), the next card first. Shuffled at the
+   * start, dealt from the top, shuffled again when it has run out. (Hidden in the view: it would give away what is next.)
+   */
+  deck: number[];
   /** What the last move did, in order (the screen replays it). */
   events: BankruptEvent[];
   /** Counts moves, so the screen can tell a new event list from the last one. */
