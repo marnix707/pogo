@@ -10,8 +10,10 @@ const files = import.meta.glob('../../assets/sprites/direction/**/*.svg', {
   query: '?url',
   import: 'default',
 }) as Record<string, string>;
-const url = (name: string): string | undefined =>
-  Object.entries(files).find(([path]) => path.endsWith(`/${name}.svg`))?.[1];
+const url = (name: string, neutral = false): string | undefined =>
+  Object.entries(files).find(
+    ([path]) => path.endsWith(`/${name}.svg`) && path.includes('/neutral/') === neutral,
+  )?.[1];
 
 const FRAMES = 8;
 const FRAME_MS = 120;
@@ -32,6 +34,7 @@ export function DirectionRing({
   direction,
   trigger,
   font,
+  neutral = false,
 }: {
   /** 1 = clockwise, -1 = counter clockwise (the NEW direction). */
   direction: 1 | -1;
@@ -39,6 +42,8 @@ export function DirectionRing({
   trigger: number;
   /** Pixels per em of the card the ring surrounds. */
   font: number;
+  /** One colour (cream arrows) instead of the four colours (Karma). */
+  neutral?: boolean;
 }) {
   const [state, setState] = useState<Stage | null>(null);
 
@@ -71,8 +76,8 @@ export function DirectionRing({
   if (!state) return null;
   const src =
     state.stage === 'spin'
-      ? url(`${state.dir}-${String(state.frame).padStart(2, '0')}`)
-      : url(`direction-${state.dir}`);
+      ? url(`${state.dir}-${String(state.frame).padStart(2, '0')}`, neutral)
+      : url(`direction-${state.dir}`, neutral);
   if (!src) return null;
   return (
     <img

@@ -16,6 +16,7 @@ import { useCardScale } from '../../lib/cardScale';
 import { handLayout } from '../../lib/handLayout';
 import { REVEAL_FLIP_MS, leftoverCount, revealPlan, revealStartMs } from './reveal';
 import { BurnFire, MiniFlame } from './BurnFire';
+import { DirectionRing } from '../lastcard/DirectionRing';
 import { BLIND_FLY_AT_MS, BLIND_FLY_MS, WinReveal } from './WinReveal';
 import { RoundScreen } from './RoundScreen';
 import { RulesIntro } from './RulesIntro';
@@ -607,6 +608,16 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
   const hand = useMemo(() => [...(mine?.hand ?? [])].sort(byRankThenSuit), [mine?.hand]);
   const swapping = view.phase === 'swap' && !!mine && !mine.ready;
   const lastSeq = useRef(view.lastEvent?.seq ?? 0);
+  // A joker turned the direction of play around: the rotation arrows (Last Card's, in one colour) flash round the pile.
+  const [ring, setRing] = useState(0);
+  const ringSeq = useRef(view.lastEvent?.seq ?? 0);
+  useEffect(() => {
+    const ev = view.lastEvent;
+    if (!ev || ev.seq === ringSeq.current) return;
+    ringSeq.current = ev.seq;
+    if (ev.kind !== 'pickup' && ev.cards.filter(karma.isJoker).length % 2 === 1)
+      setRing((r) => r + 1);
+  }, [view.lastEvent?.seq]); // eslint-disable-line react-hooks/exhaustive-deps
   // While a card is turning over nobody may see whose turn it is: after a flip the turn passes on
   // (a card that fits) or stays with the flipper (too low: picks up the pile), and that is the answer.
   // (`revealPending` covers the render in which the move has arrived but its reveal is not set yet.)
@@ -1243,6 +1254,24 @@ export function KarmaGame({ room, me, sendMove }: GameUiProps) {
                     />
                   );
                 })
+              )}
+              {/* the rotation arrows round the top card when a joker has turned the direction around */}
+              {ring > 0 && (
+                <div
+                  className="pointer-events-none absolute top-0"
+                  style={{
+                    left: `${pileFont * 1.1}px`,
+                    width: `${pileFont * 5}px`,
+                    height: `${pileFont * 7}px`,
+                  }}
+                >
+                  <DirectionRing
+                    neutral
+                    direction={view.direction}
+                    trigger={ring}
+                    font={pileFont}
+                  />
+                </div>
               )}
               {/* Only over an empty pile: as soon as new cards land the fire must not cover them. */}
               {flame && shownPile.length === 0 && (
