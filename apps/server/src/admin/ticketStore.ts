@@ -56,10 +56,20 @@ const matches = (t: TicketDetail, f: TicketFilter) =>
   (!f.priority || t.priority === f.priority) &&
   (!f.open || !DONE.includes(t.status)) &&
   (!f.q || `${t.message} ${t.nickname}`.toLowerCase().includes(f.q.toLowerCase()));
-const row = (t: TicketDetail): TicketRow => {
-  const { client: _c, server: _s, adminNote: _a, claudeNote: _n, ...rest } = t;
-  return rest;
-};
+const row = (t: TicketDetail): TicketRow => ({
+  id: t.id,
+  type: t.type,
+  priority: t.priority,
+  status: t.status,
+  message: t.message,
+  userId: t.userId,
+  nickname: t.nickname,
+  screen: t.screen,
+  gameId: t.gameId,
+  hasScreenshot: t.hasScreenshot,
+  createdAt: t.createdAt,
+  updatedAt: t.updatedAt,
+});
 
 export function createMemoryTicketStore(): TicketStore {
   const tickets: TicketDetail[] = [];
