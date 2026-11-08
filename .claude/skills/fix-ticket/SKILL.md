@@ -10,6 +10,9 @@ Tickets are bug reports and feedback players send from the app. Each has the pla
 ## Setup (once)
 The script needs `POGO_URL` (the server's address, e.g. `http://localhost:3000` or the Render URL) and `TICKET_API_TOKEN` (the same secret as the server's `TICKET_API_TOKEN` setting; it can only read tickets and move their status). Put them in `.claude/settings.local.json` under `env`, or export them in the shell. Never commit the token.
 
+## Overview
+`node .claude/skills/fix-ticket/ticket.mjs board` (or `/list-tickets`) lists the open tickets by type and criticality; ids can be given as their first 8 characters.
+
 ## Workflow
 1. `node .claude/skills/fix-ticket/ticket.mjs list` shows the queued tickets (`list open` shows every open one). With an id in the prompt, use that one.
 2. `node .claude/skills/fix-ticket/ticket.mjs get <id> <scratchpad>/ticket-<id>` writes `ticket.json` and `screenshot.jpg` there and prints a summary. **Read the screenshot** (Read tool) and the JSON: `client.room` is what the player saw, `server.state` + `server.lastMoves` is what the server had (game logic lives in `packages/shared/src/games/<id>`, UI in `apps/web/src/games/<id>`: read `CLAUDE.md` and the matching `docs/` file first).
