@@ -19,9 +19,9 @@ export const FX_LABELS: Record<FxKey, string> = {
   clouds: 'Clouds',
   birds: 'Birds',
   fountain: 'Fountain',
-  trees: 'Trees & bushes',
-  houses: 'Houses & shops',
-  details: 'Lamps, benches, flowers',
+  trees: 'Trees',
+  houses: 'Houses',
+  details: 'Lamps & more',
   lights: 'Wheel lights',
 };
 export type FxSettings = Record<FxKey, boolean>;
