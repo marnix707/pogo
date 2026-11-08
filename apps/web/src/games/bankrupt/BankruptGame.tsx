@@ -28,6 +28,7 @@ import type { Part } from './PixelLabel';
 import { measure, pixelSafe } from './pixel-text/pixelText';
 import { CARD_H, CARD_W, SCREEN_W, rowXs, screenArt } from './screenArt';
 import { useStageScale } from './useStage';
+import { MoneyPile } from './MoneyPile';
 import { POLICE } from './police';
 import type { PoliceView } from './police';
 import { gridPos } from './grid';
@@ -595,6 +596,9 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const root = useRef<HTMLDivElement>(null);
   const { s, h: hArt, w } = useStageScale(root);
   const A = (n: number) => n * s;
+  const reduceMotion =
+    typeof window !== 'undefined' &&
+    !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   // (the shared top bar paints the same dot pattern at the same size: it reads this)
   useLayoutEffect(() => {
     document.documentElement.style.setProperty('--bk-art', `${s}px`);
@@ -1182,6 +1186,17 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
               </div>
             </Board>
           </div>
+
+          {/* my money as a pile of bundles at the bottom: behind the cards and the Spin button, over the board */}
+          {players[around[0]!] && (
+            <MoneyPile
+              cash={cashShown[players[around[0]!]!.id] ?? players[around[0]!]!.cash}
+              s={s}
+              fullHeight={H - (rowY + 1)}
+              maxHeight={H - (cardsY + 50)}
+              reduceMotion={reduceMotion}
+            />
+          )}
 
           <div data-testid="bk-seats-bottom">
             {beside.map((i) => tag(players[i]!, CARD_W + 3, rowY))}
