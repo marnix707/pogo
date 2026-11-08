@@ -41,7 +41,12 @@ export function openAdminPanel() {
   } catch {
     /* the panel then simply asks for a login */
   }
-  window.location.assign('/admin');
+  // A new tab in the browser (not inside this window / the installed app) and go there. Where an installed app
+  // keeps same-site pages inside itself, the full address is opened so the system browser can take it.
+  const url = `${window.location.origin}/admin`;
+  const tab = window.open(url, '_blank', 'noopener');
+  // (a blocked pop-up: fall back to going there in this window)
+  if (!tab) window.location.assign('/admin');
 }
 
 function writeToken(token: string | null) {
