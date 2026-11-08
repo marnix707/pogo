@@ -50,11 +50,11 @@ function TicketSheet({
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
   const [shot, setShot] = useState<string | null>(null);
   const [note, setNote] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<'yes' | 'no' | null>(null);
   useEffect(() => {
     setTicket(null);
     setShot(null);
-    setCopied(false);
+    setCopied(null);
     if (!id) return;
     let url: string | null = null;
     getTicket(id)
@@ -82,18 +82,21 @@ function TicketSheet({
       })
       .catch((e: Error) => onError(e.message));
 
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied('yes');
+    } catch {
+      setCopied('no');
+    }
+  };
   const fix = () => {
     if (!id) return;
     void queueTicket(id)
       .then(async (t) => {
         setTicket(t);
         onChanged();
-        try {
-          await navigator.clipboard.writeText(`/fix-ticket ${id}`);
-          setCopied(true);
-        } catch {
-          setCopied(false);
-        }
+        await copy(`/fix-ticket ${id}`);
       })
       .catch((e: Error) => onError(e.message));
   };
@@ -185,10 +188,40 @@ function TicketSheet({
           <Button data-testid="ticket-fix" variant="gold" onClick={fix}>
             Fix with Claude
           </Button>
-          {copied && (
-            <p className="label text-[10px]" data-testid="ticket-copied">
-              Queued. <code>/fix-ticket {ticket.id}</code> is copied: paste it into Claude Code.
+          {copied === 'yes' && (
+            <p
+              role="status"
+              data-testid="ticket-copied"
+              className="rounded-md border-2 border-[#74cca8] bg-[#74cca8]/20 p-3 text-sm"
+            >
+              ✓ <b>Copied to the clipboard:</b> <code>/fix-ticket {ticket.id}</code>
+              <br />
+              The ticket is queued. Paste it in Claude Code to start.
             </p>
+          )}
+          {copied === 'no' && (
+            <div
+              role="alert"
+              data-testid="ticket-copy-failed"
+              className="rounded-md border-2 border-[#fda200] bg-[#fda200]/20 p-3 text-sm"
+            >
+              The ticket is queued, but your browser did not allow copying. Copy this by hand:
+              <input
+                readOnly
+                value={`/fix-ticket ${ticket.id}`}
+                onFocus={(e) => e.currentTarget.select()}
+                className="mt-2 w-full rounded-md border-2 border-edge/40 bg-panel2 p-2 text-ink"
+              />
+            </div>
+          )}
+          {ticket.status === 'queued' && copied === null && (
+            <Button
+              variant="secondary"
+              data-testid="ticket-copy"
+              onClick={() => void copy(`/fix-ticket ${ticket.id}`)}
+            >
+              Copy /fix-ticket {ticket.id.slice(0, 8)}…
+            </Button>
           )}
           <Json title="client" value={ticket.client} />
           {ticket.server && <Json title="server" value={ticket.server} />}
