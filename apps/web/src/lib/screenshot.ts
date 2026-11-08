@@ -20,6 +20,10 @@ export async function captureScreenshot(): Promise<string | null> {
     out.height = Math.max(1, Math.round(canvas.height * scale));
     const ctx = out.getContext('2d');
     if (!ctx) return null;
+    // (JPEG has no transparency: whatever the page left transparent (the page colour sits on <html>, which is not
+    // drawn) came out black. Paint the page colour first.)
+    ctx.fillStyle = getComputedStyle(document.documentElement).backgroundColor || '#1b2340';
+    ctx.fillRect(0, 0, out.width, out.height);
     ctx.imageSmoothingEnabled = false; // (pixel art)
     ctx.drawImage(canvas, 0, 0, out.width, out.height);
     for (const quality of [0.72, 0.55, 0.4]) {

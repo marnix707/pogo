@@ -94,7 +94,7 @@ Shown only when the phone itself is held sideways (`lib/useSideways.ts`: `screen
 
 ## Bug / feedback button
 
-A bug icon (`BugButton`) sits before Settings in every top bar (shared `TopBar`, Home, Lobby, Yatzy's header) and a "Report a bug" link on the sign-in screen. `BugReportProvider` (mounted in `App.tsx`) owns the form sheet: it takes the screenshot **before** the sheet opens (so the sheet is not in it) and reads the context that `Shell` (or the sign-in screen) registered with `setBugContext`. Details and the admin side: `docs/accounts-admin.md` ("Tickets").
+A bug icon (`BugButton`) sits before Settings in every top bar (shared `TopBar`, Home, Lobby, Yatzy's header) and a "Report a bug" link on the sign-in screen. `BugReportProvider` (mounted in `App.tsx`) owns the form sheet: it takes the screenshot **before** the sheet opens (so the sheet is not in it) and reads the context that `Shell` (or the sign-in screen) registered with `setBugContext`. Details and the admin side: `docs/accounts-admin.md` ("Tickets"). The screenshot is painted on the page colour first (JPEG has no transparency; unpainted parts came out black).
 
 ## Sound goes quiet when the app leaves the screen
 

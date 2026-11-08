@@ -21,3 +21,7 @@ test-results/
 
 # Artist zips (extract and sort them, see CLAUDE.md)
 apps/web/src/assets/*.zip
+
+# Claude Code local settings (hold the ticket API token)
+.claude/settings.local.json
+.claude/skills/settings.local.json
