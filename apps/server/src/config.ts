@@ -39,6 +39,7 @@ const schema = z.object({
   /** Comma separated emails that become admin when they register or log in. */
   ADMIN_EMAILS: z.string().default(''),
   DEV_EMAILS: z.string().default(''),
+  TICKET_API_TOKEN: z.string().optional(),
   /** `GET /api/dev/last-mail` (emailed codes for e2e); only ever outside production and with MAIL_MODE=log. */
   DEV_MAILBOX: z.enum(['0', '1']).default('0'),
   /** Proxies in front of the server (Render). Unset = trust the whole X-Forwarded-For header (spoofable). */
@@ -102,6 +103,8 @@ export interface AppConfig {
   /** Lowercase emails that become admin on register/login (optional in tests). */
   adminEmails?: string[];
   devEmails?: string[];
+  /** Secret for Claude Code's fix-ticket skill: reads the tickets and moves them along (optional, at least 24 characters). */
+  ticketApiToken?: string;
   devMailbox?: boolean;
   /** Number of trusted proxies in front of the server; undefined = trust X-Forwarded-For fully. */
   trustProxyHops?: number;
@@ -151,6 +154,8 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     mailFrom: env.MAIL_FROM,
     adminEmails: list(env.ADMIN_EMAILS).map((e) => e.toLowerCase()),
     devEmails: list(env.DEV_EMAILS).map((e) => e.toLowerCase()),
+    ticketApiToken:
+      env.TICKET_API_TOKEN && env.TICKET_API_TOKEN.length >= 24 ? env.TICKET_API_TOKEN : undefined,
     devMailbox: env.DEV_MAILBOX === '1',
     trustProxyHops: env.TRUST_PROXY_HOPS,
   };

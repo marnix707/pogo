@@ -72,6 +72,11 @@ export class RoomManager {
     return code ? this.rooms.get(code) : undefined;
   }
 
+  /** The room of this player (as a member or watcher) for a bug report: see `Room.debugSnapshot`. */
+  snapshotFor(userId: string): Record<string, unknown> | null {
+    return this.roomFor(userId)?.debugSnapshot() ?? null;
+  }
+
   getView(userId: string): RoomView | null {
     return this.roomFor(userId)?.view(userId) ?? null;
   }

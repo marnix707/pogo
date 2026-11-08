@@ -24,6 +24,9 @@ import type { FriendStore } from './social/friendStore';
 import { registerAccountRoutes } from './http/accountRoutes';
 import { ChatLog } from './admin/chatLog';
 import { registerAdminRoutes } from './http/adminRoutes';
+import { registerTicketRoutes } from './http/ticketRoutes';
+import { createMemoryTicketStore } from './admin/ticketStore';
+import type { TicketStore } from './admin/ticketStore';
 import { registerAuthRoutes } from './http/authRoutes';
 import { createBrevoMailer, createLogMailer, createSmtpMailer } from './mail/mailer';
 import type { Mailer } from './mail/mailer';
@@ -52,6 +55,8 @@ export interface AppDeps {
   friends?: FriendStore;
   /** Bans and the staff log. Default: in memory (tests). */
   moderation?: ModerationStore;
+  /** Bug reports and feedback. Default: in memory (tests). */
+  tickets?: TicketStore;
   logger?: boolean | object;
 }
 
@@ -281,6 +286,16 @@ export async function buildApp(deps: AppDeps) {
     publicBaseUrl: config.publicBaseUrl,
     disconnectUser: (userId) => io.in(userChannel(userId)).disconnectSockets(true),
     isOnline: (userId) => (io.sockets.adapter.rooms.get(userChannel(userId))?.size ?? 0) > 0,
+  });
+
+  registerTicketRoutes(app, {
+    users: deps.users,
+    tokens,
+    tickets: deps.tickets ?? createMemoryTicketStore(),
+    manager,
+    moderation,
+    apiToken: config.ticketApiToken,
+    limitScale: config.isProd ? 1 : 100,
   });
 
   // The first admin(s) from ADMIN_EMAILS get the role at start-up too (not only at their next login).

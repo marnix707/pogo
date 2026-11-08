@@ -1,6 +1,7 @@
 import { APP_NAME } from '@pogo/shared';
 import { buildApp } from './app';
 import { createPrismaModerationStore } from './admin/moderation';
+import { createPrismaTicketStore } from './admin/ticketStore';
 import { createPrismaUserStore } from './auth/userStore';
 import { createPrismaFriendStore } from './social/friendStore';
 import { loadConfig } from './config';
@@ -14,6 +15,7 @@ async function main() {
     config,
     users: createPrismaUserStore(prisma),
     moderation: createPrismaModerationStore(prisma),
+    tickets: createPrismaTicketStore(prisma),
     friends: createPrismaFriendStore(prisma),
     rng: cryptoRng,
     healthCheck: async () => {

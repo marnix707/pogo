@@ -154,6 +154,8 @@ export class Room {
 
   private members: Member[] = [];
   private messages: ChatMessage[] = [];
+  /** The last moves of the game (players, timeouts and computers), kept for bug reports. */
+  private moveLog: { at: number; game: number; by: string; move: unknown; auto?: 'timeout' | 'bot' }[] = [];
   private nextMessageId = 1;
   private readonly banned = new Set<string>();
   private state: unknown;
@@ -732,6 +734,7 @@ export class Room {
     if (!check.ok) return fail(check.error);
 
     const before = this.state;
+    this.logMove(userId, parsed.data);
     this.state = this.game.applyMove(this.state, userId, parsed.data, this.rng);
     // A free move (sharing which dice are kept) must not buy more time, and neither must a move in a
     // phase with one clock for everybody (the card swap).
@@ -741,6 +744,40 @@ export class Room {
     }
     this.afterStateChange();
     return ok(null);
+  }
+
+  private logMove(by: string, move: unknown, auto?: 'timeout' | 'bot'): void {
+    this.moveLog.push({ at: this.deps.now(), game: this.gameNo, by, move, ...(auto ? { auto } : {}) });
+    if (this.moveLog.length > 50) this.moveLog.splice(0, this.moveLog.length - 50);
+  }
+
+  /**
+   * Everything about this room for a bug report: the authoritative game state (hidden hands included, so it only
+   * ever goes to the admin panel), the options, who is in, the last moves and the last chat lines.
+   */
+  debugSnapshot(): Record<string, unknown> {
+    return {
+      code: this.code,
+      gameId: this.game.id,
+      status: this.status,
+      gameNo: this.gameNo,
+      options: this.options,
+      turnTimeSec: this.turnTime,
+      hostId: this.hostId,
+      members: this.members.map((m) => ({
+        id: m.user.id,
+        nickname: m.user.nickname,
+        bot: !!m.bot,
+        spectator: !!m.spectator,
+        connected: m.connected,
+        left: m.left,
+        ready: !!m.ready,
+      })),
+      state: this.state ?? null,
+      currentPlayers: this.status === 'playing' ? this.game.getCurrentPlayers(this.state) : [],
+      lastMoves: this.moveLog.slice(-50),
+      lastChat: this.messages.slice(-20).map((m) => ({ at: m.at, from: m.nickname, text: m.text })),
+    };
   }
 
   private isCurrent(userId: string): boolean {
@@ -813,6 +850,7 @@ export class Room {
     const before = this.state;
     for (const id of this.game.getCurrentPlayers(this.state)) {
       const auto = (this.game.timeoutMove ?? autoMove).call(this.game, this.state, id, this.rng);
+      this.logMove(id, auto.move, 'timeout');
       this.state = this.game.applyMove(this.state, id, auto.move, this.rng);
       endsTurn = endsTurn && auto.endsTurn;
     }
@@ -865,6 +903,7 @@ export class Room {
     for (const id of this.game.getCurrentPlayers(this.state)) {
       if (!this.members.find((m) => m.user.id === id)?.bot) continue;
       const auto = autoMove.call(this.game, this.state, id, this.rng);
+      this.logMove(id, auto.move, 'bot');
       this.state = this.game.applyMove(this.state, id, auto.move, this.rng);
       if (this.game.isGameOver(this.state)) break;
     }

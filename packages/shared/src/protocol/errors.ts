@@ -79,6 +79,12 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'ADM-112', message: 'Only developers can do this' },
   { code: 'ADM-113', message: 'Only registered players can get titles' },
 
+  // ---- TIC: bug reports and feedback ----
+  { code: 'TIC-101', message: 'Please describe the problem in a few words' },
+  { code: 'TIC-102', message: 'You have sent a lot of reports today. Please try again tomorrow.' },
+  { code: 'TIC-103', message: 'The screenshot is too big or not an image' },
+  { code: 'TIC-104', message: 'Ticket not found' },
+
   // ---- ROOM: rooms, lobby, ready ----
   { code: 'ROOM-101', message: 'Room not found' },
   { code: 'ROOM-102', message: 'This room is full' },

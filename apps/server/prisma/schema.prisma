@@ -170,3 +170,35 @@ model ActivityDay {
   @@id([userId, day])
   @@index([day])
 }
+
+/// A bug report or feedback from a player (admin panel "Tickets"). userId has no foreign key: tickets outlive accounts.
+model Ticket {
+  id         String   @id @default(uuid())
+  userId     String?
+  nickname   String   @default("")
+  /// bug | feedback
+  type       String
+  /// low | medium | high | critical (bugs only)
+  priority   String?
+  /// new | triaged | queued | in_progress | fixed | closed | wontfix | duplicate
+  status     String   @default("new")
+  message    String
+  /// What the web app knew about itself (screen, room view, settings, errors ...), never the token.
+  client     Json
+  /// The room's authoritative state, last moves and chat at that moment (admins only).
+  server     Json?
+  adminNote  String   @default("")
+  claudeNote String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+}
+
+/// The screenshot of a ticket (kept apart so the list stays light).
+model TicketScreenshot {
+  ticketId String @id
+  mime     String
+  data     Bytes
+}

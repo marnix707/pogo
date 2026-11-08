@@ -75,6 +75,9 @@ services:
         sync: false
       - key: DEV_EMAILS
         sync: false
+      # Secret for Claude Code's fix-ticket skill (reads tickets, moves them along); optional, 24+ characters.
+      - key: TICKET_API_TOKEN
+        sync: false
 
       # Gameplay timings (same defaults as .env.example)
       - key: DISCONNECT_GRACE_SEC
