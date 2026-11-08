@@ -1472,22 +1472,22 @@ html.results-open .safe-top-scrim {
 .rotate-notice {
   display: none;
 }
-@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
-  .rotate-notice {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    background: #1f4f8c;
-    color: #f7f1e4;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
+/* (`.on` is set by App.tsx from the phone's real orientation: the on-screen keyboard shrinks the page, which must
+   never look like turning the phone) */
+.rotate-notice.on {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background: #1f4f8c;
+  color: #f7f1e4;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* Pogo's speech bubble pops up (a little overshoot) and stays. */

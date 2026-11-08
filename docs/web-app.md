@@ -87,3 +87,7 @@ The games are listed A to Z by name (`gameUis` in `games/registry.ts`). The smal
 ## Play menu bottom bar
 
 On Home's Play screen (`PlayScreen` with `bottomBar`) the Main screen button is a fixed bar at the bottom, the same layout and style as the lobby's Ready bar (`play-bar`, gradient behind it, max width of the phone column). It shows **Open games ▾ (count)** (`play-open-games`): tap and the page scrolls smoothly down to the Open games section. Once that heading has climbed into the upper half of the screen (or the page can scroll no further), whether from the tap or by scrolling by hand, the bar changes to **Main screen** (`main-screen`, the button that used to sit at the end of the page) and back again when scrolling up. The two buttons are stacked and cross-fade (260 ms, the hidden one is `visibility: hidden` and not clickable). The lobby's game list keeps its inline Main screen button (the lobby has its own Ready bar).
+
+## "Turn your phone upright" notice
+
+Shown only when the phone itself is held sideways (`lib/useSideways.ts`: `screen.orientation` / `window.orientation`, a coarse pointer and a screen of 500 px or less), set as `.rotate-notice.on` by `App.tsx`. It used to be a CSS media query on the page size, so the on-screen keyboard (which shrinks the page to "wide and short") covered the screen with the notice while typing a code.

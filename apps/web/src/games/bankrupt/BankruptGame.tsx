@@ -490,10 +490,13 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   // The lock next to Roll: rolls for me, turn after turn, until something needs a choice (a space to buy, the
   // jail question, an auction, a trade ...: none of those is the roll phase, so it simply waits).
   const [autoRoll, setAutoRoll] = useState(false);
+  const autoRolled = useRef(false); // has the lock rolled since it was switched on?
   useEffect(() => {
     if (!autoRoll || !myTurn || state.phase !== 'roll' || animating || busy || rolling) return;
-    if ((mePlayer?.cash ?? 0) < 0) return; // (in debt: the lock switches itself off, see below)
-    const t = setTimeout(() => void send({ type: 'roll' }), 500);
+    const t = setTimeout(() => {
+      autoRolled.current = true; // (in debt the lock lets this one roll go, then switches itself off, see below)
+      void send({ type: 'roll' });
+    }, 500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRoll, myTurn, state.phase, state.seq, animating, busy, rolling]);
@@ -526,16 +529,29 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
     return () => clearTimeout(pass);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [broke, settled, fresh, owedBuy?.id]);
-  // Auto roll switches itself off when I am in debt (below $0), with a warning: from here on I decide.
-  const [debtWarn, setDebtWarn] = useState(false);
+  // In debt (below $0) auto roll may roll once after it is switched on; then it switches itself off again, with a
+  // warning that shows for 2 seconds and fades out (until somebody switches it on again).
+  const [debtWarn, setDebtWarn] = useState<'show' | 'fade' | null>(null);
+  const warnTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(
+    () => () => {
+      warnTimers.current.forEach(clearTimeout);
+    },
+    [],
+  );
   const inDebt = !!mePlayer && !mePlayer.bankrupt && mePlayer.cash < 0;
   useEffect(() => {
-    if (!autoRoll || !inDebt || animating) return;
+    if (!autoRoll || !inDebt || animating || !autoRolled.current) return;
     setAutoRoll(false);
-    setDebtWarn(true);
+    autoRolled.current = false;
+    setDebtWarn('show');
     play('turn');
-    const t = setTimeout(() => setDebtWarn(false), 3200);
-    return () => clearTimeout(t);
+    // (these timers must outlive this effect: switching the lock off re-runs it)
+    warnTimers.current.forEach(clearTimeout);
+    warnTimers.current = [
+      setTimeout(() => setDebtWarn('fade'), 1700),
+      setTimeout(() => setDebtWarn(null), 2000),
+    ];
   }, [autoRoll, inDebt, animating]);
   const goalParts: Part[] = [
     {
@@ -911,7 +927,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       <p
         role="alert"
         data-testid="bk-debt-warning"
-        className="label flex h-full w-full items-center justify-center bg-[#ff6b57]/90 p-[4%] text-center text-[3.2cqw] leading-snug text-white"
+        className={`label flex h-full w-full items-center justify-center bg-[#ff6b57]/90 p-[4%] text-center text-[3.2cqw] leading-snug text-white transition-opacity duration-300 ${debtWarn === 'fade' ? 'opacity-0' : 'opacity-100'}`}
       >
         You are below $0. Auto roll is off.
       </p>
@@ -1188,6 +1204,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
               aria-label={autoRoll ? 'Stop rolling automatically' : 'Roll automatically'}
               onClick={() => {
                 play('tap');
+                autoRolled.current = false;
                 setAutoRoll((v) => !v);
               }}
               className="absolute block active:translate-y-px"

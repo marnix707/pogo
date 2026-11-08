@@ -6,9 +6,11 @@ import { TopoBackground } from './components/TopoBackground';
 import { play, unlockAudio } from './lib/sound';
 import { consumeRecoveryLink, forgetSession, restoreSession } from './lib/session';
 import { Shell } from './Shell';
+import { useSideways } from './lib/useSideways';
 import { SignIn } from './pages/SignIn';
 
 export function App() {
+  const sideways = useSideways();
   const [session, setSession] = useState<AuthResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
@@ -47,7 +49,7 @@ export function App() {
     <ToastProvider>
       <TopoBackground />
       <UpdateNotice />
-      <div className="rotate-notice" role="alert">
+      <div className={`rotate-notice ${sideways ? 'on' : ''}`} role="alert">
         <span aria-hidden className="text-5xl">
           📱
         </span>
