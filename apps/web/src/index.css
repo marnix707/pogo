@@ -2183,3 +2183,332 @@ html.bk-page [data-testid='topo-background'] {
     opacity: 0;
   }
 }
+
+/* Pet Match rules page: small looping demos (all off with reduced motion: the pictures just sit there). */
+@keyframes rules-swap-a {
+  0%,
+  20% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  34%,
+  48% {
+    transform: translateX(2.4rem);
+    opacity: 1;
+  }
+  58%,
+  95% {
+    transform: translateX(2.4rem) scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@keyframes rules-swap-b {
+  0%,
+  20% {
+    transform: translateX(0);
+  }
+  34%,
+  95% {
+    transform: translateX(-2.4rem);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+@keyframes rules-vanish {
+  0%,
+  48% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  58%,
+  95% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes rules-drop {
+  0%,
+  58% {
+    transform: translateY(-2.6rem);
+    opacity: 0;
+  }
+  72%,
+  92% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+}
+@keyframes rules-finger {
+  0%,
+  8% {
+    transform: translate(0, 0) scale(1.4);
+    opacity: 0;
+  }
+  16% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  34% {
+    transform: translate(2.4rem, 0) scale(1);
+    opacity: 1;
+  }
+  42%,
+  100% {
+    transform: translate(2.4rem, 0) scale(1.4);
+    opacity: 0;
+  }
+}
+.rules-swap-a,
+.rules-swap-b,
+.rules-vanish,
+.rules-drop,
+.rules-finger {
+  animation-duration: 4.6s;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+.rules-swap-a {
+  animation-name: rules-swap-a;
+}
+.rules-swap-b {
+  animation-name: rules-swap-b;
+}
+.rules-vanish {
+  animation-name: rules-vanish;
+}
+.rules-drop {
+  animation-name: rules-drop;
+  opacity: 0;
+}
+.rules-finger {
+  animation-name: rules-finger;
+  opacity: 0;
+}
+@keyframes rules-pulse {
+  0%,
+  60%,
+  100% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.25);
+  }
+}
+.rules-pulse {
+  animation: rules-pulse 2.2s ease-in-out infinite;
+}
+@keyframes rules-pop {
+  0%,
+  15% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  30%,
+  90% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+.rules-pop {
+  animation: rules-pop 3.2s ease-out infinite;
+}
+@keyframes rules-fill {
+  0% {
+    clip-path: inset(0 100% 0 0);
+  }
+  65%,
+  90% {
+    clip-path: inset(0 0 0 0);
+  }
+  100% {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+.rules-fill {
+  animation: rules-fill 3.6s ease-in-out infinite;
+  clip-path: inset(0 100% 0 0);
+}
+@keyframes rules-fly {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  35% {
+    transform: translate(1.2rem, 1.4rem) scale(0.5);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(1.2rem, 1.4rem) scale(0.5);
+    opacity: 0;
+  }
+}
+.rules-fly {
+  animation: rules-fly 3.6s ease-in infinite;
+  opacity: 0;
+}
+@keyframes rules-lunge {
+  0%,
+  64% {
+    transform: translateX(0);
+  }
+  72% {
+    transform: translateX(0.8rem) scale(1.1);
+  }
+  82%,
+  100% {
+    transform: translateX(0);
+  }
+}
+.rules-lunge {
+  animation: rules-lunge 3.6s ease-in-out infinite;
+}
+@keyframes rules-ready {
+  0%,
+  62% {
+    opacity: 0;
+  }
+  68%,
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.rules-ready {
+  animation: rules-ready 3.6s linear infinite;
+  opacity: 0;
+}
+@keyframes rules-berry {
+  0%,
+  8% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  18%,
+  80% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  95%,
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+.rules-berry {
+  animation: rules-berry 4s ease-out infinite;
+  opacity: 0;
+}
+@keyframes rules-before {
+  0%,
+  55% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  62%,
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.6);
+  }
+}
+@keyframes rules-after {
+  0%,
+  56% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.6);
+  }
+  66% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.25);
+  }
+  74%,
+  92% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(1);
+  }
+}
+@keyframes rules-ring {
+  0%,
+  56% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+  64% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  80%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.6);
+  }
+}
+.rules-before {
+  animation: rules-before 4s ease-in-out infinite;
+}
+.rules-after {
+  animation: rules-after 4s ease-in-out infinite;
+  opacity: 0;
+}
+.rules-ring {
+  animation: rules-ring 4s ease-out infinite;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rules-swap-a,
+  .rules-swap-b,
+  .rules-vanish,
+  .rules-drop,
+  .rules-finger,
+  .rules-pulse,
+  .rules-pop,
+  .rules-fill,
+  .rules-fly,
+  .rules-lunge,
+  .rules-ready,
+  .rules-berry,
+  .rules-before,
+  .rules-after,
+  .rules-ring {
+    animation: none;
+  }
+  .rules-drop,
+  .rules-finger,
+  .rules-fly,
+  .rules-ready,
+  .rules-after,
+  .rules-ring {
+    opacity: 0;
+  }
+  .rules-fill {
+    clip-path: inset(0 30% 0 0);
+  }
+  .rules-berry {
+    opacity: 1;
+  }
+}
