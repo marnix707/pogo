@@ -115,14 +115,14 @@ def simulate(sprites, n_max=9000, seed=7):
             # sink into the heap: the bundles lie on the average surface and overlap what is under them
             return max(0, tot // w - 2)
 
-        spread = 40 + top * 0.55
+        spread = 60 + top * 0.9
         x = int(rnd.gauss(W / 2, spread)) - w // 2
         x = max(-w // 3, min(W - w + w // 3, x))
         for _ in range(60):               # roll downhill
             here = rest(x)
             l = rest(x - 2) if x - 2 > -w // 3 else 10 ** 9
             r = rest(x + 2) if x + 2 < W - w + w // 3 else 10 ** 9
-            if min(l, r) < here - 2:
+            if min(l, r) < here - 1:
                 x += -2 if l < r else 2
             else:
                 break

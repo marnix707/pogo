@@ -1364,7 +1364,7 @@ describe('karma: one clock for the whole card swap', () => {
 });
 
 describe('choices (Bankrupt frog colours)', () => {
-  it('the host is always red, the others pick a colour nobody has, and the game gets them', () => {
+  it('everybody (the host too) picks a colour nobody has, the host starts red, and the game gets them', () => {
     const { manager, lastRoom, must } = setup();
     const room = must(manager.create(a, { gameId: 'bankrupt' }));
     must(manager.join(b, room.code));
@@ -1374,19 +1374,26 @@ describe('choices (Bankrupt frog colours)', () => {
     expect(colours()).toEqual({ [a.id]: 'red', [b.id]: 'blue', [c.id]: 'green' });
     must(manager.setChoice(c.id, 'yellow'));
     expect(colours()[c.id]).toBe('yellow');
-    // taken by somebody else (b's own default), the host's red, and the host cannot change
+    // taken by somebody else (b's own default, the host's red)
     expect(manager.setChoice(c.id, 'blue')).toMatchObject({ ok: false });
     expect(manager.setChoice(c.id, 'red')).toMatchObject({ ok: false });
     expect(manager.setChoice(a.id, 'blue')).toMatchObject({ ok: false });
     expect(manager.setChoice(b.id, 'pink')).toMatchObject({ ok: false });
+    // the host can change too: red is free again, so b (who never picked) moves up to it
+    must(manager.setChoice(a.id, 'purple'));
+    expect(colours()).toEqual({ [a.id]: 'purple', [b.id]: 'red', [c.id]: 'yellow' });
+    must(manager.setChoice(c.id, 'blue'));
+    must(manager.setChoice(a.id, 'orange'));
+    expect(colours()[a.id]).toBe('orange');
+    must(manager.setChoice(a.id, 'purple'));
     // the computers take what is left
     must(manager.updateSettings(a.id, { bots: 2 }));
-    expect(lastRoom(a.id)!.botChoices).toEqual(['green', 'purple']);
+    expect(lastRoom(a.id)!.botChoices).toEqual(['green', 'yellow']);
     // the game uses them
     must(manager.start(a.id));
     const players = (lastRoom(a.id)!.game!.view as { players: { id: string; colour: number }[] })
       .players;
     const colourOf = (id: string) => players.find((p) => p.id === id)!.colour;
-    expect([colourOf(a.id), colourOf(b.id), colourOf(c.id)]).toEqual([0, 1, 3]);
+    expect([colourOf(a.id), colourOf(b.id), colourOf(c.id)]).toEqual([4, 0, 1]);
   });
 });

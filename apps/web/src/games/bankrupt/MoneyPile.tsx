@@ -58,12 +58,15 @@ export function bundlesFor(height: number): number {
 }
 
 export function MoneyPile({
+  owner,
   cash,
   s,
   fullHeight,
   maxHeight,
   reduceMotion,
 }: {
+  /** whose pile it is: the cash flies from and to the top of it (`bk-pile-top`) */
+  owner: string;
   cash: number;
   /** css px per art px */
   s: number;
@@ -176,16 +179,30 @@ export function MoneyPile({
     };
   }, [target, s, hArt, W, reduceMotion]);
 
+  // where the cash flies from / to: the top of the heap (the bundle that landed last)
+  const last = meta.bundles[target - 1];
+  const lastSprite = last ? meta.sprites[last[0]] : undefined;
+  const peakX = last && lastSprite ? last[1] + lastSprite.w / 2 : W / 2;
+  const peakY = target > 0 ? (meta.heights[target - 1] ?? 0) : 0;
   return (
-    <canvas
-      ref={canvas}
-      aria-hidden
-      data-testid="bk-money-pile"
-      data-bundles={target}
-      className="pointer-events-none absolute bottom-0 left-0"
-      style={{ width: W * s, height: hArt * s, imageRendering: 'pixelated' }}
-      width={W * s}
-      height={hArt * s}
-    />
+    <>
+      <canvas
+        ref={canvas}
+        aria-hidden
+        data-testid="bk-money-pile"
+        data-bundles={target}
+        className="pointer-events-none absolute bottom-0 left-0"
+        style={{ width: W * s, height: hArt * s, imageRendering: 'pixelated' }}
+        width={W * s}
+        height={hArt * s}
+      />
+      <span
+        aria-hidden
+        data-testid="bk-pile-top"
+        data-owner={owner}
+        className="pointer-events-none absolute"
+        style={{ left: peakX * s, bottom: peakY * s, width: 1, height: 1 }}
+      />
+    </>
   );
 }

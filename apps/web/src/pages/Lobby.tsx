@@ -1,6 +1,7 @@
 import { PlayerName } from '../components/PlayerName';
 import { ProfileTap } from '../friends/ProfileTap';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import frogUrl from '../assets/sprites/brand/frog.svg';
 import { BOT_AVATAR, BOT_NAMES, getGame } from '@pogo/shared';
 import type {
@@ -22,7 +23,6 @@ import { GameCard } from '../components/GameCard';
 import { JoinBar, PlayScreen } from '../components/PlayScreen';
 import { Avatar, Button, Card, SectionLabel, Toggle } from '../components/ui';
 import { TileButton } from '../components/TopBar';
-import { TipBubble } from '../components/TipBubble';
 import { closeTip, useTip } from '../lib/tip';
 import type { GameUi } from '../games/types';
 import { FriendsButton } from '../friends/FriendsButton';
@@ -134,9 +134,21 @@ function SuggestedGame({
   );
 }
 
+const COLOUR_SEEN = 'pogo.colourSeen';
+const colourSeen = () => {
+  try {
+    return localStorage.getItem(COLOUR_SEEN) === '1';
+  } catch {
+    return true;
+  }
+};
+
 /**
- * A player's badge in the crew list (the frog). On my own row (not the host's, who is always the first) it is a
- * button: tap it and the free choices pop up; the ones somebody else has are greyed out.
+ * A player's badge in the crew list (the frog). On my own row it is a button, and it looks like one: a gold frame,
+ * a "Colour ▾" label under the frog and a pulsing ring until I have opened it once. Tap it and the free choices pop
+ * up in a solid panel; the ones somebody else has are crossed out and greyed.
+ * The panel is drawn on the page itself (a portal, `position: fixed`): inside the crew row it ended up under the
+ * next row and see-through, because the row is a box with an opacity of its own.
  */
 function CrewBadge({
   ui,
@@ -154,7 +166,24 @@ function CrewBadge({
   onPick: (choice: string) => void;
 }) {
   const tip = useTip('crew-choice');
+  const button = useRef<HTMLButtonElement>(null);
+  const [at, setAt] = useState<{ top: number; right: number } | null>(null);
+  const [seen, setSeen] = useState(colourSeen);
   const badge = ui?.crewBadge?.(index, choice);
+  useLayoutEffect(() => {
+    if (!tip.open) return;
+    const place = () => {
+      const r = button.current?.getBoundingClientRect();
+      if (r) setAt({ top: r.bottom + 10, right: Math.max(8, window.innerWidth - r.right) });
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [tip.open]);
   if (!badge) return null;
   if (!pickable || !room.choices || !ui?.choiceBadge || room.status !== 'lobby')
     return <>{badge}</>;
@@ -165,53 +194,84 @@ function CrewBadge({
   return (
     <div className="relative shrink-0">
       <button
+        ref={button}
         type="button"
         data-testid="crew-choice-open"
         data-tip-trigger
         aria-label="Change colour"
         aria-expanded={tip.open}
-        onClick={tip.toggle}
-        className="relative block rounded-md border-2 border-dashed border-neon/60 p-0.5 active:translate-y-px"
+        onClick={() => {
+          if (!seen) {
+            setSeen(true);
+            try {
+              localStorage.setItem(COLOUR_SEEN, '1');
+            } catch {
+              /* private mode: the hint just shows again */
+            }
+          }
+          tip.toggle();
+        }}
+        className={`relative flex flex-col items-center gap-0.5 rounded-md border-2 border-[#fdcf51] bg-[#101628] px-1.5 pb-0.5 pt-1 active:translate-y-px ${seen ? '' : 'animate-pulse ring-2 ring-[#fdcf51]/70'}`}
+        style={{ boxShadow: '2px 2px 0 #101628' }}
       >
         {badge}
         <span
           aria-hidden
-          className="absolute -bottom-1 -right-1 text-[10px] leading-none text-neon"
+          className="text-[9px] font-black uppercase leading-none tracking-wider text-[#fdcf51]"
         >
-          ▾
+          Colour ▾
         </span>
       </button>
-      <TipBubble
-        show={tip.open}
-        testId="crew-choice-bubble"
-        className="absolute right-0 top-full z-30 mt-2 w-52"
-      >
-        <span
-          aria-hidden
-          className="absolute -top-[7px] right-4 h-3 w-3 rotate-45 border-l-2 border-t-2 border-edge/40 bg-panel2"
-        />
-        <div className="relative flex flex-wrap justify-center gap-1 rounded-lg border-2 border-edge/40 bg-panel2 p-2 shadow-lg">
-          {room.choices.map((c) => (
-            <button
-              key={c}
-              type="button"
-              data-testid={`crew-choice-${c}`}
-              disabled={taken.has(c)}
-              aria-pressed={c === choice}
-              aria-label={c}
-              onClick={() => {
-                if (c !== choice) onPick(c);
-                closeTip();
-              }}
-              className={`rounded-md border-2 p-0.5 ${
-                c === choice ? 'border-neon bg-neon/20' : 'border-transparent'
-              } ${taken.has(c) ? 'opacity-30 grayscale' : 'active:translate-y-px'}`}
-            >
-              {ui.choiceBadge!(c)}
-            </button>
-          ))}
-        </div>
-      </TipBubble>
+      {tip.open &&
+        at &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-label="Pick your colour"
+            data-testid="crew-choice-bubble"
+            data-tip-trigger
+            className="fixed z-[80] w-60 rounded-lg border-2 border-[#fdcf51] bg-[#101628] p-3"
+            style={{ top: at.top, right: at.right, boxShadow: '4px 4px 0 #000' }}
+          >
+            <span
+              aria-hidden
+              className="absolute -top-[8px] right-6 h-3.5 w-3.5 rotate-45 border-l-2 border-t-2 border-[#fdcf51] bg-[#101628]"
+            />
+            <div className="mb-2 text-center text-[11px] font-black uppercase tracking-[0.14em] text-[#fdcf51]">
+              Pick your colour
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {room.choices.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  data-testid={`crew-choice-${c}`}
+                  disabled={taken.has(c)}
+                  aria-pressed={c === choice}
+                  aria-label={taken.has(c) ? `${c} (taken)` : c}
+                  onClick={() => {
+                    if (c !== choice) onPick(c);
+                    closeTip();
+                  }}
+                  className={`relative flex items-center justify-center rounded-md border-2 bg-[#233049] py-1.5 [&_img]:h-12 [&_img]:w-12 ${
+                    c === choice ? 'border-[#fdcf51]' : 'border-[#334461]'
+                  } ${taken.has(c) ? 'opacity-40 grayscale' : 'active:translate-y-px'}`}
+                >
+                  {ui.choiceBadge!(c)}
+                  {taken.has(c) && (
+                    <span
+                      aria-hidden
+                      className="absolute inset-0 flex items-center justify-center text-2xl font-black text-[#ff6b57]"
+                    >
+                      ✕
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
@@ -626,7 +686,7 @@ export function Lobby({
                       index={crewIndex}
                       choice={m.choice}
                       room={room}
-                      pickable={m.id === me && m.id !== room.hostId}
+                      pickable={m.id === me}
                       onPick={(c) => void api.choose(c)}
                     />
                     {isHost && m.id !== me && (

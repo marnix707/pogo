@@ -122,7 +122,6 @@ export const KNOWN_ERRORS: readonly KnownError[] = [
   { code: 'ROOM-133', message: /^Your lobby does not fit: / },
   { code: 'ROOM-134', message: 'This game has nothing to pick' },
   { code: 'ROOM-135', message: 'Somebody else already has that one' },
-  { code: 'ROOM-136', message: 'The host always keeps the first one' },
   { code: 'ROOM-137', message: 'That is not one of the choices' },
 
   // ---- GAME: any game ----

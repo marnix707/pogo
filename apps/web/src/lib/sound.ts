@@ -29,7 +29,32 @@ export type SoundName =
 
 let ctx: AudioContext | undefined;
 
+/** Anything to play at all? With sound effects and music both at 0 the app holds no audio (the phone's own music, YouTube, Spotify keep playing). */
+function anyAudio(): boolean {
+  const s = getSettings();
+  return s.sound > 0 || s.music > 0;
+}
+
+let idle = false; // the engine was put to rest on purpose (music is off, nothing played for a moment)
+let restTimer: ReturnType<typeof setTimeout> | undefined;
+/**
+ * While the music is off the engine only runs when a sound effect needs it: a second after the last one it is
+ * suspended again, so the phone is free to play other apps' audio (an open audio session makes iOS and Android
+ * pause the music of YouTube or Spotify).
+ */
+function scheduleRest() {
+  clearTimeout(restTimer);
+  idle = false;
+  if (getSettings().music > 0) return;
+  restTimer = setTimeout(() => {
+    if (getSettings().music > 0 || !ctx) return;
+    idle = true;
+    void ctx.suspend().catch(() => undefined);
+  }, 1200);
+}
+
 function audio(): AudioContext | undefined {
+  if (!anyAudio()) return undefined;
   try {
     if (!ctx) {
       const AC =
@@ -40,6 +65,7 @@ function audio(): AudioContext | undefined {
     }
     // 'suspended' at the start, and on iOS also 'interrupted' after the app was in the background.
     if (ctx.state !== 'running') void ctx.resume().catch(() => undefined);
+    scheduleRest();
     return ctx;
   } catch {
     return undefined;
@@ -48,8 +74,23 @@ function audio(): AudioContext | undefined {
 
 /** The shared AudioContext (music uses it too, so one tap unlocks everything). */
 export function getAudioContext(): AudioContext | undefined {
-  return audio();
+  // (only the music asks for this one: with the music at 0 there is nothing for it to do, and no engine is started)
+  return getSettings().music > 0 ? audio() : undefined;
 }
+
+// Both volumes at 0: let go of the audio hardware completely.
+subscribeSettings(() => {
+  if (anyAudio()) {
+    if (ctx && getSettings().music === 0) scheduleRest();
+    return;
+  }
+  clearTimeout(restTimer);
+  idle = false;
+  const old = ctx;
+  ctx = undefined;
+  bus = undefined;
+  void old?.close().catch(() => undefined);
+});
 
 const resetListeners = new Set<() => void>();
 /** Called when the audio engine was rebuilt (see `reviveAudio`): whatever was wired to the old one must be wired again. */
@@ -67,7 +108,7 @@ let reviving = false;
  */
 async function reviveAudio(fromTap: boolean) {
   const old = ctx;
-  if (!old || old.state === 'running' || reviving) return;
+  if (!old || old.state === 'running' || reviving || idle) return;
   reviving = true;
   try {
     await Promise.race([

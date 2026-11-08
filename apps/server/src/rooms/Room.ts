@@ -155,7 +155,13 @@ export class Room {
   private members: Member[] = [];
   private messages: ChatMessage[] = [];
   /** The last moves of the game (players, timeouts and computers), kept for bug reports. */
-  private moveLog: { at: number; game: number; by: string; move: unknown; auto?: 'timeout' | 'bot' }[] = [];
+  private moveLog: {
+    at: number;
+    game: number;
+    by: string;
+    move: unknown;
+    auto?: 'timeout' | 'bot';
+  }[] = [];
   private nextMessageId = 1;
   private readonly banned = new Set<string>();
   private state: unknown;
@@ -489,8 +495,8 @@ export class Room {
   }
 
   /**
-   * Everybody's value of the game's `choices` as it stands: the host always has the first, then each player gets
-   * the one they picked (when it is free), then the rest get the free ones in order; `extraBots` computer players
+   * Everybody's value of the game's `choices` as it stands: the host has the one they picked (the first, red, until
+   * they pick), then each player gets the one they picked (when it is free), then the rest get the free ones in order; `extraBots` computer players
    * (those of the lobby, not yet seated) take what is left. Null when the game has no choices.
    */
   private choiceMap(extraBots = 0): { by: Map<string, string>; bots: string[] } | null {
@@ -503,8 +509,9 @@ export class Room {
     const used = new Set<string>();
     const host = seated.find((m) => m.user.id === this.hostId);
     if (host) {
-      by.set(host.user.id, choices[0]!);
-      used.add(choices[0]!);
+      const own = host.choice && choices.includes(host.choice) ? host.choice : choices[0]!;
+      by.set(host.user.id, own);
+      used.add(own);
     }
     for (const m of seated) {
       const pick = m.choice;
@@ -529,7 +536,7 @@ export class Room {
     return { by, bots };
   }
 
-  /** Lobby: pick your value of the game's choices (a frog colour): one nobody else has; the host keeps the first. */
+  /** Lobby: pick your value of the game's choices (a frog colour): one nobody else has (the host too; it starts as the first, red). */
   setChoice(userId: string, choice: string): Result<null> {
     if (this.status !== 'lobby') return fail('The game has already started');
     const member = this.findSeated(userId);
@@ -537,7 +544,6 @@ export class Room {
     const choices = this.game.choices;
     if (!choices || choices.length === 0) return fail('This game has nothing to pick');
     if (!choices.includes(choice)) return fail('That is not one of the choices');
-    if (userId === this.hostId) return fail('The host always keeps the first one');
     const map = this.choiceMap(this.bots)!;
     const holder = [...map.by.entries()].find(([, c]) => c === choice)?.[0];
     if (holder && holder !== userId) return fail('Somebody else already has that one');
@@ -747,7 +753,13 @@ export class Room {
   }
 
   private logMove(by: string, move: unknown, auto?: 'timeout' | 'bot'): void {
-    this.moveLog.push({ at: this.deps.now(), game: this.gameNo, by, move, ...(auto ? { auto } : {}) });
+    this.moveLog.push({
+      at: this.deps.now(),
+      game: this.gameNo,
+      by,
+      move,
+      ...(auto ? { auto } : {}),
+    });
     if (this.moveLog.length > 50) this.moveLog.splice(0, this.moveLog.length - 50);
   }
 

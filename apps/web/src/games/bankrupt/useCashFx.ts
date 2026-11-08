@@ -114,7 +114,10 @@ const centreOf = (el: Element | null) => {
 };
 const tileEl = (id: string) => document.querySelector(`[data-testid="bk-tile-${id}"]`);
 const hallEl = () => document.querySelector('[data-testid="bk-hall"]');
-const tagEl = (id: string) => document.querySelector(`[data-testid="bk-player-${id}"]`);
+/** Where a player's money flies from and to: the top of their pile when they have one on screen, else their card. */
+const tagEl = (id: string) =>
+  document.querySelector(`[data-testid="bk-pile-top"][data-owner="${id}"]`) ??
+  document.querySelector(`[data-testid="bk-player-${id}"]`);
 
 /** A number pops up on the space (like the damage in Pet Match): it grows, tips over and drops away. */
 async function pop(at: { x: number; y: number }, text: string, colour: string) {

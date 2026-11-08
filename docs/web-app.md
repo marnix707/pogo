@@ -99,3 +99,8 @@ A bug icon (`BugButton`) sits before Settings in every top bar (shared `TopBar`,
 ## Sound goes quiet when the app leaves the screen
 
 `lib/sound.ts` suspends the shared AudioContext on `visibilitychange` (hidden), `pagehide` and `freeze`, so the music and sounds stop the moment the app is in the background, the screen locks or the app is closed (before, the music kept playing on iOS and Android). Coming back, `reviveAudio` resumes it (or, when iOS wants a tap first, rebuilds it on the next tap: the music then starts from the top).
+
+
+## Crew colour picker (lobby)
+
+A game with `choices` (Bankrupt's frog colours) lets **every player, the host too**, pick a colour in the Crew row: my own badge is a gold-framed button with a "Colour ▾" label (`crew-choice-open`), pulsing with a ring until I have opened it once (`pogo.colourSeen` in localStorage). It opens a **solid** panel (`crew-choice-bubble`, "Pick your colour", a 3 x 2 grid of big frogs, taken ones crossed out and greyed, navy shadow bottom right) drawn through a **portal** with `position: fixed` under the button: inside the Crew row it was see-through and hidden under the next row, because the row is a box with an opacity (a stacking context of its own). Server: `Room.setChoice`; the host starts as the first colour (red) until they pick.

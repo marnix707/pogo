@@ -81,14 +81,25 @@ onAudioReset(() => {
   if (id) void playMusic(id);
 });
 
+let want: string | undefined; // the song that should be playing (it is not while the music is at 0)
 function applyMute() {
+  if (getSettings().music === 0) {
+    // Music off: nothing plays and no audio engine is held (see `sound.ts`); turning it up again starts the song.
+    const keep = want;
+    if (playing) stopMusic();
+    want = keep;
+    master = undefined;
+    return;
+  }
   if (master) master.gain.value = (VOLUME * getSettings().music) / 100;
+  if (want && !playing) void playMusic(want);
 }
 subscribeSettings(applyMute);
 
 /** Starts a song (intro then loop). Calling it again for the song that is already playing does nothing. */
 export async function playMusic(id: string): Promise<void> {
-  if (playing?.id === id) return;
+  want = id;
+  if (getSettings().music === 0 || playing?.id === id) return;
   const ctx = getAudioContext();
   if (!ctx) return;
   playing = { id, nodes: [] };
@@ -117,6 +128,7 @@ export async function playMusic(id: string): Promise<void> {
 }
 
 export function stopMusic() {
+  want = undefined;
   playing?.nodes.forEach((n) => {
     try {
       n.stop();
@@ -134,6 +146,10 @@ export function musicLeftMenu() {
 
 /** The player is on the main menu: makes sure the song plays, but never restarts it (only an app restart does). */
 export function musicEnteredMenu() {
+  if (getSettings().music === 0) {
+    want ??= 'menu';
+    return;
+  }
   if (getAudioContext()?.state !== 'running') return;
   void playMusic('menu');
 }

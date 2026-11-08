@@ -1190,6 +1190,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
           {/* my money as a pile of bundles at the bottom: behind the cards and the Spin button, over the board */}
           {players[around[0]!] && (
             <MoneyPile
+              owner={players[around[0]!]!.id}
               cash={cashShown[players[around[0]!]!.id] ?? players[around[0]!]!.cash}
               s={s}
               fullHeight={H - (rowY + 1)}
