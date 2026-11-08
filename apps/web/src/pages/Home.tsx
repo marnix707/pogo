@@ -10,6 +10,7 @@ import { LeaderboardSheet } from '../components/LeaderboardSheet';
 import { ProfileSheet } from '../components/ProfileSheet';
 import type { ProfileMode } from '../components/ProfileSheet';
 import { PlayScreen } from '../components/PlayScreen';
+import { BugButton } from '../components/BugReport';
 import { Avatar, Button } from '../components/ui';
 import { rememberGameCard } from '../lib/cardMorph';
 import { fetchDeveloper, fetchOnline } from '../lib/session';
@@ -240,6 +241,7 @@ export function Home({
             <TrophyIcon className="h-5 w-5" />
           </TileButton>
           <FriendsButton />
+          <BugButton />
           <TileButton onClick={onSettings} aria-label="Settings" data-testid="settings-button">
             <SlidersIcon className="h-5 w-5" />
           </TileButton>

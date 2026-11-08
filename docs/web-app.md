@@ -91,3 +91,7 @@ On Home's Play screen (`PlayScreen` with `bottomBar`) the Main screen button is 
 ## "Turn your phone upright" notice
 
 Shown only when the phone itself is held sideways (`lib/useSideways.ts`: `screen.orientation` / `window.orientation`, a coarse pointer and a screen of 500 px or less), set as `.rotate-notice.on` by `App.tsx`. It used to be a CSS media query on the page size, so the on-screen keyboard (which shrinks the page to "wide and short") covered the screen with the notice while typing a code.
+
+## Bug / feedback button
+
+A bug icon (`BugButton`) sits before Settings in every top bar (shared `TopBar`, Home, Lobby, Yatzy's header) and a "Report a bug" link on the sign-in screen. `BugReportProvider` (mounted in `App.tsx`) owns the form sheet: it takes the screenshot **before** the sheet opens (so the sheet is not in it) and reads the context that `Shell` (or the sign-in screen) registered with `setBugContext`. Details and the admin side: `docs/accounts-admin.md` ("Tickets").

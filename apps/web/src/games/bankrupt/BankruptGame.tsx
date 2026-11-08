@@ -5,6 +5,7 @@ import { Avatar, Button } from '../../components/ui';
 import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
 import { Board, SEAT_HEX, money, playerColour } from './Board';
+import { registerDiagnostics } from '../../lib/diagnostics';
 import { BuyOverlay } from './BuyOverlay';
 import { LuckCard } from './LuckCard';
 import { LockIcon } from '../../components/icons';
@@ -553,6 +554,23 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
       setTimeout(() => setDebtWarn(null), 2000),
     ];
   }, [autoRoll, inDebt, animating]);
+  // What a bug report adds about this screen (see lib/diagnostics.ts).
+  const diag = useRef<Record<string, unknown>>({});
+  diag.current = {
+    phase: state.phase,
+    seq: state.seq,
+    latestSeq: latest.seq,
+    queued: queue.length,
+    animating,
+    fresh,
+    paying,
+    settled,
+    rolling,
+    autoRoll,
+    tileOpen,
+    myTurn,
+  };
+  useEffect(() => registerDiagnostics('bankrupt', () => diag.current), []);
   const goalParts: Part[] = [
     {
       text:

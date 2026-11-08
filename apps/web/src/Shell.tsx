@@ -6,6 +6,9 @@ import { FriendsProvider } from './friends/FriendsProvider';
 import { markIntroSeen } from './components/PogoStage';
 import { ConnectionBanner } from './components/ConnectionBanner';
 import { SettingsSheet } from './components/SettingsSheet';
+import { setBugContext } from './lib/diagnostics';
+import { getSettings } from './lib/settings';
+import { APP_VERSION } from './lib/version';
 import { SwitchPlayerSheet } from './components/SwitchPlayerSheet';
 import { useToast } from './components/Toast';
 import type { RoomApi } from './lib/api';
@@ -123,6 +126,40 @@ export function Shell({
   useEffect(() => {
     if (room) markIntroSeen();
   }, [room]);
+
+  // What a bug report carries about this screen (read when the bug button is pressed; never the token).
+  const screenName = banned
+    ? 'banned'
+    : !synced
+      ? 'connecting'
+      : !room
+        ? 'home'
+        : room.status === 'lobby'
+          ? 'lobby'
+          : room.status === 'finished'
+            ? 'results'
+            : 'game';
+  useEffect(
+    () =>
+      setBugContext(() => ({
+        screen: screenName,
+        version: APP_VERSION,
+        connection,
+        user: {
+          id: session.user.id,
+          nickname: session.user.nickname,
+          isGuest: session.user.isGuest,
+          role: session.user.role,
+          isDev: session.user.isDev,
+        },
+        room,
+        settings: getSettings(),
+        lastMessages: messages
+          .slice(-10)
+          .map((x) => ({ from: x.nickname, text: x.text, at: x.at })),
+      })),
+    [screenName, connection, session.user, room, messages],
+  );
 
   let screen;
   if (banned) {

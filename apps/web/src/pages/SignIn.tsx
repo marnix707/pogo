@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { BugLink } from '../components/BugReport';
+import { setBugContext } from '../lib/diagnostics';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { AVATARS } from '@pogo/shared';
 import type { AuthResponse } from '@pogo/shared';
@@ -24,6 +26,7 @@ export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) 
   const [avatar, setAvatar] = useState<(typeof AVATARS)[number]>(AVATARS[0]);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  useEffect(() => setBugContext(() => ({ screen: 'signin' })), []);
   const [mode, setMode] = useState<'guest' | 'login' | 'reset' | 'reset-code'>('guest');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -313,6 +316,7 @@ export function SignIn({ onDone }: { onDone: (session: AuthResponse) => void }) 
           </button>
         </>
       )}
+      <BugLink />
     </main>
   );
 }

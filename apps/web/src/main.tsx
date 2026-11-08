@@ -1,3 +1,4 @@
+import { installErrorCapture } from './lib/diagnostics';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@fontsource/pixelify-sans/400.css';
@@ -27,6 +28,8 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
     });
   });
 }
+
+installErrorCapture();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>{isAdminSite() ? <AdminApp /> : <App />}</StrictMode>,

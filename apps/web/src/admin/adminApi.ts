@@ -1,3 +1,4 @@
+import type { TicketDetail, TicketPatchInput, TicketRow } from '@pogo/shared';
 import { formatError } from '@pogo/shared';
 import type {
   AdminAuditRow,
@@ -115,3 +116,41 @@ export const listChats = (filter: { room?: string; user?: string; q?: string } =
     (r) => r.chats,
   );
 };
+
+// ---- tickets (bug reports and feedback) ----------------------------------------------------
+export interface TicketFilterQuery {
+  status?: string;
+  type?: string;
+  priority?: string;
+  open?: boolean;
+  q?: string;
+}
+export const listTickets = (filter: TicketFilterQuery = {}) => {
+  const params = new URLSearchParams();
+  if (filter.status) params.set('status', filter.status);
+  if (filter.type) params.set('type', filter.type);
+  if (filter.priority) params.set('priority', filter.priority);
+  if (filter.open) params.set('open', '1');
+  if (filter.q) params.set('q', filter.q);
+  return call<{ tickets: TicketRow[] }>('GET', `/api/admin/tickets?${params.toString()}`).then(
+    (r) => r.tickets,
+  );
+};
+export const getTicket = (id: string) =>
+  call<{ ticket: TicketDetail }>('GET', `/api/admin/tickets/${id}`).then((r) => r.ticket);
+export const patchTicket = (id: string, patch: TicketPatchInput) =>
+  call<{ ticket: TicketDetail }>('PATCH', `/api/admin/tickets/${id}`, patch).then((r) => r.ticket);
+/** "Fix with Claude": the ticket goes into the queue for the fix-ticket skill. */
+export const queueTicket = (id: string) =>
+  call<{ ticket: TicketDetail }>('POST', `/api/admin/tickets/${id}/claude`, {}).then(
+    (r) => r.ticket,
+  );
+/** The screenshot as a blob URL (the route needs the admin's token, so an <img src> cannot fetch it). */
+export async function ticketScreenshotUrl(id: string): Promise<string | null> {
+  const token = adminToken();
+  const res = await fetch(`/api/admin/tickets/${id}/screenshot`, {
+    headers: token ? { authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) return null;
+  return URL.createObjectURL(await res.blob());
+}

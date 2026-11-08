@@ -14,6 +14,7 @@ import { AvatarFace } from '../components/AvatarFace';
 import { TopoBackground } from '../components/TopoBackground';
 import { PlayerName } from '../components/PlayerName';
 import { Button, Sheet } from '../components/ui';
+import { Tickets } from './TicketsView';
 import { Analytics } from './AnalyticsView';
 import { ChatList, Chats, Matches, Overview, PlayerActivity } from './AdminViews';
 import {
@@ -39,7 +40,8 @@ import {
 export const isAdminSite = () =>
   window.location.hostname.startsWith('admin.') || window.location.pathname.startsWith('/admin');
 
-type Tab = 'overview' | 'analytics' | 'players' | 'rooms' | 'matches' | 'chats' | 'bans' | 'log';
+type Tab =
+  'overview' | 'analytics' | 'players' | 'rooms' | 'matches' | 'chats' | 'tickets' | 'bans' | 'log';
 
 const field =
   'hud min-h-11 w-full bg-panel px-3 text-ink outline-none placeholder:text-muted/50 focus:!border-neon';
@@ -760,6 +762,7 @@ export function AdminApp() {
     ['rooms', 'Rooms'],
     ['matches', 'Matches'],
     ['chats', 'Chats'],
+    ['tickets', 'Tickets'],
     ['bans', 'Bans'],
     ['log', 'Log'],
   ];
@@ -816,6 +819,7 @@ export function AdminApp() {
           {tab === 'rooms' && <Rooms onError={showError} />}
           {tab === 'matches' && <Matches onError={showError} />}
           {tab === 'chats' && <Chats onError={showError} />}
+          {tab === 'tickets' && <Tickets onError={showError} />}
           {tab === 'bans' && <Bans onError={showError} />}
           {tab === 'log' && <Log onError={showError} />}
         </div>

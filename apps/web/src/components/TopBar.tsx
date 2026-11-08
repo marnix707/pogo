@@ -1,24 +1,10 @@
 import type { ReactNode } from 'react';
 import { RaisedColon } from './Brand';
 import { SlidersIcon } from './icons';
+import { BugButton } from './BugReport';
+import { TileButton } from './TileButton';
 
-export function TileButton({
-  children,
-  small = false,
-  className = '',
-  ...props
-}: { children: ReactNode; small?: boolean } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return (
-    <button
-      {...props}
-      className={`hud flex shrink-0 items-center justify-center !rounded-md text-neon active:translate-y-px ${
-        small ? 'h-10 w-10' : 'h-11 w-11'
-      } ${className}`}
-    >
-      {children}
-    </button>
-  );
-}
+export { TileButton };
 
 export function TopBar({
   title,
@@ -84,6 +70,7 @@ export function TopBar({
         {subtitle && <div className="label truncate text-[10px] text-onbg/70">{subtitle}</div>}
       </div>
       {actions}
+      <BugButton small={compact} />
       <TileButton
         small={compact}
         onClick={onSettings}

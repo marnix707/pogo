@@ -12,3 +12,10 @@
 - **Brute force** (`accountRoutes.ts`): at most 3 emailed codes per hour per address and purpose (throttled silently for resets so the answer stays uniform), 10 wrong passwords per address per 15 minutes lock logging in to it for the window (429, `login-locked` in the admin log); the existing per-IP limits stay.
 - Dependencies: `pnpm audit --prod` should stay clean; known leftover: `zod` 3.x (memory use on huge collections; inputs are size-capped by Fastify's 1 MB body limit and Socket.IO's buffer). `@fastify/static` 10 passes a Fastify reply to `setHeaders`; `fast-uri` is pinned by `pnpm.overrides`. Render runs `MAIL_MODE=smtp` (nodemailer 10).
 - Tests: `apps/server/src/http/security.test.ts`.
+
+## Tickets (bug reports)
+
+- `POST /api/tickets` needs a signed-in user (guests too), is rate limited (5/min, 20 per player per day) and has its own body limit (900 KB); the screenshot is a base64 data URL, decoded, checked by magic bytes (jpeg/png/webp) and capped at 320 KB, stored as `Bytes` in Postgres (no disk on Render). Screenshots are served only through the admin routes (`nosniff`, `no-store`).
+- The server snapshot attached to a ticket contains hidden game information (other players' hands): it is only ever returned by the staff routes.
+- `TICKET_API_TOKEN` (Render dashboard, `sync: false`, 24+ characters) lets Claude Code's fix-ticket skill call **only** `/api/admin/tickets*` (compared in constant time); leave it unset to switch that off.
+- New web dependency: `html-to-image` (pinned 1.11.13), loaded lazily by the bug form only. Keep `pnpm audit --prod` clean.

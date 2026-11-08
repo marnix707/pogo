@@ -1,3 +1,4 @@
+import { BugButton } from '../../components/BugReport';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { yatzy } from '@pogo/shared';
 import { haptic } from '../../lib/haptics';
@@ -279,6 +280,7 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
                   )}
                 </span>
               </TileButton>
+              <BugButton small />
               <TileButton
                 small
                 onClick={chrome.onSettings}

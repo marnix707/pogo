@@ -6,6 +6,7 @@ import { TopoBackground } from './components/TopoBackground';
 import { play, unlockAudio } from './lib/sound';
 import { consumeRecoveryLink, forgetSession, restoreSession } from './lib/session';
 import { Shell } from './Shell';
+import { BugReportProvider } from './components/BugReport';
 import { useSideways } from './lib/useSideways';
 import { SignIn } from './pages/SignIn';
 
@@ -47,42 +48,44 @@ export function App() {
 
   return (
     <ToastProvider>
-      <TopoBackground />
-      <UpdateNotice />
-      <div className={`rotate-notice ${sideways ? 'on' : ''}`} role="alert">
-        <span aria-hidden className="text-5xl">
-          📱
-        </span>
-        <span>Turn your phone upright</span>
-      </div>
-      {loading ? (
-        <p className="label flex h-dvh items-center justify-center p-8 text-center text-onbg">
-          Loading…
-        </p>
-      ) : error ? (
-        <div className="p-8 text-center">
-          <p className="mb-4 font-semibold text-dangertext">{error}</p>
-          <button className="underline" onClick={() => window.location.reload()}>
-            Try again
-          </button>
+      <BugReportProvider token={session?.token ?? null}>
+        <TopoBackground />
+        <UpdateNotice />
+        <div className={`rotate-notice ${sideways ? 'on' : ''}`} role="alert">
+          <span aria-hidden className="text-5xl">
+            📱
+          </span>
+          <span>Turn your phone upright</span>
         </div>
-      ) : session ? (
-        <Shell
-          session={session}
-          onUser={(user) => setSession((s) => (s ? { ...s, user } : s))}
-          onSession={setSession}
-          onSignOut={() => {
-            forgetSession();
-            // A fresh page (not an in-place swap): the focused button and the sheets are gone, so the
-            // sign-in fields start with a clean focus state (iPhone home-screen apps did not show the
-            // keyboard after an in-place switch). Saved guests survive in localStorage.
-            (document.activeElement as HTMLElement | null)?.blur();
-            window.location.reload();
-          }}
-        />
-      ) : (
-        <SignIn onDone={setSession} />
-      )}
+        {loading ? (
+          <p className="label flex h-dvh items-center justify-center p-8 text-center text-onbg">
+            Loading…
+          </p>
+        ) : error ? (
+          <div className="p-8 text-center">
+            <p className="mb-4 font-semibold text-dangertext">{error}</p>
+            <button className="underline" onClick={() => window.location.reload()}>
+              Try again
+            </button>
+          </div>
+        ) : session ? (
+          <Shell
+            session={session}
+            onUser={(user) => setSession((s) => (s ? { ...s, user } : s))}
+            onSession={setSession}
+            onSignOut={() => {
+              forgetSession();
+              // A fresh page (not an in-place swap): the focused button and the sheets are gone, so the
+              // sign-in fields start with a clean focus state (iPhone home-screen apps did not show the
+              // keyboard after an in-place switch). Saved guests survive in localStorage.
+              (document.activeElement as HTMLElement | null)?.blur();
+              window.location.reload();
+            }}
+          />
+        ) : (
+          <SignIn onDone={setSession} />
+        )}
+      </BugReportProvider>
     </ToastProvider>
   );
 }

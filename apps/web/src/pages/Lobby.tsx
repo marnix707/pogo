@@ -13,6 +13,7 @@ import type {
 } from '@pogo/shared';
 import { ChevronIcon, CrownIcon, LockIcon, SlidersIcon, TrophyIcon } from '../components/icons';
 import { ChatPanel } from '../components/ChatPanel';
+import { BugButton } from '../components/BugReport';
 import { bellSprite } from '../components/BellFx';
 import { LeaderboardSheet } from '../components/LeaderboardSheet';
 import { ProfileSheet } from '../components/ProfileSheet';
@@ -366,6 +367,7 @@ export function Lobby({
                 >
                   <TrophyIcon className="h-5 w-5" />
                 </TileButton>
+                <BugButton className="calm !h-12 !w-12" />
                 <TileButton
                   onClick={onSettings}
                   aria-label="Settings"

@@ -19,6 +19,14 @@ export const SlidersIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+/** A little bug (for the bug report button). */
+export const BugIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base} {...p}>
+    <ellipse cx="12" cy="14" rx="4.5" ry="5.5" />
+    <path d="M9 9.2a3 3 0 0 1 6 0M12 8.5v11M4 12h4M16 12h4M5 6l3.2 2.5M19 6l-3.2 2.5M5 20l3.5-3M19 20l-3.5-3" />
+  </svg>
+);
+
 /** A padlock: closed (locked) or with the shackle open. */
 export const LockIcon = ({ open = false, ...p }: SVGProps<SVGSVGElement> & { open?: boolean }) => (
   <svg {...base} {...p}>
