@@ -62,6 +62,27 @@ const artSize = (i: HTMLImageElement, name: string) => {
   const k = name === 'board-inside-plaza' ? 3 : 4;
   return { w: i.naturalWidth / k, h: i.naturalHeight / k };
 };
+/**
+ * The pictures are SVGs: drawing an SVG into a canvas every frame makes the browser rasterise it every frame (slow,
+ * and the screen stutters). Each is drawn once into a small canvas at its final size and blitted from there.
+ */
+const rasters = new Map<string, HTMLCanvasElement>();
+const raster = (name: string): HTMLCanvasElement | null => {
+  const hit = rasters.get(name);
+  if (hit) return hit;
+  const i = img(name);
+  if (!i.complete || !i.naturalWidth) return null;
+  const { w, h } = artSize(i, name);
+  const c = document.createElement('canvas');
+  c.width = Math.round(w * S);
+  c.height = Math.round(h * S);
+  const g = c.getContext('2d')!;
+  g.imageSmoothingEnabled = false;
+  g.drawImage(i, 0, 0, c.width, c.height);
+  rasters.set(name, c);
+  return c;
+};
+
 const reduced = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -127,10 +148,8 @@ export function Plaza({
     let birds: { x: number; y: number; born: number; vy: number }[] = [];
     let nextBirds = 3000;
     const draw = (name: string, x: number, y: number) => {
-      const i = img(name);
-      if (!i.complete || !i.naturalWidth) return;
-      const { w: iw, h: ih } = artSize(i, name);
-      ctx.drawImage(i, Math.round(x) * S, Math.round(y) * S, iw * S, ih * S);
+      const r = raster(name);
+      if (r) ctx.drawImage(r, Math.round(x) * S, Math.round(y) * S);
     };
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
@@ -150,9 +169,9 @@ export function Plaza({
       draw(`fountain-${still ? 0 : Math.floor(now / 140) % 4}`, 96 - 7.5, 158 - 7.5);
       if (!still) {
         // two cloud shadows drift to the right
-        const ci = img('cloud-shadow');
-        if (ci.complete && ci.naturalWidth) {
-          const cw = ci.naturalWidth / 4;
+        const ci = raster('cloud-shadow');
+        if (ci) {
+          const cw = ci.width / S;
           const span = INSIDE + cw;
           ctx.save();
           ctx.beginPath();
@@ -161,7 +180,7 @@ export function Plaza({
           // (no globalAlpha: the SVG itself is already drawn at 13 % opacity; both would make it invisible)
           [30, 120].forEach((y, k) => {
             const x = (((now / 1000) * 4 + (k * span) / 2) % span) - cw;
-            ctx.drawImage(ci, Math.round(x) * S, y * S, cw * S, (ci.naturalHeight / 4) * S);
+            ctx.drawImage(ci, Math.round(x) * S, y * S);
           });
           ctx.restore();
         }
@@ -195,12 +214,12 @@ export function Plaza({
       for (const b of eggBirds.current) {
         b.x += (b.vx * dt) / 1000;
         b.y += (b.vy * dt) / 1000;
-        const i = img(`bird-${Math.floor((now - b.born) / 130) % 2 === 0 ? 0 : 1}`);
-        if (i.complete && i.naturalWidth) {
+        const r = raster(`bird-${Math.floor((now - b.born) / 130) % 2 === 0 ? 0 : 1}`);
+        if (r) {
           ctx.save();
           ctx.translate(Math.round(b.x) * S, Math.round(b.y) * S);
           if (b.vx < 0) ctx.scale(-1, 1);
-          ctx.drawImage(i, 0, 0, (i.naturalWidth / 4) * S, (i.naturalHeight / 4) * S);
+          ctx.drawImage(r, 0, 0);
           ctx.restore();
         }
       }

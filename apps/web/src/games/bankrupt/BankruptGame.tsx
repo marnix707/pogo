@@ -1096,13 +1096,10 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
     <div
       ref={root}
       className="h-full overflow-y-auto overflow-x-hidden"
-      style={{
-        backgroundColor: '#20325a',
-        backgroundImage: `url("${screenArt('background/bg-pattern-18x18')}")`,
-        backgroundSize: `${A(18)}px ${A(18)}px`,
-        backgroundAttachment: 'fixed',
-        imageRendering: 'pixelated',
-      }}
+      // (the dot pattern is the page's own background, `html.bk-page`; a stable scrollbar gutter keeps the width the
+      // screen is scaled by the same whether or not a scrollbar shows, or the scale would flip back and forth and
+      // the whole screen flicker on desktop browsers)
+      style={{ scrollbarGutter: 'stable' }}
       data-testid="bankrupt-game"
       data-phase={state.phase}
       data-seq={state.seq}
