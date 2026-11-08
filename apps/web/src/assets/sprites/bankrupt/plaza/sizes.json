@@ -1,0 +1,222 @@
+{
+"animated/birds/bird-0": [
+5,
+3
+],
+"animated/birds/bird-1": [
+5,
+3
+],
+"animated/cars/car-blue-down": [
+8,
+11
+],
+"animated/cars/car-blue-left": [
+11,
+8
+],
+"animated/cars/car-blue-right": [
+11,
+8
+],
+"animated/cars/car-blue-up": [
+8,
+11
+],
+"animated/cars/car-green-down": [
+8,
+11
+],
+"animated/cars/car-green-left": [
+11,
+8
+],
+"animated/cars/car-green-right": [
+11,
+8
+],
+"animated/cars/car-green-up": [
+8,
+11
+],
+"animated/cars/car-purple-down": [
+8,
+11
+],
+"animated/cars/car-purple-left": [
+11,
+8
+],
+"animated/cars/car-purple-right": [
+11,
+8
+],
+"animated/cars/car-purple-up": [
+8,
+11
+],
+"animated/cars/car-red-down": [
+8,
+11
+],
+"animated/cars/car-red-left": [
+11,
+8
+],
+"animated/cars/car-red-right": [
+11,
+8
+],
+"animated/cars/car-red-up": [
+8,
+11
+],
+"animated/cars/car-yellow-down": [
+8,
+11
+],
+"animated/cars/car-yellow-left": [
+11,
+8
+],
+"animated/cars/car-yellow-right": [
+11,
+8
+],
+"animated/cars/car-yellow-up": [
+8,
+11
+],
+"animated/clouds/cloud-shadow": [
+70,
+34
+],
+"animated/fountain/fountain-0": [
+15,
+15
+],
+"animated/fountain/fountain-1": [
+15,
+15
+],
+"animated/fountain/fountain-2": [
+15,
+15
+],
+"animated/fountain/fountain-3": [
+15,
+15
+],
+"animated/walkers/walker-blue-0": [
+5,
+6
+],
+"animated/walkers/walker-blue-1": [
+5,
+6
+],
+"animated/walkers/walker-green-0": [
+5,
+6
+],
+"animated/walkers/walker-green-1": [
+5,
+6
+],
+"animated/walkers/walker-purple-0": [
+5,
+6
+],
+"animated/walkers/walker-purple-1": [
+5,
+6
+],
+"animated/walkers/walker-red-0": [
+5,
+6
+],
+"animated/walkers/walker-red-1": [
+5,
+6
+],
+"animated/walkers/walker-white-0": [
+5,
+6
+],
+"animated/walkers/walker-white-1": [
+5,
+6
+],
+"animated/walkers/walker-yellow-0": [
+5,
+6
+],
+"animated/walkers/walker-yellow-1": [
+5,
+6
+],
+"ground/ground": [
+193,
+193
+],
+"props/bench": [
+7,
+5
+],
+"props/bush": [
+7,
+6
+],
+"props/flat": [
+9,
+10
+],
+"props/flowers": [
+7,
+5
+],
+"props/house_b": [
+11,
+10
+],
+"props/house_r": [
+11,
+10
+],
+"props/house_y": [
+11,
+10
+],
+"props/lamp": [
+5,
+7
+],
+"props/pine": [
+7,
+10
+],
+"props/shop": [
+11,
+9
+],
+"props/tree": [
+9,
+9
+],
+"props/tree2": [
+7,
+8
+],
+"wheel/hub-pogo": [
+19,
+19
+],
+"wheel/pointer-0": [
+9,
+9
+],
+"wheel/pointer-1": [
+9,
+9
+]
+}

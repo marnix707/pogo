@@ -1,0 +1,413 @@
+{
+ "version": 1,
+ "unit": "art px, from the top-left of the board inside (193x193); on the full board the inside starts at (32,32)",
+ "geometry": {
+  "size": 193,
+  "wheel": {
+   "centre": [
+    96,
+    92
+   ],
+   "radius": 46
+  },
+  "hub": [
+   97,
+   93
+  ],
+  "pointer": [
+   92,
+   40
+  ],
+  "fountain": [
+   96,
+   158
+  ],
+  "plaza": {
+   "centre": [
+    96,
+    92
+   ],
+   "radius": 50
+  },
+  "park": {
+   "centre": [
+    96,
+    158
+   ],
+   "radius": 15
+  },
+  "lanes": {
+   "outer": 7,
+   "inner": 12
+  }
+ },
+ "props": [
+  {
+   "id": "p1",
+   "type": "house_r",
+   "x": 22,
+   "y": 21
+  },
+  {
+   "id": "p2",
+   "type": "house_b",
+   "x": 35,
+   "y": 21
+  },
+  {
+   "id": "p3",
+   "type": "house_y",
+   "x": 48,
+   "y": 21
+  },
+  {
+   "id": "p4",
+   "type": "shop",
+   "x": 64,
+   "y": 22
+  },
+  {
+   "id": "p5",
+   "type": "house_y",
+   "x": 110,
+   "y": 21
+  },
+  {
+   "id": "p6",
+   "type": "shop",
+   "x": 123,
+   "y": 22
+  },
+  {
+   "id": "p7",
+   "type": "house_r",
+   "x": 137,
+   "y": 21
+  },
+  {
+   "id": "p8",
+   "type": "house_b",
+   "x": 150,
+   "y": 21
+  },
+  {
+   "id": "p9",
+   "type": "house_r",
+   "x": 163,
+   "y": 21
+  },
+  {
+   "id": "p10",
+   "type": "flat",
+   "x": 22,
+   "y": 104
+  },
+  {
+   "id": "p11",
+   "type": "house_b",
+   "x": 22,
+   "y": 160
+  },
+  {
+   "id": "p12",
+   "type": "house_r",
+   "x": 35,
+   "y": 160
+  },
+  {
+   "id": "p13",
+   "type": "flat",
+   "x": 163,
+   "y": 104
+  },
+  {
+   "id": "p14",
+   "type": "house_y",
+   "x": 150,
+   "y": 160
+  },
+  {
+   "id": "p15",
+   "type": "house_b",
+   "x": 163,
+   "y": 160
+  },
+  {
+   "id": "p16",
+   "type": "shop",
+   "x": 50,
+   "y": 162
+  },
+  {
+   "id": "p17",
+   "type": "shop",
+   "x": 128,
+   "y": 162
+  },
+  {
+   "id": "p18",
+   "type": "tree",
+   "x": 22,
+   "y": 36
+  },
+  {
+   "id": "p19",
+   "type": "pine",
+   "x": 32,
+   "y": 40
+  },
+  {
+   "id": "p20",
+   "type": "tree2",
+   "x": 24,
+   "y": 52
+  },
+  {
+   "id": "p21",
+   "type": "tree",
+   "x": 34,
+   "y": 62
+  },
+  {
+   "id": "p22",
+   "type": "bush",
+   "x": 22,
+   "y": 70
+  },
+  {
+   "id": "p23",
+   "type": "tree2",
+   "x": 64,
+   "y": 34
+  },
+  {
+   "id": "p24",
+   "type": "tree",
+   "x": 158,
+   "y": 36
+  },
+  {
+   "id": "p25",
+   "type": "pine",
+   "x": 150,
+   "y": 44
+  },
+  {
+   "id": "p26",
+   "type": "tree",
+   "x": 160,
+   "y": 66
+  },
+  {
+   "id": "p27",
+   "type": "tree2",
+   "x": 120,
+   "y": 34
+  },
+  {
+   "id": "p28",
+   "type": "tree",
+   "x": 24,
+   "y": 120
+  },
+  {
+   "id": "p29",
+   "type": "pine",
+   "x": 36,
+   "y": 128
+  },
+  {
+   "id": "p30",
+   "type": "tree2",
+   "x": 26,
+   "y": 140
+  },
+  {
+   "id": "p31",
+   "type": "tree",
+   "x": 40,
+   "y": 146
+  },
+  {
+   "id": "p32",
+   "type": "bush",
+   "x": 52,
+   "y": 136
+  },
+  {
+   "id": "p33",
+   "type": "tree2",
+   "x": 60,
+   "y": 150
+  },
+  {
+   "id": "p34",
+   "type": "tree",
+   "x": 162,
+   "y": 120
+  },
+  {
+   "id": "p35",
+   "type": "pine",
+   "x": 152,
+   "y": 128
+  },
+  {
+   "id": "p36",
+   "type": "tree2",
+   "x": 166,
+   "y": 140
+  },
+  {
+   "id": "p37",
+   "type": "tree",
+   "x": 146,
+   "y": 146
+  },
+  {
+   "id": "p38",
+   "type": "bush",
+   "x": 134,
+   "y": 138
+  },
+  {
+   "id": "p39",
+   "type": "tree2",
+   "x": 122,
+   "y": 150
+  },
+  {
+   "id": "p40",
+   "type": "tree",
+   "x": 70,
+   "y": 160
+  },
+  {
+   "id": "p41",
+   "type": "tree2",
+   "x": 112,
+   "y": 162
+  },
+  {
+   "id": "p42",
+   "type": "lamp",
+   "x": 86,
+   "y": 20
+  },
+  {
+   "id": "p43",
+   "type": "lamp",
+   "x": 105,
+   "y": 20
+  },
+  {
+   "id": "p44",
+   "type": "lamp",
+   "x": 86,
+   "y": 38
+  },
+  {
+   "id": "p45",
+   "type": "lamp",
+   "x": 105,
+   "y": 38
+  },
+  {
+   "id": "p46",
+   "type": "lamp",
+   "x": 20,
+   "y": 80
+  },
+  {
+   "id": "p47",
+   "type": "lamp",
+   "x": 20,
+   "y": 101
+  },
+  {
+   "id": "p48",
+   "type": "lamp",
+   "x": 170,
+   "y": 80
+  },
+  {
+   "id": "p49",
+   "type": "lamp",
+   "x": 170,
+   "y": 101
+  },
+  {
+   "id": "p50",
+   "type": "lamp",
+   "x": 58,
+   "y": 54
+  },
+  {
+   "id": "p51",
+   "type": "lamp",
+   "x": 131,
+   "y": 54
+  },
+  {
+   "id": "p52",
+   "type": "lamp",
+   "x": 58,
+   "y": 125
+  },
+  {
+   "id": "p53",
+   "type": "lamp",
+   "x": 131,
+   "y": 125
+  }
+ ],
+ "settings": {
+  "clouds": {
+   "enabled": true,
+   "count": 2,
+   "opacity": 0.13,
+   "speed": 4
+  },
+  "birds": {
+   "enabled": true,
+   "everyMin": 6,
+   "everyMax": 11,
+   "flockMin": 1,
+   "flockMax": 3,
+   "speed": 40,
+   "flapMs": 160
+  },
+  "fountain": {
+   "enabled": true,
+   "frameMs": 140
+  },
+  "cars": {
+   "enabled": false,
+   "outerCount": 2,
+   "outerSpeed": 22,
+   "innerCount": 1,
+   "innerSpeed": 18
+  },
+  "walkers": {
+   "enabled": false,
+   "plazaCount": 2,
+   "parkCount": 1,
+   "speed": 9
+  },
+  "wheel": {
+   "lightsChaseMs": 70,
+   "lightsIdleMs": 600,
+   "spinMs": 3400,
+   "spinTurns": 4,
+   "flickMs": 60,
+   "flashMs": 1200,
+   "shadowOpacity": 0.45
+  },
+  "tick": {
+   "enabled": true,
+   "freq": 1400,
+   "volume": 0.04,
+   "lengthMs": 35
+  }
+ }
+}

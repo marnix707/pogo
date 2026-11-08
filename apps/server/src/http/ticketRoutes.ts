@@ -95,11 +95,9 @@ export function registerTicketRoutes(app: FastifyInstance, deps: TicketDeps) {
       const parsed = ticketCreateSchema.safeParse(req.body);
       if (!parsed.success) {
         const onMessage = parsed.error.issues.some((i) => i.path[0] === 'message');
-        return reply
-          .code(400)
-          .send({
-            error: onMessage ? 'Please describe the problem in a few words' : 'Invalid input',
-          });
+        return reply.code(400).send({
+          error: onMessage ? 'Please describe the problem in a few words' : 'Invalid input',
+        });
       }
       const input = parsed.data;
       if ((await tickets.countSince(me.id, now() - DAY_MS)) >= MAX_REPORTS_PER_DAY)
@@ -166,6 +164,37 @@ export function registerTicketRoutes(app: FastifyInstance, deps: TicketDeps) {
       },
       now(),
     );
+
+  // A ticket written by hand in the admin panel (ideas, to-dos for future development): no player, no screenshot.
+  app.post('/api/admin/tickets', adminLimits, async (req, reply) => {
+    const actor = await ticketStaff(req, reply);
+    if (!actor) return;
+    const parsed = ticketCreateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const onMessage = parsed.error.issues.some((i) => i.path[0] === 'message');
+      return reply
+        .code(400)
+        .send({
+          error: onMessage ? 'Please describe the problem in a few words' : 'Invalid input',
+        });
+    }
+    const input = parsed.data;
+    const ticket = await tickets.create(
+      {
+        userId: actor.id === 'claude' ? null : actor.id,
+        nickname: actor.name,
+        type: input.type,
+        priority: input.type === 'bug' ? (input.priority ?? 'medium') : null,
+        message: input.message,
+        client: { screen: 'admin', source: 'admin panel' },
+        server: null,
+        screenshot: null,
+      },
+      now(),
+    );
+    await audit(actor, ticket.id, 'ticket', 'created by hand');
+    return { ticket };
+  });
 
   app.get('/api/admin/tickets', adminLimits, async (req, reply) => {
     if (!(await ticketStaff(req, reply))) return;

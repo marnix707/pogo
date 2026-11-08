@@ -41,6 +41,8 @@ export interface Wheel {
   slices: readonly string[];
   angle: number;
   spinning: boolean;
+  /** The rim lights chase / blink (Settings > Effects); off they stay still. */
+  lights: boolean;
   onTick: (() => void) | null;
   /** Aim the wheel at slice `idx` (clockwise, `strength` 0-2 more turns / time) and ease onto it. */
   spinToIndex: (idx: number, now: number, durationMs: number, strength?: number) => void;
@@ -87,6 +89,7 @@ export function createWheel(radius: number, slices: readonly string[]): Wheel {
     slices,
     angle: 0,
     spinning: false,
+    lights: true,
     onTick: null,
     pointerFlicked: (now) => now < flickUntil,
     flashOn: (now) => !!flash && now <= flash.until && Math.floor(now / 130) % 2 === 0,
@@ -185,7 +188,7 @@ export function createWheel(radius: number, slices: readonly string[]): Wheel {
           stamp(s, x, y, '#ffffff');
         }
       }
-      const phase = Math.floor(now / (spin ? 70 : 600)); // rim lights
+      const phase = w.lights ? Math.floor(now / (spin ? 70 : 600)) : 0; // rim lights
       for (let i = 0; i < n; i++) {
         const a = ((w.angle + i * seg) * Math.PI) / 180;
         const x = Math.round(R + (R - 3) * Math.sin(a));

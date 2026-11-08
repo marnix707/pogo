@@ -154,3 +154,9 @@ export async function ticketScreenshotUrl(id: string): Promise<string | null> {
   if (!res.ok) return null;
   return URL.createObjectURL(await res.blob());
 }
+/** A ticket written by hand in the panel (an idea or a to-do for future development). */
+export const createTicket = (input: {
+  type: 'bug' | 'feedback';
+  priority?: string;
+  message: string;
+}) => call<{ ticket: TicketDetail }>('POST', '/api/admin/tickets', input).then((r) => r.ticket);

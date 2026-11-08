@@ -1,8 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
-import { TICKET_STATUSES } from '@pogo/shared';
-import type { TicketDetail, TicketRow, TicketStatus } from '@pogo/shared';
+import { TICKET_PRIORITIES, TICKET_STATUSES } from '@pogo/shared';
+import type {
+  TicketDetail,
+  TicketPriority,
+  TicketRow,
+  TicketStatus,
+  TicketType,
+} from '@pogo/shared';
 import { Button, Sheet } from '../components/ui';
-import { getTicket, listTickets, patchTicket, queueTicket, ticketScreenshotUrl } from './adminApi';
+import {
+  createTicket,
+  getTicket,
+  listTickets,
+  patchTicket,
+  queueTicket,
+  ticketScreenshotUrl,
+} from './adminApi';
 
 const when = (ms: number) =>
   new Date(ms).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
@@ -231,12 +244,96 @@ function TicketSheet({
   );
 }
 
+/** Write a ticket by hand (ideas, to-dos for future development). */
+function NewTicketSheet({
+  open,
+  onClose,
+  onCreated,
+  onError,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: (t: TicketDetail) => void;
+  onError: (m: string) => void;
+}) {
+  const [type, setType] = useState<TicketType>('feedback');
+  const [priority, setPriority] = useState<TicketPriority>('medium');
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+  const chip = (on: boolean) =>
+    `label min-h-10 flex-1 rounded-md border-2 px-2 ${on ? 'border-accent bg-accent text-accentink' : 'border-edge/40'}`;
+  const save = () => {
+    setBusy(true);
+    createTicket({ type, ...(type === 'bug' ? { priority } : {}), message })
+      .then((t) => {
+        setMessage('');
+        onCreated(t);
+      })
+      .catch((e: Error) => onError(e.message))
+      .finally(() => setBusy(false));
+  };
+  return (
+    <Sheet open={open} onClose={onClose} title="New ticket">
+      <div className="flex flex-col gap-3" data-testid="ticket-new-form">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            data-testid="ticket-new-bug"
+            aria-pressed={type === 'bug'}
+            className={chip(type === 'bug')}
+            onClick={() => setType('bug')}
+          >
+            🐞 Bug
+          </button>
+          <button
+            type="button"
+            data-testid="ticket-new-feedback"
+            aria-pressed={type === 'feedback'}
+            className={chip(type === 'feedback')}
+            onClick={() => setType('feedback')}
+          >
+            💡 Idea / feedback
+          </button>
+        </div>
+        {type === 'bug' && (
+          <div className="flex gap-2">
+            {TICKET_PRIORITIES.map((p) => (
+              <button
+                key={p}
+                type="button"
+                aria-pressed={priority === p}
+                className={chip(priority === p)}
+                onClick={() => setPriority(p)}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        )}
+        <textarea
+          data-testid="ticket-new-message"
+          value={message}
+          rows={5}
+          maxLength={2000}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="What should be built or fixed? Say where, and what you expect."
+          className="w-full rounded-md border-2 border-edge/40 bg-panel2 p-2 text-ink"
+        />
+        <Button data-testid="ticket-new-save" variant="gold" disabled={busy} onClick={save}>
+          {busy ? 'Saving…' : 'Add ticket'}
+        </Button>
+      </div>
+    </Sheet>
+  );
+}
+
 /** The admin "Tickets" tab: bug reports and feedback, newest first. */
 export function Tickets({ onError }: { onError: (m: string) => void }) {
   const [rows, setRows] = useState<TicketRow[]>([]);
   const [status, setStatus] = useState<'open' | 'all' | TicketStatus>('open');
   const [type, setType] = useState<'all' | 'bug' | 'feedback'>('all');
   const [openId, setOpenId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const load = useCallback(() => {
     listTickets({
       ...(status === 'open' ? { open: true } : status === 'all' ? {} : { status }),
@@ -250,6 +347,14 @@ export function Tickets({ onError }: { onError: (m: string) => void }) {
     `label min-h-9 rounded-md border-2 px-2 ${on ? 'border-accent bg-accent text-accentink' : 'border-onbg/40 text-onbg'}`;
   return (
     <div className="flex flex-col gap-3" data-testid="admin-tickets">
+      <Button
+        data-testid="ticket-add"
+        variant="secondary"
+        className="!min-h-10"
+        onClick={() => setAdding(true)}
+      >
+        + New ticket
+      </Button>
       <div className="flex flex-wrap gap-1.5">
         {(['open', 'all', ...TICKET_STATUSES] as const).map((s) => (
           <button
@@ -298,6 +403,17 @@ export function Tickets({ onError }: { onError: (m: string) => void }) {
         ))}
         {rows.length === 0 && <li className="p-4 text-center opacity-70">No tickets here</li>}
       </ul>
+      <NewTicketSheet
+        open={adding}
+        onClose={() => setAdding(false)}
+        onError={onError}
+        onCreated={(t) => {
+          setAdding(false);
+          setStatus('open');
+          load();
+          setOpenId(t.id);
+        }}
+      />
       <TicketSheet id={openId} onClose={() => setOpenId(null)} onChanged={load} onError={onError} />
     </div>
   );

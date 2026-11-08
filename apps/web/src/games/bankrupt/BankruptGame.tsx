@@ -6,6 +6,7 @@ import { haptic } from '../../lib/haptics';
 import { play } from '../../lib/sound';
 import { Board, SEAT_HEX, money, playerColour } from './Board';
 import { registerDiagnostics } from '../../lib/diagnostics';
+import { useSettings } from '../../lib/settings';
 import { BuyOverlay } from './BuyOverlay';
 import { LuckCard } from './LuckCard';
 import { LockIcon } from '../../components/icons';
@@ -459,6 +460,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
   const ui = playing ? seen : state;
   const [tileOpen, setTileOpen] = useState<string | null>(null);
   const openTip = useActiveTip();
+  const { fx } = useSettings();
   const [busy, setBusy] = useState(false);
   const finished = state.phase === 'over';
   // (the trade starts only when everything before it has been played out: walk, card, payments)
@@ -1170,6 +1172,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
                   spin={spin}
                   onBlink={setLandBlink}
                   hubColour={playerColour(mover)}
+                  fx={fx}
                   tappable={rollReady}
                   onTap={() => {
                     setTileOpen(null);

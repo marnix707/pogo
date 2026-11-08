@@ -154,6 +154,29 @@ describe('tickets', () => {
     expect(last).toBe(429);
   });
 
+  it('staff can add a ticket by hand in the admin panel', async () => {
+    const mod = await staffMember('Mod4', 'moderator');
+    const p = await guest('Plain2');
+    expect(
+      (
+        await call('POST', '/api/admin/tickets', p.token, {
+          type: 'feedback',
+          message: 'an idea here',
+        })
+      ).statusCode,
+    ).toBe(403);
+    const res = await call('POST', '/api/admin/tickets', mod.token, {
+      type: 'feedback',
+      message: 'Add a spectator mode for Bankrupt',
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().ticket).toMatchObject({ status: 'new', type: 'feedback', screen: 'admin' });
+    expect(
+      (await call('POST', '/api/admin/tickets', mod.token, { type: 'bug', message: 'x' })).json()
+        .code,
+    ).toBe('TIC-101');
+  });
+
   it('players cannot read tickets; staff can move them along; the Claude token only reaches tickets', async () => {
     const p = await guest('Nosy');
     expect((await call('GET', '/api/admin/tickets', p.token)).statusCode).toBe(403);

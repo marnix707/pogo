@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { openAdminPanel } from '../lib/session';
-import { updateSettings, useSettings } from '../lib/settings';
+import { FX_KEYS, FX_LABELS, defaultFx, noFx, updateSettings, useSettings } from '../lib/settings';
 import { DisplayModeNote, InstallCard } from './InstallCard';
 import { Sheet } from './ui';
 
@@ -29,6 +29,72 @@ export function SettingsSheet({
   // The row with the little arrow in front of it: the last one touched.
   const [sel, setSel] = useState('music');
   const step = (v: number, d: number) => Math.max(0, Math.min(100, Math.round((v + d) / 10) * 10));
+  // One menu deeper: the effects of the plaza each have their own switch there.
+  const [page, setPage] = useState<'main' | 'effects'>('main');
+  useEffect(() => {
+    if (!open) setPage('main');
+  }, [open]);
+  if (page === 'effects')
+    return (
+      <Sheet
+        open={open}
+        onClose={onClose}
+        title="Effects"
+        from="top"
+        dim={false}
+        headerClass="mt-3"
+      >
+        <div className="retro-menu mt-3" data-testid="effects-menu">
+          <Action
+            id="back"
+            sel={sel}
+            setSel={setSel}
+            onClick={() => setPage('main')}
+            testId="effects-back"
+          >
+            ‹ Back
+          </Action>
+          <p className="retro-row text-[11px] opacity-80">The town plaza in Bankrupt</p>
+          {FX_KEYS.map((k) => (
+            <Row
+              key={k}
+              id={`fx-${k}`}
+              sel={sel}
+              setSel={setSel}
+              label={FX_LABELS[k]}
+              testId={`fx-${k}`}
+              arrows={() => updateSettings({ fx: { ...settings.fx, [k]: !settings.fx[k] } })}
+            >
+              <span className="retro-value" role="switch" aria-checked={settings.fx[k]}>
+                {settings.fx[k] ? 'ON' : 'OFF'}
+              </span>
+            </Row>
+          ))}
+          <div aria-hidden className="retro-row" />
+          <div className="flex">
+            <Action
+              id="fx-all-on"
+              sel={sel}
+              setSel={setSel}
+              onClick={() => updateSettings({ fx: defaultFx() })}
+              testId="fx-all-on"
+            >
+              All on
+            </Action>
+            <Action
+              id="fx-all-off"
+              sel={sel}
+              setSel={setSel}
+              onClick={() => updateSettings({ fx: noFx() })}
+              testId="fx-all-off"
+              className="justify-end text-right"
+            >
+              All off
+            </Action>
+          </div>
+        </div>
+      </Sheet>
+    );
   return (
     <Sheet open={open} onClose={onClose} title="Settings" from="top" dim={false} headerClass="mt-3">
       <div className="retro-menu mt-3" data-testid="settings-menu">
@@ -90,7 +156,16 @@ export function SettingsSheet({
           step={step}
           valueTestId="crt-value"
         />
-        {/* a blank line under CRT */}
+        <Action
+          id="effects"
+          sel={sel}
+          setSel={setSel}
+          onClick={() => setPage('effects')}
+          testId="settings-effects"
+        >
+          Effects ›
+        </Action>
+        {/* a blank line under the effects */}
         <div aria-hidden className="retro-row" />
         {onLeave && (
           <Action id="leave" sel={sel} setSel={setSel} onClick={onLeave} testId="settings-leave">
@@ -102,7 +177,9 @@ export function SettingsSheet({
             id="default"
             sel={sel}
             setSel={setSel}
-            onClick={() => updateSettings({ sound: 100, music: 50, vibration: true, crt: 20 })}
+            onClick={() =>
+              updateSettings({ sound: 100, music: 50, vibration: true, crt: 20, fx: defaultFx() })
+            }
             testId="settings-default"
           >
             Default

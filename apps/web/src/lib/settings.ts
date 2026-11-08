@@ -1,5 +1,33 @@
 import { useSyncExternalStore } from 'react';
 
+/** The effects on Bankrupt's town plaza, each of them can be switched on / off (Settings > Effects). */
+export const FX_KEYS = [
+  'cars',
+  'walkers',
+  'clouds',
+  'birds',
+  'fountain',
+  'trees',
+  'houses',
+  'details',
+  'lights',
+] as const;
+export type FxKey = (typeof FX_KEYS)[number];
+export const FX_LABELS: Record<FxKey, string> = {
+  cars: 'Cars',
+  walkers: 'People',
+  clouds: 'Clouds',
+  birds: 'Birds',
+  fountain: 'Fountain',
+  trees: 'Trees & bushes',
+  houses: 'Houses & shops',
+  details: 'Lamps, benches, flowers',
+  lights: 'Wheel lights',
+};
+export type FxSettings = Record<FxKey, boolean>;
+const allFx = (on: boolean): FxSettings =>
+  Object.fromEntries(FX_KEYS.map((k) => [k, on])) as FxSettings;
+
 export interface Settings {
   /** Sound effects volume, 0 (off) .. 100. */
   sound: number;
@@ -8,10 +36,14 @@ export interface Settings {
   vibration: boolean;
   /** How strong the CRT layer over the whole app is (scanlines and a darkened edge), 0 = off .. 100. */
   crt: number;
+  /** The plaza effects (all on by default). */
+  fx: FxSettings;
 }
 
 const KEY = 'pogo.settings';
-const defaults: Settings = { sound: 100, music: 50, vibration: true, crt: 20 };
+const defaults: Settings = { sound: 100, music: 50, vibration: true, crt: 20, fx: allFx(true) };
+export const defaultFx = (): FxSettings => allFx(true);
+export const noFx = (): FxSettings => allFx(false);
 
 function load(): Settings {
   try {
@@ -26,6 +58,8 @@ function load(): Settings {
       ...defaults,
       ...saved,
       crt,
+      // (an effect missing from the saved settings, e.g. one added later, is on)
+      fx: { ...allFx(true), ...((saved.fx as Partial<FxSettings> | undefined) ?? {}) },
       sound: volume(saved.sound, defaults.sound),
       music: volume(saved.music, defaults.music),
     };
