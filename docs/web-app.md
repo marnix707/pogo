@@ -95,3 +95,7 @@ Shown only when the phone itself is held sideways (`lib/useSideways.ts`: `screen
 ## Bug / feedback button
 
 A bug icon (`BugButton`) sits before Settings in every top bar (shared `TopBar`, Home, Lobby, Yatzy's header) and a "Report a bug" link on the sign-in screen. `BugReportProvider` (mounted in `App.tsx`) owns the form sheet: it takes the screenshot **before** the sheet opens (so the sheet is not in it) and reads the context that `Shell` (or the sign-in screen) registered with `setBugContext`. Details and the admin side: `docs/accounts-admin.md` ("Tickets").
+
+## Sound goes quiet when the app leaves the screen
+
+`lib/sound.ts` suspends the shared AudioContext on `visibilitychange` (hidden), `pagehide` and `freeze`, so the music and sounds stop the moment the app is in the background, the screen locks or the app is closed (before, the music kept playing on iOS and Android). Coming back, `reviveAudio` resumes it (or, when iOS wants a tap first, rebuilds it on the next tap: the music then starts from the top).

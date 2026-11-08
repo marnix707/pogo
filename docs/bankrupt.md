@@ -186,7 +186,7 @@ The screen follows the user's layout editor export (kept: the shared top bar's b
 
 - **Prices I cannot pay**: no red "Not enough money" pop-up any more. The price of every free space that costs more than my cash is **crossed out with a red X** on the board (`cantAfford` in `Board.tsx`, `bk-cross-<id>`; it follows the cash count). Landing on one I cannot pay for is still passed for me after a moment.
 
-- **Cloud shadows**: two (y 30 and 120, 4 art px/s, wrapping, clipped to the inside, under the wheel, off with reduced motion). The cloud SVG already carries the 13 % opacity: do NOT also set `globalAlpha` (it made them invisible).
+- **Cloud shadows**: two (y 30 and 120, 4 art px/s, wrapping, clipped to the inside, under the wheel, off with reduced motion). The first pack had the 13 % opacity inside the SVG (no `globalAlpha`); the parts pack ships a solid navy cloud, so it is drawn at `scene.settings.clouds.opacity` (0.13).
 - **Landing flash**: while the winning slice blinks white at the end of the spin (130 ms beat, `wheel.flashOn`), the space the frog is about to land on blinks white too, on the very same beat (`onBlink` of `Plaza` -> `landBlink` -> `Board` `flash`, `bk-flash-<id>`), and then the frog hops. A JAIL slice flashes the Jail space; $50 flashes nothing.
 
 - **Easter egg**: triple-tap a tree in the plaza (`TREES` in `Plaza.tsx`, hit radius 7 art px, taps within 0.7 s of each other) and a bird flies out of it in a random direction (55 art px/s, flapping, flipped when it flies left); one bird per 5 s (`EGG_COOLDOWN_MS`). The tree positions were read off the artist's preview, so some may be a pixel or two off.

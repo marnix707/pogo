@@ -62,6 +62,7 @@ interface Scene {
   settings: {
     cars: { outerCount: number; outerSpeed: number; innerCount: number; innerSpeed: number };
     walkers: { plazaCount: number; parkCount: number; speed: number };
+    clouds: { opacity: number };
   };
 }
 
@@ -316,7 +317,8 @@ export function Plaza({
           ctx.beginPath();
           ctx.rect(S, S, (INSIDE - 2) * S, (INSIDE - 2) * S);
           ctx.clip();
-          // (no globalAlpha: the SVG itself is already drawn at 13 % opacity; both would make it invisible)
+          // (this pack's cloud is a solid navy shape: it is drawn at the scene's cloud opacity, 13 %)
+          ctx.globalAlpha = scene.settings.clouds.opacity;
           [30, 120].forEach((y, k) => {
             const x = (((now / 1000) * 4 + (k * span) / 2) % span) - cw;
             ctx.drawImage(ci, Math.round(x) * S, y * S);

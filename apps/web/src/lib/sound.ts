@@ -85,9 +85,15 @@ async function reviveAudio(fromTap: boolean) {
   }
 }
 if (typeof document !== 'undefined') {
+  // The app is no longer on screen (home button, another app, a locked screen, swiped away): everything goes quiet at
+  // once. Without this the music kept playing in the background on iOS and Android (also after the app was closed).
+  const hush = () => void ctx?.suspend().catch(() => undefined);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') void reviveAudio(false);
+    if (document.visibilityState === 'hidden') hush();
+    else void reviveAudio(false);
   });
+  window.addEventListener('pagehide', hush);
+  document.addEventListener('freeze', hush);
   window.addEventListener('pageshow', () => void reviveAudio(false));
   // Every tap is a chance to bring a dead engine back (a gesture is what iOS wants).
   window.addEventListener('pointerdown', () => void reviveAudio(true), {
