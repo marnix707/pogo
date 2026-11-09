@@ -93,6 +93,7 @@ export function PropertyCard({
   closeLabel = 'Close',
   groupSize = 3,
   hideClose = false,
+  note,
 }: {
   tile: bankrupt.OwnableTile;
   /** Buildings on it (0-3), for the rent table on the back. */
@@ -106,6 +107,8 @@ export function PropertyCard({
   groupSize?: number;
   /** No X in the corner (the buy card: its Pass / Auction button is the way out). */
   hideClose?: boolean;
+  /** A line or two on the card, above the buttons (the buy card's hint): part of the card, so it never moves. */
+  note?: string;
 }) {
   const box = useRef<HTMLDivElement>(null);
   // The card fits the box it is put in (the middle of the board): never bigger than that.
@@ -231,8 +234,31 @@ export function PropertyCard({
   const tagW = tagText && tagText.length >= 4 ? 36 : 31;
   const tagX = upIndex >= 0 ? slots[upIndex]![0] + (64 - tagW) / 2 + 2 : 0;
   const tagY = upIndex >= 0 ? slots[upIndex]![1] - 17 + 1 : 0;
+  // the note: wrapped to the card's width, centred between the picture and the buttons
+  const noteLines = (() => {
+    if (!note) return [] as string[];
+    const out: string[] = [];
+    let line = '';
+    for (const w of note.toUpperCase().split(' ')) {
+      const next = line ? `${line} ${w}` : w;
+      if (line && measure(next, 'font5').width > CARD_W - 16) {
+        out.push(line);
+        line = w;
+      } else line = next;
+    }
+    if (line) out.push(line);
+    return out.slice(0, 2);
+  })();
   const front = face(
     <>
+      {noteLines.map((ln, k) => (
+        <path
+          key={k}
+          data-testid="bk-card-note"
+          d={text(ln, CARD_W / 2, noteLines.length === 1 ? 142 : 137 + k * 8)}
+          fill={NAVY}
+        />
+      ))}
       {stats.map(([label, value], i) => (
         <g key={label}>
           <path d={text(label, cols[i]!, L.labels_y)} fill={LABEL} />

@@ -23,6 +23,13 @@ export function BuyOverlay({
   // Rainbow Road replaces Buy when two other players each own a space of this street.
   const rainbow = bankrupt.rainbowRoad(state, me) !== null;
   const auctions = bankrupt.declineAuctions(state, me, tile);
+  const note = rainbow
+    ? 'Sell the whole street to the bank, or pass.'
+    : !canBuy
+      ? `You need ${money(tile.price - cash)} more.`
+      : auctions
+        ? 'Pass and it goes up for auction.'
+        : 'Pass and it stays free.';
   return (
     <div
       className={`${closing ? 'bk-pop-out' : 'bk-pop'} flex h-full w-full flex-col items-center gap-[1%] bg-[#101628]/70 p-[1.5%]`}
@@ -38,6 +45,7 @@ export function BuyOverlay({
           rent={tile.rent[0]!}
           closeLabel="Cancel"
           hideClose
+          note={note}
           onClose={() => run(() => void send({ type: 'decline' }))}
           actions={[
             // left of Buy: Auction when passing puts the space up for auction, else just Pass
@@ -74,17 +82,8 @@ export function BuyOverlay({
           ]}
         />
       </div>
-      <p
-        className="label shrink-0 text-center text-[2.1cqw] leading-tight text-white"
-        data-testid="bk-buy-note"
-      >
-        {rainbow
-          ? 'Sell the whole street to the bank, or pass.'
-          : !canBuy
-            ? `You need ${money(tile.price - cash)} more.`
-            : auctions
-              ? 'Pass and it goes up for auction.'
-              : 'Pass and it stays free.'}
+      <p className="sr-only" data-testid="bk-buy-note">
+        {note}
       </p>
     </div>
   );

@@ -22,3 +22,6 @@ export function cardFaceUrl(card: number): string {
   const rank = karma.rankOf(card);
   return byName[`${RANK_NAME[rank] ?? rank}${SUIT_LETTER[karma.suitOf(card)]}`]!;
 }
+
+/** A card's picture by file name (`7H`, `10S`, `back`, `joker`): for the rules page. */
+export const cardUrlByName = (name: string): string => byName[name] ?? '';

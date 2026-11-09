@@ -262,6 +262,16 @@ export function YatzyGame({ room, me, sendMove, chrome }: GameUiProps) {
           {chrome && (
             <>
               <FriendsButton small />
+              {chrome.onRules && (
+                <TileButton
+                  small
+                  onClick={chrome.onRules}
+                  aria-label="Rules"
+                  data-testid="rules-open"
+                >
+                  <span className="text-lg font-bold leading-none">?</span>
+                </TileButton>
+              )}
               <TileButton
                 small
                 onClick={chrome.onChat}

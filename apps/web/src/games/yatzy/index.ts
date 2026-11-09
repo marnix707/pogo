@@ -1,7 +1,9 @@
+import { createElement } from 'react';
 import type { GameUi } from '../types';
 import logoUrl from '../../assets/sprites/brand/logos/yatzy.svg';
 import { YatzyGame } from './YatzyGame';
 import { YatzyModePicker } from './ModePicker';
+import { YatzyRules } from './YatzyRules';
 
 export const yatzyUi: GameUi = {
   id: 'yatzy',
@@ -10,6 +12,7 @@ export const yatzyUi: GameUi = {
   logo: logoUrl,
   tagline: 'Roll five dice, chase combos, beat your friends.',
   Component: YatzyGame,
+  Rules: ({ open, onClose }) => createElement(YatzyRules, { open, onClose }),
   ownHeader: true,
   // Turn based / Live only matters with more than one player: alone, both are the same game.
   LobbyOptions: YatzyModePicker,
