@@ -59,14 +59,17 @@ function Hero({
   );
 }
 
-/** Bars for one metric per day: tap a bar to read its day. */
+/** Bars for one metric per day: hover a bar (or tap it) to read its day and value. */
 function Chart({ data, metric, range }: { data: AdminAnalytics; metric: Metric; range: number }) {
   const [picked, setPicked] = useState<number | null>(null);
+  const [hover, setHover] = useState<number | null>(null);
   const days = data.days.slice(-range);
   const values = days.map((d) => d[metric]);
   const max = Math.max(1, ...values);
   const total = values.reduce((a, b) => a + b, 0);
-  const shown = picked !== null && days[picked] ? days[picked] : null;
+  // (what the pointer is over wins over what was tapped)
+  const at = hover ?? picked;
+  const shown = at !== null && days[at] ? days[at] : null;
   const W = 300;
   const H = 110;
   const gap = range > 30 ? 0.5 : 1.5;
@@ -91,7 +94,14 @@ function Chart({ data, metric, range }: { data: AdminAnalytics; metric: Metric; 
         {days.map((d, i) => {
           const h = (d[metric] / max) * (H - 6);
           return (
-            <g key={d.day} onClick={() => setPicked(picked === i ? null : i)}>
+            <g
+              key={d.day}
+              data-testid={`analytics-bar-${d.day}`}
+              onClick={() => setPicked(picked === i ? null : i)}
+              onMouseEnter={() => setHover(i)}
+              onMouseLeave={() => setHover((h) => (h === i ? null : h))}
+            >
+              <title>{`${fmtDay(d.day)}: ${d[metric]}`}</title>
               <rect x={i * bw} y={0} width={bw} height={H} fill="transparent" />
               <rect
                 x={i * bw + gap / 2}
@@ -99,11 +109,31 @@ function Chart({ data, metric, range }: { data: AdminAnalytics; metric: Metric; 
                 width={Math.max(1, bw - gap)}
                 height={h}
                 rx="1"
-                className={picked === i ? 'fill-[#fda200]' : 'fill-[#3cb4ff]'}
+                className={at === i ? 'fill-[#fda200]' : 'fill-[#3cb4ff]'}
               />
             </g>
           );
         })}
+        {/* the value of the bar under the pointer, in a label above it (kept inside the chart) */}
+        {shown && at !== null && (
+          <g pointerEvents="none" data-testid="analytics-tooltip">
+            {(() => {
+              const label = `${fmtDay(shown.day)}: ${shown[metric]}`;
+              const w = label.length * 4.7 + 10;
+              const h = (shown[metric] / max) * (H - 6);
+              const x = Math.min(Math.max(0, at * bw + bw / 2 - w / 2), W - w);
+              const y = Math.max(1, H - h - 20);
+              return (
+                <>
+                  <rect x={x} y={y} width={w} height={14} rx="2" fill="#101628" stroke="#fda200" />
+                  <text x={x + w / 2} y={y + 10} fontSize="8" textAnchor="middle" fill="#fff">
+                    {label}
+                  </text>
+                </>
+              );
+            })()}
+          </g>
+        )}
         <text x="0" y={H + 11} fontSize="8" fill="currentColor" opacity="0.7">
           {fmtDay(days[0]!.day)}
         </text>
@@ -225,7 +255,11 @@ export function Analytics({ onError }: { onError: (m: string) => void }) {
         <ul className="flex flex-col gap-1.5" data-testid="analytics-games">
           {data.byGame.length === 0 && <li className="p-3 text-center opacity-70">No games yet</li>}
           {data.byGame.map((g) => (
-            <li key={g.gameId} className="hud px-3 py-2">
+            <li
+              key={g.gameId}
+              className="hud px-3 py-2"
+              title={`${getGameUi(g.gameId)?.name ?? g.gameId}: ${g.today} today, ${g.month} this month, ${g.last30} in 30 days`}
+            >
               <div className="flex items-center gap-3 text-sm">
                 <b className="flex-1">{getGameUi(g.gameId)?.name ?? g.gameId}</b>
                 <span className="opacity-70">{g.today} today</span>
