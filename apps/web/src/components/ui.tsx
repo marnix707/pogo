@@ -216,7 +216,14 @@ export function Sheet({
             </button>
           </div>
         )}
-        {full ? <div className="flex min-h-0 flex-1 flex-col">{children}</div> : children}
+        {/* (a full sheet is as high as the screen: what does not fit scrolls here, whatever the content is) */}
+        {full ? (
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+            {children}
+          </div>
+        ) : (
+          children
+        )}
         {top && grabber}
       </div>
     </div>
