@@ -25,12 +25,14 @@ export interface TicketFilter {
   status?: TicketStatus;
   type?: TicketType;
   priority?: TicketPriority;
-  /** Statuses that are still open (anything but closed / wontfix / duplicate). */
+  /** Still open: not fixed (waiting to be checked), closed, wontfix or duplicate. */
   open?: boolean;
   q?: string;
 }
 
 const DONE: TicketStatus[] = ['closed', 'wontfix', 'duplicate'];
+/** What "open" leaves out: the finished ones and the fixed ones (a fix is pushed, nobody has to work on it any more). */
+const NOT_OPEN: TicketStatus[] = ['fixed', ...DONE];
 
 /** Persistence for bug reports and feedback (Prisma in production, memory in tests). */
 export interface TicketStore {
@@ -73,7 +75,7 @@ const matches = (t: TicketDetail, f: TicketFilter) =>
   (!f.status || t.status === f.status) &&
   (!f.type || t.type === f.type) &&
   (!f.priority || t.priority === f.priority) &&
-  (!f.open || !DONE.includes(t.status)) &&
+  (!f.open || !NOT_OPEN.includes(t.status)) &&
   (!f.q || `${t.message} ${t.nickname}`.toLowerCase().includes(f.q.toLowerCase()));
 const row = (t: TicketDetail): TicketRow => ({
   id: t.id,
@@ -215,7 +217,7 @@ export function createPrismaTicketStore(prisma: PrismaClient): TicketStore {
     ...(f.status ? { status: f.status } : {}),
     ...(f.type ? { type: f.type } : {}),
     ...(f.priority ? { priority: f.priority } : {}),
-    ...(f.open ? { status: { notIn: DONE } } : {}),
+    ...(f.open ? { status: { notIn: NOT_OPEN } } : {}),
     ...(f.q
       ? {
           OR: [

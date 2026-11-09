@@ -264,3 +264,28 @@ describe('turning a ticket into another type, and "My reports"', () => {
     expect((await call('GET', '/api/tickets/mine')).statusCode).toBe(401);
   });
 });
+
+describe('the Open filter', () => {
+  it('leaves out fixed tickets (and the finished ones), but they still show under their own status', async () => {
+    const p = await guest('Opener');
+    const make = async (message: string) =>
+      (await call('POST', '/api/tickets', p.token, { type: 'bug', message })).json().id as string;
+    const idOpen = await make('Still to do');
+    const idFixed = await make('Already fixed');
+    const idClosed = await make('Closed one');
+    const admin = await staffMember('Open Boss', 'admin');
+    await call('PATCH', `/api/admin/tickets/${idFixed}`, admin.token, { status: 'fixed' });
+    await call('PATCH', `/api/admin/tickets/${idClosed}`, admin.token, { status: 'closed' });
+    const ids = async (q: string) =>
+      (
+        (await call('GET', `/api/admin/tickets?${q}`, admin.token)).json().tickets as {
+          id: string;
+        }[]
+      ).map((t) => t.id);
+    const open = await ids('open=1');
+    expect(open).toContain(idOpen);
+    expect(open).not.toContain(idFixed);
+    expect(open).not.toContain(idClosed);
+    expect(await ids('status=fixed')).toContain(idFixed);
+  });
+});
