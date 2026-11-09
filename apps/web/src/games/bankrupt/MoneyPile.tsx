@@ -29,6 +29,10 @@ const FALL_ART = 70; // art px a new bundle falls
 const FALL_MS = 320;
 const SOLID = '#2f6a52'; // under the bundles: no gaps in the heap
 
+/** The picture of a bundle by its sprite name (the rules page draws the pile too). */
+export const bundleUrl = (name: string): string =>
+  urls[`../../assets/sprites/bankrupt/money/bundle-${name}.svg`] ?? '';
+
 let images: HTMLImageElement[] | null = null;
 /** Called whenever a picture has loaded: the pile on screen redraws itself (the newest draw, never a stale one). */
 let onImage: () => void = () => undefined;

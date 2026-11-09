@@ -34,3 +34,6 @@ export function cardFileName(card: lastcard.Card): string {
 export const cardFaceUrl = (card: lastcard.Card): string | undefined =>
   byName.get(cardFileName(card));
 export const cardBackUrl = (): string | undefined => byName.get('back');
+
+/** A card's picture by its file name (`red-5`, `blue-skip`, `shield`, `blue-ghost`, `red-skull`, `back`): for the rules page. */
+export const cardUrlByName = (name: string): string => byName.get(name) ?? '';
