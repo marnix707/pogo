@@ -1871,6 +1871,13 @@ html.results-open .safe-top-scrim {
 .retro-value {
   color: #fdcf51;
 }
+/* ON / OFF rows: a narrow value slot, so a long name never pushes the arrows out of line (the same columns on every row) */
+.retro-row-compact .retro-slot {
+  width: 56px;
+}
+.retro-row-compact .retro-label {
+  min-width: 0;
+}
 .retro-bar {
   position: relative;
   display: flex;

@@ -71,6 +71,18 @@ export const AUCTION_SEC = 15;
 export const AUCTION_MIN_PCT = 70;
 const ceil5 = (n: number) => Math.ceil(n / 5) * 5;
 /** The lowest opening bid for a space. */
+/**
+ * Would passing on this free space put it up for auction? Only a player who chose not to buy starts one (one who
+ * cannot afford it just passes), and somebody else must be able to afford the opening bid, else it stays free.
+ * The buy card shows Auction or Pass by this.
+ */
+export function declineAuctions(s: BankruptState, playerId: string, t: OwnableTile): boolean {
+  const me = s.players.find((p) => p.id === playerId);
+  if (!me || !s.options.auctionOnDecline || me.cash < t.price) return false;
+  const min = openingBid(t.price);
+  return alivePlayers(s).some((p) => p.id !== me.id && p.cash >= min);
+}
+
 export const openingBid = (price: number) =>
   Math.max(MIN_BID, ceil5((price * AUCTION_MIN_PCT) / 100));
 const round5 = (n: number) => Math.round(n / 5) * 5;
@@ -764,10 +776,7 @@ function applyMove(
       {
         const t = ownable(s, s.board.tiles[me.pos]!.id)!;
         const min = openingBid(t.price);
-        // Somebody other than the one who passed must be able to afford the opening bid, else no auction.
-        const rivals = alivePlayers(s).filter((p) => p.id !== me.id && p.cash >= min);
-        // Only a player who chose not to buy puts it up for auction: one who cannot afford it just passes.
-        if (s.options.auctionOnDecline && me.cash >= t.price && rivals.length > 0) {
+        if (declineAuctions(s, me.id, t)) {
           s.auction = {
             tile: t.id,
             min,

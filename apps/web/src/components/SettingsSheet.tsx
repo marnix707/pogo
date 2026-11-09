@@ -62,6 +62,7 @@ export function SettingsSheet({
               sel={sel}
               setSel={setSel}
               label={FX_LABELS[k]}
+              compact
               testId={`fx-${k}`}
               arrows={() => updateSettings({ fx: { ...settings.fx, [k]: !settings.fx[k] } })}
             >
@@ -228,6 +229,7 @@ function Row({
   setSel,
   arrows,
   testId,
+  compact = false,
   children,
 }: {
   id: string;
@@ -237,10 +239,16 @@ function Row({
   /** Tap the arrows: step the value (the sign: -1 left, +1 right). */
   arrows?: (dir: -1 | 1) => void;
   testId?: string;
+  /** A short value (ON / OFF): a narrow slot, so long names keep their room and every row lines up. */
+  compact?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div className="retro-row" data-testid={testId} onPointerDown={() => setSel(id)}>
+    <div
+      className={`retro-row ${compact ? 'retro-row-compact' : ''}`}
+      data-testid={testId}
+      onPointerDown={() => setSel(id)}
+    >
       <Marker on={sel === id} />
       <span className="retro-label">{label}</span>
       <span className="retro-dots" aria-hidden />

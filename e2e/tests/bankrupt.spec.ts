@@ -41,11 +41,11 @@ test('Bankrupt: play a few rounds against the computer', async ({ browser }) => 
       }
     }
     if (!clicked) {
-      // A space it cannot afford: the X on the card passes.
+      // A space it cannot afford: the Pass (or Auction) button on the card.
       const overlay = page.getByTestId('bk-buy-overlay');
       if (await overlay.count())
         await overlay
-          .getByTestId('bk-card-close')
+          .locator('[data-testid=bk-pass-btn], [data-testid=bk-auction-btn]')
           .click()
           .catch(() => undefined);
       const wait = page.getByTestId('bk-wait-jail');

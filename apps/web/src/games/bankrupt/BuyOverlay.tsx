@@ -3,7 +3,7 @@ import { money } from './Board';
 import { PropertyCard } from './PropertyCard';
 import { useCloseAnim } from './useCloseAnim';
 
-/** You stopped on a space nobody owns: its card pops up with Buy; the X (cancel) leaves it or auctions it. */
+/** You stopped on a space nobody owns: its card pops up with Buy; Pass (or Auction, when passing puts it up for auction) sits left of Buy; there is no X. */
 export function BuyOverlay({
   state,
   me,
@@ -22,6 +22,7 @@ export function BuyOverlay({
   const canBuy = cash >= tile.price;
   // Rainbow Road replaces Buy when two other players each own a space of this street.
   const rainbow = bankrupt.rainbowRoad(state, me) !== null;
+  const auctions = bankrupt.declineAuctions(state, me, tile);
   return (
     <div
       className={`${closing ? 'bk-pop-out' : 'bk-pop'} flex h-full w-full flex-col items-center gap-[1%] bg-[#101628]/70 p-[1.5%]`}
@@ -36,8 +37,25 @@ export function BuyOverlay({
           groupSize={tile.kind === 'property' ? bankrupt.groupOf(state.board, tile).length : 3}
           rent={tile.rent[0]!}
           closeLabel="Cancel"
+          hideClose
           onClose={() => run(() => void send({ type: 'decline' }))}
           actions={[
+            // left of Buy: Auction when passing puts the space up for auction, else just Pass
+            auctions
+              ? {
+                  kind: 'auction',
+                  enabled: !busy,
+                  testId: 'bk-auction-btn',
+                  label: `Pass on ${tile.name} and put it up for auction`,
+                  onClick: () => run(() => void send({ type: 'decline' })),
+                }
+              : {
+                  kind: 'pass',
+                  enabled: !busy,
+                  testId: 'bk-pass-btn',
+                  label: `Pass on ${tile.name}`,
+                  onClick: () => run(() => void send({ type: 'decline' })),
+                },
             rainbow
               ? {
                   kind: 'rainbow',
@@ -61,12 +79,12 @@ export function BuyOverlay({
         data-testid="bk-buy-note"
       >
         {rainbow
-          ? 'Sell the whole street to the bank, or tap X to pass.'
+          ? 'Sell the whole street to the bank, or pass.'
           : !canBuy
-            ? `You need ${money(tile.price - cash)} more. Tap X to pass.`
-            : state.options.auctionOnDecline
-              ? 'Tap X to put it up for auction.'
-              : 'Tap X to leave it.'}
+            ? `You need ${money(tile.price - cash)} more.`
+            : auctions
+              ? 'Pass and it goes up for auction.'
+              : 'Pass and it stays free.'}
       </p>
     </div>
   );

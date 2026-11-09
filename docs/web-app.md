@@ -104,3 +104,5 @@ A bug icon (`BugButton`) sits before Settings in every top bar (shared `TopBar`,
 ## Crew colour picker (lobby)
 
 A game with `choices` (Bankrupt's frog colours) lets **every player, the host too**, pick a colour in the Crew row: my own badge is a gold-framed button with a "Colour ▾" label (`crew-choice-open`), pulsing with a ring until I have opened it once (`pogo.colourSeen` in localStorage). It opens a **solid** panel (`crew-choice-bubble`, "Pick your colour", a 3 x 2 grid of big frogs, taken ones crossed out and greyed, navy shadow bottom right) drawn through a **portal** with `position: fixed` under the button: inside the Crew row it was see-through and hidden under the next row, because the row is a box with an opacity (a stacking context of its own). Server: `Room.setChoice`; the host starts as the first colour (red) until they pick.
+
+The Settings > Effects rows use a narrow value slot (`.retro-row-compact`, ON / OFF) so long names (Lamps & more, Wheel lights) never push the arrows out of line: every row has the same columns.

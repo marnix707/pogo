@@ -8,6 +8,7 @@ export {
   AUCTION_SEC,
   AUCTION_MIN_PCT,
   openingBid,
+  declineAuctions,
   TRADE_SEC,
   BAIL_SEC,
   bidStep,

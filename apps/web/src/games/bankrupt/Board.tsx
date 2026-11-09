@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { bankrupt } from '@pogo/shared';
 import { chevronsPath, tileChevronsAt } from './chevrons';
@@ -33,6 +33,100 @@ export const SEAT_HEX: Record<string, string> = {
  * the tokens (they glide and hop) and invisible buttons over every space. Drawn at a whole number of device
  * pixels per art pixel. `children` go in the middle.
  */
+/** The colour of a space's body (where its name is printed), by the artist's tile. */
+const BODY: Record<string, string> = {
+  bangkok: '#3aaef7',
+  beijing: '#b88828',
+  berlin: '#ff9690',
+  cairo: '#3aaef7',
+  delhi: '#56a786',
+  dubai: '#b88828',
+  'hong-kong': '#935adc',
+  jakarta: '#ff9690',
+  london: '#fd5f55',
+  madrid: '#3aaef7',
+  moscow: '#fda200',
+  'new-york': '#fd5f55',
+  paris: '#935adc',
+  rio: '#56a786',
+  riyadh: '#eb6b43',
+  seoul: '#fda200',
+  sydney: '#b88828',
+  tokyo: '#fd5f55',
+  toronto: '#fda200',
+  zurich: '#eb6b43',
+};
+
+/**
+ * The name of a space with a frog on it, moved to the bottom of the space so the frog does not hide it: the printed
+ * name is covered with the space's body colour (no plate) and the same name is drawn on top and slides down
+ * (and up again when the frog leaves). One line sits at rows 19-22 in the art, two lines at 16-19 and 22-25; at the
+ * bottom the last line ends on row 29.
+ */
+function NamePlate({
+  tile,
+  x,
+  y,
+  down,
+  pct,
+}: {
+  tile: bankrupt.OwnableTile;
+  x: number;
+  y: number;
+  down: boolean;
+  pct: (v: number) => string;
+}) {
+  // (a new layer starts in the middle, then slides: the move is a frame later than the first paint)
+  const [low, setLow] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setLow(down));
+    return () => cancelAnimationFrame(id);
+  }, [down]);
+  const word = tile.name.toUpperCase();
+  const lines =
+    measure(word, 'font4').width <= 29 || !word.includes(' ')
+      ? [word]
+      : [word.slice(0, word.lastIndexOf(' ')), word.slice(word.lastIndexOf(' ') + 1)];
+  const top = lines.length === 1 ? [19] : [16, 22];
+  const shift = lines.length === 1 ? 7 : 4;
+  const reduced =
+    typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  return (
+    <svg
+      aria-hidden
+      data-testid={`bk-nameplate-${tile.id}`}
+      data-down={low}
+      viewBox={`0 0 ${TILE_PX} ${TILE_PX}`}
+      shapeRendering="crispEdges"
+      className="pointer-events-none absolute"
+      style={{ left: pct(x), top: pct(y), width: pct(TILE_PX), height: pct(TILE_PX) }}
+    >
+      <rect x={2} y={15} width={29} height={11} fill={BODY[slug(tile)] ?? '#f7f1e4'} />
+      <g
+        style={{
+          transform: `translateY(${low ? shift : 0}px)`,
+          transition: reduced ? 'none' : 'transform 380ms cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        {lines.map((ln, k) => (
+          <g
+            key={k}
+            dangerouslySetInnerHTML={{
+              __html: pixelTextSVG(
+                ln,
+                Math.floor((TILE_PX - measure(ln, 'font4').width) / 2),
+                top[k]!,
+                '#101628',
+                'font4',
+              ),
+            }}
+          />
+        ))}
+      </g>
+    </svg>
+  );
+}
+
 export function Board({
   state,
   shown,
@@ -76,6 +170,7 @@ export function Board({
   const n = state.board.tiles.length;
   const dim = n / 4 + 1;
   const box = useRef<HTMLDivElement>(null);
+  const visited = useRef(new Set<string>()); // spaces a frog has stood on: their name layer (`NamePlate`) stays
   const s = useArtScale(box, BOARD_PX, true);
   const pct = (v: number) => `${(v / BOARD_PX) * 100}%`;
   const at = (i: number) => {
@@ -330,7 +425,9 @@ export function Board({
             {overlay}
           </div>
         )}
-        {/* a frog stands on a property: its name moves to the bottom of the space on a navy plate, where it can be read */}
+        {/* a frog stands on a property: its name slides from the middle to the bottom of the space (and back up when
+            the frog leaves). A layer is only added once a frog has stood on the space; it covers the printed name
+            with the space's own colour and draws the same name, which then moves. */}
         {state.board.tiles.map((tile, i) => {
           if (tile.kind !== 'property') return null;
           const here = state.players.some(
@@ -339,47 +436,10 @@ export function Board({
               !(police?.hideFrog && police.id === p.id) &&
               (shown[p.id] ?? p.pos) === i,
           );
-          if (!here) return null;
+          if (here) visited.current.add(tile.id);
+          if (!visited.current.has(tile.id)) return null;
           const { x, y } = at(i);
-          const word = tile.name.toUpperCase();
-          const lines =
-            measure(word, 'font4').width <= 29 || !word.includes(' ')
-              ? [word]
-              : [word.slice(0, word.lastIndexOf(' ')), word.slice(word.lastIndexOf(' ') + 1)];
-          const plateH = lines.length * 6 + 2;
-          return (
-            <svg
-              key={`np-${tile.id}`}
-              aria-hidden
-              data-testid={`bk-nameplate-${tile.id}`}
-              viewBox={`0 0 ${TILE_PX} ${TILE_PX}`}
-              shapeRendering="crispEdges"
-              className="pointer-events-none absolute"
-              style={{ left: pct(x), top: pct(y), width: pct(TILE_PX), height: pct(TILE_PX) }}
-            >
-              <rect
-                x={1}
-                y={TILE_PX - 1 - plateH}
-                width={TILE_PX - 2}
-                height={plateH}
-                fill="#101628"
-              />
-              {lines.map((ln, k) => (
-                <g
-                  key={k}
-                  dangerouslySetInnerHTML={{
-                    __html: pixelTextSVG(
-                      ln,
-                      Math.floor((TILE_PX - measure(ln, 'font4').width) / 2),
-                      TILE_PX - plateH + k * 6,
-                      '#f7f1e4',
-                      'font4',
-                    ),
-                  }}
-                />
-              ))}
-            </svg>
-          );
+          return <NamePlate key={`np-${tile.id}`} tile={tile} x={x} y={y} down={here} pct={pct} />;
         })}
         {/* the frogs hop from space to space */}
         <div className="pointer-events-none absolute inset-0">

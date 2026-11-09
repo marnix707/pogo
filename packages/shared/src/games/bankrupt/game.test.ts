@@ -302,6 +302,20 @@ describe('jail', () => {
 });
 
 describe('auctions', () => {
+  it('declineAuctions says whether passing would put the space up for auction', () => {
+    const s = start();
+    const a = s.players[0]!.id;
+    const t = DEFAULT_BOARD.tiles.find((x) => x.kind === 'property') as bankrupt.OwnableTile;
+    expect(bankrupt.declineAuctions(s, a, t)).toBe(true);
+    const off = { ...s, options: { ...s.options, auctionOnDecline: false } };
+    expect(bankrupt.declineAuctions(off, a, t)).toBe(false);
+    // nobody else can afford the opening bid: it just stays free
+    const poor = { ...s, players: s.players.map((p) => (p.id === a ? p : { ...p, cash: 0 })) };
+    expect(bankrupt.declineAuctions(poor, a, t)).toBe(false);
+    // the player cannot afford it themselves: they only pass
+    expect(bankrupt.declineAuctions(patch(s, a, { cash: 0 }), a, t)).toBe(false);
+  });
+
   it('a declined space goes to the highest bidder, one player bids at a time', () => {
     let s = start(3);
     const a = mover(s).id;

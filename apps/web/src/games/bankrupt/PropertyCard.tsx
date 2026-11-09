@@ -45,7 +45,7 @@ export const headerKey = (tile: bankrupt.OwnableTile) =>
 
 export interface CardAction {
   /** The kit button to draw. */
-  kind: 'buy' | 'sell' | 'upgrade' | 'rainbow';
+  kind: 'buy' | 'sell' | 'upgrade' | 'rainbow' | 'pass' | 'auction';
   enabled: boolean;
   onClick: () => void;
   testId: string;
@@ -92,6 +92,7 @@ export function PropertyCard({
   onClose,
   closeLabel = 'Close',
   groupSize = 3,
+  hideClose = false,
 }: {
   tile: bankrupt.OwnableTile;
   /** Buildings on it (0-3), for the rent table on the back. */
@@ -103,6 +104,8 @@ export function PropertyCard({
   closeLabel?: string;
   /** Spaces in this colour (the back lists the rent for owning 1, 2 ... of them). */
   groupSize?: number;
+  /** No X in the corner (the buy card: its Pass / Auction button is the way out). */
+  hideClose?: boolean;
 }) {
   const box = useRef<HTMLDivElement>(null);
   // The card fits the box it is put in (the middle of the board): never bigger than that.
@@ -120,7 +123,11 @@ export function PropertyCard({
     actions.length === 1
       ? [[(CARD_W - 64) / 2, L.buttons[0]![1]!, 64, 20] as const]
       : [L.buttons[0]!, L.buttons[1]!];
-  const btnUrl = (a: CardAction) => cityArt(`button-${a.kind}${a.enabled ? '' : '-disabled'}`);
+  // (Pass and Auction are always on: they have no greyed out picture)
+  const btnUrl = (a: CardAction) =>
+    cityArt(
+      `button-${a.kind}${a.enabled || a.kind === 'pass' || a.kind === 'auction' ? '' : '-disabled'}`,
+    );
   const size = { width: CARD_W * s, height: CARD_H * s };
   const closeBtn = (id: string) => (
     <button
@@ -155,13 +162,15 @@ export function PropertyCard({
       />
       <Title d={title} />
       {children}
-      <image
-        href={cityArt('button-close-x')}
-        x={L.close_x[0]}
-        y={L.close_x[1]}
-        width={15}
-        height={17}
-      />
+      {!hideClose && (
+        <image
+          href={cityArt('button-close-x')}
+          x={L.close_x[0]}
+          y={L.close_x[1]}
+          width={15}
+          height={17}
+        />
+      )}
     </svg>
   );
 
@@ -304,7 +313,7 @@ export function PropertyCard({
                 style={hot(slots[i]![0], slots[i]![1], slots[i]![2] ?? 64, slots[i]![3] ?? 20)}
               />
             ))}
-            {closeBtn('bk-card-close')}
+            {!hideClose && closeBtn('bk-card-close')}
           </div>
           <div className="absolute inset-0" style={{ ...faceStyle, transform: 'rotateY(180deg)' }}>
             {back}
@@ -316,7 +325,7 @@ export function PropertyCard({
               className="absolute"
               style={hot(0, 30, CARD_W, 150)}
             />
-            {closeBtn('bk-card-close-back')}
+            {!hideClose && closeBtn('bk-card-close-back')}
           </div>
         </div>
       </div>
