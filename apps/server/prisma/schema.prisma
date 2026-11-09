@@ -189,9 +189,13 @@ model Ticket {
   server     Json?
   adminNote  String   @default("")
   claudeNote String   @default("")
+  /// The status and type the player last saw in "My reports": a difference is an unread change.
+  seenStatus String   @default("new")
+  seenType   String   @default("bug")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  @@index([userId])
   @@index([status, createdAt])
   @@index([createdAt])
 }

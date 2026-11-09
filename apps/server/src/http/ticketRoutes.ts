@@ -130,6 +130,30 @@ export function registerTicketRoutes(app: FastifyInstance, deps: TicketDeps) {
     },
   );
 
+  // ---- a player's own tickets ("My reports": what they sent and where it stands) ---------------
+
+  app.get(
+    '/api/tickets/mine',
+    { config: { rateLimit: { max: 60 * scale, timeWindow: '1 minute' } } },
+    async (req, reply) => {
+      const me = await authenticate(req, tokens, users);
+      if (!me) return reply.code(401).send({ error: 'Not signed in' });
+      const list = await tickets.listMine(me.id, 50);
+      return { tickets: list, unread: list.filter((t) => t.unread).length };
+    },
+  );
+  // The player has opened the list: every change so far counts as seen.
+  app.post(
+    '/api/tickets/mine/seen',
+    { config: { rateLimit: { max: 30 * scale, timeWindow: '1 minute' } } },
+    async (req, reply) => {
+      const me = await authenticate(req, tokens, users);
+      if (!me) return reply.code(401).send({ error: 'Not signed in' });
+      await tickets.markSeen(me.id);
+      return { ok: true };
+    },
+  );
+
   // ---- the admin side -----------------------------------------------------------------------
 
   /** Staff (moderators and admins) through the panel, or Claude Code with the ticket token. */
@@ -172,11 +196,9 @@ export function registerTicketRoutes(app: FastifyInstance, deps: TicketDeps) {
     const parsed = ticketCreateSchema.safeParse(req.body);
     if (!parsed.success) {
       const onMessage = parsed.error.issues.some((i) => i.path[0] === 'message');
-      return reply
-        .code(400)
-        .send({
-          error: onMessage ? 'Please describe the problem in a few words' : 'Invalid input',
-        });
+      return reply.code(400).send({
+        error: onMessage ? 'Please describe the problem in a few words' : 'Invalid input',
+      });
     }
     const input = parsed.data;
     const ticket = await tickets.create(

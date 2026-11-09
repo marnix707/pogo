@@ -202,3 +202,65 @@ describe('tickets', () => {
     expect((await call('GET', '/api/admin/tickets/nope', mod.token)).json().code).toBe('TIC-104');
   });
 });
+
+describe('turning a ticket into another type, and "My reports"', () => {
+  it('an admin turns a bug into feedback (no priority) and back (priority medium)', async () => {
+    const p = await guest('Switcher');
+    const id = (
+      await call('POST', '/api/tickets', p.token, {
+        type: 'bug',
+        priority: 'critical',
+        message: 'This is really an idea',
+      })
+    ).json().id as string;
+    const admin = await staffMember('Switch Boss', 'admin');
+    const toFeedback = await call('PATCH', `/api/admin/tickets/${id}`, admin.token, {
+      type: 'feedback',
+    });
+    expect(toFeedback.json().ticket).toMatchObject({ type: 'feedback', priority: null });
+    // a priority cannot be set on feedback
+    const stay = await call('PATCH', `/api/admin/tickets/${id}`, admin.token, { priority: 'high' });
+    expect(stay.json().ticket.priority).toBeNull();
+    const back = await call('PATCH', `/api/admin/tickets/${id}`, admin.token, { type: 'bug' });
+    expect(back.json().ticket).toMatchObject({ type: 'bug', priority: 'medium' });
+    const again = await call('PATCH', `/api/admin/tickets/${id}`, admin.token, {
+      type: 'bug',
+      priority: 'high',
+    });
+    expect(again.json().ticket.priority).toBe('high');
+  });
+
+  it('a player sees only their own tickets, with an unread flag for changes until they look', async () => {
+    const a = await guest('Mine A');
+    const b = await guest('Mine B');
+    const idA = (
+      await call('POST', '/api/tickets', a.token, { type: 'bug', message: 'A found something' })
+    ).json().id as string;
+    await call('POST', '/api/tickets', b.token, { type: 'feedback', message: 'B has an idea' });
+    const first = (await call('GET', '/api/tickets/mine', a.token)).json();
+    expect(first.tickets).toHaveLength(1);
+    expect(first.tickets[0]).toMatchObject({ id: idA, status: 'new', unread: false });
+    expect(first.unread).toBe(0);
+    // nothing of the admin side leaks into the player's list
+    expect(Object.keys(first.tickets[0]).sort()).toEqual(
+      ['createdAt', 'id', 'message', 'status', 'type', 'unread', 'updatedAt'].sort(),
+    );
+
+    const admin = await staffMember('Mine Boss', 'admin');
+    await call('PATCH', `/api/admin/tickets/${idA}`, admin.token, { status: 'triaged' });
+    // (an internal note is not a change the player sees)
+    await call('PATCH', `/api/admin/tickets/${idA}`, admin.token, { adminNote: 'later' });
+    const changed = (await call('GET', '/api/tickets/mine', a.token)).json();
+    expect(changed.unread).toBe(1);
+    expect(changed.tickets[0]).toMatchObject({ status: 'triaged', unread: true });
+    // looking clears it; another change (the type) makes it unread again
+    await call('POST', '/api/tickets/mine/seen', a.token);
+    expect((await call('GET', '/api/tickets/mine', a.token)).json().unread).toBe(0);
+    await call('PATCH', `/api/admin/tickets/${idA}`, admin.token, { type: 'feedback' });
+    const retyped = (await call('GET', '/api/tickets/mine', a.token)).json();
+    expect(retyped.tickets[0]).toMatchObject({ type: 'feedback', unread: true });
+    // B's own list is untouched
+    expect((await call('GET', '/api/tickets/mine', b.token)).json().unread).toBe(0);
+    expect((await call('GET', '/api/tickets/mine')).statusCode).toBe(401);
+  });
+});

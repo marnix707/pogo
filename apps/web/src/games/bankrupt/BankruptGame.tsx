@@ -874,7 +874,7 @@ export function BankruptGame({ room, me, sendMove }: GameUiProps) {
     finished && !animating ? (
       <EndBanner state={state} name={name} />
     ) : swapping ? (
-      <TradeSwap state={state} name={name} />
+      <TradeSwap state={state} name={name} avatarOf={(id) => nickOf(id)?.avatar ?? 'fox'} />
     ) : noDealShow ? (
       <TradeCancelled state={state} name={name} />
     ) : winShow ? (

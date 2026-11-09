@@ -41,6 +41,8 @@ export const ticketCreateSchema = z.object({
 export type TicketCreateInput = z.input<typeof ticketCreateSchema>;
 
 export const ticketPatchSchema = z.object({
+  /** An admin can turn a bug into feedback and the other way round (a bug gets the priority "medium" when it has none). */
+  type: z.enum(TICKET_TYPES).optional(),
   status: z.enum(TICKET_STATUSES).optional(),
   priority: z.enum(TICKET_PRIORITIES).optional(),
   adminNote: z.string().trim().max(2000).optional(),
@@ -73,4 +75,29 @@ export interface TicketDetail extends TicketRow {
   server: Record<string, unknown> | null;
   adminNote: string;
   claudeNote: string;
+}
+
+/** What a player is told about the state of their ticket (the internal states are not all interesting to them). */
+export const PLAYER_STATUS_LABEL: Record<TicketStatus, string> = {
+  new: 'Received',
+  triaged: 'Seen by the team',
+  queued: 'Being worked on',
+  in_progress: 'Being worked on',
+  fixed: 'Fixed in the next update',
+  closed: 'Closed',
+  wontfix: 'Will not be changed',
+  duplicate: 'Already reported',
+};
+
+/** A player's own ticket: what they sent and where it stands (never the admin's notes or the captured state). */
+export interface MyTicket {
+  id: string;
+  type: TicketType;
+  status: TicketStatus;
+  /** The start of what they wrote. */
+  message: string;
+  createdAt: number;
+  updatedAt: number;
+  /** The status or type changed since the player last opened their list. */
+  unread: boolean;
 }

@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { bankrupt } from '@pogo/shared';
-import { Button } from '../../components/ui';
+import { Avatar, Button } from '../../components/ui';
 import { useCountdown } from '../../lib/useCountdown';
 import { MiniCard } from './MiniCard';
 
@@ -470,20 +470,46 @@ export function TradePanel(props: Parameters<typeof TradeBody>[0]) {
   );
 }
 
-/** The trade went through: the two cards swap places (the owners change on the board right after). */
-export function TradeSwap({ state, name }: { state: State; name: (id: string) => string }) {
+/**
+ * The trade went through: the two cards swap places (the owners change on the board right after). The players stay
+ * where they are: each one's picture and name sit still above their column while the cards cross.
+ */
+export function TradeSwap({
+  state,
+  name,
+  avatarOf,
+}: {
+  state: State;
+  name: (id: string) => string;
+  avatarOf: (id: string) => string;
+}) {
   const e = state.events.find((x) => x.k === 'trade');
   if (!e || e.k !== 'trade') return null;
-  const card = (id: string, who: string, dx: number, dy: number) => {
+  // (everything is sized in cqw of the middle of the board: two columns of 20, their centres 44 apart, so the
+  // whole group is 64 wide and always inside the board)
+  const COLUMN = 20;
+  const APART = 44;
+  const column = (id: string, who: string, dx: number, dy: number) => {
     const tile = state.board.tiles.find((x) => x.id === id);
     if (!tile || !bankrupt.isOwnable(tile)) return null;
     return (
       <div
-        className="bk-swap flex flex-col items-center gap-[1cqw]"
-        style={{ ['--dx' as string]: `${dx}cqw`, ['--dy' as string]: `${dy}cqw` }}
+        className="flex flex-col items-center gap-[1.5cqw]"
+        style={{ width: `${COLUMN}cqw` }}
+        data-testid={`bk-swap-${who}`}
       >
-        <MiniCard tile={tile} width={20} />
-        <span className="label text-[2.4cqw] leading-none text-white">{name(who)}</span>
+        <div className="h-[13cqw] w-[13cqw]">
+          <Avatar avatar={avatarOf(who)} size="fluid" className="h-full w-full !border !ring-0" />
+        </div>
+        <span className="label max-w-full truncate text-[2.6cqw] leading-none text-white">
+          {name(who)}
+        </span>
+        <div
+          className="bk-swap"
+          style={{ ['--dx' as string]: `${dx}cqw`, ['--dy' as string]: `${dy}cqw` }}
+        >
+          <MiniCard tile={tile} width={COLUMN} />
+        </div>
       </div>
     );
   };
@@ -494,9 +520,9 @@ export function TradeSwap({ state, name }: { state: State; name: (id: string) =>
       role="status"
     >
       <p className="label text-[4.2cqw] font-black uppercase leading-none text-neon">Traded!</p>
-      <div className="flex w-[80%] items-center justify-between">
-        {card(e.give, e.by, 40, -6)}
-        {card(e.take, e.with, -40, 6)}
+      <div className="flex items-start justify-between" style={{ width: `${COLUMN + APART}cqw` }}>
+        {column(e.give, e.by, APART, -6)}
+        {column(e.take, e.with, -APART, 6)}
       </div>
     </div>
   );

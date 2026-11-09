@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { TICKET_PRIORITIES, TICKET_STATUSES } from '@pogo/shared';
+import { TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES } from '@pogo/shared';
 import type {
   TicketDetail,
   TicketPriority,
@@ -165,6 +165,42 @@ function TicketSheet({
             )}
             {b.userAgent && <div className="mt-1 break-all opacity-70">{b.userAgent}</div>}
           </div>
+          <div>
+            <p className="label mb-1">Type</p>
+            <div className="flex flex-wrap gap-1.5">
+              {TICKET_TYPES.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  data-testid={`ticket-type-${t}`}
+                  aria-pressed={ticket.type === t}
+                  onClick={() => ticket.type !== t && void apply({ type: t })}
+                  className={`label min-h-9 rounded-md border-2 px-2 ${ticket.type === t ? 'border-accent bg-accent text-accentink' : 'border-edge/40'}`}
+                >
+                  {t === 'bug' ? '🐞 Bug' : '💬 Feedback'}
+                </button>
+              ))}
+            </div>
+          </div>
+          {ticket.type === 'bug' && (
+            <div>
+              <p className="label mb-1">Priority</p>
+              <div className="flex flex-wrap gap-1.5">
+                {TICKET_PRIORITIES.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    data-testid={`ticket-priority-${p}`}
+                    aria-pressed={ticket.priority === p}
+                    onClick={() => void apply({ priority: p })}
+                    className={`label min-h-9 rounded-md border-2 px-2 ${ticket.priority === p ? 'border-accent bg-accent text-accentink' : 'border-edge/40'}`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div>
             <p className="label mb-1">Status</p>
             <div className="flex flex-wrap gap-1.5">
