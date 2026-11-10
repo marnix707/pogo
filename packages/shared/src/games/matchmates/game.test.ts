@@ -654,6 +654,28 @@ describe('Pet Match', () => {
     expect(s.board.length).toBe(CELLS);
   });
 
+  it('a Reactor bomb blows up its whole row and column, nothing else', () => {
+    const rng = createSeededRng(3);
+    let s = start(12, 'reactor');
+    // one bomb with a fuse of 1 in the middle of the board, the others gone
+    s.board = s.board.map((c) => (c.k === 'bomb' ? { k: 'fire' } : c)) as typeof s.board;
+    const at = 2 * 7 + 3;
+    s.board[at] = { k: 'bomb', fuse: 1 };
+    const [a, b] = legalSwaps(s.board).find(([x, y]) => x !== at && y !== at)!;
+    s = matesGame.applyMove(s, mover(s), { type: 'swap', a, b }, rng);
+    const step = s.lastEvent!.steps.find((st) => st.bomb)!;
+    expect(step).toBeDefined();
+    const cleared = new Set(step.cleared);
+    // it is exactly one full row plus one full column (7 wide, 5 high: 7 + 5 - 1 squares)
+    expect(cleared.size).toBe(COLS + ROWS - 1);
+    const cross = [...cleared].some((i) => {
+      const r = Math.floor(i / COLS);
+      const c = i % COLS;
+      return [...cleared].every((j) => Math.floor(j / COLS) === r || j % COLS === c);
+    });
+    expect(cross).toBe(true);
+  });
+
   it('computers play whole games against each other', () => {
     for (const seed of [1, 2, 3]) {
       const rng = createSeededRng(seed);

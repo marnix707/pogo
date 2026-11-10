@@ -330,7 +330,7 @@ function settle(c: Ctx) {
   }
 }
 
-/** Reactor: every move the bombs tick; at zero they blow up the squares around them. */
+/** Reactor: every move the bombs tick; at zero they blow up their whole row and column. */
 function tickBombs(c: Ctx) {
   const blown = new Set<number>();
   c.board.forEach((cell, i) => {
@@ -339,13 +339,9 @@ function tickBombs(c: Ctx) {
     if (cell.fuse > 0) return;
     const r = Math.floor(i / COLS);
     const col = i % COLS;
-    blown.add(i);
-    for (let d = 1; d <= 2; d++) {
-      if (r - d >= 0) blown.add(cellAt(r - d, col));
-      if (r + d < ROWS) blown.add(cellAt(r + d, col));
-      if (col - d >= 0) blown.add(cellAt(r, col - d));
-      if (col + d < COLS) blown.add(cellAt(r, col + d));
-    }
+    // The whole row and the whole column of the bomb (a cross across the board): no more, no less.
+    for (let x = 0; x < COLS; x++) blown.add(cellAt(r, x));
+    for (let y = 0; y < ROWS; y++) blown.add(cellAt(y, col));
   });
   if (blown.size === 0) return;
   c.board = dropAndRefill(c.board, blown, c.rng);

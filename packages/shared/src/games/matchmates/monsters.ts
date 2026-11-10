@@ -113,7 +113,7 @@ export const STAGE_SPECS: Readonly<Record<StageId, StageSpec>> = {
     id: 'reactor',
     name: 'Reactor',
     arena: 'reactor',
-    rule: 'Bombs count down with every move and blow up in a cross.',
+    rule: 'Bombs count down with every move and blow up their whole row and column.',
   },
   lab: {
     id: 'lab',
