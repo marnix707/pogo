@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { PublicRoomSummary } from '@pogo/shared';
 import { getGameUi } from '../games/registry';
@@ -153,8 +153,6 @@ export function PlayScreen({
   onReturn?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
-  const openRef = useRef<HTMLElement>(null);
-  const [atOpen, setAtOpen] = useState(false);
   const { games: gameUis, setOrder, reset, custom } = useGameOrder();
   const [sorting, setSorting] = useState(false);
   const [filter, setFilter] = useState<string>('all');
@@ -162,31 +160,6 @@ export function PlayScreen({
 
   // Live-update the open games while this screen is showing.
   useEffect(() => watchLobby(), [watchLobby]);
-
-  // The bottom bar follows the scroll: once the Open games heading has climbed into the upper half of the screen
-  // (or the page cannot scroll any further) it is the Main screen button, above that the Open games button.
-  useEffect(() => {
-    if (!bottomBar) return;
-    let frame = 0;
-    const measure = () => {
-      frame = 0;
-      const top = openRef.current?.getBoundingClientRect().top ?? Infinity;
-      const atEnd =
-        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
-      setAtOpen(top < window.innerHeight * 0.5 || atEnd);
-    };
-    const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(measure);
-    };
-    measure();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
-      cancelAnimationFrame(frame);
-    };
-  }, [bottomBar, lobby]);
 
   const shown = useMemo(
     () => (lobby ?? []).filter((r) => filter === 'all' || r.gameId === filter),
@@ -202,9 +175,97 @@ export function PlayScreen({
     setBusy(false);
   }
 
+  // Home's Play screen lists the open games first, under the join bar; a lobby's game picker keeps them last.
+  const openBlock = (
+    <>
+      <section aria-label="Open games">
+        <SectionLabel
+          right={
+            <span data-testid="open-games-count" className="text-onbg">
+              {openGames.length}
+            </span>
+          }
+        >
+          Open games
+        </SectionLabel>
+        {gameUis.length > 1 && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {[{ id: 'all', name: 'All' }, ...gameUis].map((g) => (
+              <button
+                key={g.id}
+                aria-pressed={filter === g.id}
+                onClick={() => setFilter(g.id)}
+                className={`label min-h-9 rounded-md border-2 px-3 ${
+                  filter === g.id
+                    ? 'border-accent bg-accent text-accentink'
+                    : 'border-onbg/40 text-onbg'
+                }`}
+              >
+                {g.name}
+              </button>
+            ))}
+          </div>
+        )}
+        {lobby === null ? (
+          <p className="label text-onbg/70">Looking for games…</p>
+        ) : openGames.length === 0 ? (
+          <div
+            className="hud chat-grey !bg-panel/80 p-4 text-center text-sm text-muted"
+            data-testid="open-games-empty"
+          >
+            No open games right now. Pick a game above to open a lobby, and switch on{' '}
+            <b className="text-ink">Public room</b> there so others can join.
+          </div>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {openGames.map((r) => (
+              <OpenGame
+                key={r.code}
+                room={r}
+                disabled={blocked}
+                mine={r.code === currentRoomCode}
+                onJoin={() =>
+                  r.code === currentRoomCode ? onReturn?.() : void run(api.join(r.code))
+                }
+              />
+            ))}
+          </ul>
+        )}
+      </section>
+      {playingGames.length > 0 && (
+        <section aria-label="Playing now">
+          <SectionLabel
+            right={
+              <span data-testid="playing-games-count" className="text-onbg">
+                {playingGames.length}
+              </span>
+            }
+          >
+            Playing now
+          </SectionLabel>
+          <ul className="flex flex-col gap-2">
+            {playingGames.map((r) => (
+              <OpenGame
+                key={r.code}
+                room={r}
+                watch
+                disabled={blocked}
+                mine={r.code === currentRoomCode}
+                onJoin={() =>
+                  r.code === currentRoomCode ? onReturn?.() : void run(api.join(r.code))
+                }
+              />
+            ))}
+          </ul>
+        </section>
+      )}
+    </>
+  );
+
   return (
     <>
       {showJoin && <JoinBar api={api} />}
+      {bottomBar && openBlock}
 
       <section aria-label="Games">
         <SectionLabel
@@ -306,87 +367,7 @@ export function PlayScreen({
           </div>
         )}
       </section>
-      <section aria-label="Open games" ref={openRef} className="scroll-mt-20">
-        <SectionLabel
-          right={
-            <span data-testid="open-games-count" className="text-onbg">
-              {openGames.length}
-            </span>
-          }
-        >
-          Open games
-        </SectionLabel>
-        {gameUis.length > 1 && (
-          <div className="mb-3 flex flex-wrap gap-2">
-            {[{ id: 'all', name: 'All' }, ...gameUis].map((g) => (
-              <button
-                key={g.id}
-                aria-pressed={filter === g.id}
-                onClick={() => setFilter(g.id)}
-                className={`label min-h-9 rounded-md border-2 px-3 ${
-                  filter === g.id
-                    ? 'border-accent bg-accent text-accentink'
-                    : 'border-onbg/40 text-onbg'
-                }`}
-              >
-                {g.name}
-              </button>
-            ))}
-          </div>
-        )}
-        {lobby === null ? (
-          <p className="label text-onbg/70">Looking for games…</p>
-        ) : openGames.length === 0 ? (
-          <div
-            className="hud chat-grey !bg-panel/80 p-4 text-center text-sm text-muted"
-            data-testid="open-games-empty"
-          >
-            No open games right now. Pick a game above to open a lobby, and switch on{' '}
-            <b className="text-ink">Public room</b> there so others can join.
-          </div>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {openGames.map((r) => (
-              <OpenGame
-                key={r.code}
-                room={r}
-                disabled={blocked}
-                mine={r.code === currentRoomCode}
-                onJoin={() =>
-                  r.code === currentRoomCode ? onReturn?.() : void run(api.join(r.code))
-                }
-              />
-            ))}
-          </ul>
-        )}
-      </section>
-      {playingGames.length > 0 && (
-        <section aria-label="Playing now">
-          <SectionLabel
-            right={
-              <span data-testid="playing-games-count" className="text-onbg">
-                {playingGames.length}
-              </span>
-            }
-          >
-            Playing now
-          </SectionLabel>
-          <ul className="flex flex-col gap-2">
-            {playingGames.map((r) => (
-              <OpenGame
-                key={r.code}
-                room={r}
-                watch
-                disabled={blocked}
-                mine={r.code === currentRoomCode}
-                onJoin={() =>
-                  r.code === currentRoomCode ? onReturn?.() : void run(api.join(r.code))
-                }
-              />
-            ))}
-          </ul>
-        </section>
-      )}
+      {!bottomBar && openBlock}
       {onMainScreen && !bottomBar && (
         <Button
           variant="secondary"
@@ -407,65 +388,16 @@ export function PlayScreen({
               background: 'linear-gradient(to top, rgb(var(--c-page)) 70%, rgb(var(--c-page) / 0))',
             }}
             data-testid="play-bar"
-            data-mode={atOpen ? 'main' : 'open'}
           >
-            {/* Two buttons stacked: the one for the current place is shown, the other fades away. */}
             <div className="mx-auto grid max-w-md">
-              {[
-                {
-                  key: 'open',
-                  shown: !atOpen,
-                  variant: 'primary' as const,
-                  testId: 'play-open-games',
-                  label: (
-                    <>
-                      Open games
-                      {openGames.length + playingGames.length > 0 && (
-                        <span className="ml-2 opacity-80">
-                          {openGames.length + playingGames.length}
-                        </span>
-                      )}
-                      <span aria-hidden className="ml-2">
-                        ▾
-                      </span>
-                    </>
-                  ),
-                  onClick: () => {
-                    const el = openRef.current;
-                    if (!el) return;
-                    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-                    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
-                  },
-                },
-                {
-                  key: 'main',
-                  shown: atOpen,
-                  variant: 'secondary' as const,
-                  testId: 'main-screen',
-                  label: <>Main screen</>,
-                  onClick: onMainScreen,
-                },
-              ].map((b) => (
-                <Button
-                  key={b.key}
-                  variant={b.variant}
-                  data-testid={b.testId}
-                  tabIndex={b.shown ? 0 : -1}
-                  aria-hidden={!b.shown}
-                  onClick={b.onClick}
-                  className="pointer-events-auto col-start-1 row-start-1 w-full whitespace-nowrap"
-                  style={{
-                    opacity: b.shown ? 1 : 0,
-                    visibility: b.shown ? 'visible' : 'hidden',
-                    pointerEvents: b.shown ? 'auto' : 'none',
-                    transition: b.shown
-                      ? 'opacity 260ms ease, visibility 0s'
-                      : 'opacity 260ms ease, visibility 0s linear 260ms',
-                  }}
-                >
-                  {b.label}
-                </Button>
-              ))}
+              <Button
+                variant="secondary"
+                data-testid="main-screen"
+                onClick={onMainScreen}
+                className="pointer-events-auto w-full whitespace-nowrap"
+              >
+                Main screen
+              </Button>
             </div>
           </div>
         </>

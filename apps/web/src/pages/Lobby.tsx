@@ -316,9 +316,39 @@ export function Lobby({
   const isHost = room.hostId === me;
   /** The host opened the list of games (the top card is a button): the settings make room for it. */
   const [choosing, setChoosing] = useState(false);
+  // The phone's back gesture: from the game list it goes back to the lobby, from the lobby to the main screen.
+  // The list is a history entry of its own (`pickPushed`); the lobby sits on Home's Play entry (made here when
+  // the player came some other way, e.g. a share link, so there is always one entry to go back to).
+  const pickPushed = useRef(false);
+  const leaveRef = useRef(api.leave);
+  leaveRef.current = api.leave;
+  useEffect(() => {
+    if (history.state?.pogo !== 'play') history.pushState({ pogo: 'play' }, '');
+    const onPop = () => {
+      if (pickPushed.current) {
+        pickPushed.current = false;
+        setChoosing(false);
+        return;
+      }
+      void leaveRef.current();
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  const pick = (open: boolean) => {
+    if (open && !pickPushed.current) {
+      history.pushState({ pogo: 'pick' }, '');
+      pickPushed.current = true;
+    } else if (!open && pickPushed.current) {
+      history.back(); // (the popstate handler closes the list)
+      return;
+    }
+    setChoosing(open);
+  };
   // Joining another lobby from the game list brings the page back to the top too.
   useEffect(() => {
-    setChoosing(false);
+    if (pickPushed.current) history.back();
+    else setChoosing(false);
     window.scrollTo({ top: 0 });
   }, [room.code]);
   /** The settings are folded by default (a fresh lobby, or back from a game); switching games inside the lobby keeps them as they are. */
@@ -450,7 +480,7 @@ export function Lobby({
             data-testid="lobby-game-card"
             // Everybody can open the list: the host picks the game, the others suggest one.
             chevron={choosing ? 'up' : 'down'}
-            onClick={() => setChoosing((c) => !c)}
+            onClick={() => pick(!choosing)}
           />
         )}
 
@@ -479,14 +509,14 @@ export function Lobby({
               showJoin={false}
               currentRoomCode={room.code}
               onReturn={() => {
-                setChoosing(false);
+                pick(false);
                 window.scrollTo({ top: 0 });
               }}
               // All the way at the bottom: leave the lobby for the home screen (no intro animation again).
               onMainScreen={() => void api.leave()}
               tooBigFor={(id) => room.members.length > (getGame(id)?.maxPlayers ?? Infinity)}
               onPick={(g) => {
-                setChoosing(false);
+                pick(false);
                 window.scrollTo({ top: 0 });
                 if (g.id === room.gameId) return;
                 if (isHost) return api.setGame(g.id);
