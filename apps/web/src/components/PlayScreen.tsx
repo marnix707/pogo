@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { PublicRoomSummary } from '@pogo/shared';
 import { getGameUi } from '../games/registry';
@@ -161,6 +161,48 @@ export function PlayScreen({
   // Live-update the open games while this screen is showing.
   useEffect(() => watchLobby(), [watchLobby]);
 
+  // Home's Play screen: with at least one open game the open games come first (under the join bar). The choice is made
+  // once, when the list first arrives, and kept until the screen is opened again: a game that opens while somebody
+  // is reading further down must not move the page under them.
+  const [openFirst, setOpenFirst] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (openFirst === null && lobby !== null) setOpenFirst(lobby.some((r) => r.status === 'lobby'));
+  }, [lobby, openFirst]);
+  const topFirst = bottomBar && openFirst === true;
+  // Otherwise the open games are last, and the bottom bar follows the scroll: Open games ▾ takes you down to them,
+  // and once their heading has climbed into the upper half of the screen (or the page cannot scroll any further)
+  // it is Back to top ▴.
+  const openRef = useRef<HTMLElement>(null);
+  const [atOpen, setAtOpen] = useState(false);
+  useEffect(() => {
+    if (!bottomBar || topFirst) return;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const top = openRef.current?.getBoundingClientRect().top ?? Infinity;
+      const atEnd =
+        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+      setAtOpen(top < window.innerHeight * 0.5 || atEnd);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      cancelAnimationFrame(frame);
+    };
+  }, [bottomBar, topFirst, lobby]);
+  const scrollTo = (el: HTMLElement | null, top = false) => {
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const behavior = reduce ? 'auto' : 'smooth';
+    if (top || !el) window.scrollTo({ top: 0, behavior });
+    else el.scrollIntoView({ behavior, block: 'start' });
+  };
+
   const shown = useMemo(
     () => (lobby ?? []).filter((r) => filter === 'all' || r.gameId === filter),
     [lobby, filter],
@@ -178,7 +220,7 @@ export function PlayScreen({
   // Home's Play screen lists the open games first, under the join bar; a lobby's game picker keeps them last.
   const openBlock = (
     <>
-      <section aria-label="Open games">
+      <section aria-label="Open games" ref={openRef} className="scroll-mt-20">
         <SectionLabel
           right={
             <span data-testid="open-games-count" className="text-onbg">
@@ -265,7 +307,7 @@ export function PlayScreen({
   return (
     <>
       {showJoin && <JoinBar api={api} />}
-      {bottomBar && openBlock}
+      {topFirst && openBlock}
 
       <section aria-label="Games">
         <SectionLabel
@@ -367,11 +409,21 @@ export function PlayScreen({
           </div>
         )}
       </section>
-      {!bottomBar && openBlock}
+      {!topFirst && openBlock}
       {onMainScreen && !bottomBar && (
         <Button
           variant="secondary"
           data-testid="main-screen"
+          className="mt-2"
+          onClick={onMainScreen}
+        >
+          Main screen
+        </Button>
+      )}
+      {bottomBar && onMainScreen && !topFirst && (
+        <Button
+          variant="secondary"
+          data-testid="main-screen-inline"
           className="mt-2"
           onClick={onMainScreen}
         >
@@ -388,16 +440,79 @@ export function PlayScreen({
               background: 'linear-gradient(to top, rgb(var(--c-page)) 70%, rgb(var(--c-page) / 0))',
             }}
             data-testid="play-bar"
+            data-mode={topFirst ? 'main' : atOpen ? 'top' : 'open'}
           >
+            {/* Open games first: just Main screen. Otherwise two buttons stacked, the one for the place is shown. */}
             <div className="mx-auto grid max-w-md">
-              <Button
-                variant="secondary"
-                data-testid="main-screen"
-                onClick={onMainScreen}
-                className="pointer-events-auto w-full whitespace-nowrap"
-              >
-                Main screen
-              </Button>
+              {(topFirst
+                ? [
+                    {
+                      key: 'main',
+                      shown: true,
+                      variant: 'secondary' as const,
+                      testId: 'main-screen',
+                      label: <>Main screen</>,
+                      onClick: onMainScreen,
+                    },
+                  ]
+                : [
+                    {
+                      key: 'open',
+                      shown: !atOpen,
+                      variant: 'primary' as const,
+                      testId: 'play-open-games',
+                      label: (
+                        <>
+                          Open games
+                          {openGames.length + playingGames.length > 0 && (
+                            <span className="ml-2 opacity-80">
+                              {openGames.length + playingGames.length}
+                            </span>
+                          )}
+                          <span aria-hidden className="ml-2">
+                            ▾
+                          </span>
+                        </>
+                      ),
+                      onClick: () => scrollTo(openRef.current),
+                    },
+                    {
+                      key: 'top',
+                      shown: atOpen,
+                      variant: 'secondary' as const,
+                      testId: 'play-back-to-top',
+                      label: (
+                        <>
+                          Back to top
+                          <span aria-hidden className="ml-2">
+                            ▴
+                          </span>
+                        </>
+                      ),
+                      onClick: () => scrollTo(null, true),
+                    },
+                  ]
+              ).map((b) => (
+                <Button
+                  key={b.key}
+                  variant={b.variant}
+                  data-testid={b.testId}
+                  tabIndex={b.shown ? 0 : -1}
+                  aria-hidden={!b.shown}
+                  onClick={b.onClick}
+                  className="pointer-events-auto col-start-1 row-start-1 w-full whitespace-nowrap"
+                  style={{
+                    opacity: b.shown ? 1 : 0,
+                    visibility: b.shown ? 'visible' : 'hidden',
+                    pointerEvents: b.shown ? 'auto' : 'none',
+                    transition: b.shown
+                      ? 'opacity 260ms ease, visibility 0s'
+                      : 'opacity 260ms ease, visibility 0s linear 260ms',
+                  }}
+                >
+                  {b.label}
+                </Button>
+              ))}
             </div>
           </div>
         </>
