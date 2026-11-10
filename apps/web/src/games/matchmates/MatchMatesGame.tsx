@@ -1201,7 +1201,7 @@ export function MatchMatesGame({ room, me, sendMove }: GameUiProps) {
               const evolving = evolve?.owner === p.id && evolve.slot === slot ? evolve.phase : null;
               // While it charges up the old form still shows; the new one pops out of the flash.
               const shownEvolved = m.evolved && evolving !== 'charge';
-              const [w, h] = monsterSize(shownEvolved);
+              const [w, h] = monsterSize(m.element, shownEvolved);
               const spec = MONSTERS[m.element];
               const color = ELEMENT_COLOR[m.element];
               const mana = manaShown?.[`${p.id}-${slot}`] ?? m.mana;

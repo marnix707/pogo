@@ -22,7 +22,7 @@ A two-player match-3 monster duel, modelled on Plato's "Match Monsters". Game id
 
 ## Art
 
-`apps/web/src/assets/sprites/matchmates/{tiles,monsters,arenas}` from the artist's `monster_match_svg.zip` (tiles 18x18, monsters 26x27 base / 32x33 evolved, facing right: the opponent is mirrored; arenas 160x90 with pads player (44,76), opponent (116,58)). Only the five monsters with art exist; add more by data (`MONSTERS`) plus art.
+`apps/web/src/assets/sprites/matchmates/{tiles,monsters,arenas}` from the artist's `monster_match_svg.zip` (tiles 18x18, monsters in the artist's v4 style (`pet_match_pets_v4.zip`, thornback as the kaiju from `pet_match_thornback.zip`; blazemaw and voltusk from the earlier zip): every picture has its own size (`SIZES` in `art.ts`, `monsterSize(element, evolved)`, e.g. embit 28x23, oracull 36x22), anchored on the feet, facing right: the opponent is mirrored; arenas 160x90 with pads player (44,76), opponent (116,58)). Only the five monsters with art exist; add more by data (`MONSTERS`) plus art.
 
 The earth mana badge (`hud/badge-earth.svg`, `charge-bar-earth*.svg`) is a lime leaf with a dark-green edge, a pale midrib and a stem, drawn by the skill's `examples/pm_earth_leaf.py` (rewrites only those three files).
 

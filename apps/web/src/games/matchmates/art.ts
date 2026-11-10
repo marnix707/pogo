@@ -160,8 +160,21 @@ const NAMES: Record<matchmates.Element, [string, string]> = {
   electric: ['zappip', 'voltusk'],
   psychic: ['mindle', 'oracull'],
 };
-/** Base and evolved sizes in art pixels. */
-export const monsterSize = (evolved: boolean): [number, number] => (evolved ? [32, 33] : [26, 27]);
+/** Each picture's own size in art pixels (the artist's v4 pets differ in width and height; the anchor is the feet). */
+const SIZES: Record<string, [number, number]> = {
+  embit: [28, 23],
+  blazemaw: [32, 33],
+  puddlo: [26, 18],
+  tidalurk: [34, 27],
+  sprigg: [28, 19],
+  thornback: [34, 29],
+  zappip: [30, 20],
+  voltusk: [32, 33],
+  mindle: [26, 23],
+  oracull: [36, 22],
+};
+export const monsterSize = (element: matchmates.Element, evolved: boolean): [number, number] =>
+  SIZES[matchmatesName(element, evolved)] ?? (evolved ? [32, 33] : [26, 27]);
 
 export const arenaUrl = (stage: matchmates.StageId, specs: typeof matchmates.STAGE_SPECS): string =>
   arenas[specs[stage].arena] ?? '';
