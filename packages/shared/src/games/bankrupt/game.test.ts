@@ -359,6 +359,20 @@ describe('auctions', () => {
     expect(game.getCurrentPlayers(s)).toEqual([a]);
   });
 
+  it('a player who cannot pay even the smallest raise (the highest bid plus a step) steps out too', () => {
+    let s = start(3);
+    const a = mover(s).id;
+    const [x, y] = s.players.filter((p) => p.id !== a).map((p) => p.id) as [string, string];
+    s = play(s, a, { type: 'roll' }, dice(3));
+    const price = (tileById(s.board, 'bangkok') as { price: number }).price;
+    s = play(s, a, { type: 'decline' });
+    // y can top 100 by $1 but not by the step ($5 or more): all the bid buttons are out of reach, so they step out
+    s = patch(s, y, { cash: 100 + bidStep(price) - 1 });
+    if (turn(s) === y) s = play(s, y, { type: 'passBid' });
+    s = play(s, x, { type: 'bid', amount: 100 });
+    expect(s.auction!.passed).toContain(y);
+  });
+
   it('an auction has its own 15 second clock, and when it runs out the one who is up steps out', () => {
     let s = start(3);
     const a = mover(s).id;

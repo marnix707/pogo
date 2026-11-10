@@ -491,9 +491,11 @@ function rainbowCheck(s: BankruptState, tileId: string, by: PlayerId) {
 function resolveAuction(s: BankruptState, from: PlayerId) {
   const a = s.auction;
   if (!a) return;
-  // Somebody who has no more money than the highest bid cannot raise it: they step out by themselves.
-  const floor = Math.max(a.min - 1, a.high?.amount ?? 0);
-  for (const p of bidders(s)) if (p.id !== a.high?.player && p.cash <= floor) a.passed.push(p.id);
+  // Somebody who cannot pay the smallest bid left steps out by themselves: the opening bid, or the highest bid plus
+  // one raise step (the left bid button; the same step the screen offers).
+  const price = ownable(s, a.tile)?.price ?? 100;
+  const need = a.high ? a.high.amount + bidStep(price) : a.min;
+  for (const p of bidders(s)) if (p.id !== a.high?.player && p.cash < need) a.passed.push(p.id);
   const open = bidders(s).filter((p) => p.id !== a.high?.player);
   if (open.length > 0) {
     // The next one in seat order after `from` who may still bid; the one who put the space up is asked last, so
