@@ -163,13 +163,13 @@ const NAMES: Record<matchmates.Element, [string, string]> = {
 /** Each picture's own size in art pixels (the artist's v4 pets differ in width and height; the anchor is the feet). */
 const SIZES: Record<string, [number, number]> = {
   embit: [28, 23],
-  blazemaw: [32, 33],
+  blazemaw: [36, 32],
   puddlo: [26, 18],
   tidalurk: [34, 27],
   sprigg: [28, 19],
   thornback: [34, 29],
   zappip: [30, 20],
-  voltusk: [32, 33],
+  voltusk: [36, 33],
   mindle: [26, 23],
   oracull: [36, 22],
 };
