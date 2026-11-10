@@ -119,6 +119,10 @@ const tagEl = (id: string) =>
   document.querySelector(`[data-testid="bk-pile-top"][data-owner="${id}"]`) ??
   document.querySelector(`[data-testid="bk-player-${id}"]`);
 
+/** How wide a player's money is: a pile is a heap the notes fall across, a card is a point. */
+const spreadOf = (id: string | null): number =>
+  id && document.querySelector(`[data-testid="bk-pile-top"][data-owner="${id}"]`) ? 70 : 6;
+
 /** A number pops up on the space (like the damage in Pet Match): it grows, tips over and drops away. */
 async function pop(at: { x: number; y: number }, text: string, colour: string) {
   const el = document.createElement('div');
@@ -186,15 +190,28 @@ export function arcPoint(a: Pt, b: Pt, centre: Pt, u: number, bow = 0.16): Pt {
   };
 }
 
-/** Banknotes fly from one point to another over the middle of the board; resolves when the first one has arrived. */
-function fly(from: Pt, targets: Pt[]) {
+/** Notes in a stream leave this far apart (ms): a steady rain, not one burst. */
+const STREAM_GAP = 55;
+const FLIGHT_MS = 950;
+
+/**
+ * Banknotes fly from one point to another over the middle of the board, one after the other like rain. A pile is
+ * wide: notes leave from and land across `spreadFrom` / `spreadTo` px either side of its top, so they fall on the
+ * whole heap. Resolves `all` when the last one has landed; `firstArrives` is when the first lands and `span` how
+ * long the notes keep landing (the receiver's number counts for that long).
+ */
+function fly(from: Pt, targets: Pt[], spreadFrom = 0, spreadTo = 0) {
   const n = targets.length;
-  const ms = 950;
+  const ms = FLIGHT_MS;
   const board = document.querySelector('[data-testid="bk-board"]');
   const centre = centreOf(board) ?? { x: window.innerWidth / 2, y: window.innerHeight / 2 };
   const done: Promise<unknown>[] = [];
+  // (evenly spread across the heap, shuffled a little, so neighbours do not land on one spot)
+  const lane = (i: number) => ((i * 0.618) % 1) - 0.5;
   for (let i = 0; i < n; i++) {
-    const to = targets[i]!;
+    const to0 = targets[i]!;
+    const a0 = { x: from.x + lane(i + 1) * 2 * spreadFrom, y: from.y };
+    const to = { x: to0.x + lane(i) * 2 * spreadTo, y: to0.y + (i % 3) * 2 };
     const img = document.createElement('img');
     img.src = art('cash');
     Object.assign(img.style, {
@@ -208,29 +225,39 @@ function fly(from: Pt, targets: Pt[]) {
       opacity: '0',
     });
     document.body.appendChild(img);
-    // (several notes fan out a little: each takes a slightly different bow)
-    const bow = 0.16 + (i - (n - 1) / 2) * 0.06;
+    // (the notes fan out a little: each takes a slightly different bow)
+    const bow = 0.16 + ((i % 5) - 2) * 0.035;
     const STEPS = 28;
     const frames: Keyframe[] = [];
-    let prev = arcPoint(from, to, centre, 0, bow);
+    let prev = arcPoint(a0, to, centre, 0, bow);
     for (let k = 0; k <= STEPS; k++) {
       const t = k / STEPS;
-      const p = arcPoint(from, to, centre, speedRamp(t), bow);
+      const p = arcPoint(a0, to, centre, speedRamp(t), bow);
       // it turns with the direction it is flying, and is biggest as it passes the middle
       const angle = (Math.atan2(p.y - prev.y, p.x - prev.x) * 180) / Math.PI;
       const size = 0.6 + 0.65 * Math.sin(Math.PI * Math.min(1, t * 1.05));
       frames.push({
         transform: `translate(${p.x - 17}px, ${p.y - 10}px) scale(${size}) rotate(${(angle * 0.25).toFixed(1)}deg)`,
-        opacity: t > 0.94 ? 1 - (t - 0.94) / 0.06 : 1,
+        // (fades in at the start, and into the heap at the end: no note pops in or out)
+        opacity: t < 0.06 ? t / 0.06 : t > 0.92 ? 1 - (t - 0.92) / 0.08 : 1,
         offset: t,
       });
       prev = p;
     }
-    const a = img.animate(frames, { duration: ms, delay: i * 90, easing: 'linear', fill: 'both' });
+    const a = img.animate(frames, {
+      duration: ms,
+      delay: i * STREAM_GAP,
+      easing: 'linear',
+      fill: 'both',
+    });
     done.push(a.finished.catch(() => undefined).then(() => img.remove()));
   }
   // The first note arriving is the moment the receiver's number starts to count.
-  return { firstArrives: ms * 0.92, all: Promise.all(done) };
+  return {
+    firstArrives: ms * 0.92,
+    span: (n - 1) * STREAM_GAP + ms * 0.08,
+    all: Promise.all(done),
+  };
 }
 
 /**
@@ -333,9 +360,10 @@ export function useCashFx(
         if (stopped) return;
         // With a split, a share of the notes (the size of the payment) flies on to the one paid, spread
         // between the others so they all leave the space together.
-        const n = t.split
-          ? Math.max(4, Math.min(8, Math.ceil(t.amount / 30)))
-          : Math.max(2, Math.min(6, Math.ceil(t.amount / 40)));
+        // (a stream: the more money, the more notes, a note about every $25)
+        const n = t.quick
+          ? Math.max(3, Math.min(6, Math.ceil(t.amount / 50)))
+          : Math.max(6, Math.min(18, Math.ceil(t.amount / 25)));
         const targets = Array.from({ length: n }, () => receiver);
         const mine = t.split
           ? Math.min(n - 1, Math.max(1, Math.round((n * t.split.amount) / t.amount)))
@@ -343,7 +371,7 @@ export function useCashFx(
         for (let k = 0; k < mine; k++) targets[Math.floor(((k + 0.5) * n) / mine)] = splitTo!;
         // (the town hall swells a little when money leaves it, or when the first notes arrive in it)
         if (t.from === null) bump();
-        const flight = fly(payer, targets);
+        const flight = fly(payer, targets, spreadOf(t.from), spreadOf(t.to));
         await sleep(flight.firstArrives);
         if (stopped) return;
         if (t.to === null) bump();
@@ -351,8 +379,8 @@ export function useCashFx(
           play('score');
           const own = t.amount - (t.split?.amount ?? 0);
           await Promise.all([
-            t.to && own > 0 ? count(t.to, own, 550) : undefined,
-            t.split?.to ? count(t.split.to, t.split.amount, 550) : undefined,
+            t.to && own > 0 ? count(t.to, own, 550 + flight.span) : undefined,
+            t.split?.to ? count(t.split.to, t.split.amount, 550 + flight.span) : undefined,
           ]);
         }
         await flight.all;
